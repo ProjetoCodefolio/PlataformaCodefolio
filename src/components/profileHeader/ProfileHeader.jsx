@@ -12,12 +12,21 @@ import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
 import { useNavigate } from "react-router-dom";
+import "../profileHeader/style.css";
 
 export default function ProfileHeader() {
   const navigate = useNavigate();
 
   const handleMembersClick = () => {
     navigate("/members");
+  };
+
+  const handleTimelineClick = () => {
+    navigate("/dashboard");
+  };
+
+  const handleFotosClick = () => {
+    navigate("/fotos");
   };
 
   return (
@@ -62,7 +71,7 @@ export default function ProfileHeader() {
         <Grid container justifyContent="center" spacing={2} sx={{ mt: 1 }}>
           <Grid item>
             <IconButton
-              href="https://instagram.com"
+              href="https://instagram.com/projetocodefolio"
               target="_blank"
               color="primary"
             >
@@ -120,20 +129,21 @@ export default function ProfileHeader() {
       <Box sx={{ mt: 4, borderTop: 1, borderColor: "divider" }}>
         <Grid container>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <Typography variant="body1">
-              <strong>Timeline</strong>
-            </Typography>
+            <MenuItem onClick={handleTimelineClick} >
+              <strong className="texto" >Timeline</strong>
+            </MenuItem>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
             <MenuItem onClick={handleMembersClick}>
               <ListItemIcon></ListItemIcon>
-              Membros
+              <strong className="texto">Membros</strong>
             </MenuItem>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <Typography variant="body1">
-              <strong>Fotos</strong>
-            </Typography>
+            <MenuItem onClick={handleFotosClick}>
+              <ListItemIcon></ListItemIcon>
+              <strong className="texto">Fotos</strong>
+            </MenuItem>
           </Grid>
         </Grid>
       </Box>
