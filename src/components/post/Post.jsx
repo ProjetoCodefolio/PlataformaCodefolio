@@ -1,4 +1,3 @@
-// src/components/Post.js
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get, push, set, update, remove } from "firebase/database";
