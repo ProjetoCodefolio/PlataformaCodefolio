@@ -192,11 +192,11 @@ export default function Post() {
                     </Box>
                   </Box>
                   <Typography className="postLikeCounter">
-                    {like} people like it
+                    {like} Pessoas curtiram isso
                   </Typography>
                 </Box>
                 <Box className="postBottomRight">
-                  <Typography className="postCommentText">comments</Typography>
+                  <Typography className="postCommentText">Comentários</Typography>
                 </Box>
               </Box>
               <h5>Editar post</h5>
