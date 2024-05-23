@@ -1,3 +1,4 @@
+import "../home.css";
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import {
@@ -18,6 +19,7 @@ import {
   Box,
 } from "@mui/material";
 import Topbar from "../../components/topbar/Topbar";
+import ProfileHeader from "../../components/profileHeader/ProfileHeader";
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -50,11 +52,11 @@ const MembersPage = () => {
 
   return (
     <>
-      <Topbar />
-      <Box sx={{ marginTop: "100px" }}>
-        <Typography variant="h4" gutterBottom>
-          Membros
-        </Typography>
+      <Box sx={{ marginTop: "78px" }}>
+        <Topbar />
+        <Box className="homeContainer">
+          <ProfileHeader />
+        </Box>
         <Grid container spacing={3}>
           {members.map((member) => (
             <Grid item xs={12} sm={6} md={4} key={member.id}>
@@ -98,6 +100,13 @@ const MembersPage = () => {
             </Button>
           </Box>
         )}
+
+
+        <Typography variant="h4" gutterBottom>
+          <strong>Membros</strong> <br />
+          <strong>Membros</strong> <br />
+          <strong>Membros</strong> <br />
+        </Typography>
       </Box>
     </>
   );

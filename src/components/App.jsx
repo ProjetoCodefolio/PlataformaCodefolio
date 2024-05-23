@@ -12,6 +12,7 @@ import VerifyEmail from "../pages/VerifyEmail";
 import ForgotPassword from "../pages/ForgotPassword";
 import ProfileHeader from "../pages/profile";
 import MembersPage from "../pages/members";
+import FotosPage from "../pages/fotos";
 
 function App() {
   return (
@@ -51,6 +52,14 @@ function App() {
             element={
               <PrivateRoute>
                 <MembersPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/fotos"
+            element={
+              <PrivateRoute>
+                <FotosPage />
               </PrivateRoute>
             }
           />
