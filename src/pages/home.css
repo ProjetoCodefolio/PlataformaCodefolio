@@ -1,0 +1,15 @@
+.homeContainer{
+    display: flex;
+    width: 100%;
+}
+.fullVisualHome{
+    margin: 0;
+    padding: 0;
+    position: relative;
+}
+.halfVisualHome{
+    position: relative;
+    opacity: 0.3;
+}
+
+

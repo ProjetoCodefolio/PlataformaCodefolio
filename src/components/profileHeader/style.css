@@ -1,0 +1,9 @@
+.texto {
+    display: flex;
+    /* text-align: center; */
+    justify-content: center !important;
+    /* align-items: center;  */
+    margin-left: auto;
+    margin-right: auto;
+    /* padding-: auto; */
+}
