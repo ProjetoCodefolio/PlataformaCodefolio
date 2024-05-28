@@ -17,7 +17,8 @@ import {
   GoogleAuthProvider,
   signOut,
 } from "firebase/auth";
-import { auth } from "../service/firebase";
+import { auth, database } from "../service/firebase";
+import { ref, get, query, orderByChild, equalTo, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import BackgroundImage from "../../public/assets/img/codefolio.jpg";
 
@@ -84,12 +85,51 @@ export default function SignInSide() {
     }
   };
 
+  const checkIfEmailExists = async (email) => {
+    const usersRef = ref(database, "users");
+    const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
+    const snapshot = await get(emailQuery);
+    return snapshot.exists();
+  };
+
+  const saveUserToDatabase = async (user) => {
+    const userRef = ref(database, `users/${user.uid}`);
+    await set(userRef, {
+      firstName: user.displayName?.split(" ")[0] || "",
+      lastName: user.displayName?.split(" ").slice(1).join(" ") || "",
+      email: user.email,
+      photoURL: user.photoURL || "",
+      gitURL: "",
+      linkedinURL: "",
+      instagramURL: "",
+      facebookURL: "",
+      youtubeURL: "",
+    });
+  };
+
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      console.log("Usuário autenticado:", user);
+
+      // Verificar se o e-mail já existe
+      const emailExists = await checkIfEmailExists(user.email);
+
+      console.log("Email existe:", emailExists);
+
+      if (!emailExists) {
+        // Se o e-mail não existir, salvar o usuário no banco de dados
+        await saveUserToDatabase(user);
+        console.log("Usuário salvo no banco de dados.");
+      }
+
+      // Fazer login e redirecionar para o dashboard
       navigate("/dashboard");
     } catch (error) {
+      console.error("Erro ao fazer login com o Google:", error);
       const message = getFirebaseErrorMessage(error);
       setError(message);
     }

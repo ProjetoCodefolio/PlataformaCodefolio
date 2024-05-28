@@ -1,1 +1,24 @@
 node_modules
+.DS_Store
+.idea
+.vscode
+*.log
+certs/*.crt
+certs/*.key
+
+# Created by "Local History" extension
+.history
+
+# Location where emulators should persist the data
+# Always run the command `firebase emulators:start --import .firebase --export-on-exit`
+.firebase
+
+# Service Account used to bypass OAuth authentication during tests (cypress)
+serviceAccount.json
+
+# Not commited while app is still in development phase
+#package-lock.json
+
+
+# Ignore the default env used to run the project locally
+.env
