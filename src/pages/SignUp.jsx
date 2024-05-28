@@ -10,11 +10,12 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { auth } from "../service/firebase";
+import { auth, database } from "../service/firebase";
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
 } from "firebase/auth";
+import { ref, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import BackgroundImage from "../../public/assets/img/codefolio.jpg";
 
@@ -64,6 +65,21 @@ export default function SignUp() {
         data.password
       );
       await sendEmailVerification(userCredential.user);
+
+      const userId = userCredential.user.uid;
+      const userRef = ref(database, `users/${userId}`);
+      await set(userRef, {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        photoURL: userCredential.user.photoURL || "",
+        gitURL: "",
+        linkedinURL: "",
+        instagramURL: "",
+        facebookURL: "",
+        youtubeURL: "",
+      });
+
       navigate("/verify-email");
     } catch (error) {
       const message = getFirebaseErrorMessage(error);

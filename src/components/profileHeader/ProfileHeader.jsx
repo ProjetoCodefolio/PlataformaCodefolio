@@ -1,36 +1,31 @@
+// src/components/profileHeader/ProfileHeader.js
+import React from "react";
 import {
   Avatar,
   Box,
   Grid,
   Typography,
   IconButton,
-  MenuItem,
-  ListItemIcon,
+  Button,
 } from "@mui/material";
-import { Edit, Settings } from "@mui/icons-material";
+
 import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import { useNavigate } from "react-router-dom";
 
-export default function ProfileHeader() {
-  const navigate = useNavigate();
-
-  const handleMembersClick = () => {
-    navigate("/members");
-  };
-
+export default function ProfileHeader({ onTimelineClick, onMembersClick }) {
   return (
     <Box
       sx={{
         width: "100%",
-        maxWidth: { xs: "100%", sm: "800px", md: "1200px" }, // Ajuste de largura para diferentes tamanhos de tela
+        maxWidth: { xs: "100%", sm: "800px", md: "1200px" },
         mx: "auto",
         boxShadow: 1,
         borderRadius: 2,
         overflow: "hidden",
         backgroundColor: "white",
         marginTop: "50px",
+        position: "relative",
       }}
     >
       <Box
@@ -109,26 +104,28 @@ export default function ProfileHeader() {
           </Grid>
         </Grid>
       </Box>
-      <Box sx={{ position: "absolute", top: 8, right: 16 }}>
-        <IconButton color="primary">
-          <Edit />
-        </IconButton>
-        <IconButton color="primary">
-          <Settings />
-        </IconButton>
-      </Box>
+
       <Box sx={{ mt: 4, borderTop: 1, borderColor: "divider" }}>
         <Grid container>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <Typography variant="body1">
-              <strong>Timeline</strong>
-            </Typography>
+            <Button
+              variant="text"
+              onClick={onTimelineClick}
+              sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
+            >
+              <Typography variant="body1">
+                <strong>Timeline</strong>
+              </Typography>
+            </Button>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <MenuItem onClick={handleMembersClick}>
-              <ListItemIcon></ListItemIcon>
-              Membros
-            </MenuItem>
+            <Button
+              variant="text"
+              onClick={onMembersClick}
+              sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
+            >
+              <Typography variant="body1">Membros</Typography>
+            </Button>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
             <Typography variant="body1">

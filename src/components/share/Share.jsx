@@ -3,45 +3,36 @@ import "./share.css";
 import PermMediaIcon from "@mui/icons-material/PermMedia";
 import EmojiEmotionsIcon from "@mui/icons-material/EmojiEmotions";
 import VideoCameraBackIcon from "@mui/icons-material/VideoCameraBack";
+import { Box } from "@mui/material";
 
 export default function Share({ changeState }) {
   return (
-    <div className="share">
-      <div className="shareWrapper">
-        <div className="shareTop">
+    <Box className="share">
+      <Box className="shareWrapper">
+        <Box className="shareTop">
           <img
             className="shareProfileImage"
             src={"/assets/person/1.jpeg"}
             alt=""
           />
-          <div className="shareInputCont"></div>
+          <Box className="shareInputCont"></Box>
           <input
             placeholder="What's on your mind,Bhabishya?"
             onClick={changeState}
             className="shareInput"
           />
-        </div>
+        </Box>
         <hr className="shareHr" />
-        <div className="shareButtom">
-          <div className="shareOptions">
-            <div className="shareOption">
-              <VideoCameraBackIcon htmlColor="red" className="shareIcon" />
-              <span className="shareOptionLongText">Live video</span>
-              <span className="shareOptionText">Live</span>
-            </div>
-            <div className="shareOption">
+        <Box className="shareButtom">
+          <Box className="shareOptions">
+            <Box className="shareOption">
               <PermMediaIcon htmlColor="green" className="shareIcon" />
               <span className="shareOptionLongText">Photo/video</span>
               <span className="shareOptionText">Gallery</span>
-            </div>
-            <div className="shareOption">
-              <EmojiEmotionsIcon htmlColor="orange" className="shareIcon" />
-              <span className="shareOptionLongText">Feeling/Activity</span>
-              <span className="shareOptionText">Feel</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+    </Box>
   );
 }
