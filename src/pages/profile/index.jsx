@@ -93,7 +93,7 @@ export default function ProfileHeader() {
         youtubeURL: data.youtubeURL,
       };
       update(ref(database, "users/" + currentUser.uid), userData);
-      setPhotoURL(data.photoURL); // Atualiza a photoURL após salvar
+      setPhotoURL(data.photoURL);
       setGitURL(data.gitURL);
       setLinkedinURL(data.linkedinURL);
       setInstagramURL(data.instagramURL);
