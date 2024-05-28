@@ -7,6 +7,8 @@ import {
   Typography,
   IconButton,
   Button,
+  MenuItem,
+  ListItemIcon,
 } from "@mui/material";
 
 import InstagramIcon from "@mui/icons-material/Instagram";
@@ -128,7 +130,7 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick }) {
             </Button>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <MenuItem onClick={handleFotosClick}>
+            <MenuItem>
               <ListItemIcon></ListItemIcon>
               <strong className="texto">Fotos</strong>
             </MenuItem>
