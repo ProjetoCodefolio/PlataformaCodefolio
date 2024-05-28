@@ -21,11 +21,17 @@ import { useAuth } from "../../context/AuthContext";
 import Topbar from "../../components/topbar/Topbar";
 import { database } from "../../service/firebase";
 import { ref, update, get } from "firebase/database";
+import ImgPerfil from "../../../public/assets/img/fundoperfil.jpg";
 
 const validationSchema = Yup.object().shape({
   firstName: Yup.string().required("Nome é obrigatório"),
   lastName: Yup.string().required("Sobrenome é obrigatório"),
-  photoURL: Yup.string().url("URL da foto inválida").nullable(),
+  photoURL: Yup.string()
+    .matches(
+      /^data:image\/(jpeg|jpg|png);base64,/,
+      "A foto deve ser uma string base64 válida"
+    )
+    .nullable(),
   gitURL: Yup.string().url("URL do GitHub inválida"),
   linkedinURL: Yup.string().url("URL do LinkedIn inválida"),
   instagramURL: Yup.string().url("URL do Instagram inválida"),
@@ -103,6 +109,24 @@ export default function ProfileHeader() {
     }
   };
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const base64 = await convertToBase64(file);
+      setPhotoURL(base64);
+      setValue("photoURL", base64);
+    }
+  };
+
+  const convertToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   return (
     <>
       <Topbar />
@@ -123,7 +147,7 @@ export default function ProfileHeader() {
           sx={{
             position: "relative",
             height: "200px",
-            backgroundImage: `url(${photoURL || "default-image-url.jpg"})`,
+            backgroundImage: `url(${ImgPerfil})`,
             backgroundSize: "cover",
             backgroundColor: photoURL ? "transparent" : "gray",
           }}
@@ -150,6 +174,23 @@ export default function ProfileHeader() {
           {editMode ? (
             <form onSubmit={handleSubmit(handleSave)}>
               <Box sx={{ mt: 2 }}>
+                <input
+                  accept="image/*"
+                  type="file"
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  id="profile-picture-upload"
+                />
+                <label htmlFor="profile-picture-upload">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    component="span"
+                    sx={{ mt: 2 }}
+                  >
+                    Selecionar Foto
+                  </Button>
+                </label>
                 <Controller
                   name="firstName"
                   control={control}
@@ -177,21 +218,6 @@ export default function ProfileHeader() {
                       label="Sobrenome"
                       error={!!errors.lastName}
                       helperText={errors.lastName?.message}
-                    />
-                  )}
-                />
-                <Controller
-                  name="photoURL"
-                  control={control}
-                  defaultValue=""
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      fullWidth
-                      margin="normal"
-                      label="URL da Foto"
-                      error={!!errors.photoURL}
-                      helperText={errors.photoURL?.message}
                     />
                   )}
                 />
@@ -344,8 +370,18 @@ export default function ProfileHeader() {
           )}
         </Box>
         <Box sx={{ position: "absolute", top: 8, right: 16 }}>
-          <IconButton color="primary" onClick={() => setEditMode(!editMode)}>
-            <Edit />
+          <IconButton
+            onClick={() => setEditMode(!editMode)}
+            sx={{
+              color: "white",
+              bgcolor: "primary.main",
+              "&:hover": {
+                bgcolor: "primary.dark",
+              },
+              fontSize: "1.5rem",
+            }}
+          >
+            <Edit fontSize="inherit" />
           </IconButton>
         </Box>
       </Box>

@@ -33,9 +33,6 @@ const validationSchema = Yup.object().shape({
 
 const getFirebaseErrorMessage = (error) => {
   let erroTipo = error.code ? error.code : error;
-
-  console.log(erroTipo);
-
   switch (erroTipo) {
     case "INVALID_LOGIN_CREDENTIALS":
       return "As credenciais de login são inválidas.";
@@ -112,24 +109,12 @@ export default function SignInSide() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-
-      console.log("Usuário autenticado:", user);
-
-      // Verificar se o e-mail já existe
       const emailExists = await checkIfEmailExists(user.email);
-
-      console.log("Email existe:", emailExists);
-
       if (!emailExists) {
-        // Se o e-mail não existir, salvar o usuário no banco de dados
         await saveUserToDatabase(user);
-        console.log("Usuário salvo no banco de dados.");
       }
-
-      // Fazer login e redirecionar para o dashboard
       navigate("/dashboard");
     } catch (error) {
-      console.error("Erro ao fazer login com o Google:", error);
       const message = getFirebaseErrorMessage(error);
       setError(message);
     }
