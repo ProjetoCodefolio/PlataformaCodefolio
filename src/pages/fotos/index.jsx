@@ -1,6 +1,7 @@
 import "../home.css";
-import { useEffect, useState } from "react";
+import { React, useEffect, useState } from "react";
 import { database } from "../../service/firebase";
+import ComentariosYouTube from "../../components/youtube/comments";
 import {
     ref,
     query,
@@ -18,8 +19,6 @@ import {
     Grid,
     Box,
 } from "@mui/material";
-import Topbar from "../../components/topbar/Topbar";
-import ProfileHeader from "../../components/profileHeader/ProfileHeader";
 
 const FotosPage = () => {
     const [Fotos, setFotos] = useState([]);
@@ -52,10 +51,9 @@ const FotosPage = () => {
 
     return (
         <>
-            <Box sx={{ marginTop: "78px"}}>
-                <Topbar />
+            <Box sx={{ marginTop: "78px" }}>
                 <Box className="homeContainer">
-                    <ProfileHeader />
+                <ComentariosYouTube/>
                 </Box>
                 <Grid container spacing={3}>
                     {Fotos.map((member) => (
@@ -102,9 +100,8 @@ const FotosPage = () => {
                 )}
 
                 <Typography variant="h4" gutterBottom>
-                    <strong>Fotos</strong> <br />
-                    <strong>Fotos</strong> <br />
-                    <strong>Fotos</strong> <br />
+                    <br />
+                    <br />
                 </Typography>
             </Box>
         </>
