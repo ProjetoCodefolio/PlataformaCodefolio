@@ -5,6 +5,7 @@ node_modules
 *.log
 certs/*.crt
 certs/*.key
+dist
 
 # Created by "Local History" extension
 .history

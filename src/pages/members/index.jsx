@@ -20,12 +20,10 @@ import {
   YouTube,
 } from "@mui/icons-material";
 import Topbar from "../../components/topbar/Topbar";
-import ProfileHeader from "../../components/profileHeader/ProfileHeader";
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -51,69 +49,76 @@ const MembersPage = () => {
   return (
     <>
       <Topbar />
-      <Box>
+      <Box sx={{ padding: "20px", backgroundColor: "#f5f5f5" }}>
         <Grid container spacing={3}>
           {members.map((member) => (
-            <Grid item xs={12} sm={6} md={4} key={member.id}>
-              <Card>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={member.id}>
+              <Card sx={{ boxShadow: 3, borderRadius: 2 }}>
                 <CardContent>
-                  <Box display="flex" alignItems="center">
+                  <Box
+                    display="flex"
+                    flexDirection="column"
+                    alignItems="center"
+                  >
                     <Avatar
                       src={member.photoURL}
                       alt={member.firstName}
-                      sx={{ width: 100, height: 100, marginRight: 2 }}
+                      sx={{ width: 80, height: 80, marginBottom: 2 }}
                     />
-                    <Box>
-                      <Typography variant="h6" gutterBottom>
-                        {member.firstName} {member.lastName}
-                      </Typography>
-                      <Box display="flex" alignItems="center" mt={1}>
-                        {member.gitURL && (
-                          <IconButton
-                            href={member.gitURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <GitHub />
-                          </IconButton>
-                        )}
-                        {member.linkedinURL && (
-                          <IconButton
-                            href={member.linkedinURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <LinkedIn />
-                          </IconButton>
-                        )}
-                        {member.instagramURL && (
-                          <IconButton
-                            href={member.instagramURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Instagram />
-                          </IconButton>
-                        )}
-                        {member.facebookURL && (
-                          <IconButton
-                            href={member.facebookURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Facebook />
-                          </IconButton>
-                        )}
-                        {member.youtubeURL && (
-                          <IconButton
-                            href={member.youtubeURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <YouTube />
-                          </IconButton>
-                        )}
-                      </Box>
+                    <Typography variant="h6" align="center" gutterBottom>
+                      {member.firstName} {member.lastName}
+                    </Typography>
+                    <Box display="flex" justifyContent="center" mt={1}>
+                      {member.gitURL && (
+                        <IconButton
+                          href={member.gitURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: "#333" }}
+                        >
+                          <GitHub />
+                        </IconButton>
+                      )}
+                      {member.linkedinURL && (
+                        <IconButton
+                          href={member.linkedinURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: "#0077b5" }}
+                        >
+                          <LinkedIn />
+                        </IconButton>
+                      )}
+                      {member.instagramURL && (
+                        <IconButton
+                          href={member.instagramURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: "#E1306C" }}
+                        >
+                          <Instagram />
+                        </IconButton>
+                      )}
+                      {member.facebookURL && (
+                        <IconButton
+                          href={member.facebookURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: "#4267B2" }}
+                        >
+                          <Facebook />
+                        </IconButton>
+                      )}
+                      {member.youtubeURL && (
+                        <IconButton
+                          href={member.youtubeURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: "#FF0000" }}
+                        >
+                          <YouTube />
+                        </IconButton>
+                      )}
                     </Box>
                   </Box>
                 </CardContent>
@@ -121,24 +126,16 @@ const MembersPage = () => {
             </Grid>
           ))}
         </Grid>
-        {hasMore && (
-          <Box mt={3} display="flex" justifyContent="center">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={fetchMembers}
-              disabled={loading}
-            >
-              {loading ? "Loading..." : "Ver Mais"}
-            </Button>
-          </Box>
-        )}
-
-        <Typography variant="h4" gutterBottom>
-          <strong>Membros</strong> <br />
-          <strong>Membros</strong> <br />
-          <strong>Membros</strong> <br />
-        </Typography>
+        <Box mt={3} display="flex" justifyContent="center">
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={fetchMembers}
+            disabled={loading}
+          >
+            {loading ? "Loading..." : "Ver Mais"}
+          </Button>
+        </Box>
       </Box>
     </>
   );
