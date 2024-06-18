@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
-import { ref, get, push, set, update, remove } from "firebase/database";
+import { ref, get, push, set, update, remove, onValue } from "firebase/database";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { Box, Card, CardContent, Typography } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
+import ComentariosYouTube from "../youtube/comments";
+import ComentarYouTube from "../youtube/comentarYouTube";
+import LikesYouTube from "../youtube/likes";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Post() {
   const [like, setLike] = useState(0);
@@ -16,8 +20,23 @@ export default function Post() {
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
+  const [tags, setTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [userRole, setUserRole] = useState('');
+  const { currentUser } = useAuth();
 
-  // para cadastrar post
+  useEffect(() => {
+    if (currentUser) {
+      const userRef = ref(database, `users/${currentUser.uid}`);
+      onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          setUserRole(data.categoria);
+        }
+      });
+    }
+  }, [currentUser]);
+
   const handleTitleChange = (event) => {
     setTitle(event.target.value);
   };
@@ -26,7 +45,6 @@ export default function Post() {
     setLink(event.target.value);
   };
 
-  // para edição do post
   const handleEditClick = (post) => () => {
     setEditingPost(post);
     setEditTitle(post.nome);
@@ -50,23 +68,45 @@ export default function Post() {
     }
   };
 
-  // para deleção de post
   const handleDeleteClick = (postId) => async () => {
-    const postRef = ref(database, `post/${postId}`);
-    await remove(postRef);
-    window.location.reload();
+    if (userRole === 'admin') {
+      const postRef = ref(database, `post/${postId}`);
+      await remove(postRef);
+      window.location.reload();
+    } else {
+      alert("Você não tem permissão para deletar este post.");
+    }
   };
 
-  const criarPost = async () => {
+  const handleTagChange = (event) => {
+    setSelectedTags(Array.from(event.target.selectedOptions, option => option.value));
+  };
+
+  const criarPost = async (event) => {
+    event.preventDefault();
+    if (!currentUser) {
+      alert("Você precisa estar logado para criar um post.");
+      return;
+    }
+  
     const postsRef = ref(database, "post");
     const newPostRef = push(postsRef);
     await set(newPostRef, {
       link: link,
       nome: title,
-      user: "Usuário Teste de Adição",
-      userAvatar: "https://lh3.googleusercontent.com/a/ACg8ocLHiyXA8qA8vOd2GVB0xK52MR8csk1TTaTYQEbz_9gUHaURUIk=s96-c"
+      data: new Date().toLocaleDateString(),
+      tags: selectedTags,
+      user: currentUser.displayName || currentUser.email, // Nome do usuário logado (ou email se o nome não estiver disponível)
+      userAvatar: currentUser.photoURL || "default-avatar-url", // URL do avatar do usuário logado (ou uma URL padrão)
     });
+    setTitle('');
+    setLink('');
+    setSelectedTags([]);
+
+    alert("Post criado com sucesso!");
+    window.location.reload();
   };
+  
 
   const editarPost = async (postId, newTitle, newLink) => {
     const postRef = ref(database, `post/${postId}`);
@@ -89,13 +129,11 @@ export default function Post() {
     if (url[2] !== undefined) {
       ID = url[2].split(/[^0-9a-z_\-]/i);
       ID = ID[0];
-    }
-    else {
+    } else {
       ID = url;
     }
     return ID;
   }
-
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -116,6 +154,21 @@ export default function Post() {
 
   useEffect(() => {
     fetchPosts();
+  }, []);
+
+  useEffect(() => {
+    const tagsRef = ref(database, 'tags');
+
+    onValue(tagsRef, (snapshot) => {
+      const data = snapshot.val();
+      let tagsArray = [];
+      for (let tag in data) {
+        tagsArray.push(data[tag].nome);
+      }
+      setTags(tagsArray);
+    }, (error) => {
+      console.error("Error: ", error);
+    });
   }, []);
 
   return (
@@ -148,8 +201,9 @@ export default function Post() {
                   <Typography className="postUsername">
                     {post.user}
                   </Typography>
+                    -
                   <Typography className="postDate">
-                    {new Date().toLocaleDateString()}
+                    {post.data}
                   </Typography>
                 </Box>
 
@@ -157,15 +211,25 @@ export default function Post() {
                   <MoreVertIcon style={{ cursor: "pointer" }} />
                 </Box>
               </Box>
-
               <Box className="postCenter">
                 <Typography className="postText">{post.nome} <br /> {post.user}</Typography>
                 {post.link ? (
-                  <YouTube videoId={getYouTubeID(post.link)} />
+                  <>
+                    <YouTube videoId={getYouTubeID(post.link)} />
+                    <br />
+                    <h5>Tags:</h5>
+                    {post.tags && post.tags.map((tag, index) => (
+                      <Typography key={index} className="postText">{tag}</Typography>
+                    ))}
+                    <br />
+                    <ComentariosYouTube videoId={getYouTubeID(post.link)} />
+                    <br />
+                    <ComentarYouTube videoId={getYouTubeID(post.link)} />
+                  </>
                 ) : (
                   <img
                     className="postImage"
-                    src={post.link}
+                    src={post.userAvatar}
                     alt={post.nome}
                   />
                 )}
@@ -173,53 +237,54 @@ export default function Post() {
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <Box className="likeIconCont">
-                      <img
-                        className="likeIcon"
-                        onClick={likeHandler}
-                        src={"../assets/like.png"}
-                        alt=""
-                      />
-                    </Box>
-                    <Box className="likeIconCont">
-                      <img
-                        className="likeIcon"
-                        onClick={likeHandler}
-                        src={"../assets/heart.png"}
-                        alt=""
-                      />
-                    </Box>
+                    <LikesYouTube videoId={getYouTubeID(post.link)} />
                   </Box>
-                  <Typography className="postLikeCounter">
-                    {like} Pessoas curtiram isso
-                  </Typography>
                 </Box>
                 <Box className="postBottomRight">
                   <Typography className="postCommentText">Comentários</Typography>
                 </Box>
               </Box>
-              <h5>Editar post</h5>
-              {editingPost && (
-                <form onSubmit={handleEditSubmit}>
-                  <input type="text" value={editTitle} onChange={handleEditTitleChange} required />
-                  <input type="text" value={editLink} onChange={handleEditLinkChange} required />
-                  <button type="submit">Editar post</button>
-                </form>
+              {userRole === 'admin' && (
+                <>
+                  <h5>Editar post</h5>
+                  {editingPost && (
+                    <form onSubmit={handleEditSubmit}>
+                      <input type="text" value={editTitle} onChange={handleEditTitleChange} required />
+                      <input type="text" value={editLink} onChange={handleEditLinkChange} required />
+                      <button type="submit">Editar post</button>
+                    </form>
+                  )}
+                  <br />
+                  <button onClick={handleEditClick(post)}>Editar Post</button> <br /> <br />
+                  <button onClick={handleDeleteClick(post.id)}>Deletar Post</button>
+                </>
               )}
-              <br />
-              {/* <h5>ID: {post.id}</h5> */}
-              <button onClick={handleEditClick(post)}>Editar Post</button> <br /> <br />
-              <button onClick={handleDeleteClick(post.id)}>Deletar Post</button>
             </CardContent>
           </Card>
         ))
       )}
       <h5>Adicionar post</h5>
       <form onSubmit={criarPost}>
-        <input type="text" value={title} onChange={handleTitleChange} placeholder="Título" required />
-        <input type="text" value={link} onChange={handleLinkChange} placeholder="Link do YouTube" required />
+        <input type="text" value={title} onChange={handleTitleChange} placeholder="Título" style={{ marginRight: '5px' }} required />
+        <input type="text" value={link} onChange={handleLinkChange} placeholder="Link do YouTube" style={{ marginRight: '5px' }} required />
+
+        <select multiple style={{ marginRight: '5px' }} onChange={handleTagChange}>
+          {tags.map((tag, index) => (
+            <option key={index} value={tag}>{tag}</option>
+          ))}
+        </select>
+
         <button type="submit">Criar post</button>
       </form>
+
+      <br />
+      <br />
+
+      <select style={{ marginRight: '5px' }}>
+        {tags.map((tag, index) => (
+          <option key={index} value={tag}>{tag}</option>
+        ))}
+      </select>
     </Box>
   );
 }

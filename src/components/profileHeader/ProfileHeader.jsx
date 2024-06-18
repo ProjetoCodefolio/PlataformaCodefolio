@@ -12,8 +12,34 @@ import {
 import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import { useEffect, useState } from "react";
+import { database } from "../../service/firebase";
+import { ref, get} from "firebase/database";
 
-export default function ProfileHeader({ onTimelineClick, onMembersClick }) {
+export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotosClick }) {
+
+  const [posts, setPosts] = useState([]);
+
+
+  const fetchPosts = async () => {
+    const postsQuery = ref(database, "post");
+  
+    const snapshot = await get(postsQuery);
+    const postsData = snapshot.val();
+    if (postsData) {
+      const postsList = Object.keys(postsData).map((key) => ({
+        id: key,
+        ...postsData[key],
+      })).reverse();
+  
+      setPosts(postsList);
+    }
+  };
+  
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
   return (
     <Box
       sx={{
@@ -88,7 +114,7 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick }) {
             <Typography variant="body1">
               <strong>Posts</strong>
             </Typography>
-            <Typography variant="body2">690</Typography>
+            <Typography variant="body2">{posts.length}</Typography>
           </Grid>
           <Grid item>
             <Typography variant="body1">
@@ -128,10 +154,13 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick }) {
             </Button>
           </Grid>
           <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
-            <MenuItem onClick={handleFotosClick}>
-              <ListItemIcon></ListItemIcon>
-              <strong className="texto">Fotos</strong>
-            </MenuItem>
+            <Button
+              variant="text"
+              onClick={onFotosClick}
+              sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
+            >
+              <Typography variant="body1">Fotos</Typography>
+            </Button>
           </Grid>
         </Grid>
       </Box>
