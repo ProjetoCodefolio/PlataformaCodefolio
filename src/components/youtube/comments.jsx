@@ -34,7 +34,7 @@ const ComentariosYouTube = ({ videoId }) => {
 
   return (
     <div>
-      <button onClick={handleLoadComments} style={{ marginRight: '8px' }}>Load Comments</button>
+      <button onClick={handleLoadComments} style={{ marginRight: '8px' }}>Carregar Comentários</button>
       <select
         value={maxResults} 
         onChange={(e) => setMaxResults(e.target.value)}

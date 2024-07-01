@@ -112,19 +112,19 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotos
         <Grid container justifyContent="center" spacing={2} sx={{ mt: 2 }}>
           <Grid item>
             <Typography variant="body1">
-              <strong>Posts</strong>
+              <strong>Publicações</strong>
             </Typography>
             <Typography variant="body2">{posts.length}</Typography>
           </Grid>
           <Grid item>
             <Typography variant="body1">
-              <strong>Followers</strong>
+              <strong>Seguidores</strong>
             </Typography>
             <Typography variant="body2">206</Typography>
           </Grid>
           <Grid item>
             <Typography variant="body1">
-              <strong>Following</strong>
+              <strong>Seguindo</strong>
             </Typography>
             <Typography variant="body2">100</Typography>
           </Grid>
