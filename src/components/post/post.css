@@ -18,7 +18,6 @@
 
 .postUsername {
   font-weight: 500;
-  cursor: pointer;
 }
 
 .postDate {
@@ -115,10 +114,6 @@
   /* Arredonda os cantos da borda */
 }
 
-.link {
-  text-decoration: none;
-  color:black;
-}
 
 /* select[multiple] option:checked {
   background: #1967D2;

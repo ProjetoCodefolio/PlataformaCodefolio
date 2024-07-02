@@ -25,7 +25,6 @@ function PostMenu({ post, onEdit, onDelete }) {
       >
         <MenuItem onClick={() => { handleClose(); onEdit(post)(); }}>Editar</MenuItem>
         <MenuItem onClick={() => { handleClose(); onDelete(post.id)(); }}>Deletar</MenuItem>
-        <MenuItem>{post.id}</MenuItem>
       </Menu>
     </div>
   );

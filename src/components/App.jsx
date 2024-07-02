@@ -1,3 +1,4 @@
+import React from 'react';
 import {
   BrowserRouter as Router,
   Route,
@@ -15,6 +16,8 @@ import ProfileHeader from "../pages/profile";
 import MembersPage from "../pages/members";
 import FotosPage from "../pages/fotos";
 import MembroPage from "../pages/membro";
+import Post from './post/Post';
+import MembroLink from './MembroLink'; // Import do MembroLink
 
 function App() {
   return (
@@ -66,14 +69,12 @@ function App() {
             }
           />
 
-          <Route
-            path="/membro"
-            element={
-              <PrivateRoute>
-                <MembroPage nome={"matheus"}/>
-              </PrivateRoute>
-            }
-          />
+<Route path="/membro" element={
+          <PrivateRoute>
+            <MembroPage />
+          </PrivateRoute>
+        } />
+        <Route path="/" element={<Post />} /> {/* Rota inicial que renderiza Post */}
         </Routes>
       </Router>
     </AuthProvider>
@@ -90,20 +91,15 @@ function App() {
 //   }
 // }
 
-import React from 'react';
-
-
-const PrivateRoute = ({ children }) => {
+function PrivateRoute({ children }) {
   const location = useLocation();
-  const isAuthenticated = useAuth();
+  const isAuthenticated = true; // substitua pela sua lógica de autenticação
 
   if (!isAuthenticated) {
-    // Redireciona para a página de login, mas preserva a localização atual para um possível redirecionamento de volta
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} />;
   }
 
-  // Se autenticado, renderiza os filhos e repassa todas as props
-  return React.cloneElement(children, { ...children.props, location });
-};
+  return children;
+}
 
 export default App;
