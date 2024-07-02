@@ -8,6 +8,7 @@ import YouTube from "react-youtube";
 import ComentariosYouTube from "../youtube/comments";
 import LikesYouTube from "../youtube/likes";
 import { useAuth } from "../../context/AuthContext";
+import MembroLink from "../MembroLink";
 
 export default function Post() {
   // const [like, setLike] = useState(0);
@@ -248,7 +249,7 @@ export default function Post() {
                     alt={post.user}
                   />
                   <Typography className="postUsername">
-                    {post.user}
+                  <MembroLink texto={post.user} user={post.user} />
                   </Typography>
                   -
                   <Typography className="postDate">
