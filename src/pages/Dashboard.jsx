@@ -11,17 +11,21 @@ import FotosPage from "./fotos";
 
 export default function Home({ showCreatePost }) {
   const [view, setView] = useState("timeline");
+  const [selectedButton, setSelectedButton] = useState(0);
 
   const handleTimelineClick = () => {
     setView("timeline");
+    setSelectedButton(0); // A cor de fundo do botão aparece apenas para a página atual.
   };
 
   const handleMembersClick = () => {
     setView("members");
+    setSelectedButton(1);
   };
   
   const handleFotosClick = () => {
     setView("fotos");
+    setSelectedButton(2);
   };
 
   return (
@@ -31,6 +35,7 @@ export default function Home({ showCreatePost }) {
         <Box className="feed">
           <Box className="feedWrapper">
             <ProfileHeader
+              selectedButton={selectedButton}
               onTimelineClick={handleTimelineClick}
               onMembersClick={handleMembersClick}
               onFotosClick={handleFotosClick}

@@ -16,10 +16,9 @@ import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get} from "firebase/database";
 
-export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotosClick }) {
+export default function ProfileHeader({ selectedButton, onTimelineClick, onMembersClick, onFotosClick }) {
 
   const [posts, setPosts] = useState([]);
-
 
   const fetchPosts = async () => {
     const postsQuery = ref(database, "post");
@@ -133,7 +132,7 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotos
 
       <Box sx={{ mt: 4, borderTop: 1, borderColor: "divider" }}>
         <Grid container>
-          <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
+        <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 0 ? "#6a0dad" : "transparent" }}>
             <Button
               variant="text"
               onClick={onTimelineClick}
@@ -144,7 +143,7 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotos
               </Typography>
             </Button>
           </Grid>
-          <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
+          <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 1 ? "#6a0dad" : "transparent" }}>
             <Button
               variant="text"
               onClick={onMembersClick}
@@ -153,7 +152,7 @@ export default function ProfileHeader({ onTimelineClick, onMembersClick, onFotos
               <Typography variant="body1">Membros</Typography>
             </Button>
           </Grid>
-          <Grid item xs={4} sx={{ textAlign: "center", p: 2 }}>
+          <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 2 ? "#6a0dad" : "transparent" }}>
             <Button
               variant="text"
               onClick={onFotosClick}
