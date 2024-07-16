@@ -217,10 +217,9 @@ export default function Post() {
 
   return (
     <Box>
-
       {/* Botão para abrir a modal */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <Button sx={{ border: 'solid', color: 'black' }} onClick={handleOpenModal}>+</Button>
+        <Button className="custom-button" onClick={handleOpenModal}>Criar Post</Button>
       </Box>
 
       {loading ? (
@@ -329,38 +328,18 @@ export default function Post() {
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 600,
-            bgcolor: 'background.paper',
-            boxShadow: 24,
-            p: 4,
-            outline: 'none',
-          }}
-        >
-          <Typography variant="h6" component="h2">
+        <Box className="modal-box">
+          <Typography variant="h6" component="h2" className="modal-title">
             Adicionar post
           </Typography>
-          <br />
-          <Box
-            component="form"
-            onSubmit={criarPost}
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-            }}
-          >
+          <Box component="form" onSubmit={criarPost} className="modal-form">
             <TextField
               label="Título"
               variant="outlined"
               value={title}
               onChange={handleTitleChange}
               required
+              className="text-field"
             />
 
             <TextField
@@ -369,6 +348,7 @@ export default function Post() {
               value={link}
               onChange={handleLinkChangeAndUpdatePreview}
               required
+              className="text-field"
             />
 
             <TextField
@@ -381,6 +361,7 @@ export default function Post() {
                 renderValue: (selected) => selected.join(', '),
               }}
               helperText="Selecione as tags para o post"
+              className="text-field"
             >
               {tags.map((tag, index) => (
                 <MenuItem key={index} value={tag}>
@@ -389,9 +370,8 @@ export default function Post() {
               ))}
             </TextField>
 
-            {/* Componente de Pré-visualização */}
             {previewLink && (
-              <Box sx={{ mt: 2 }}>
+              <Box className="preview-link">
                 <Typography variant="body1">Pré-visualização:</Typography>
                 <iframe
                   width="100%"
@@ -404,10 +384,10 @@ export default function Post() {
               </Box>
             )}
 
-            <Button type="submit" variant="contained" sx={{ mt: '20px' }}>
+            <Button type="submit" variant="contained" className="create-post-button">
               Criar post
             </Button>
-
+            
           </Box>
         </Box>
       </Modal>
