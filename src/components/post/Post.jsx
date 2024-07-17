@@ -30,6 +30,7 @@ export default function Post() {
   // Novo estado para controlar a visibilidade da modal
   const [openModal, setOpenModal] = useState(false);
   const [previewLink, setPreviewLink] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Funções para abrir e fechar a modal
   const handleOpenModal = () => setOpenModal(true);
@@ -44,9 +45,17 @@ export default function Post() {
 
   // Função para gerar o URL de incorporação do YouTube a partir do link normal
   const generateEmbedURL = (url) => {
-    const urlObj = new URL(url);
-    const videoId = urlObj.searchParams.get("v");
-    return `https://www.youtube.com/embed/${videoId}`;
+    try {
+      const objetoUrl = new URL(url);
+      const idDoVideo = objetoUrl.searchParams.get("v");
+      if (!idDoVideo) {
+        throw new Error("URL do YouTube inválida: ID do vídeo não encontrado.");
+      }
+      return `https://www.youtube.com/embed/${idDoVideo}`;
+    } catch (erro) {
+      console.error(erro.message);
+      return null; // ou uma URL padrão ou uma mensagem de erro, dependendo do seu caso de uso
+    }
   };
 
   useEffect(() => {
@@ -77,30 +86,42 @@ export default function Post() {
     setLink(event.target.value);
   };
 
+  // const handleEditClick = (post) => () => {
+  //   if (userRole === "admin") {
+  //     setEditingPost(post);
+  //     setEditTitle(post.nome);
+  //     setEditLink(post.link);
+  //     setPostTags(post.tags);
+  //   } else {
+  //     alert("Você não tem permissão para editar esse post!");
+  //   }
+  // };
+
   const handleEditClick = (post) => () => {
     if (userRole === "admin") {
       setEditingPost(post);
       setEditTitle(post.nome);
       setEditLink(post.link);
       setPostTags(post.tags);
+      setIsEditModalOpen(true); // Abre o modal de edição
     } else {
       alert("Você não tem permissão para editar esse post!");
     }
   };
 
-  const handleEditTitleChange = (event) => {
-    setEditTitle(event.target.value);
-  };
+  // const handleEditTitleChange = (event) => {
+  //   setEditTitle(event.target.value);
+  // };
 
-  const handleEditLinkChange = (event) => {
-    setEditLink(event.target.value);
-  };
+  // const handleEditLinkChange = (event) => {
+  //   setEditLink(event.target.value);
+  // };
 
-  const handleEditTagChange = (event) => {
-    const selectedTags = Array.from(event.target.selectedOptions, option => option.value);
-    setEditTags(selectedTags);
-    setPostTags(selectedTags);
-  };
+  // const handleEditTagChange = (event) => {
+  //   const selectedTags = Array.from(event.target.selectedOptions, option => option.value);
+  //   setEditTags(selectedTags);
+  //   setPostTags(selectedTags);
+  // };
 
   const handleEditSubmit = async (event) => {
     event.preventDefault();
@@ -166,6 +187,156 @@ export default function Post() {
     const postRef = ref(database, `post/${postId}`);
     await update(postRef, { nome: newTitle, link: newLink, tags: newTags });
   };
+
+  function EditPostModal({ isOpen, onClose, post, onSave }) {
+    const [title, setTitle] = useState('');
+    const [link, setLink] = useState('');
+    const [tags, setTags] = useState([]);
+    const [videoEmbedURL, setVideoEmbedURL] = useState('');
+    const [allTags, setAllTags] = useState([]);
+    const [tagsSelecionadas, setTagsSelecionadas] = useState([]);
+
+    const fetchAllTags = async () => {
+      const tagsRef = ref(database, 'tags');
+      const snapshot = await get(tagsRef);
+      const data = snapshot.val();
+      let tagsArray = [];
+      for (let tag in data) {
+        tagsArray.push(data[tag].nome);
+      }
+      return tagsArray;
+    };
+
+    useEffect(() => {
+      fetchAllTags().then(setAllTags);
+    }, []);
+
+    useEffect(() => {
+      if (isOpen) {
+        setTitle(post.nome || '');
+        setLink(post.link || '');
+        setTags(post.tags || []);
+        setTagsSelecionadas(post.tags || []);
+      }
+    }, [isOpen, post]);
+
+    useEffect(() => {
+      const generateEmbedURL = (url) => {
+        try {
+          const urlObj = new URL(url);
+          const videoId = urlObj.searchParams.get("v");
+          if (!videoId) {
+            throw new Error("Invalid YouTube URL: Video ID not found.");
+          }
+          return `https://www.youtube.com/embed/${videoId}`;
+        } catch (error) {
+          console.error(error.message);
+          return '';
+        }
+      };
+
+      setVideoEmbedURL(generateEmbedURL(link));
+    }, [link]);
+
+    const handleSave = async (e) => {
+      const postId = post.id;
+      await editarPost(postId, title, link, tagsSelecionadas);
+      if (onSave) {
+        onSave();
+      }
+      onClose(); // Fecha o modal
+    };
+
+    return (
+      <Modal
+        open={isOpen}
+        onClose={onClose}
+        aria-labelledby="modal-modal-title"
+        aria-describedby="modal-modal-description"
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 600,
+            bgcolor: 'background.paper',
+            boxShadow: 24,
+            p: 4,
+            outline: 'none',
+          }}
+        >
+          <Typography variant="h6" component="h2">
+            Editar Post
+          </Typography>
+          <br />
+          <Box
+            component="form"
+            onSubmit={handleSave}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}
+          >
+            <TextField
+              label="Título"
+              variant="outlined"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+
+            <TextField
+              label="Link do YouTube"
+              variant="outlined"
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              required
+            />
+
+            <TextField
+              select
+              label="Tags"
+              value={tagsSelecionadas}
+              onChange={(e) => setTagsSelecionadas(e.target.value)}
+              SelectProps={{
+                multiple: true,
+                renderValue: (selected) => selected.join(', '),
+              }}
+              helperText="Selecione as tags para o post"
+              required>
+
+              {allTags.map((tag) => (
+                <MenuItem key={tag} value={tag}>
+                  {tag}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            {videoEmbedURL && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body1">Pré-visualização:</Typography>
+                <iframe
+                  width="100%"
+                  height="400"
+                  src={videoEmbedURL}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </Box>
+            )}
+
+            <Button type="submit" variant="contained" sx={{ mt: '20px' }}>
+              Editar Post
+            </Button>
+          </Box >
+        </Box >
+      </Modal >
+    );
+  }
 
   function getYouTubeID(url) {
     var ID = '';
@@ -249,7 +420,7 @@ export default function Post() {
                     alt={post.user}
                   />
                   <Typography className="postUsername">
-                  <MembroLink texto={post.user} user={post.user} />
+                    <MembroLink texto={post.user} user={post.user} />
                   </Typography>
                   -
                   <Typography className="postDate">
@@ -297,24 +468,14 @@ export default function Post() {
               </Box>
               {userRole === 'admin' && (
                 <>
-                  <h5>Editar post</h5>
-                  {editingPost && (
-                    <form onSubmit={handleEditSubmit}>
-                      <input type="text" value={editTitle} onChange={handleEditTitleChange} required />
-                      <input type="text" value={editLink} onChange={handleEditLinkChange} required />
-
-                      <select multiple value={postTags} style={{ marginRight: '5px' }} onChange={handleEditTagChange}>
-                        {tags.map((tag, index) => (
-                          <option key={index} value={tag}>{tag}</option>
-                        ))}
-                      </select>
-
-                      <button type="submit">Editar post</button>
-                    </form>
+                  {isEditModalOpen && (
+                    <EditPostModal
+                      isOpen={isEditModalOpen}
+                      onClose={() => setIsEditModalOpen(false)}
+                      post={editingPost}
+                      onSave={handleEditSubmit} // Certifique-se de passar uma função para salvar as edições
+                    />
                   )}
-                  {/* <br />
-                  <button onClick={handleEditClick(post)}>Editar Post</button> <br /> <br />
-                  <button onClick={handleDeleteClick(post.id)}>Deletar Post</button> */}
                 </>
               )}
             </CardContent>
