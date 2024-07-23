@@ -2,17 +2,14 @@ import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get, push, set, update, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
+import { Box, Card, CardContent, Typography, Modal, Button, TextField, Checkbox, FormControlLabel, MenuItem } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
 import ComentariosYouTube from "../youtube/comments";
-import LikesYouTube from "../youtube/likes";
 import { useAuth } from "../../context/AuthContext";
 import MembroLink from "../MembroLink";
 
 export default function Post() {
-  // const [like, setLike] = useState(0);
-  // const [isLiked, setIsLiked] = useState(false);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
@@ -27,10 +24,11 @@ export default function Post() {
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
-  // Novo estado para controlar a visibilidade da modal
   const [openModal, setOpenModal] = useState(false);
   const [previewLink, setPreviewLink] = useState('');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedFilterTags, setSelectedFilterTags] = useState([]);
 
   // Funções para abrir e fechar a modal
   const handleOpenModal = () => setOpenModal(true);
@@ -41,6 +39,10 @@ export default function Post() {
     const newLink = event.target.value;
     handleLinkChange(event); // Atualiza o estado do link
     setPreviewLink(newLink); // Atualiza o estado de pré-visualização
+  };
+
+  const handleChange = (event) => {
+    setSelectedCategory(event.target.value);
   };
 
   // Função para gerar o URL de incorporação do YouTube a partir do link normal
@@ -86,17 +88,6 @@ export default function Post() {
     setLink(event.target.value);
   };
 
-  // const handleEditClick = (post) => () => {
-  //   if (userRole === "admin") {
-  //     setEditingPost(post);
-  //     setEditTitle(post.nome);
-  //     setEditLink(post.link);
-  //     setPostTags(post.tags);
-  //   } else {
-  //     alert("Você não tem permissão para editar esse post!");
-  //   }
-  // };
-
   const handleEditClick = (post) => () => {
     if (userRole === "admin") {
       setEditingPost(post);
@@ -108,20 +99,6 @@ export default function Post() {
       alert("Você não tem permissão para editar esse post!");
     }
   };
-
-  // const handleEditTitleChange = (event) => {
-  //   setEditTitle(event.target.value);
-  // };
-
-  // const handleEditLinkChange = (event) => {
-  //   setEditLink(event.target.value);
-  // };
-
-  // const handleEditTagChange = (event) => {
-  //   const selectedTags = Array.from(event.target.selectedOptions, option => option.value);
-  //   setEditTags(selectedTags);
-  //   setPostTags(selectedTags);
-  // };
 
   const handleEditSubmit = async (event) => {
     event.preventDefault();
@@ -167,9 +144,10 @@ export default function Post() {
     const postsRef = ref(database, "post");
     const newPostRef = push(postsRef);
     await set(newPostRef, {
+      data: new Date().toLocaleDateString(),
+      likes: ["uncounted like"], // Inicializa o array de likes com um valor padrão (que não será contabilizado), pois não é possível criar um array vazio
       link: link,
       nome: title,
-      data: new Date().toLocaleDateString(),
       tags: selectedTags,
       user: currentUser.displayName || currentUser.email, // Nome do usuário logado (ou email se o nome não estiver disponível)
       userAvatar: currentUser.photoURL || "default-avatar-url", // URL do avatar do usuário logado (ou uma URL padrão)
@@ -267,7 +245,7 @@ export default function Post() {
             outline: 'none',
           }}
         >
-          <Typography variant="h6" component="h2">
+          <Typography component="div" variant="h6">
             Editar Post
           </Typography>
           <br />
@@ -317,7 +295,7 @@ export default function Post() {
 
             {videoEmbedURL && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body1">Pré-visualização:</Typography>
+                <Typography component="div" variant="body1">Pré-visualização:</Typography>
                 <iframe
                   width="100%"
                   height="400"
@@ -348,6 +326,74 @@ export default function Post() {
       ID = url;
     }
     return ID;
+  }
+
+  const computarLike = (post) => {
+    // Garante que post.likes é um array antes de prosseguir
+    if (!Array.isArray(post.likes)) {
+      console.error("likes não é um array", post.likes);
+      return; // Encerra a função se post.likes não for um array
+    }
+
+    // Verifica se o usuário atual já deu like
+    if (post.likes.includes(currentUser.uid)) {
+      alert("Você já deu like nesse post!");
+    } else {
+      // Adiciona o uid do usuário atual ao array de likes
+      const updatedLikes = [...post.likes, currentUser.uid];
+
+      // Referencia o post específico usando o id do post
+      const postRef = ref(database, `post/${post.id}`);
+
+      // Atualiza o post com os novos likes
+      update(postRef, { likes: updatedLikes })
+        .then(() => {
+          alert("Like adicionado com sucesso!");
+        })
+        .catch((error) => {
+          console.error("Erro ao adicionar like:", error);
+        });
+    }
+  };
+
+  const handleTagFilterChange = (tag, isChecked) => {
+    setSelectedFilterTags(prev => {
+      if (isChecked) {
+        // Adiciona a tag ao array se estiver marcada
+        return [...prev, tag];
+      } else {
+        // Remove a tag do array se estiver desmarcada
+        return prev.filter(t => t !== tag);
+      }
+    });
+  };
+
+  const filtrarPosts = async (selectedCategory) => {
+    if (!Array.isArray(selectedCategory)) {
+      selectedCategory = [selectedCategory];
+    }
+
+    const postsQuery = ref(database, "post");
+    const snapshot = await get(postsQuery);
+    const postsData = snapshot.val();
+    if (postsData) {
+      const postsList = Object.keys(postsData).map((key) => ({
+        id: key,
+        ...postsData[key],
+      })).reverse();
+
+      const filteredPosts = postsList.filter((post) => {
+        // Correção: Verificar se algum dos elementos de selectedCategory está incluído nas tags do post
+        return selectedCategory.some(category => post.tags.includes(category));
+      });
+
+      setPosts(filteredPosts);
+    }
+  };
+
+  const limprarFiltros = () => {
+    setSelectedFilterTags([]);
+    fetchPosts();
   }
 
   const fetchPosts = async () => {
@@ -394,6 +440,8 @@ export default function Post() {
         <Button sx={{ border: 'solid', color: 'black' }} onClick={handleOpenModal}>+</Button>
       </Box>
 
+      <br />
+
       {loading ? (
         <span>Loading...</span>
       ) : (
@@ -417,13 +465,12 @@ export default function Post() {
                   <img
                     className="postProfileImage"
                     src={post.userAvatar}
-                    alt={post.user}
-                  />
-                  <Typography className="postUsername">
+                    alt={post.user} />
+                  <Typography component="div" variant="h6" className="postUsername">
                     <MembroLink texto={post.user} user={post.user} />
                   </Typography>
                   -
-                  <Typography className="postDate">
+                  <Typography component="div" variant="h6" className="postDate">
                     {post.data}
                   </Typography>
                 </Box>
@@ -435,7 +482,9 @@ export default function Post() {
                 </Box>
               </Box>
               <Box className="postCenter">
-                <Typography className="postText"><b>{post.nome}</b> <br /> {post.user}</Typography>
+                <Typography component="div" variant="h6" className="postText">
+                  <b>{post.nome}</b> <br /> {post.user}
+                </Typography>
                 {post.link ? (
                   <>
                     <YouTube videoId={getYouTubeID(post.link)} />
@@ -452,19 +501,19 @@ export default function Post() {
                   <img
                     className="postImage"
                     src={post.userAvatar}
-                    alt={post.nome}
-                  />
+                    alt={post.nome} />
                 )}
               </Box>
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <LikesYouTube videoId={getYouTubeID(post.link)} />
+                    <Button onClick={() => computarLike(post)}> Adicionar Like ({(post.likes.length - 1)}) </Button>
+                    {/* <LikesYouTube videoId={getYouTubeID(post.link)} /> */}
                   </Box>
                 </Box>
                 {/* <Box className="postBottomRight">
-                  <Typography className="postCommentText">Comentários</Typography>
-                </Box> */}
+      <Typography className="postCommentText">Comentários</Typography>
+    </Box> */}
               </Box>
               {userRole === 'admin' && (
                 <>
@@ -482,6 +531,63 @@ export default function Post() {
           </Card>
         ))
       )}
+      <Card sx={{ maxWidth: 345, m: 2 }}>
+        <CardContent>
+          <Typography component="div" variant="h6">
+            Categorias de Vídeos
+          </Typography>
+          {tags.map((tag, index) => (
+            <div key={index}>
+              <FormControlLabel
+                control={<Checkbox
+                  onChange={(e) => handleTagFilterChange(tag, e.target.checked)}
+                  checked={selectedFilterTags.includes(tag)} // Adicionado para controlar o estado marcado/desmarcado
+                  sx={{
+                    color: "purple",
+                    "&.Mui-checked": {
+                      color: "purple",
+                    },
+                  }}
+                />}
+                label={tag}
+              />
+            </div>
+          ))}
+
+          <br />
+
+          <Button
+            onClick={() => limprarFiltros()}
+            sx={{
+              backgroundColor: "purple",
+              color: "white",
+              marginRigth: "30%",
+              ":hover": {
+                backgroundColor: "purple",
+                color: "white",
+              },
+            }}
+          >
+            Limpar Filtros
+          </Button>
+
+          <Button
+            onClick={() => filtrarPosts(selectedFilterTags)}
+            sx={{
+              backgroundColor: "purple",
+              color: "white",
+              marginLeft: "30%",
+              ":hover": {
+                backgroundColor: "purple",
+                color: "white",
+              },
+            }}
+          >
+            Filtrar
+          </Button>
+
+        </CardContent>
+      </Card>
 
       {/* Modal para o formulário de adicionar post */}
       <Modal
@@ -503,7 +609,7 @@ export default function Post() {
             outline: 'none',
           }}
         >
-          <Typography variant="h6" component="h2">
+          <Typography component="div" variant="h6">
             Adicionar post
           </Typography>
           <br />
@@ -553,7 +659,7 @@ export default function Post() {
             {/* Componente de Pré-visualização */}
             {previewLink && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body1">Pré-visualização:</Typography>
+                <Typography component="div" variant="body1">Pré-visualização:</Typography>
                 <iframe
                   width="100%"
                   height="400"
@@ -573,5 +679,6 @@ export default function Post() {
         </Box>
       </Modal>
     </Box>
+
   );
 }
