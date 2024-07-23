@@ -24,9 +24,9 @@ export default function Topbar() {
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
 
-  const { currentUser } = useAuth();
+  const { userDetails } = useAuth();
 
-  console.log("Email", currentUser?.photoURL);
+  console.log(userDetails);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -93,7 +93,7 @@ export default function Topbar() {
           <Tooltip title="Account settings">
             <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>
               <Avatar
-                src={currentUser?.photoURL}
+                src={userDetails?.photoURL || "default-avatar-url.jpg"}
                 alt="Profile Picture"
                 className="topbarImg"
               />
@@ -134,7 +134,7 @@ export default function Topbar() {
             anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
           >
             <MenuItem>
-              <Avatar /> {currentUser?.displayName}
+              {userDetails?.firstName} {userDetails?.lastName}
             </MenuItem>
 
             <Divider />
