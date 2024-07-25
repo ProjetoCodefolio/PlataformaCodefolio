@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get, update, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
 import ComentariosYouTube from "../youtube/comments";
@@ -10,6 +10,7 @@ import { useAuth } from "../../context/AuthContext";
 import MembroLink from "../MembroLink";
 import EditPostModal from "./EditPost";
 import CreatePostModal from "./CreatePost";
+import FilterPostCard from "./FilterPost";
 
 export default function Post() {
   const [posts, setPosts] = useState([]);
@@ -17,13 +18,12 @@ export default function Post() {
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
-  const [tags, setTags] = useState([]);
   const [editTags, setEditTags] = useState([]);
   const [postTags, setPostTags] = useState([]);
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedFilterTags, setSelectedFilterTags] = useState([]);
+  const [filteredVideos, setFilteredVideos] = useState([]);
 
 
   // pega a categoria do usuário logado (a implementação disso vai ser alterado posteriormente)
@@ -114,47 +114,9 @@ export default function Post() {
     }
   };
 
-  const handleTagFilterChange = (tag, isChecked) => {
-    setSelectedFilterTags(prev => {
-      if (isChecked) {
-        // Adiciona a tag ao array se estiver marcada
-        return [...prev, tag];
-      } else {
-        // Remove a tag do array se estiver desmarcada
-        return prev.filter(t => t !== tag);
-      }
-    });
+  const handleFilteredVideos = (videos) => {
+    setFilteredVideos(videos);
   };
-
-
-  const filtrarPosts = async (selectedCategory) => {
-    if (!Array.isArray(selectedCategory)) {
-      selectedCategory = [selectedCategory];
-    }
-
-    const postsQuery = ref(database, "post");
-    const snapshot = await get(postsQuery);
-    const postsData = snapshot.val();
-    if (postsData) {
-      const postsList = Object.keys(postsData).map((key) => ({
-        id: key,
-        ...postsData[key],
-      })).reverse();
-
-      const filteredPosts = postsList.filter((post) => {
-        // Verifica se algum dos elementos de selectedCategory está incluído nas tags do post
-        return selectedCategory.some(category => post.tags.includes(category));
-      });
-
-      setPosts(filteredPosts);
-    }
-  };
-
-  
-  const limprarFiltros = () => {
-    setSelectedFilterTags([]);
-    fetchPosts();
-  }
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -178,19 +140,12 @@ export default function Post() {
   }, []);
 
   useEffect(() => {
-    const tagsRef = ref(database, 'tags');
-
-    onValue(tagsRef, (snapshot) => {
-      const data = snapshot.val();
-      let tagsArray = [];
-      for (let tag in data) {
-        tagsArray.push(data[tag].nome);
-      }
-      setTags(tagsArray);
-    }, (error) => {
-      console.error("Error: ", error);
-    });
-  }, []);
+    if (filteredVideos !== undefined) {
+      setPosts(filteredVideos);
+    } else {
+      fetchPosts();
+    }
+  }, [filteredVideos, setPosts]);
 
   return (
     <Box>
@@ -290,63 +245,9 @@ export default function Post() {
           </Card>
         ))
       )}
-      <Card sx={{ maxWidth: 345, m: 2 }}>
-        <CardContent>
-          <Typography component="div" variant="h6">
-            Categorias de Vídeos
-          </Typography>
-          {tags.map((tag, index) => (
-            <div key={index}>
-              <FormControlLabel
-                control={<Checkbox
-                  onChange={(e) => handleTagFilterChange(tag, e.target.checked)}
-                  checked={selectedFilterTags.includes(tag)} // Adicionado para controlar o estado marcado/desmarcado
-                  sx={{
-                    color: "purple",
-                    "&.Mui-checked": {
-                      color: "purple",
-                    },
-                  }}
-                />}
-                label={tag}
-              />
-            </div>
-          ))}
-
-          <br />
-
-          <Button
-            onClick={() => limprarFiltros()}
-            sx={{
-              backgroundColor: "purple",
-              color: "white",
-              marginRigth: "30%",
-              ":hover": {
-                backgroundColor: "purple",
-                color: "white",
-              },
-            }}
-          >
-            Limpar Filtros
-          </Button>
-
-          <Button
-            onClick={() => filtrarPosts(selectedFilterTags)}
-            sx={{
-              backgroundColor: "purple",
-              color: "white",
-              marginLeft: "30%",
-              ":hover": {
-                backgroundColor: "purple",
-                color: "white",
-              },
-            }}
-          >
-            Filtrar
-          </Button>
-
-        </CardContent>
-      </Card>
+      <div>
+        <FilterPostCard onFilter={handleFilteredVideos} />
+      </div>
     </Box>
 
   );

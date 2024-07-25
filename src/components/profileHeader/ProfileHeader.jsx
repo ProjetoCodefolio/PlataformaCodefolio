@@ -123,22 +123,22 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
           </Grid>
           <Grid container justifyContent="center" spacing={2} sx={{ mt: 2 }}>
             <Grid item>
-              <Typography variant="body1">
+              <Typography component="div" variant="h6">
                 <strong>Publicações</strong>
               </Typography>
-              <Typography variant="body2">{posts.length}</Typography>
+              <Typography component="div" variant="h6">{posts.length}</Typography>
             </Grid>
             <Grid item>
-              <Typography variant="body1">
+              <Typography component="div" variant="h6">
                 <strong>Seguidores</strong>
               </Typography>
-              <Typography variant="body2">206</Typography>
+              <Typography component="div" variant="h6">206</Typography>
             </Grid>
             <Grid item>
-              <Typography variant="body1">
+              <Typography component="div" variant="h6">
                 <strong>Seguindo</strong>
               </Typography>
-              <Typography variant="body2">100</Typography>
+              <Typography component="div" variant="h6">100</Typography>
             </Grid>
           </Grid>
         </Box>
@@ -147,33 +147,33 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
           <Grid container>
             <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 0 ? "#6a0dad" : "transparent" }}>
               <Button
-                variant="text"
+                component="div" variant="h6"
                 onClick={onTimelineClick}
                 sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
               >
-                <Typography variant="body1">
+                <Typography component="div" variant="h6">
                   <p className={selectedButton === 0 ? "selected" : "barra"}><strong>Timeline</strong> </p>
                 </Typography>
               </Button>
             </Grid>
             <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 1 ? "#6a0dad" : "transparent" }}>
               <Button
-                variant="text"
+                component="div" variant="h6"
                 onClick={onMembersClick}
                 sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
               >
-                <Typography variant="body1">
+                <Typography component="div" variant="h6">
                   <p className={selectedButton === 1 ? "selected" : "barra"}><strong>Membros</strong></p>
                 </Typography>
               </Button>
             </Grid>
             <Grid item xs={4} sx={{ textAlign: "center", p: 2, backgroundColor: selectedButton === 2 ? "#6a0dad" : "transparent" }}>
               <Button
-                variant="text"
+                component="div" variant="h6"
                 onClick={onFotosClick}
                 sx={{ p: 0, "&:hover": { backgroundColor: "transparent" } }}
               >
-                <Typography variant="body1">
+                <Typography component="div" variant="h6">
                   <p className={selectedButton === 2 ? "selected" : "barra"}><strong>Fotos</strong></p>
                 </Typography>
               </Button>
