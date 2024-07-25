@@ -152,6 +152,7 @@ export default function Post() {
 
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal />
+
       </Box>
 
       <br />
