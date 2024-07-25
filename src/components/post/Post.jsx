@@ -1,54 +1,32 @@
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
-import { ref, get, push, set, update, remove, onValue } from "firebase/database";
+import { ref, get, update, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
 import ComentariosYouTube from "../youtube/comments";
-import LikesYouTube from "../youtube/likes";
 import { useAuth } from "../../context/AuthContext";
 import MembroLink from "../MembroLink";
+import EditPostModal from "./EditPost";
+import CreatePostModal from "./CreatePost";
+import FilterPostCard from "./FilterPost";
 
 export default function Post() {
-  // const [like, setLike] = useState(0);
-  // const [isLiked, setIsLiked] = useState(false);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [title, setTitle] = useState('');
-  const [link, setLink] = useState('');
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
-  const [tags, setTags] = useState([]);
   const [editTags, setEditTags] = useState([]);
-  const [selectedTags, setSelectedTags] = useState([]);
   const [postTags, setPostTags] = useState([]);
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
-  const [anchorEl, setAnchorEl] = useState(null);
-  // Novo estado para controlar a visibilidade da modal
-  const [openModal, setOpenModal] = useState(false);
-  const [previewLink, setPreviewLink] = useState('');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [filteredVideos, setFilteredVideos] = useState([]);
 
-  // Funções para abrir e fechar a modal
-  const handleOpenModal = () => setOpenModal(true);
-  const handleCloseModal = () => setOpenModal(false);
 
-  // Atualiza o estado de pré-visualização junto com o estado do link
-  const handleLinkChangeAndUpdatePreview = (event) => {
-    const newLink = event.target.value;
-    handleLinkChange(event); // Atualiza o estado do link
-    setPreviewLink(newLink); // Atualiza o estado de pré-visualização
-  };
-
-  // Função para gerar o URL de incorporação do YouTube a partir do link normal
-  const generateEmbedURL = (url) => {
-    const urlObj = new URL(url);
-    const videoId = urlObj.searchParams.get("v");
-    return `https://www.youtube.com/embed/${videoId}`;
-  };
-
+  // pega a categoria do usuário logado (a implementação disso vai ser alterado posteriormente)
   useEffect(() => {
     if (currentUser) {
       const userRef = ref(database, `users/${currentUser.uid}`);
@@ -61,45 +39,16 @@ export default function Post() {
     }
   }, [currentUser]);
 
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleTitleChange = (event) => {
-    setTitle(event.target.value);
-  };
-
-  const handleLinkChange = (event) => {
-    setLink(event.target.value);
-  };
-
   const handleEditClick = (post) => () => {
     if (userRole === "admin") {
       setEditingPost(post);
       setEditTitle(post.nome);
       setEditLink(post.link);
       setPostTags(post.tags);
+      setIsEditModalOpen(true); // Abre o modal de edição
     } else {
       alert("Você não tem permissão para editar esse post!");
     }
-  };
-
-  const handleEditTitleChange = (event) => {
-    setEditTitle(event.target.value);
-  };
-
-  const handleEditLinkChange = (event) => {
-    setEditLink(event.target.value);
-  };
-
-  const handleEditTagChange = (event) => {
-    const selectedTags = Array.from(event.target.selectedOptions, option => option.value);
-    setEditTags(selectedTags);
-    setPostTags(selectedTags);
   };
 
   const handleEditSubmit = async (event) => {
@@ -125,48 +74,6 @@ export default function Post() {
     }
   };
 
-  const handleTagChange = (event) => {
-    // Atualiza o estado para conter todos os valores selecionados
-    const {
-      target: { value },
-    } = event;
-    setSelectedTags(
-      // On autofill we get a stringified value.
-      typeof value === 'string' ? value.split(',') : value,
-    );
-  };
-
-  const criarPost = async (event) => {
-    event.preventDefault();
-    if (!currentUser) {
-      alert("Você precisa estar logado para criar um post.");
-      return;
-    }
-
-    const postsRef = ref(database, "post");
-    const newPostRef = push(postsRef);
-    await set(newPostRef, {
-      link: link,
-      nome: title,
-      data: new Date().toLocaleDateString(),
-      tags: selectedTags,
-      user: currentUser.displayName || currentUser.email, // Nome do usuário logado (ou email se o nome não estiver disponível)
-      userAvatar: currentUser.photoURL || "default-avatar-url", // URL do avatar do usuário logado (ou uma URL padrão)
-    });
-    setTitle('');
-    setLink('');
-    setSelectedTags([]);
-
-    alert("Post criado com sucesso!");
-    window.location.reload();
-  };
-
-
-  const editarPost = async (postId, newTitle, newLink, newTags) => {
-    const postRef = ref(database, `post/${postId}`);
-    await update(postRef, { nome: newTitle, link: newLink, tags: newTags });
-  };
-
   function getYouTubeID(url) {
     var ID = '';
     url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
@@ -178,6 +85,38 @@ export default function Post() {
     }
     return ID;
   }
+
+  const computarLike = (post) => {
+    // Garante que post.likes é um array antes de prosseguir
+    if (!Array.isArray(post.likes)) {
+      console.error("likes não é um array", post.likes);
+      return; // Encerra a função se post.likes não for um array
+    }
+
+    // Verifica se o usuário atual já deu like
+    if (post.likes.includes(currentUser.uid)) {
+      alert("Você já deu like nesse post!");
+    } else {
+      // Adiciona o uid do usuário atual ao array de likes
+      const updatedLikes = [...post.likes, currentUser.uid];
+
+      // Referencia o post específico usando o id do post
+      const postRef = ref(database, `post/${post.id}`);
+
+      // Atualiza o post com os novos likes
+      update(postRef, { likes: updatedLikes })
+        .then(() => {
+          alert("Like adicionado com sucesso!");
+        })
+        .catch((error) => {
+          console.error("Erro ao adicionar like:", error);
+        });
+    }
+  };
+
+  const handleFilteredVideos = (videos) => {
+    setFilteredVideos(videos);
+  };
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -201,26 +140,22 @@ export default function Post() {
   }, []);
 
   useEffect(() => {
-    const tagsRef = ref(database, 'tags');
-
-    onValue(tagsRef, (snapshot) => {
-      const data = snapshot.val();
-      let tagsArray = [];
-      for (let tag in data) {
-        tagsArray.push(data[tag].nome);
-      }
-      setTags(tagsArray);
-    }, (error) => {
-      console.error("Error: ", error);
-    });
-  }, []);
+    if (filteredVideos !== undefined) {
+      setPosts(filteredVideos);
+    } else {
+      fetchPosts();
+    }
+  }, [filteredVideos, setPosts]);
 
   return (
     <Box>
-      {/* Botão para abrir a modal */}
+
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <Button className="custom-button" onClick={handleOpenModal}>Criar Post</Button>
+        <CreatePostModal />
+
       </Box>
+
+      <br />
 
       {loading ? (
         <span>Loading...</span>
@@ -245,13 +180,12 @@ export default function Post() {
                   <img
                     className="postProfileImage"
                     src={post.userAvatar}
-                    alt={post.user}
-                  />
-                  <Typography className="postUsername">
-                  <MembroLink texto={post.user} user={post.user} />
+                    alt={post.user} />
+                  <Typography component="div" variant="h6" className="postUsername">
+                    <MembroLink texto={post.user} user={post.user} />
                   </Typography>
                   -
-                  <Typography className="postDate">
+                  <Typography component="div" variant="h6" className="postDate">
                     {post.data}
                   </Typography>
                 </Box>
@@ -263,7 +197,9 @@ export default function Post() {
                 </Box>
               </Box>
               <Box className="postCenter">
-                <Typography className="postText"><b>{post.nome}</b> <br /> {post.user}</Typography>
+                <Typography component="div" variant="h6" className="postText">
+                  <b>{post.nome}</b> <br /> {post.user}
+                </Typography>
                 {post.link ? (
                   <>
                     <YouTube videoId={getYouTubeID(post.link)} />
@@ -280,117 +216,40 @@ export default function Post() {
                   <img
                     className="postImage"
                     src={post.userAvatar}
-                    alt={post.nome}
-                  />
+                    alt={post.nome} />
                 )}
               </Box>
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <LikesYouTube videoId={getYouTubeID(post.link)} />
+                    <Button onClick={() => computarLike(post)}> Adicionar Like ({(post.likes.length - 1)}) </Button>
+                    {/* <LikesYouTube videoId={getYouTubeID(post.link)} /> */}
                   </Box>
                 </Box>
                 {/* <Box className="postBottomRight">
-                  <Typography className="postCommentText">Comentários</Typography>
-                </Box> */}
+        <Typography className="postCommentText">Comentários</Typography>
+        </Box> */}
               </Box>
               {userRole === 'admin' && (
                 <>
-                  <h5>Editar post</h5>
-                  {editingPost && (
-                    <form onSubmit={handleEditSubmit}>
-                      <input type="text" value={editTitle} onChange={handleEditTitleChange} required />
-                      <input type="text" value={editLink} onChange={handleEditLinkChange} required />
-
-                      <select multiple value={postTags} style={{ marginRight: '5px' }} onChange={handleEditTagChange}>
-                        {tags.map((tag, index) => (
-                          <option key={index} value={tag}>{tag}</option>
-                        ))}
-                      </select>
-
-                      <button type="submit">Editar post</button>
-                    </form>
+                  {isEditModalOpen && (
+                    <EditPostModal
+                      isOpen={isEditModalOpen}
+                      onClose={() => setIsEditModalOpen(false)}
+                      post={editingPost}
+                      onSave={handleEditSubmit}
+                    />
                   )}
-                  {/* <br />
-                  <button onClick={handleEditClick(post)}>Editar Post</button> <br /> <br />
-                  <button onClick={handleDeleteClick(post.id)}>Deletar Post</button> */}
                 </>
               )}
             </CardContent>
           </Card>
         ))
       )}
-
-      {/* Modal para o formulário de adicionar post */}
-      <Modal
-        open={openModal}
-        onClose={handleCloseModal}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box className="modal-box">
-          <Typography variant="h6" component="h2" className="modal-title">
-            Adicionar post
-          </Typography>
-          <Box component="form" onSubmit={criarPost} className="modal-form">
-            <TextField
-              label="Título"
-              variant="outlined"
-              value={title}
-              onChange={handleTitleChange}
-              required
-              className="text-field"
-            />
-
-            <TextField
-              label="Link do YouTube"
-              variant="outlined"
-              value={link}
-              onChange={handleLinkChangeAndUpdatePreview}
-              required
-              className="text-field"
-            />
-
-            <TextField
-              select
-              label="Tags"
-              value={selectedTags}
-              onChange={handleTagChange}
-              SelectProps={{
-                multiple: true,
-                renderValue: (selected) => selected.join(', '),
-              }}
-              helperText="Selecione as tags para o post"
-              className="text-field"
-            >
-              {tags.map((tag, index) => (
-                <MenuItem key={index} value={tag}>
-                  {tag}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            {previewLink && (
-              <Box className="preview-link">
-                <Typography variant="body1">Pré-visualização:</Typography>
-                <iframe
-                  width="100%"
-                  height="400"
-                  src={generateEmbedURL(previewLink)}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </Box>
-            )}
-
-            <Button type="submit" variant="contained" className="create-post-button">
-              Criar post
-            </Button>
-            
-          </Box>
-        </Box>
-      </Modal>
+      <div>
+        <FilterPostCard onFilter={handleFilteredVideos} />
+      </div>
     </Box>
+
   );
 }
