@@ -11,9 +11,14 @@ import MembroLink from "../MembroLink";
 import EditPostModal from "./EditPost";
 import CreatePostModal from "./CreatePost";
 import FilterPostCard from "./FilterPost";
+import likeIcon from "../../assets/img/like.jpg";
+import axios from "axios";
 
 export default function Post() {
   const [posts, setPosts] = useState([]);
+  const [likes, setLikes] = useState(0);
+  const [comentario, setComentario] = useState('');
+  const [comments, setComments] = useState({});
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -25,8 +30,6 @@ export default function Post() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
 
-
-  // pega a categoria do usuário logado (a implementação disso vai ser alterado posteriormente)
   useEffect(() => {
     if (currentUser) {
       const userRef = ref(database, `users/${currentUser.uid}`);
@@ -45,7 +48,7 @@ export default function Post() {
       setEditTitle(post.nome);
       setEditLink(post.link);
       setPostTags(post.tags);
-      setIsEditModalOpen(true); // Abre o modal de edição
+      setIsEditModalOpen(true);
     } else {
       alert("Você não tem permissão para editar esse post!");
     }
@@ -65,8 +68,7 @@ export default function Post() {
       if (window.confirm('Você realmente quer deletar este post?')) {
         const postRef = ref(database, `post/${postId}`);
         await remove(postRef);
-
-        alert("Post deletado com sucesso!")
+        alert("Post deletado com sucesso!");
         window.location.reload();
       }
     } else {
@@ -74,43 +76,67 @@ export default function Post() {
     }
   };
 
-  function getYouTubeID(url) {
-    var ID = '';
-    url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
-    if (url[2] !== undefined) {
-      ID = url[2].split(/[^0-9a-z_\-]/i);
-      ID = ID[0];
-    } else {
-      ID = url;
-    }
-    return ID;
-  }
-
   const computarLike = (post) => {
-    // Garante que post.likes é um array antes de prosseguir
     if (!Array.isArray(post.likes)) {
       console.error("likes não é um array", post.likes);
-      return; // Encerra a função se post.likes não for um array
+      return;
     }
 
-    // Verifica se o usuário atual já deu like
-    if (post.likes.includes(currentUser.uid)) {
+    if (post.likes.some(like => like[0] === currentUser.uid)) {
       alert("Você já deu like nesse post!");
     } else {
-      // Adiciona o uid do usuário atual ao array de likes
-      const updatedLikes = [...post.likes, currentUser.uid];
-
-      // Referencia o post específico usando o id do post
+      const updatedLikes = [...post.likes, {
+        uidUsuario: currentUser.uid,
+        nome: currentUser.displayName,
+        data: new Date().toLocaleDateString()
+      }];
       const postRef = ref(database, `post/${post.id}`);
 
-      // Atualiza o post com os novos likes
-      update(postRef, { likes: updatedLikes })
-        .then(() => {
-          alert("Like adicionado com sucesso!");
-        })
-        .catch((error) => {
-          console.error("Erro ao adicionar like:", error);
-        });
+      update(postRef, { likes: updatedLikes }).then(() => {
+        alert("Like adicionado com sucesso!");
+        setLikes(updatedLikes.length);
+      }).catch((error) => {
+        console.error("Erro ao adicionar like:", error);
+      });
+    }
+  };
+
+  const handleSubmit = (post, e) => {
+    e.preventDefault();
+    postarComentario(post, comentario);
+    setComentario('');
+  };
+
+  const postarComentario = async (post, comentario) => {
+    const dataComentario = new Date().toLocaleDateString();
+    const novoComentario = {
+      uidUsuario: currentUser.uid,
+      nome: currentUser.displayName,
+      comentario: comentario,
+      data: dataComentario
+    };
+
+    const postRef = ref(database, `post/${post.id}`);
+
+    try {
+      // Buscar o array de comentários atual
+      const snapshot = await get(postRef);
+      const postData = snapshot.val();
+
+      let comentarioPostar = [];
+      if (postData && postData.comentarios) {
+        // Adicionar o novo comentário ao array existente
+        comentarioPostar = [...postData.comentarios, novoComentario];
+      } else {
+        // Criar um novo array de comentários com o novo comentário
+        comentarioPostar = [novoComentario];
+      }
+
+      // Atualizar o array de comentários no banco de dados
+      await update(postRef, { comentarios: comentarioPostar });
+      alert("Comentário postado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao postar comentário: ", error);
     }
   };
 
@@ -131,6 +157,9 @@ export default function Post() {
       })).reverse();
 
       setPosts(postsList);
+
+      // Chamar mostrarComentarios para cada post
+      postsList.forEach(post => mostrarComentarios(post.id));
     }
     setLoading(false);
   };
@@ -139,17 +168,34 @@ export default function Post() {
     fetchPosts();
   }, []);
 
+  const mostrarComentarios = (postId) => {
+    const postRef = ref(database, `post/${postId}`);
+    onValue(postRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.comentarios) {
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: data.comentarios,
+        }));
+      } else {
+        setComments((prevComments) => ({
+          ...prevComments,
+          [postId]: [],
+        }));
+      }
+    });
+  };
+
   useEffect(() => {
     if (filteredVideos !== undefined) {
       setPosts(filteredVideos);
     } else {
       fetchPosts();
     }
-  }, [filteredVideos, setPosts]);
+  }, [filteredVideos]);
 
   return (
     <Box>
-
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal />
       </Box>
@@ -190,9 +236,7 @@ export default function Post() {
                 </Box>
 
                 <Box className="postTopRight">
-                  <Box className="postTopRight">
-                    <PostMenu post={post} onEdit={handleEditClick} onDelete={handleDeleteClick} />
-                  </Box>
+                  <PostMenu post={post} onEdit={handleEditClick} onDelete={handleDeleteClick} />
                 </Box>
               </Box>
               <Box className="postCenter">
@@ -209,7 +253,27 @@ export default function Post() {
                     ))}
                     <br />
                     <br />
-                    <ComentariosYouTube videoId={getYouTubeID(post.link)} />
+                    {/* <ComentariosYouTube videoId={getYouTubeID(post.link)} /> */}
+                    <form onSubmit={(e) => handleSubmit(post, e)}>
+                      <label htmlFor="comentario"> Poste seu comentário: </label> <br />
+                      <input type="text"
+                        id="comentario"
+                        value={comentario}
+                        onChange={(e) => setComentario(e.target.value)}
+                      /> <br />
+                      <Button type="submit">
+                        Enviar
+                      </Button>
+                    </form>
+
+                    <h3> Comentários: </h3>
+                    {comments[post.id] && comments[post.id].length > 0 ? (
+                      comments[post.id].map((comentario, index) => (
+                        <p key={index}>{comentario.nome} - {comentario.comentario}</p>
+                      ))
+                    ) : (
+                      <p>Não há comentários ainda!</p>
+                    )}
                   </>
                 ) : (
                   <img
@@ -221,13 +285,12 @@ export default function Post() {
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <Button onClick={() => computarLike(post)}> Adicionar Like ({(post.likes.length - 1)}) </Button>
-                    {/* <LikesYouTube videoId={getYouTubeID(post.link)} /> */}
+                    <Button onClick={() => computarLike(post)}>
+                      <img src={likeIcon} alt="Like" style={{ width: '55px', height: '55px', marginRight: '8px' }} />
+                      <Typography style={{ color: 'black' }}> {post.likes.length - 1} </Typography>
+                    </Button>
                   </Box>
                 </Box>
-                {/* <Box className="postBottomRight">
-        <Typography className="postCommentText">Comentários</Typography>
-        </Box> */}
               </Box>
               {userRole === 'admin' && (
                 <>
@@ -249,6 +312,17 @@ export default function Post() {
         <FilterPostCard onFilter={handleFilteredVideos} />
       </div>
     </Box>
-
   );
+}
+
+function getYouTubeID(url) {
+  var ID = '';
+  url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
+  if (url[2] !== undefined) {
+    ID = url[2].split(/[^0-9a-z_\-]/i);
+    ID = ID[0];
+  } else {
+    ID = url;
+  }
+  return ID;
 }
