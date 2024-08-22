@@ -1,23 +1,20 @@
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
-import { ref, get, update, remove, onValue } from "firebase/database";
+import { ref, get, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
 import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
-import ComentariosYouTube from "../youtube/comments";
 import { useAuth } from "../../context/AuthContext";
 import MembroLink from "../MembroLink";
 import EditPostModal from "./EditPost";
 import CreatePostModal from "./CreatePost";
 import FilterPostCard from "./FilterPost";
-import likeIcon from "../../assets/img/like.jpg";
-import axios from "axios";
+import Comentarios from "./Comentarios";
+import Likes from "./Likes";
 
 export default function Post() {
   const [posts, setPosts] = useState([]);
-  const [likes, setLikes] = useState(0);
-  const [comentario, setComentario] = useState('');
   const [comments, setComments] = useState({});
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
@@ -43,7 +40,7 @@ export default function Post() {
   }, [currentUser]);
 
   const handleEditClick = (post) => () => {
-    if (userRole === "admin") {
+    if (userRole === "admin" || currentUser.uid === post.uidUser) {
       setEditingPost(post);
       setEditTitle(post.nome);
       setEditLink(post.link);
@@ -64,81 +61,20 @@ export default function Post() {
   };
 
   const handleDeleteClick = (postId) => async () => {
-    if (userRole === 'admin') {
-      if (window.confirm('Você realmente quer deletar este post?')) {
-        const postRef = ref(database, `post/${postId}`);
-        await remove(postRef);
-        alert("Post deletado com sucesso!");
-        window.location.reload();
-      }
+    const postRef = ref(database, `post/${postId}`);
+    const postSnapshot = await get(postRef);
+    const post = postSnapshot.val();
+
+    if (userRole === 'admin' || currentUser.uid === post.uidUser) {
+        if (window.confirm('Você realmente quer deletar este post?')) {
+            await remove(postRef);
+            alert("Post deletado com sucesso!");
+            window.location.reload();
+        }
     } else {
-      alert("Você não tem permissão para deletar este post!");
+        alert("Você não tem permissão para deletar este post!");
     }
-  };
-
-  const computarLike = (post) => {
-    if (!Array.isArray(post.likes)) {
-      console.error("likes não é um array", post.likes);
-      return;
-    }
-
-    if (post.likes.some(like => like[0] === currentUser.uid)) {
-      alert("Você já deu like nesse post!");
-    } else {
-      const updatedLikes = [...post.likes, {
-        uidUsuario: currentUser.uid,
-        nome: currentUser.displayName,
-        data: new Date().toLocaleDateString()
-      }];
-      const postRef = ref(database, `post/${post.id}`);
-
-      update(postRef, { likes: updatedLikes }).then(() => {
-        alert("Like adicionado com sucesso!");
-        setLikes(updatedLikes.length);
-      }).catch((error) => {
-        console.error("Erro ao adicionar like:", error);
-      });
-    }
-  };
-
-  const handleSubmit = (post, e) => {
-    e.preventDefault();
-    postarComentario(post, comentario);
-    setComentario('');
-  };
-
-  const postarComentario = async (post, comentario) => {
-    const dataComentario = new Date().toLocaleDateString();
-    const novoComentario = {
-      uidUsuario: currentUser.uid,
-      nome: currentUser.displayName,
-      comentario: comentario,
-      data: dataComentario
-    };
-
-    const postRef = ref(database, `post/${post.id}`);
-
-    try {
-      // Buscar o array de comentários atual
-      const snapshot = await get(postRef);
-      const postData = snapshot.val();
-
-      let comentarioPostar = [];
-      if (postData && postData.comentarios) {
-        // Adicionar o novo comentário ao array existente
-        comentarioPostar = [...postData.comentarios, novoComentario];
-      } else {
-        // Criar um novo array de comentários com o novo comentário
-        comentarioPostar = [novoComentario];
-      }
-
-      // Atualizar o array de comentários no banco de dados
-      await update(postRef, { comentarios: comentarioPostar });
-      alert("Comentário postado com sucesso!");
-    } catch (error) {
-      console.error("Erro ao postar comentário: ", error);
-    }
-  };
+};
 
   const handleFilteredVideos = (videos) => {
     setFilteredVideos(videos);
@@ -157,9 +93,6 @@ export default function Post() {
       })).reverse();
 
       setPosts(postsList);
-
-      // Chamar mostrarComentarios para cada post
-      postsList.forEach(post => mostrarComentarios(post.id));
     }
     setLoading(false);
   };
@@ -167,24 +100,6 @@ export default function Post() {
   useEffect(() => {
     fetchPosts();
   }, []);
-
-  const mostrarComentarios = (postId) => {
-    const postRef = ref(database, `post/${postId}`);
-    onValue(postRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data && data.comentarios) {
-        setComments((prevComments) => ({
-          ...prevComments,
-          [postId]: data.comentarios,
-        }));
-      } else {
-        setComments((prevComments) => ({
-          ...prevComments,
-          [postId]: [],
-        }));
-      }
-    });
-  };
 
   useEffect(() => {
     if (filteredVideos !== undefined) {
@@ -194,11 +109,18 @@ export default function Post() {
     }
   }, [filteredVideos]);
 
+  const handleLikeUpdate = (postId, updatedLikes) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId ? { ...post, likes: updatedLikes } : post
+      )
+    );
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal />
-
       </Box>
 
       <br />
@@ -228,7 +150,7 @@ export default function Post() {
                     src={post.userAvatar}
                     alt={post.user} />
                   <Typography component="div" variant="h6" className="postUsername">
-                    <MembroLink texto={post.user} user={post.user} />
+                    <MembroLink texto={post.user} user={post.uidUser} />
                   </Typography>
                   -
                   <Typography component="div" variant="h6" className="postDate">
@@ -254,27 +176,7 @@ export default function Post() {
                     ))}
                     <br />
                     <br />
-                    {/* <ComentariosYouTube videoId={getYouTubeID(post.link)} /> */}
-                    <form onSubmit={(e) => handleSubmit(post, e)}>
-                      <label htmlFor="comentario"> Poste seu comentário: </label> <br />
-                      <input type="text"
-                        id="comentario"
-                        value={comentario}
-                        onChange={(e) => setComentario(e.target.value)}
-                      /> <br />
-                      <Button type="submit">
-                        Enviar
-                      </Button>
-                    </form>
-
-                    <h3> Comentários: </h3>
-                    {comments[post.id] && comments[post.id].length > 0 ? (
-                      comments[post.id].map((comentario, index) => (
-                        <p key={index}>{comentario.nome} - {comentario.comentario}</p>
-                      ))
-                    ) : (
-                      <p>Não há comentários ainda!</p>
-                    )}
+                    <Comentarios postId={post.id} comments={comments} setComments={setComments} />
                   </>
                 ) : (
                   <img
@@ -286,14 +188,11 @@ export default function Post() {
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <Button onClick={() => computarLike(post)}>
-                      <img src={likeIcon} alt="Like" style={{ width: '55px', height: '55px', marginRight: '8px' }} />
-                      <Typography style={{ color: 'black' }}> {post.likes.length - 1} </Typography>
-                    </Button>
+                    <Likes post={post} onLikeUpdate={handleLikeUpdate} />
                   </Box>
                 </Box>
               </Box>
-              {userRole === 'admin' && (
+              {(userRole === 'admin' || currentUser.uid === post.uidUser) && (
                 <>
                   {isEditModalOpen && (
                     <EditPostModal

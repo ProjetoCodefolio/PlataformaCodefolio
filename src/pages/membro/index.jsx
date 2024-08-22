@@ -6,13 +6,28 @@ import YouTube from "react-youtube";
 import ComentariosYouTube from "../../components/youtube/comments";
 import LikesYouTube from "../../components/youtube/likes";
 import { useLocation } from 'react-router-dom';
+import Header from "./Header";
 
 function MembroPage() {
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [user, setUser] = useState({});
     const location = useLocation();
-    const userName = location.state?.userName || ""; // Simplified state access
+    const uidUser = location.state?.uidUser;
+    
+    const getAllInfosUser = async (uidUser) => {
+        const userRef = ref(database, `users/${uidUser}`);
+        const snapshot = await get(userRef);
+        return snapshot.val();
+    };
 
+    useEffect(() => {
+        getAllInfosUser(uidUser).then((user) => {
+            setUser(user);
+        });
+    }, [uidUser]);
+
+    const userName = user.firstName + " " + user.lastName;
 
     function getYouTubeID(url) {
         var ID = '';
@@ -49,11 +64,12 @@ function MembroPage() {
 
     return (
         <div>
-            <h1>Vídeos de {userName}</h1>
+            <Header nome={userName} imagem={user.photoURL}/>
+            <br /> <br />
             {loading ? (
                 <span>Loading...</span>
             ) : (
-                posts.filter(post => post.user === userName).map(post => (
+                posts.filter(post => post.uidUser === uidUser).map(post => (
                     <Card
                         key={post.id}
                         sx={{
