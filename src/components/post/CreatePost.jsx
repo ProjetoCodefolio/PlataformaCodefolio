@@ -47,12 +47,12 @@ const CreatePostModal = () => {
         const newPostRef = push(postsRef);
         await set(newPostRef, {
             data: new Date().toLocaleDateString(),
-            likes: ["uncounted like"], // Inicializa o array de likes com um valor padrão (que não será contabilizado), pois não é possível criar um array vazio
             link: link,
             nome: title,
             tags: selectedTags,
+            uidUser: currentUser.uid,
             user: currentUser.displayName || currentUser.email, // Nome do usuário logado (ou email se o nome não estiver disponível)
-            userAvatar: currentUser.photoURL || "default-avatar-url", // URL do avatar do usuário logado (ou uma URL padrão)
+            userAvatar: currentUser.photoURL || "default-avatar-url" // URL do avatar do usuário logado (ou uma URL padrão)
         });
         setTitle('');
         setLink('');

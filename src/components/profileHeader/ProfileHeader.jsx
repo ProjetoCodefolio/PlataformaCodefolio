@@ -132,13 +132,13 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
               <Typography component="div" variant="h6">
                 <strong>Seguidores</strong>
               </Typography>
-              <Typography component="div" variant="h6">206</Typography>
+              <Typography component="div" variant="h6">-</Typography>
             </Grid>
             <Grid item>
               <Typography component="div" variant="h6">
                 <strong>Seguindo</strong>
               </Typography>
-              <Typography component="div" variant="h6">100</Typography>
+              <Typography component="div" variant="h6">-</Typography>
             </Grid>
           </Grid>
         </Box>
