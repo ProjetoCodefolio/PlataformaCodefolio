@@ -13,7 +13,7 @@ import FilterPostCard from "./FilterPost";
 import Comentarios from "./Comentarios";
 import Likes from "./Likes";
 
-export default function Post() {
+export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
   const [comments, setComments] = useState({});
   const [loading, setLoading] = useState(false);
@@ -66,21 +66,21 @@ export default function Post() {
     const post = postSnapshot.val();
 
     if (userRole === 'admin' || currentUser.uid === post.uidUser) {
-        if (window.confirm('Você realmente quer deletar este post?')) {
-            await remove(postRef);
-            alert("Post deletado com sucesso!");
-            window.location.reload();
-        }
+      if (window.confirm('Você realmente quer deletar este post?')) {
+        await remove(postRef);
+        alert("Post deletado com sucesso!");
+        window.location.reload();
+      }
     } else {
-        alert("Você não tem permissão para deletar este post!");
+      alert("Você não tem permissão para deletar este post!");
     }
-};
+  };
 
   const handleFilteredVideos = (videos) => {
     setFilteredVideos(videos);
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (member) => {
     setLoading(true);
     const postsQuery = ref(database, "post");
 
@@ -92,22 +92,27 @@ export default function Post() {
         ...postsData[key],
       })).reverse();
 
-      setPosts(postsList);
+      if (member) {
+        const userPosts = postsList.filter(post => post.uidUser === member);
+        setPosts(userPosts);
+      } else {
+        setPosts(postsList);
+      }
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    fetchPosts(member);
+  }, [member]);
 
   useEffect(() => {
     if (filteredVideos !== undefined) {
       setPosts(filteredVideos);
     } else {
-      fetchPosts();
+      fetchPosts(member);
     }
-  }, [filteredVideos]);
+  }, [filteredVideos, member]); // Adicione `member` como dependência
 
   const handleLikeUpdate = (postId, updatedLikes) => {
     setPosts((prevPosts) =>
