@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography, Button } from "@mui/material";
+import { Box, Card, CardContent, Typography } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
 import { useAuth } from "../../context/AuthContext";
@@ -20,7 +20,6 @@ export default function Post({ member }) {
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
-  const [editTags, setEditTags] = useState([]);
   const [postTags, setPostTags] = useState([]);
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
@@ -54,7 +53,7 @@ export default function Post({ member }) {
   const handleEditSubmit = async (event) => {
     event.preventDefault();
     if (editingPost) {
-      await editarPost(editingPost.id, editTitle, editLink, editTags);
+      await editarPost(editingPost.id, editTitle, editLink, postTags);
       setEditingPost(null);
       window.location.reload();
     }
@@ -220,7 +219,7 @@ export default function Post({ member }) {
   );
 }
 
-function getYouTubeID(url) {
+export function getYouTubeID(url) {
   var ID = '';
   url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
   if (url[2] !== undefined) {
