@@ -12,7 +12,6 @@ const editarPost = async (postId, newTitle, newLink, newTags) => {
 const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
     const [title, setTitle] = useState('');
     const [link, setLink] = useState('');
-    const [tags, setTags] = useState([]);
     const [videoEmbedURL, setVideoEmbedURL] = useState('');
     const [allTags, setAllTags] = useState([]);
     const [tagsSelecionadas, setTagsSelecionadas] = useState([]);
@@ -36,7 +35,6 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
         if (isOpen) {
             setTitle(post.nome || '');
             setLink(post.link || '');
-            setTags(post.tags || []);
             setTagsSelecionadas(post.tags || []);
         }
     }, [isOpen, post]);

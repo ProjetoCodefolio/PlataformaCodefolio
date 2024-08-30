@@ -5,7 +5,7 @@ function MembroLink({ user, texto }) {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate('/membro', { state: { userName: user } });
+    navigate('/membro', { state: { uidUser: user } });
   };
 
   return (

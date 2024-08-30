@@ -1,32 +1,31 @@
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
-import { ref, get, update, remove, onValue } from "firebase/database";
+import { ref, get, remove, onValue } from "firebase/database";
 import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography, Button } from "@mui/material";
+import { Box, Card, CardContent, Typography } from "@mui/material";
 import "./post.css";
 import YouTube from "react-youtube";
-import ComentariosYouTube from "../youtube/comments";
 import { useAuth } from "../../context/AuthContext";
 import MembroLink from "../MembroLink";
 import EditPostModal from "./EditPost";
 import CreatePostModal from "./CreatePost";
 import FilterPostCard from "./FilterPost";
+import Comentarios from "./Comentarios";
+import Likes from "./Likes";
 
-export default function Post() {
+export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
+  const [comments, setComments] = useState({});
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editLink, setEditLink] = useState('');
-  const [editTags, setEditTags] = useState([]);
   const [postTags, setPostTags] = useState([]);
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
 
-
-  // pega a categoria do usuário logado (a implementação disso vai ser alterado posteriormente)
   useEffect(() => {
     if (currentUser) {
       const userRef = ref(database, `users/${currentUser.uid}`);
@@ -40,12 +39,12 @@ export default function Post() {
   }, [currentUser]);
 
   const handleEditClick = (post) => () => {
-    if (userRole === "admin") {
+    if (userRole === "admin" || currentUser.uid === post.uidUser) {
       setEditingPost(post);
       setEditTitle(post.nome);
       setEditLink(post.link);
       setPostTags(post.tags);
-      setIsEditModalOpen(true); // Abre o modal de edição
+      setIsEditModalOpen(true);
     } else {
       alert("Você não tem permissão para editar esse post!");
     }
@@ -54,19 +53,21 @@ export default function Post() {
   const handleEditSubmit = async (event) => {
     event.preventDefault();
     if (editingPost) {
-      await editarPost(editingPost.id, editTitle, editLink, editTags);
+      await editarPost(editingPost.id, editTitle, editLink, postTags);
       setEditingPost(null);
       window.location.reload();
     }
   };
 
   const handleDeleteClick = (postId) => async () => {
-    if (userRole === 'admin') {
-      if (window.confirm('Você realmente quer deletar este post?')) {
-        const postRef = ref(database, `post/${postId}`);
-        await remove(postRef);
+    const postRef = ref(database, `post/${postId}`);
+    const postSnapshot = await get(postRef);
+    const post = postSnapshot.val();
 
-        alert("Post deletado com sucesso!")
+    if (userRole === 'admin' || currentUser.uid === post.uidUser) {
+      if (window.confirm('Você realmente quer deletar este post?')) {
+        await remove(postRef);
+        alert("Post deletado com sucesso!");
         window.location.reload();
       }
     } else {
@@ -74,51 +75,11 @@ export default function Post() {
     }
   };
 
-  function getYouTubeID(url) {
-    var ID = '';
-    url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
-    if (url[2] !== undefined) {
-      ID = url[2].split(/[^0-9a-z_\-]/i);
-      ID = ID[0];
-    } else {
-      ID = url;
-    }
-    return ID;
-  }
-
-  const computarLike = (post) => {
-    // Garante que post.likes é um array antes de prosseguir
-    if (!Array.isArray(post.likes)) {
-      console.error("likes não é um array", post.likes);
-      return; // Encerra a função se post.likes não for um array
-    }
-
-    // Verifica se o usuário atual já deu like
-    if (post.likes.includes(currentUser.uid)) {
-      alert("Você já deu like nesse post!");
-    } else {
-      // Adiciona o uid do usuário atual ao array de likes
-      const updatedLikes = [...post.likes, currentUser.uid];
-
-      // Referencia o post específico usando o id do post
-      const postRef = ref(database, `post/${post.id}`);
-
-      // Atualiza o post com os novos likes
-      update(postRef, { likes: updatedLikes })
-        .then(() => {
-          alert("Like adicionado com sucesso!");
-        })
-        .catch((error) => {
-          console.error("Erro ao adicionar like:", error);
-        });
-    }
-  };
-
   const handleFilteredVideos = (videos) => {
     setFilteredVideos(videos);
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (member) => {
     setLoading(true);
     const postsQuery = ref(database, "post");
 
@@ -130,29 +91,40 @@ export default function Post() {
         ...postsData[key],
       })).reverse();
 
-      setPosts(postsList);
+      if (member) {
+        const userPosts = postsList.filter(post => post.uidUser === member);
+        setPosts(userPosts);
+      } else {
+        setPosts(postsList);
+      }
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    fetchPosts(member);
+  }, [member]);
 
   useEffect(() => {
     if (filteredVideos !== undefined) {
       setPosts(filteredVideos);
     } else {
-      fetchPosts();
+      fetchPosts(member);
     }
-  }, [filteredVideos, setPosts]);
+  }, [filteredVideos, member]); // Adicione `member` como dependência
+
+  const handleLikeUpdate = (postId, updatedLikes) => {
+    setPosts((prevPosts) =>
+      prevPosts.map((post) =>
+        post.id === postId ? { ...post, likes: updatedLikes } : post
+      )
+    );
+  };
 
   return (
     <Box>
-
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal />
-
       </Box>
 
       <br />
@@ -182,7 +154,7 @@ export default function Post() {
                     src={post.userAvatar}
                     alt={post.user} />
                   <Typography component="div" variant="h6" className="postUsername">
-                    <MembroLink texto={post.user} user={post.user} />
+                    <MembroLink texto={post.user} user={post.uidUser} />
                   </Typography>
                   -
                   <Typography component="div" variant="h6" className="postDate">
@@ -191,9 +163,7 @@ export default function Post() {
                 </Box>
 
                 <Box className="postTopRight">
-                  <Box className="postTopRight">
-                    <PostMenu post={post} onEdit={handleEditClick} onDelete={handleDeleteClick} />
-                  </Box>
+                  <PostMenu post={post} onEdit={handleEditClick} onDelete={handleDeleteClick} />
                 </Box>
               </Box>
               <Box className="postCenter">
@@ -210,7 +180,7 @@ export default function Post() {
                     ))}
                     <br />
                     <br />
-                    <ComentariosYouTube videoId={getYouTubeID(post.link)} />
+                    <Comentarios postId={post.id} comments={comments} setComments={setComments} />
                   </>
                 ) : (
                   <img
@@ -222,15 +192,11 @@ export default function Post() {
               <Box className="postBottom">
                 <Box className="postBottomLeft">
                   <Box style={{ display: "flex" }}>
-                    <Button onClick={() => computarLike(post)}> Adicionar Like ({(post.likes.length - 1)}) </Button>
-                    {/* <LikesYouTube videoId={getYouTubeID(post.link)} /> */}
+                    <Likes post={post} onLikeUpdate={handleLikeUpdate} />
                   </Box>
                 </Box>
-                {/* <Box className="postBottomRight">
-        <Typography className="postCommentText">Comentários</Typography>
-        </Box> */}
               </Box>
-              {userRole === 'admin' && (
+              {(userRole === 'admin' || currentUser.uid === post.uidUser) && (
                 <>
                   {isEditModalOpen && (
                     <EditPostModal
@@ -250,6 +216,17 @@ export default function Post() {
         <FilterPostCard onFilter={handleFilteredVideos} />
       </div>
     </Box>
-
   );
+}
+
+export function getYouTubeID(url) {
+  var ID = '';
+  url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
+  if (url[2] !== undefined) {
+    ID = url[2].split(/[^0-9a-z_\-]/i);
+    ID = ID[0];
+  } else {
+    ID = url;
+  }
+  return ID;
 }

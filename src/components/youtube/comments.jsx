@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_KEY = 'AIzaSyCBmVDmk1FQgNh8BoLmIRyroMXNhd_zQJ4'; // Substitua pela sua API key
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 const ComentariosYouTube = ({ videoId }) => {
   const [comments, setComments] = useState([]);
