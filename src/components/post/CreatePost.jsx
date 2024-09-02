@@ -4,6 +4,7 @@ import { ref, push, set, onValue } from "firebase/database";
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
 import "./post.css";
 import { useAuth } from "../../context/AuthContext";
+import { fetchYouTubeComments } from "./Comentarios";
 
 const CreatePostModal = () => {
 
@@ -43,17 +44,25 @@ const CreatePostModal = () => {
             return;
         }
 
+        const commentsYouTube = await fetchYouTubeComments(link);
+
         const postsRef = ref(database, "post");
         const newPostRef = push(postsRef);
-        await set(newPostRef, {
+        const newPostData = {
             data: new Date().toLocaleDateString(),
             link: link,
             nome: title,
             tags: selectedTags,
             uidUser: currentUser.uid,
             user: currentUser.displayName || currentUser.email, // Nome do usuário logado (ou email se o nome não estiver disponível)
-            userAvatar: currentUser.photoURL || "default-avatar-url" // URL do avatar do usuário logado (ou uma URL padrão)
-        });
+            userAvatar: currentUser.photoURL || "default-avatar-url", // URL do avatar do usuário logado (ou uma URL padrão)
+        };
+
+        if (commentsYouTube.length > 0) {
+            newPostData.comentarios = commentsYouTube;
+        }
+
+        await set(newPostRef, newPostData);
         setTitle('');
         setLink('');
         setSelectedTags([]);

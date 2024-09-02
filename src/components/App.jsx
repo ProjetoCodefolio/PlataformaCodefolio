@@ -6,7 +6,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext"; // Usando o contexto de autenticação
 import Login from "../pages/Login";
 import SignUp from "../pages/SignUp";
 import Dashboard from "../pages/Dashboard";
@@ -17,7 +17,6 @@ import MembersPage from "../pages/members";
 import FotosPage from "../pages/fotos";
 import MembroPage from "../pages/membro";
 import Post from './post/Post';
-import MembroLink from './MembroLink'; // Import do MembroLink
 
 function App() {
   return (
@@ -68,34 +67,23 @@ function App() {
               </PrivateRoute>
             }
           />
-
-<Route path="/membro" element={
-          <PrivateRoute>
-            <MembroPage />
-          </PrivateRoute>
-        } />
-        <Route path="/" element={<Post />} /> {/* Rota inicial que renderiza Post */}
+          <Route path="/membro" element={
+            <PrivateRoute>
+              <MembroPage />
+            </PrivateRoute>
+          } />
+          <Route path="/" element={<Post />} /> {/* Rota inicial que renderiza Post */}
         </Routes>
       </Router>
     </AuthProvider>
   );
 }
 
-// function PrivateRoute({ children }) {
-//   const { currentUser } = useAuth();
-
-//   if (currentUser) {
-//     return children;
-//   } else {
-//     return <Navigate to="/login" />;
-//   }
-// }
-
 function PrivateRoute({ children }) {
+  const { currentUser } = useAuth(); 
   const location = useLocation();
-  const isAuthenticated = true; // substitua pela sua lógica de autenticação
 
-  if (!isAuthenticated) {
+  if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 

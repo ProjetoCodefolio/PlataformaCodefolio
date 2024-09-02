@@ -3,6 +3,36 @@ import { ref, get, update, onValue } from "firebase/database";
 import { Button } from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
+import { getYouTubeID } from "./Post";
+import axios from 'axios';
+
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+export const fetchYouTubeComments = async (url) => {
+  const videoId = getYouTubeID(url);
+  if (!videoId) return [];
+
+  try {
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/commentThreads', {
+      params: {
+        part: 'snippet',
+        videoId: videoId,
+        maxResults: 20,
+        key: API_KEY,
+      },
+    });
+
+    return response.data.items.map(item => ({
+      uidUsuario: item.snippet.topLevelComment.snippet.authorChannelId.value, // ID do autor do comentário
+      nome: item.snippet.topLevelComment.snippet.authorDisplayName, // Nome do autor do comentário
+      comentario: item.snippet.topLevelComment.snippet.textDisplay, // Conteúdo do comentário
+      data: item.snippet.topLevelComment.snippet.publishedAt, // Data de publicação do comentário
+    }));
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+};
 
 export default function Comentarios({ postId, comments, setComments }) {
   const { currentUser } = useAuth();
