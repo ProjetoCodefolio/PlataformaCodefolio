@@ -6,7 +6,7 @@ import "./post.css";
 import { useAuth } from "../../context/AuthContext";
 import { fetchYouTubeComments } from "./Comentarios";
 
-const CreatePostModal = () => {
+const CreatePostModal = ({ onPostCreated }) => {
 
     const [title, setTitle] = useState('');
     const [link, setLink] = useState('');
@@ -68,7 +68,8 @@ const CreatePostModal = () => {
         setSelectedTags([]);
 
         alert("Post criado com sucesso!");
-        window.location.reload();
+        setOpenModal(false); // Fechar o modal após a criação do post
+        onPostCreated(); // Chamar a função de callback para atualizar o estado no componente pai
     };
 
     // Função para gerar o URL de incorporação do YouTube a partir do link normal

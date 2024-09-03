@@ -12,19 +12,23 @@ import CreatePostModal from "./CreatePost";
 import FilterPostCard from "./FilterPost";
 import Comentarios from "./Comentarios";
 import Likes from "./Likes";
+import Pagination from "./Pagination"; // Importando o novo componente
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
   const [comments, setComments] = useState({});
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editLink, setEditLink] = useState('');
-  const [postTags, setPostTags] = useState([]);
   const [userRole, setUserRole] = useState('');
   const { currentUser } = useAuth();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
+  const [isPostCreated, setIsPostCreated] = useState(false);
+  const [isPostDeleted, setIsPostDeleted] = useState(false);
+  const [isPostEdited, setIsPostEdited] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const postsPerPage = 2;
 
   useEffect(() => {
     if (currentUser) {
@@ -41,21 +45,9 @@ export default function Post({ member }) {
   const handleEditClick = (post) => () => {
     if (userRole === "admin" || currentUser.uid === post.uidUser) {
       setEditingPost(post);
-      setEditTitle(post.nome);
-      setEditLink(post.link);
-      setPostTags(post.tags);
       setIsEditModalOpen(true);
     } else {
       alert("Você não tem permissão para editar esse post!");
-    }
-  };
-
-  const handleEditSubmit = async (event) => {
-    event.preventDefault();
-    if (editingPost) {
-      await editarPost(editingPost.id, editTitle, editLink, postTags);
-      setEditingPost(null);
-      window.location.reload();
     }
   };
 
@@ -67,8 +59,9 @@ export default function Post({ member }) {
     if (userRole === 'admin' || currentUser.uid === post.uidUser) {
       if (window.confirm('Você realmente quer deletar este post?')) {
         await remove(postRef);
+        setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
+        setIsPostDeleted(true);
         alert("Post deletado com sucesso!");
-        window.location.reload();
       }
     } else {
       alert("Você não tem permissão para deletar este post!");
@@ -91,19 +84,33 @@ export default function Post({ member }) {
         ...postsData[key],
       })).reverse();
 
+      const startIndex = (currentPage - 1) * postsPerPage;
+      const endIndex = startIndex + postsPerPage;
+      const paginatedPosts = postsList.slice(startIndex, endIndex);
+      const lastPage = Math.ceil(postsList.length / postsPerPage);
+      setLastPage(lastPage);
+
       if (member) {
-        const userPosts = postsList.filter(post => post.uidUser === member);
+        const userPosts = paginatedPosts.filter(post => post.uidUser === member);
         setPosts(userPosts);
       } else {
-        setPosts(postsList);
+        setPosts(paginatedPosts);
       }
     }
     setLoading(false);
   };
 
+  const handleNextPage = () => {
+    setCurrentPage((prevPage) => prevPage + 1);
+  };
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prevPage) => Math.max(prevPage - 1, 1));
+  };
+
   useEffect(() => {
     fetchPosts(member);
-  }, [member]);
+  }, [member, currentPage]);
 
   useEffect(() => {
     if (filteredVideos !== undefined) {
@@ -111,7 +118,16 @@ export default function Post({ member }) {
     } else {
       fetchPosts(member);
     }
-  }, [filteredVideos, member]); // Adicione `member` como dependência
+  }, [filteredVideos, member]);
+
+  useEffect(() => {
+    if (isPostEdited || isPostCreated || isPostDeleted) {
+      fetchPosts(member);
+      setIsPostEdited(false);
+      setIsPostCreated(false);
+      setIsPostDeleted(false);
+    }
+  }, [isPostEdited, isPostCreated, isPostDeleted, member]);
 
   const handleLikeUpdate = (postId, updatedLikes) => {
     setPosts((prevPosts) =>
@@ -124,7 +140,7 @@ export default function Post({ member }) {
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <CreatePostModal />
+        <CreatePostModal onPostCreated={() => setIsPostCreated(true)} />
       </Box>
 
       <br />
@@ -186,7 +202,7 @@ export default function Post({ member }) {
                   <img
                     className="postImage"
                     src={post.userAvatar}
-                    alt={post.nome} />
+                    alt={post} />
                 )}
               </Box>
               <Box className="postBottom">
@@ -203,7 +219,7 @@ export default function Post({ member }) {
                       isOpen={isEditModalOpen}
                       onClose={() => setIsEditModalOpen(false)}
                       post={editingPost}
-                      onSave={handleEditSubmit}
+                      onSave={() => setIsPostEdited(true)}
                     />
                   )}
                 </>
@@ -212,6 +228,13 @@ export default function Post({ member }) {
           </Card>
         ))
       )}
+      <Pagination
+        currentPage={currentPage}
+        lastPage={lastPage}
+        onNextPage={handleNextPage}
+        onPreviousPage={handlePreviousPage}
+        onPageSelect={setCurrentPage}
+      />
       <div>
         <FilterPostCard onFilter={handleFilteredVideos} />
       </div>
