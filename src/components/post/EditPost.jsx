@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import { database } from "../../service/firebase";
 import { ref, get, update } from "firebase/database";
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
 import "./post.css";
 
-const editarPost = async (postId, newTitle, newLink, newTags) => {
+export const editarPost = async (postId, newTitle, newLink, newTags) => {
     const postRef = ref(database, `post/${postId}`);
     await update(postRef, { nome: newTitle, link: newLink, tags: newTags });
 };
@@ -58,6 +58,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
     }, [link]);
 
     const handleSave = async (e) => {
+        e.preventDefault(); // Previne o comportamento padrão do formulário
         const postId = post.id;
         await editarPost(postId, title, link, tagsSelecionadas);
         if (onSave) {
