@@ -12,7 +12,9 @@ import CreatePostModal from "./CreatePost";
 import FilterPostCard from "./FilterPost";
 import Comentarios from "./Comentarios";
 import Likes from "./Likes";
-import Pagination from "./Pagination"; // Importando o novo componente
+import Pagination from "./Pagination";
+import { CircularProgress } from "@mui/material";
+import Topbar from "../topbar/Topbar";
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -28,6 +30,7 @@ export default function Post({ member }) {
   const [isPostEdited, setIsPostEdited] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState("");
   const postsPerPage = 2;
 
   useEffect(() => {
@@ -70,32 +73,51 @@ export default function Post({ member }) {
 
   const handleFilteredVideos = (videos) => {
     setFilteredVideos(videos);
+    setCurrentPage(1); // Resetar para a primeira página ao aplicar um filtro
+  };
+
+  const handleSearchChange = (term) => {
+    setSearchTerm(term);
+    setCurrentPage(1); // Resetar para a primeira página ao fazer uma pesquisa
   };
 
   const fetchPosts = async (member) => {
     setLoading(true);
-    const postsQuery = ref(database, "post");
-
-    const snapshot = await get(postsQuery);
+  
+    const postsQuery = ref(database, "post"); // Query para buscar todos os posts
+  
+    const snapshot = await get(postsQuery); // Obter os dados dos posts
     const postsData = snapshot.val();
     if (postsData) {
       const postsList = Object.keys(postsData).map((key) => ({
         id: key,
         ...postsData[key],
       })).reverse();
-
+  
+      // Filtragem por termo de busca
+      let filteredPosts = postsList.filter(post =>
+        post.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        post.user.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+  
+      // Filtragem por tags
+      if (filteredVideos && Array.isArray(filteredVideos) && filteredVideos.length > 0) {
+        filteredPosts = filteredVideos;
+      }
+  
+      // Filtragem por membro
+      if (member) {
+        filteredPosts = filteredPosts.filter(post => post.uidUser === member);
+      }
+  
+      // Paginação
       const startIndex = (currentPage - 1) * postsPerPage;
       const endIndex = startIndex + postsPerPage;
-      const paginatedPosts = postsList.slice(startIndex, endIndex);
-      const lastPage = Math.ceil(postsList.length / postsPerPage);
+      const paginatedPosts = filteredPosts.slice(startIndex, endIndex);  
+      const lastPage = Math.ceil(filteredPosts.length / postsPerPage);
       setLastPage(lastPage);
-
-      if (member) {
-        const userPosts = paginatedPosts.filter(post => post.uidUser === member);
-        setPosts(userPosts);
-      } else {
-        setPosts(paginatedPosts);
-      }
+  
+      setPosts(paginatedPosts);
     }
     setLoading(false);
   };
@@ -110,15 +132,7 @@ export default function Post({ member }) {
 
   useEffect(() => {
     fetchPosts(member);
-  }, [member, currentPage]);
-
-  useEffect(() => {
-    if (filteredVideos !== undefined) {
-      setPosts(filteredVideos);
-    } else {
-      fetchPosts(member);
-    }
-  }, [filteredVideos, member]);
+  }, [filteredVideos, member, currentPage, searchTerm]);
 
   useEffect(() => {
     if (isPostEdited || isPostCreated || isPostDeleted) {
@@ -139,6 +153,7 @@ export default function Post({ member }) {
 
   return (
     <Box>
+      <Topbar onSearch={handleSearchChange} /> {/* Passar handleSearchChange para Topbar */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal onPostCreated={() => setIsPostCreated(true)} />
       </Box>
@@ -146,7 +161,9 @@ export default function Post({ member }) {
       <br />
 
       {loading ? (
-        <span>Loading...</span>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+          <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
+        </Box>
       ) : (
         posts.map((post) => (
           <Card

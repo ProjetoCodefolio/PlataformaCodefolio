@@ -19,14 +19,13 @@ import { useNavigate } from "react-router-dom";
 import { Typography } from "@mui/material";
 import { useAuth } from "../../context/AuthContext";
 
-export default function Topbar() {
+export default function Topbar({ onSearch }) {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [searchTerm, setSearchTerm] = useState(""); // Estado para o termo de pesquisa
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
 
   const { userDetails } = useAuth();
-
-  console.log(userDetails);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -43,6 +42,11 @@ export default function Topbar() {
 
   const handleProfileClick = () => {
     navigate("/profile");
+  };
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+    onSearch(event.target.value); // Passa o termo de pesquisa para o componente pai
   };
 
   return (
@@ -71,7 +75,12 @@ export default function Topbar() {
           <Box className="topbarCenterIcon">
             <Box className="searchbar">
               <Search className="searchIcon" />
-              <input placeholder="Pesquisar" className="searchInput" />
+              <input
+                placeholder="Pesquisar"
+                className="searchInput"
+                value={searchTerm}
+                onChange={handleSearchChange} // Adiciona o manipulador de eventos
+              />
             </Box>
           </Box>
         </Box>
