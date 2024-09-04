@@ -15,7 +15,7 @@ const Pagination = ({ currentPage, lastPage, onNextPage, onPreviousPage, onPageS
             width: '70px',
             height: '70px',
             marginRight: '8px',
-            color: 'black'
+            color: currentPage === 1 ? 'gray' : "black"
           }}
         />
       </button>
@@ -52,7 +52,7 @@ const Pagination = ({ currentPage, lastPage, onNextPage, onPreviousPage, onPageS
             width: '70px',
             height: '70px',
             marginLeft: '8px',
-            color: 'black'
+            color: currentPage === lastPage ? 'gray' : 'black'
           }}
         />
       </button>

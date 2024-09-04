@@ -1,4 +1,3 @@
-// src/pages/Home.js
 import React, { useState } from "react";
 import "./home.css";
 import Topbar from "../components/topbar/Topbar";
@@ -12,6 +11,7 @@ import FotosPage from "./fotos";
 export default function Home({ showCreatePost }) {
   const [view, setView] = useState("timeline");
   const [selectedButton, setSelectedButton] = useState(0);
+  const [searchTerm, setSearchTerm] = useState(""); // Estado para o termo de pesquisa
 
   const handleTimelineClick = () => {
     setView("timeline");
@@ -28,9 +28,13 @@ export default function Home({ showCreatePost }) {
     setSelectedButton(2);
   };
 
+  const handleSearch = (term) => {
+    setSearchTerm(term); // Atualiza o termo de pesquisa
+  };
+
   return (
     <Box className={showCreatePost ? "halfVisualHome" : "fullVisualHome"}>
-      <Topbar />
+      <Topbar onSearch={handleSearch} /> {/* Passa a função de pesquisa para o Topbar */}
       <Box className="homeContainer">
         <Box className="feed">
           <Box className="feedWrapper">
@@ -41,7 +45,7 @@ export default function Home({ showCreatePost }) {
               onFotosClick={handleFotosClick}
             />
 
-            {view === "timeline" && <Post />}
+            {view === "timeline" && <Post searchTerm={searchTerm} />} {/* Passa o termo de pesquisa para o Post */}
             {view === "members" && <Members />}
             {view === "fotos" && <FotosPage />}
           </Box>
