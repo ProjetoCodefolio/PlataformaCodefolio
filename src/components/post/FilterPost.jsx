@@ -126,7 +126,7 @@ const FilterPostCard = ({ onFilter }) => {
                         },
                     }}
                 >
-                    Limpar Filtros
+                    Limpar
                 </Button>
 
                 <Button

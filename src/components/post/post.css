@@ -102,17 +102,43 @@
   cursor: pointer;
 }
 
-.tags {
+.tags-container {
   display: inline-flex;
-  margin: 10px;
-  /* Ajuste este valor para o espaçamento desejado */
-  padding: 15px;
-  /* Adiciona algum espaço interno ao redor do texto */
-  border: 1px solid #000;
-  /* Adiciona uma borda ao redor da tag */
-  border-radius: 5px;
-  /* Arredonda os cantos da borda */
+  justify-content: center; /* Centraliza as tags horizontalmente */
+  flex-wrap: wrap; /* Permite que as tags "quebrem linha" se necessário */
+  gap: 20px; /* Espaçamento entre as tags */
+  padding: 20px;
 }
+
+.tag {
+  display: flex;
+  align-items: center;
+  background-color: #e6f2ff; /* Cor de fundo suave */
+  border-radius: 10px; /* Bordas arredondadas */
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Sombra suave */
+  transition: background-color 0.3s ease; /* Animação suave ao passar o mouse */
+  width: fit-content; /* Garante que a tag se ajuste ao conteúdo */
+}
+
+.tag:hover {
+  background-color: #d0e7ff; /* Cor ao passar o mouse */
+}
+
+.icon {
+  width: 40px; /* Tamanho do ícone */
+  height: 40px;
+  margin-right: 10px; /* Espaçamento entre o ícone e o texto */
+}
+
+.texto {
+  font-size: 16px;
+  color: #007bff; /* Cor do texto */
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+}
+
+
 
 /* Estilo do modal box */
 .modal-box {
@@ -164,4 +190,78 @@
 
 .option-button:hover {
   background-color: #e0e0e0;
+}
+
+/* Estilos para o componente Comentarios */
+.comentarios-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Centraliza o conteúdo horizontalmente */
+}
+
+.comentarios-form {
+  display: flex;
+  flex-direction: row; /* Altera para deixar input e botão lado a lado */
+  align-items: center;
+  margin-bottom: 20px;
+  width: 100%; /* Garante que o formulário ocupe toda a largura do contêiner */
+}
+
+.comentarios-input {
+  flex: 1; /* O input ocupa o espaço restante */
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comentarios-button {
+  background-color: #6A1B9A !important;
+  color: #fff !important;
+  margin-left: 10px !important; /* Espaçamento entre o input e o botão */
+  border: none;
+  cursor: pointer;
+}
+
+.comentarios-commentList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  width: 100%; /* Garante que a lista ocupe toda a largura do contêiner */
+}
+
+.comentarios-commentItem {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.comentarios-authorName {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.comentarios-toggleButton {
+  background-color: #6A1B9A;
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px; /* Espaçamento entre o texto e o ícone */
 }

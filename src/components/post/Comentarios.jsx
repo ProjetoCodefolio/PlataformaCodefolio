@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { ref, get, update, onValue } from "firebase/database";
-import { Button } from "@mui/material";
+import { IconButton } from "@mui/material";
+import SendIcon from '@mui/icons-material/Send'; // Ícone de envio
+import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
-import { getYouTubeID } from "./Post";
+import { getYouTubeID } from "./utils";
 import axios from 'axios';
+import './post.css'; // Importa o arquivo CSS
 
 const API_KEY = import.meta.env.VITE_API_KEY;
 
@@ -23,10 +27,10 @@ export const fetchYouTubeComments = async (url) => {
     });
 
     return response.data.items.map(item => ({
-      uidUsuario: item.snippet.topLevelComment.snippet.authorChannelId.value, // ID do autor do comentário
-      nome: item.snippet.topLevelComment.snippet.authorDisplayName, // Nome do autor do comentário
-      comentario: item.snippet.topLevelComment.snippet.textDisplay, // Conteúdo do comentário
-      data: item.snippet.topLevelComment.snippet.publishedAt, // Data de publicação do comentário
+      uidUsuario: item.snippet.topLevelComment.snippet.authorChannelId.value,
+      nome: item.snippet.topLevelComment.snippet.authorDisplayName,
+      comentario: item.snippet.topLevelComment.snippet.textDisplay,
+      data: item.snippet.topLevelComment.snippet.publishedAt,
     }));
   } catch (error) {
     console.error('Error fetching comments:', error);
@@ -37,6 +41,7 @@ export const fetchYouTubeComments = async (url) => {
 export default function Comentarios({ postId, comments, setComments }) {
   const { currentUser } = useAuth();
   const [comentario, setComentario] = useState('');
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     const postRef = ref(database, `post/${postId}`);
@@ -92,27 +97,39 @@ export default function Comentarios({ postId, comments, setComments }) {
   };
 
   return (
-    <>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="comentario"> Poste seu comentário: </label> <br />
-        <input type="text"
-          id="comentario"
+    <div className="comentarios-container">
+      <form onSubmit={handleSubmit} className="comentarios-form">
+        <input
+          type="text"
+          placeholder="Adicione um comentário..."
           value={comentario}
           onChange={(e) => setComentario(e.target.value)}
-        /> <br />
-        <Button type="submit">
-          Enviar
-        </Button>
+          className="comentarios-input"
+        />
+        <IconButton type="submit" className="comentarios-button">
+          <SendIcon />
+        </IconButton>
       </form>
 
-      <h3> Comentários: </h3>
-      {comments[postId] && comments[postId].length > 0 ? (
-        comments[postId].map((comentario, index) => (
-          <p key={index}> {comentario.nome} - {comentario.comentario}</p>
-        )).reverse()
+      <button className="comentarios-toggleButton" onClick={() => setShowComments(!showComments)}>
+        {showComments ? (
+          <> Ocultar Comentários <ArrowDropUpIcon /> </>
+        ) : (
+          <> Mostrar Comentários <ArrowDropDownIcon /> </>
+        )}
+      </button>
+
+      {showComments && comments[postId] && comments[postId].length > 0 ? (
+        <ul className="comentarios-commentList">
+          {comments[postId].map((comentario, index) => (
+            <li key={index} className="comentarios-commentItem">
+              <span className="comentarios-authorName">{comentario.nome}</span> - {comentario.comentario}
+            </li>
+          )).reverse()}
+        </ul>
       ) : (
-        <p>Não há comentários ainda!</p>
+        showComments && <p>Não há comentários ainda!</p>
       )}
-    </>
+    </div>
   );
 }
