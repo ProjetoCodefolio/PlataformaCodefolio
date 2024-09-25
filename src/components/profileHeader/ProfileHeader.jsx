@@ -19,6 +19,7 @@ import { ref, get } from "firebase/database";
 export default function ProfileHeader({ selectedButton, onTimelineClick, onMembersClick, onFotosClick }) {
 
   const [posts, setPosts] = useState([]);
+  const [quantidadePosts, setQuantidadePosts] = useState(0);
 
   const fetchPosts = async () => {
     const postsQuery = ref(database, "post");
@@ -38,6 +39,10 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
   useEffect(() => {
     fetchPosts();
   }, []);
+
+  useEffect(() => {
+    setQuantidadePosts(posts.length);
+  }, [posts]);
 
   return (
 
@@ -126,7 +131,7 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
               <Typography component="div" variant="h6">
                 <strong>Publicações</strong>
               </Typography>
-              <Typography component="div" variant="h6">{posts.length}</Typography>
+              <Typography component="div" variant="h6">{quantidadePosts}</Typography>
             </Grid>
             <Grid item>
               <Typography component="div" variant="h6">

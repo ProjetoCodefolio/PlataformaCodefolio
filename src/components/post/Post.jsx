@@ -1,20 +1,15 @@
-import { useEffect, useState } from "react";
-import { database } from "../../service/firebase";
-import { ref, get, remove, onValue } from "firebase/database";
-import PostMenu from './Menu';
-import { Box, Card, CardContent, Typography } from "@mui/material";
-import "./post.css";
-import YouTube from "react-youtube";
-import { useAuth } from "../../context/AuthContext";
-import MembroLink from "../MembroLink";
-import EditPostModal from "./EditPost";
-import CreatePostModal from "./CreatePost";
-import FilterPostCard from "./FilterPost";
-import Comentarios from "./Comentarios";
-import Likes from "./Likes";
-import Pagination from "./Pagination";
-import { CircularProgress } from "@mui/material";
-import Topbar from "../topbar/Topbar";
+import React, { useState, useEffect } from 'react';
+import { Box, Grid, CircularProgress } from '@mui/material';
+import Topbar from '../topbar/Topbar';
+import CreatePostModal from './CreatePost';
+import FilterPostCard from './FilterPost';
+import Pagination from './Pagination';
+import { useAuth } from '../../context/AuthContext';
+import { ref, get, remove, onValue } from 'firebase/database';
+import './post.css';
+import { database } from '../../service/firebase';
+import PostCard from './PostCard';
+import { fetchPosts } from './utils';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -71,79 +66,38 @@ export default function Post({ member }) {
     }
   };
 
-  const handleFilteredVideos = (videos) => {
+  const applyVideoFilter = (videos) => {
     setFilteredVideos(videos);
-    setCurrentPage(1); // Resetar para a primeira página ao aplicar um filtro
+    setCurrentPage(1); // Reset to the first page when applying a filter
   };
 
-  const handleSearchChange = (term) => {
+  const updateSearchTerm = (term) => {
     setSearchTerm(term);
-    setCurrentPage(1); // Resetar para a primeira página ao fazer uma pesquisa
+    setCurrentPage(1); // Reset to the first page when searching
   };
 
-  const fetchPosts = async (member) => {
+  const loadPosts = async () => {
     setLoading(true);
-  
-    const postsQuery = ref(database, "post"); // Query para buscar todos os posts
-  
-    const snapshot = await get(postsQuery); // Obter os dados dos posts
-    const postsData = snapshot.val();
-    if (postsData) {
-      const postsList = Object.keys(postsData).map((key) => ({
-        id: key,
-        ...postsData[key],
-      })).reverse();
-  
-      // Filtragem por termo de busca
-      let filteredPosts = postsList.filter(post =>
-        post.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.user.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  
-      // Filtragem por tags
-      if (filteredVideos && Array.isArray(filteredVideos) && filteredVideos.length > 0) {
-        filteredPosts = filteredVideos;
-      }
-  
-      // Filtragem por membro
-      if (member) {
-        filteredPosts = filteredPosts.filter(post => post.uidUser === member);
-      }
-  
-      // Paginação
-      const startIndex = (currentPage - 1) * postsPerPage;
-      const endIndex = startIndex + postsPerPage;
-      const paginatedPosts = filteredPosts.slice(startIndex, endIndex);  
-      const lastPage = Math.ceil(filteredPosts.length / postsPerPage);
-      setLastPage(lastPage);
-  
-      setPosts(paginatedPosts);
-    }
+    const { paginatedPosts, lastPage } = await fetchPosts(member, searchTerm, filteredVideos, currentPage, postsPerPage);
+    setPosts(paginatedPosts);
+    setLastPage(lastPage);
     setLoading(false);
   };
 
-  const handleNextPage = () => {
-    setCurrentPage((prevPage) => prevPage + 1);
-  };
-
-  const handlePreviousPage = () => {
-    setCurrentPage((prevPage) => Math.max(prevPage - 1, 1));
-  };
-
   useEffect(() => {
-    fetchPosts(member);
+    loadPosts();
   }, [filteredVideos, member, currentPage, searchTerm]);
 
   useEffect(() => {
     if (isPostEdited || isPostCreated || isPostDeleted) {
-      fetchPosts(member);
+      loadPosts();
       setIsPostEdited(false);
       setIsPostCreated(false);
       setIsPostDeleted(false);
     }
   }, [isPostEdited, isPostCreated, isPostDeleted, member]);
 
-  const handleLikeUpdate = (postId, updatedLikes) => {
+  const updateLikes = (postId, updatedLikes) => {
     setPosts((prevPosts) =>
       prevPosts.map((post) =>
         post.id === postId ? { ...post, likes: updatedLikes } : post
@@ -151,122 +105,67 @@ export default function Post({ member }) {
     );
   };
 
+  const goToNextPage = () => {
+    setCurrentPage((prevPage) => prevPage + 1);
+  };
+
+  const goToPreviousPage = () => {
+    setCurrentPage((prevPage) => Math.max(prevPage - 1, 1));
+  };
+
   return (
-    <Box>
-      <Topbar onSearch={handleSearchChange} /> {/* Passar handleSearchChange para Topbar */}
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: { xs: "100%", sm: "800px", md: "1200px" },
+        mx: "auto"
+      }}>
+      <Topbar onSearch={updateSearchTerm} /> {/* Passar handleSearchChange para Topbar */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal onPostCreated={() => setIsPostCreated(true)} />
       </Box>
 
       <br />
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-          <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
-        </Box>
-      ) : (
-        posts.map((post) => (
-          <Card
-            key={post.id}
-            sx={{
-              width: "100%",
-              maxWidth: { xs: "100%", sm: "800px", md: "1200px" },
-              mx: "auto",
-              boxShadow: 1,
-              borderRadius: 2,
-              overflow: "hidden",
-              backgroundColor: "white",
-              mb: 2,
-            }}
-          >
-            <CardContent>
-              <Box className="postTop">
-                <Box className="postTopLeft">
-                  <img
-                    className="postProfileImage"
-                    src={post.userAvatar}
-                    alt={post.user} />
-                  <Typography component="div" variant="h6" className="postUsername">
-                    <MembroLink texto={post.user} user={post.uidUser} />
-                  </Typography>
-                  -
-                  <Typography component="div" variant="h6" className="postDate">
-                    {post.data}
-                  </Typography>
-                </Box>
+      <Grid container spacing={2}>
+        <Grid item xs={4}>
+          <FilterPostCard onFilter={applyVideoFilter} />
+        </Grid>
 
-                <Box className="postTopRight">
-                  <PostMenu post={post} onEdit={handleEditClick} onDelete={handleDeleteClick} />
-                </Box>
-              </Box>
-              <Box className="postCenter">
-                <Typography component="div" variant="h6" className="postText">
-                  <b>{post.nome}</b> <br /> {post.user}
-                </Typography>
-                {post.link ? (
-                  <>
-                    <YouTube videoId={getYouTubeID(post.link)} />
-                    <br />
-                    <h4> Tag(s): </h4>
-                    {post.tags && post.tags.map((tag, index) => (
-                      <p key={index} className="tags">{tag}</p>
-                    ))}
-                    <br />
-                    <br />
-                    <Comentarios postId={post.id} comments={comments} setComments={setComments} />
-                  </>
-                ) : (
-                  <img
-                    className="postImage"
-                    src={post.userAvatar}
-                    alt={post} />
-                )}
-              </Box>
-              <Box className="postBottom">
-                <Box className="postBottomLeft">
-                  <Box style={{ display: "flex" }}>
-                    <Likes post={post} onLikeUpdate={handleLikeUpdate} />
-                  </Box>
-                </Box>
-              </Box>
-              {(userRole === 'admin' || currentUser.uid === post.uidUser) && (
-                <>
-                  {isEditModalOpen && (
-                    <EditPostModal
-                      isOpen={isEditModalOpen}
-                      onClose={() => setIsEditModalOpen(false)}
-                      post={editingPost}
-                      onSave={() => setIsPostEdited(true)}
-                    />
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        ))
-      )}
+        <Grid item xs={8}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+              <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
+            </Box>
+          ) : (
+            posts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                Edit={handleEditClick(post)}
+                isEditModalOpen={isEditModalOpen}
+                setIsEditModalOpen={setIsEditModalOpen}
+                editingPost={editingPost}
+                Delete={handleDeleteClick(post.id)}
+                comments={comments}
+                setComments={setComments}
+                updateLikes={updateLikes}
+                userRole={userRole}
+                currentUser={currentUser}
+                onPostEdited={() => setIsPostEdited(true)}
+              />
+            ))
+          )}
+        </Grid>
+      </Grid>
+
       <Pagination
         currentPage={currentPage}
         lastPage={lastPage}
-        onNextPage={handleNextPage}
-        onPreviousPage={handlePreviousPage}
+        onNextPage={goToNextPage}
+        onPreviousPage={goToPreviousPage}
         onPageSelect={setCurrentPage}
       />
-      <div>
-        <FilterPostCard onFilter={handleFilteredVideos} />
-      </div>
     </Box>
   );
-}
-
-export function getYouTubeID(url) {
-  var ID = '';
-  url = url.replace(/(>|<)/gi, '').split(/(vi\/|v=|\/v\/|youtu\.be\/|\/embed\/)/);
-  if (url[2] !== undefined) {
-    ID = url[2].split(/[^0-9a-z_\-]/i);
-    ID = ID[0];
-  } else {
-    ID = url;
-  }
-  return ID;
 }

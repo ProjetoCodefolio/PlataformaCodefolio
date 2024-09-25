@@ -4,7 +4,7 @@ import { Button, Typography } from "@mui/material";
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
-import { getYouTubeID } from "../post/Post";
+import { getYouTubeID } from "./utils";
 import axios from 'axios';
 
 const Likes = React.memo(({ post, onLikeUpdate }) => {
