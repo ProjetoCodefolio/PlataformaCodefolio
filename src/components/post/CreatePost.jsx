@@ -4,9 +4,9 @@ import { ref, push, set, onValue } from "firebase/database";
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
 import "./post.css";
 import { useAuth } from "../../context/AuthContext";
-import { fetchYouTubeComments } from "./Comentarios";
+import { fetchYouTubeComments } from "./utils";
 
-const CreatePostModal = ({ onPostCreated }) => {
+const CreatePostModal = ({ onPostCreated, abrirAlert }) => {
 
     const [title, setTitle] = useState('');
     const [link, setLink] = useState('');
@@ -40,7 +40,7 @@ const CreatePostModal = ({ onPostCreated }) => {
     const criarPost = async (event) => {
         event.preventDefault();
         if (!currentUser) {
-            alert("Você precisa estar logado para criar um post.");
+            abrirAlert("Você precisa estar logado para criar um post.", "error");
             return;
         }
 
@@ -67,7 +67,7 @@ const CreatePostModal = ({ onPostCreated }) => {
         setLink('');
         setSelectedTags([]);
 
-        alert("Post criado com sucesso!");
+        abrirAlert("Post criado com sucesso!", "success");
         setOpenModal(false); // Fechar o modal após a criação do post
         onPostCreated(); // Chamar a função de callback para atualizar o estado no componente pai
     };
@@ -103,7 +103,6 @@ const CreatePostModal = ({ onPostCreated }) => {
     }, []);
 
     return (
-
         <Box>
             {/* Botão para abrir a modal */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
@@ -194,7 +193,6 @@ const CreatePostModal = ({ onPostCreated }) => {
                         <Button type="submit" variant="contained" sx={{ mt: '20px' }}>
                             Criar post
                         </Button>
-
                     </Box>
                 </Box>
             </Modal>

@@ -9,7 +9,8 @@ import { ref, get, remove, onValue } from 'firebase/database';
 import './post.css';
 import { database } from '../../service/firebase';
 import PostCard from './PostCard';
-import { fetchPosts } from './utils';
+import MyAlert from './Alert';
+import { fetchPosts, abrirAlert } from './utils';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -26,6 +27,9 @@ export default function Post({ member }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertSeverity, setAlertSeverity] = useState('success');
   const postsPerPage = 2;
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export default function Post({ member }) {
       setEditingPost(post);
       setIsEditModalOpen(true);
     } else {
-      alert("Você não tem permissão para editar esse post!");
+      abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Você não tem permissão para editar este post!", "error");
     }
   };
 
@@ -59,10 +63,10 @@ export default function Post({ member }) {
         await remove(postRef);
         setPosts((prevPosts) => prevPosts.filter((post) => post.id !== postId));
         setIsPostDeleted(true);
-        alert("Post deletado com sucesso!");
+        abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Post deletado com sucesso!", "success");
       }
     } else {
-      alert("Você não tem permissão para deletar este post!");
+      abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Você não tem permissão para deletar este post!", "error");
     }
   };
 
@@ -122,7 +126,10 @@ export default function Post({ member }) {
       }}>
       <Topbar onSearch={updateSearchTerm} /> {/* Passar handleSearchChange para Topbar */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <CreatePostModal onPostCreated={() => setIsPostCreated(true)} />
+        <CreatePostModal 
+          onPostCreated={() => setIsPostCreated(true)} 
+          abrirAlert={(message, severity) => abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)}
+        />
       </Box>
 
       <br />
@@ -166,6 +173,14 @@ export default function Post({ member }) {
         onPreviousPage={goToPreviousPage}
         onPageSelect={setCurrentPage}
       />
+
+      <MyAlert
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        message={alertMessage}
+        severity={alertSeverity}
+      />
+
     </Box>
   );
 }

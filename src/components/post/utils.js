@@ -4,6 +4,36 @@ import iconAulas from "../../assets/img/aula.png";
 import iconReforco from "../../assets/img/reforco.png";
 import iconRevisao from "../../assets/img/revisao.png";
 import iconTutoriais from "../../assets/img/tutorial.png";
+import axios from 'axios';
+
+const API_KEY = import.meta.env.VITE_API_KEY;
+
+export const fetchYouTubeComments = async (url) => {
+  const videoId = getYouTubeID(url);
+  if (!videoId) return [];
+
+  try {
+    const response = await axios.get('https://www.googleapis.com/youtube/v3/commentThreads', {
+      params: {
+        part: 'snippet',
+        videoId: videoId,
+        maxResults: 20,
+        key: API_KEY,
+      },
+    });
+
+    return response.data.items.map(item => ({
+      uidUsuario: item.snippet.topLevelComment.snippet.authorChannelId.value,
+      nome: item.snippet.topLevelComment.snippet.authorDisplayName,
+      comentario: item.snippet.topLevelComment.snippet.textDisplay,
+      data: item.snippet.topLevelComment.snippet.publishedAt,
+      foto: item.snippet.topLevelComment.snippet.authorProfileImageUrl, // Adicionando a URL da foto do autor
+    }));
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+};
 
 export const fetchPosts = async (member, searchTerm, filteredVideos, currentPage, postsPerPage) => {
   const postsData = await fetchPostsData();
@@ -92,3 +122,9 @@ export function getImage(tag) {
 
   return image;
 }
+
+export function abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity) {
+  setAlertMessage(message);
+  setAlertSeverity(severity);
+  setAlertOpen(true);
+};

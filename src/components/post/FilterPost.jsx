@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
 import { Card, CardContent, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
+import { abrirAlert } from "./utils";
+import MyAlert from "./Alert";
 import "./post.css";
 
 const FilterPostCard = ({ onFilter }) => {
@@ -9,6 +11,9 @@ const FilterPostCard = ({ onFilter }) => {
     const [loading, setLoading] = useState(false);
     const [tags, setTags] = useState([]);
     const [selectedFilterTags, setSelectedFilterTags] = useState([]);
+    const [alertOpen, setAlertOpen] = useState(false); // Estado para controlar a visibilidade do alerta
+    const [alertMessage, setAlertMessage] = useState(''); // Estado para a mensagem do alerta
+    const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta
 
     const handleTagFilterChange = (tag, isChecked) => {
         setSelectedFilterTags(prev => isChecked ? [...prev, tag] : prev.filter(t => t !== tag));
@@ -23,7 +28,7 @@ const FilterPostCard = ({ onFilter }) => {
         }
 
         if (selectedCategory.length === 0) {
-            alert("Selecione ao menos uma tag para filtrar os posts.");
+            abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Selecione ao menos uma tag para filtrar os posts.", "error");
             onFilter(undefined);
             return;
         }
@@ -144,8 +149,16 @@ const FilterPostCard = ({ onFilter }) => {
                     Filtrar
                 </Button>
 
+                <MyAlert
+                    open={alertOpen}
+                    onClose={() => setAlertOpen(false)}
+                    message={alertMessage}
+                    severity={alertSeverity}
+                />
+                
             </CardContent>
         </Card>
+
     );
 };
 
