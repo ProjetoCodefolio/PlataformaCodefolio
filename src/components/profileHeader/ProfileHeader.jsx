@@ -1,53 +1,39 @@
-// src/components/profileHeader/ProfileHeader.js
-import React from "react";
-import {
-  Avatar,
-  Box,
-  Grid,
-  Typography,
-  IconButton,
-  Button,
-} from "@mui/material";
-
+import React, { useEffect, useState } from "react";
+import { Avatar, Box, Grid, Typography, IconButton, Button } from "@mui/material";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import LinkedInIcon from "@mui/icons-material/LinkedIn";
-import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
-import { ref, get } from "firebase/database";
+import { ref, onValue } from "firebase/database";
 
 export default function ProfileHeader({ selectedButton, onTimelineClick, onMembersClick, onFotosClick }) {
-
-  const [posts, setPosts] = useState([]);
   const [quantidadePosts, setQuantidadePosts] = useState(0);
 
-  const fetchPosts = async () => {
+  useEffect(() => {
     const postsQuery = ref(database, "post");
 
-    const snapshot = await get(postsQuery);
-    const postsData = snapshot.val();
-    if (postsData) {
-      const postsList = Object.keys(postsData).map((key) => ({
-        id: key,
-        ...postsData[key],
-      })).reverse();
+    const unsubscribe = onValue(postsQuery, (snapshot) => {
+      const postsData = snapshot.val();
+      if (postsData) {
+        const postsList = Object.keys(postsData).map((key) => ({
+          id: key,
+          ...postsData[key],
+        })).reverse();
 
-      setPosts(postsList);
-    }
-  };
+        setQuantidadePosts(postsList.length);
+      } else {
+        setQuantidadePosts(0);
+      }
+    });
 
-  useEffect(() => {
-    fetchPosts();
+    // limpar listener ao desmontar componente
+    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    setQuantidadePosts(posts.length);
-  }, [posts]);
-
   return (
-
-    <><style>
-      {`
+    <>
+      <style>
+        {`
           .barra {
             color: black;
             text-transform: capitalize;
@@ -58,7 +44,7 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
             text-transform: capitalize;
           }
         `}
-    </style>
+      </style>
       <Box
         sx={{
           width: "100%",
@@ -91,7 +77,8 @@ export default function ProfileHeader({ selectedButton, onTimelineClick, onMembe
               left: "50%",
               transform: "translateX(-50%)",
               border: "4px solid white",
-            }} />
+            }}
+          />
         </Box>
         <Box sx={{ textAlign: "center", mt: 8, mb: 2 }}>
           <Typography variant="h5" component="h1">

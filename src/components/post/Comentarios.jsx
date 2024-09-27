@@ -6,42 +6,18 @@ import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
-import { getYouTubeID } from "./utils";
-import axios from 'axios';
-import './post.css'; // Importa o arquivo CSS
-
-const API_KEY = import.meta.env.VITE_API_KEY;
-
-export const fetchYouTubeComments = async (url) => {
-  const videoId = getYouTubeID(url);
-  if (!videoId) return [];
-
-  try {
-    const response = await axios.get('https://www.googleapis.com/youtube/v3/commentThreads', {
-      params: {
-        part: 'snippet',
-        videoId: videoId,
-        maxResults: 20,
-        key: API_KEY,
-      },
-    });
-
-    return response.data.items.map(item => ({
-      uidUsuario: item.snippet.topLevelComment.snippet.authorChannelId.value,
-      nome: item.snippet.topLevelComment.snippet.authorDisplayName,
-      comentario: item.snippet.topLevelComment.snippet.textDisplay,
-      data: item.snippet.topLevelComment.snippet.publishedAt,
-    }));
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    return [];
-  }
-};
+import MyAlert from './Alert';
+import { abrirAlert } from './utils';
+import './post.css'; 
 
 export default function Comentarios({ postId, comments, setComments }) {
   const { currentUser } = useAuth();
   const [comentario, setComentario] = useState('');
   const [showComments, setShowComments] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false); // Estado para controlar a visibilidade do alerta
+  const [alertMessage, setAlertMessage] = useState(''); // Estado para a mensagem do alerta
+  const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta
+  const quantidadeComentarios = comments[postId] ? comments[postId].length : 0;
 
   useEffect(() => {
     const postRef = ref(database, `post/${postId}`);
@@ -73,7 +49,8 @@ export default function Comentarios({ postId, comments, setComments }) {
       uidUsuario: currentUser.uid,
       nome: currentUser.displayName,
       comentario: comentario,
-      data: dataComentario
+      data: dataComentario,
+      foto: currentUser.photoURL // Adicionando a URL da foto do autor
     };
 
     const postRef = ref(database, `post/${postId}`);
@@ -90,9 +67,10 @@ export default function Comentarios({ postId, comments, setComments }) {
       }
 
       await update(postRef, { comentarios: comentarioPostar });
-      alert("Comentário postado com sucesso!");
+      abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Comentário postado com sucesso!", "success");
     } catch (error) {
       console.error("Erro ao postar comentário: ", error);
+      abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Erro ao postar comentário.", "error");
     }
   };
 
@@ -113,9 +91,9 @@ export default function Comentarios({ postId, comments, setComments }) {
 
       <button className="comentarios-toggleButton" onClick={() => setShowComments(!showComments)}>
         {showComments ? (
-          <> Ocultar Comentários <ArrowDropUpIcon /> </>
+          <> Ocultar Comentários ({quantidadeComentarios}) <ArrowDropUpIcon /> </>
         ) : (
-          <> Mostrar Comentários <ArrowDropDownIcon /> </>
+          <> Mostrar Comentários ({quantidadeComentarios}) <ArrowDropDownIcon /> </>
         )}
       </button>
 
@@ -123,13 +101,25 @@ export default function Comentarios({ postId, comments, setComments }) {
         <ul className="comentarios-commentList">
           {comments[postId].map((comentario, index) => (
             <li key={index} className="comentarios-commentItem">
-              <span className="comentarios-authorName">{comentario.nome}</span> - {comentario.comentario}
+              <img src={comentario.foto} alt={comentario.nome} className="comentarios-authorPhoto" />
+              <div className="comentarios-contentContainer">
+                <span className="comentarios-authorName">{comentario.nome}</span>
+                <span className="comentarios-content">{comentario.comentario}</span>
+              </div>
             </li>
           )).reverse()}
         </ul>
       ) : (
         showComments && <p>Não há comentários ainda!</p>
       )}
+
+      <MyAlert
+        open={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        message={alertMessage}
+        severity={alertSeverity}
+      />
+
     </div>
   );
 }

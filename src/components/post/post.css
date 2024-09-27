@@ -244,6 +244,9 @@
   margin-bottom: 10px;
   border-radius: 8px;
   background-color: #f9f9f9;
+  display: flex;
+  align-items: flex-start; /* Alinha os itens no início */
+  gap: 10px; /* Espaçamento entre a foto e o conteúdo */
 }
 
 .comentarios-authorName {
@@ -264,4 +267,30 @@
   align-items: center;
   justify-content: center;
   gap: 8px; /* Espaçamento entre o texto e o ícone */
+}
+
+.comentarios-authorPhoto {
+  width: 40px; /* Definir a largura da imagem */
+  height: 40px; /* Definir a altura da imagem */
+  border-radius: 50%; /* Tornar a imagem circular */
+  object-fit: cover; /* Garantir que a imagem se ajuste corretamente */
+}
+
+.comentarios-contentContainer {
+  display: flex;
+  flex-direction: column; /* Coloca o nome e o comentário em coluna */
+}
+
+.comentarios-authorName {
+  font-weight: bold;
+  margin-bottom: 5px;
+  display: flex;
+  justify-content: left !important;
+}
+
+.comentarios-content {
+  margin-top: 8px; /* Remove a margem superior */
+  display: flex;
+  justify-content: left !important;
+  text-align: left;
 }
