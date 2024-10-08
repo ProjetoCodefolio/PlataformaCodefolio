@@ -55,11 +55,16 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                     </Box>
                 </Box>
                 <Box className="postCenter">
-                    <Typography component="div" variant="h6" className="postText">
-                        <b>{post.nome}</b> <br /> {post.user}
+                    <Typography component="div" variant="h6" className="postTittle">
+                        <b>{post.nome}</b>
                     </Typography>
+
+                    {/* <Typography component="div" variant="h6" className="postUser">
+                        {post.user}
+                    </Typography> */}
                     {post.link ? (
                         <>
+                            <br />
                             <YouTube videoId={getYouTubeID(post.link)} />
                             <br />
                             <Tags tags={post.tags} />
