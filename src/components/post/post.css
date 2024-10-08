@@ -14,19 +14,28 @@
 .postTopRight {
   display: flex;
   justify-content: flex-end;
+  gap: 10px; /* Adiciona um gap entre os elementos */
 }
 
 .postUsername {
   font-weight: 500;
+  margin-right: 10px; /* Adiciona um espaço à direita */
 }
 
 .postDate {
   font-size: 14px;
   font-weight: 100;
+  margin-left: 10px; /* Adiciona um espaço à esquerda */
 }
 
-.postText {
+.postTittle {
   font-size: 15px;
+  margin-bottom: 10px; /* Adiciona um espaço abaixo */
+}
+
+.postUser {
+  row-gap: 10px;
+  margin-bottom: 10px; /* Adiciona um espaço abaixo */
 }
 
 .postProfileImage {

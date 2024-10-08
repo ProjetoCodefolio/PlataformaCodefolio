@@ -1,6 +1,6 @@
 .topbarContainer {
   background-color: #6A0DAD;
-  height: 70px;
+  height: 80px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -120,23 +120,30 @@
 
 .topbarIconCont {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  background-color: rgb(255, 255, 255);
+  flex-direction: column; /* Alinha ícone e texto verticalmente */
+  align-items: center; /* Alinha os ícones verticalmente ao centro */
+  justify-content: center; /* Alinha os ícones horizontalmente ao centro */
   height: 70px;
-  width: 80px;
-  margin-right: 0; /* Remove o espaço entre os ícones */
+  width: 70px;
+  margin-right: 5px; /* Remove o espaço entre os ícones */
   padding: 0; /* Remove qualquer padding extra */
+  color: white;
 }
 
 .topbarIconText {
   font-size: 15px;
-  color: black;
+  font-family: sans-serif;
+  color: white;
   margin-top: 2px; /* Espaço entre o ícone e o texto */
 }
 
 .topbarIconCont:hover {
-  background-color: gainsboro;
+  background-color: white;
+  color: black;
+
+  .topbarIconText {
+    color: black;
+  }
 }
 
 .topbarIconCont:active {

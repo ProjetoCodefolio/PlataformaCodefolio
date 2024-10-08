@@ -11,6 +11,7 @@ import { database } from '../../service/firebase';
 import PostCard from './PostCard';
 import MyAlert from './Alert';
 import { fetchPosts, abrirAlert } from './utils';
+import MyCard from './Card';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -126,8 +127,8 @@ export default function Post({ member }) {
       }}>
       <Topbar onSearch={updateSearchTerm} /> {/* Passar handleSearchChange para Topbar */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-        <CreatePostModal 
-          onPostCreated={() => setIsPostCreated(true)} 
+        <CreatePostModal
+          onPostCreated={() => setIsPostCreated(true)}
           abrirAlert={(message, severity) => abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)}
         />
       </Box>
@@ -140,6 +141,8 @@ export default function Post({ member }) {
         </Grid>
 
         <Grid item xs={8}>
+        <MyCard />
+        <br /> <br />
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
               <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
@@ -163,6 +166,8 @@ export default function Post({ member }) {
               />
             ))
           )}
+
+          <MyCard />
         </Grid>
       </Grid>
 
@@ -180,7 +185,6 @@ export default function Post({ member }) {
         message={alertMessage}
         severity={alertSeverity}
       />
-
     </Box>
   );
 }
