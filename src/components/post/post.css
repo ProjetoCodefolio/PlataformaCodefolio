@@ -31,6 +31,8 @@
 .postTittle {
   font-size: 15px;
   margin-bottom: 10px; /* Adiciona um espaço abaixo */
+  text-align: left;
+  margin-left: 3% !important;
 }
 
 .postUser {
@@ -49,13 +51,14 @@
 .postBottom {
   display: flex;
   justify-content: space-between;
+  margin-left: 3%;
 }
 
-.postBottomLeft {
+/* .postBottomLeft {
   display: flex;
   align-items: center;
   gap: 10px;
-}
+} */
 
 .likeIcon {
   height: 25px;
@@ -204,12 +207,12 @@
 /* Estilos para o componente Comentarios */
 .comentarios-container {
   max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
+  /* margin: 0 auto;
+  padding: 20px; */
+  margin-left: 3%;
   font-family: Arial, sans-serif;
   background-color: #ffffff;
   border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center; /* Centraliza o conteúdo horizontalmente */
@@ -224,7 +227,8 @@
 }
 
 .comentarios-input {
-  flex: 1; /* O input ocupa o espaço restante */
+  flex: none; /* O input ocupa o espaço restante */
+  width: 90% !important; /* Garante que o input ocupe toda a largura do contêiner */
   padding: 12px;
   border-radius: 20px;
   border: 1px solid #ccc;
@@ -276,6 +280,7 @@
   align-items: center;
   justify-content: center;
   gap: 8px; /* Espaçamento entre o texto e o ícone */
+  margin-left: 20% !important;
 }
 
 .comentarios-authorPhoto {
@@ -302,4 +307,9 @@
   display: flex;
   justify-content: left !important;
   text-align: left;
+}
+
+.ThumbUpIcon {
+  border: 1px solid #6A1B9A !important;
+  border-radius: 50px !important;
 }

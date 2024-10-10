@@ -109,16 +109,18 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     };
 
     return (
-        <Button onClick={computarLike} disabled={isUpdating}>
+        <Button onClick={computarLike} disabled={isUpdating} className="ThumbUpIcon">
             <ThumbUpIcon
                 style={{
                     width: '35px',
                     height: '35px',
                     marginRight: '8px',
-                    color: likedPosts[post.id] ? 'purple' : 'black',
+                    color: likedPosts[post.id] ? '#6a0dad' : 'black',
+                    marginLeft: '7%'
                 }}
             />
-            <Typography style={{ color: 'black' }}> {likes + likesYouTube} </Typography>
+            {/* <Typography style={{ color: 'black' }}> {likes + likesYouTube} </Typography> */}
+            <Typography style={{ color: 'black' }}> {likedPosts[post.id] ? 'Curtido' : 'Curtir'} </Typography>
         </Button>
     );
 });

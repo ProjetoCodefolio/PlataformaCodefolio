@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ref, get, update, onValue } from "firebase/database";
-import { IconButton } from "@mui/material";
+import { IconButton, Grid } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send'; // Ícone de envio
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
 import MyAlert from './Alert';
 import { abrirAlert } from './utils';
-import './post.css'; 
+import './post.css';
 
 export default function Comentarios({ postId, comments, setComments }) {
   const { currentUser } = useAuth();
@@ -76,50 +76,56 @@ export default function Comentarios({ postId, comments, setComments }) {
 
   return (
     <div className="comentarios-container">
-      <form onSubmit={handleSubmit} className="comentarios-form">
-        <input
-          type="text"
-          placeholder="Adicione um comentário..."
-          value={comentario}
-          onChange={(e) => setComentario(e.target.value)}
-          className="comentarios-input"
-        />
-        <IconButton type="submit" className="comentarios-button">
-          <SendIcon />
-        </IconButton>
-      </form>
+      <Grid container spacing={2}>
+        <Grid item xs={8}>
+          <form onSubmit={handleSubmit} className="comentarios-form">
+            <input
+              type="text"
+              placeholder="Adicione um comentário..."
+              value={comentario}
+              onChange={(e) => setComentario(e.target.value)}
+              className="comentarios-input"
+            />
+            <IconButton type="submit" className="comentarios-button">
+              <SendIcon />
+            </IconButton>
+          </form>
+        </Grid>
+        <Grid item xs={4}>
+          <button className="comentarios-toggleButton" onClick={() => setShowComments(!showComments)}>
+            {showComments ? (
+              <> Ocultar ({quantidadeComentarios}) <ArrowDropUpIcon /> </>
+            ) : (
+              <> Ver ({quantidadeComentarios}) <ArrowDropDownIcon /> </>
+            )}
+          </button>
+        </Grid>
 
-      <button className="comentarios-toggleButton" onClick={() => setShowComments(!showComments)}>
-        {showComments ? (
-          <> Ocultar Comentários ({quantidadeComentarios}) <ArrowDropUpIcon /> </>
+
+        {showComments && comments[postId] && comments[postId].length > 0 ? (
+          <ul className="comentarios-commentList">
+            {comments[postId].map((comentario, index) => (
+              <li key={index} className="comentarios-commentItem">
+                <img src={comentario.foto} alt={comentario.nome} className="comentarios-authorPhoto" />
+                <div className="comentarios-contentContainer">
+                  <span className="comentarios-authorName">{comentario.nome}</span>
+                  <span className="comentarios-content">{comentario.comentario}</span>
+                </div>
+              </li>
+            )).reverse()}
+          </ul>
         ) : (
-          <> Mostrar Comentários ({quantidadeComentarios}) <ArrowDropDownIcon /> </>
+          showComments && <p>Não há comentários ainda!</p>
         )}
-      </button>
 
-      {showComments && comments[postId] && comments[postId].length > 0 ? (
-        <ul className="comentarios-commentList">
-          {comments[postId].map((comentario, index) => (
-            <li key={index} className="comentarios-commentItem">
-              <img src={comentario.foto} alt={comentario.nome} className="comentarios-authorPhoto" />
-              <div className="comentarios-contentContainer">
-                <span className="comentarios-authorName">{comentario.nome}</span>
-                <span className="comentarios-content">{comentario.comentario}</span>
-              </div>
-            </li>
-          )).reverse()}
-        </ul>
-      ) : (
-        showComments && <p>Não há comentários ainda!</p>
-      )}
+        <MyAlert
+          open={alertOpen}
+          onClose={() => setAlertOpen(false)}
+          message={alertMessage}
+          severity={alertSeverity}
+        />
 
-      <MyAlert
-        open={alertOpen}
-        onClose={() => setAlertOpen(false)}
-        message={alertMessage}
-        severity={alertSeverity}
-      />
-
+      </Grid>
     </div>
   );
 }

@@ -125,7 +125,7 @@ export default function Post({ member }) {
         maxWidth: { xs: "100%", sm: "800px", md: "1200px" },
         mx: "auto"
       }}>
-      <Topbar onSearch={updateSearchTerm} /> {/* Passar handleSearchChange para Topbar */}
+      <Topbar onSearch={updateSearchTerm} />{/* Passar handleSearchChange para Topbar */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <CreatePostModal
           onPostCreated={() => setIsPostCreated(true)}
@@ -166,8 +166,6 @@ export default function Post({ member }) {
               />
             ))
           )}
-
-          <MyCard />
         </Grid>
       </Grid>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid } from '@mui/material';
 import PostMenu from './Menu';
 import MembroLink from '../MembroLink';
 import EditPostModal from './EditPost';
@@ -44,10 +44,6 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                         <Typography component="div" variant="h6" className="postUsername">
                             <MembroLink texto={post.user} user={post.uidUser} />
                         </Typography>
-                        -
-                        <Typography component="div" variant="h6" className="postDate">
-                            {post.data}
-                        </Typography>
                     </Box>
 
                     <Box className="postTopRight">
@@ -65,12 +61,11 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                     {post.link ? (
                         <>
                             <br />
-                            <YouTube videoId={getYouTubeID(post.link)} />
+                            <YouTube videoId={getYouTubeID(post.link)} opts={{ width: "95%", heigth: "95%" }} />
                             <br />
-                            <Tags tags={post.tags} />
+                            { /*<Tags tags={post.tags} />*/}
                             <br />
-                            <br />
-                            <Comentarios postId={post.id} comments={comments} setComments={setComments} />
+                            { /*<Comentarios postId={post.id} comments={comments} setComments={setComments} />*/}
                         </>
                     ) : (
                         <img
@@ -79,13 +74,21 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                             alt={post.user} />
                     )}
                 </Box>
-                <Box className="postBottom">
-                    <Box className="postBottomLeft">
-                        <Box style={{ display: "flex" }}>
-                            <Likes post={post} onLikeUpdate={updateLikes} />
+                <Grid container spacing={2}>
+                    <Grid item xs={2}>
+                        <Box className="postBottom">
+                            <Box className="postBottomLeft">
+                                <Box style={{ display: "flex" }}>
+                                    <Likes post={post} onLikeUpdate={updateLikes} />
+                                </Box>
+                            </Box>
                         </Box>
-                    </Box>
-                </Box>
+                    </Grid>
+                    <Grid item xs={10}>
+                        <Comentarios postId={post.id} comments={comments} setComments={setComments} />
+
+                    </Grid>
+                </Grid>
                 {(userRole === 'admin' || currentUser.uid === post.uidUser) && (
                     <>
                         {isEditModalOpen && (

@@ -38,12 +38,7 @@ export default function Home({ showCreatePost }) {
       <Box className="homeContainer">
         <Box className="feed">
           <Box className="feedWrapper">
-            <ProfileHeader
-              selectedButton={selectedButton}
-              onTimelineClick={handleTimelineClick}
-              onMembersClick={handleMembersClick}
-              onFotosClick={handleFotosClick}
-            />
+            
 
             {view === "timeline" && <Post searchTerm={searchTerm} />} {/* Passa o termo de pesquisa para o Post */}
             {view === "members" && <Members />}
