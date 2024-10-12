@@ -1,0 +1,31 @@
+.ButtonWrapper {
+    display: flex;
+    margin: 20px auto;
+    position: relative;
+    width: 70%;
+    height: 100px;
+    justify-content: space-between;
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.BtnSpecs {
+    color: black;
+    font-size: 16px;
+    font-weight: 700;
+    width: 33.5%;
+    align-items: center;
+}
+
+.BtnSpecs.active {
+    color: white;
+    background-color: #6A0DAD;
+}
+
+#first {
+    border-radius: 20px 0 0 20px;
+}
+
+#third {
+    border-radius: 0 20px 20px 0;
+}
