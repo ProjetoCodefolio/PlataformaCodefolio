@@ -162,7 +162,7 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                             <Typography component="div" variant="body1">Pré-visualização:</Typography>
                             <iframe
                                 width="100%"
-                                height="400"
+                                height="300"
                                 src={generateEmbedURL(previewLink)}
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

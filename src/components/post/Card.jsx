@@ -7,7 +7,7 @@ import CreatePostModal from "./CreatePost"; // Importar o novo modal
 import MyAlert from './Alert'; // Importar o componente de alerta
 import "./post.css";
 
-const MyCard = ({ userPhoto }) => {
+const MyCard = ({ userPhoto, setIsPostCreated }) => {
     const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');
@@ -44,7 +44,7 @@ const MyCard = ({ userPhoto }) => {
                 <Stack direction="row" spacing={2} alignItems="center">
                     {/* Placeholder para a foto */}
                     <Avatar
-                        src={codefolioImage}
+                        src={userPhoto}
                         alt="User Avatar"
                         sx={{ width: 48, height: 48 }}
                     />
@@ -130,7 +130,7 @@ const MyCard = ({ userPhoto }) => {
             <CreatePostModal
                 open={isMediaModalOpen}
                 onClose={handleCloseMediaModal}
-                onPostCreated={() => abrirAlert("Post criado com sucesso!", "success")}
+                onPostCreated={() => {abrirAlert("Post criado com sucesso!", "success"); setIsPostCreated(true);}}
                 abrirAlert={abrirAlert}
                 modalTitle="Adicionar post de mídia"
             />

@@ -1,0 +1,76 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+/* Remove a margem padrão do corpo */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Oculta qualquer conteúdo que ultrapasse os limites da tela */
+  font-family: 'DoubleBass', sans-serif !important;
+  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+}
+
+/* Container principal com gradiente de fundo */ 
+.container {
+  min-height: 100vh;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(110deg, #9041c1, #6A1B9A);
+  color: white;
+  text-align: left;
+  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+}
+
+/* Container do conteúdo alinhado à esquerda */
+.content-page {
+  width: 100%;
+  margin-top: 21%;
+  font-size: 280% !important;
+  display: flex;
+  flex-direction: column;
+  margin-top: 10%;
+  padding-left: 5% !important;
+  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+}
+
+.paragrapher {
+  font-size: 130%;
+  font-family: 'Fredoka One', sans-serif !important;
+  line-height: 1.2;
+}
+
+.btn {
+  width: 30%;
+  height: 30%;
+}
+
+.btn-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 5%;
+  margin-bottom: 10%;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.header-logo {
+  width: 100px;
+  height: 50px;
+  margin-left: 3%;
+}
+
+.header-logo:hover {
+  cursor: pointer;
+}
+
+.header-content {
+  margin-right: 3%;
+}

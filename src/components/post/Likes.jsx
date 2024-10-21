@@ -1,50 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { ref, get, update } from "firebase/database";
-import { Button, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import { useAuth } from "../../context/AuthContext";
 import { database } from "../../service/firebase";
-import { getYouTubeID } from "./utils";
-import axios from 'axios';
 
 const Likes = React.memo(({ post, onLikeUpdate }) => {
-    const [likes, setLikes] = useState(post.likes ? post.likes.length : 0);
-    const [likesYouTube, setLikesYouTube] = useState(0);
     const [likedPosts, setLikedPosts] = useState({});
+    const [dislikedPosts, setDislikedPosts] = useState({});
     const [isUpdating, setIsUpdating] = useState(false);
     const { currentUser } = useAuth();
-    const API_KEY = import.meta.env.VITE_API_KEY;
 
     useEffect(() => {
         verificarLike(post.id);
+        verificarDislike(post.id);
     }, [post.id]);
-
-    useEffect(() => {
-        if (post.link) {
-            const videoId = getYouTubeID(post.link);
-            if (videoId) {
-                getLikesYouTubeCount(videoId).then(setLikesYouTube);
-            }
-        }
-    }, [post.link]);
-
-    const getLikesYouTubeCount = async (videoId) => {
-        try {
-          const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-            params: {
-              part: 'statistics',
-              id: videoId,
-              key: API_KEY,
-            },
-          });
-          const likeCount = response.data.items[0].statistics.likeCount;
-          return parseInt(likeCount, 10); // Certifique-se de retornar um número
-        } catch (error) {
-          console.error('Error fetching likes:', error);
-          return 0; // Retorne 0 em caso de erro
-        }
-      };
-
+    
     const computarLike = async () => {
         if (isUpdating) return; // Evitar múltiplas atualizações simultâneas
         setIsUpdating(true);
@@ -56,38 +28,90 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
             const postData = snapshot.val();
 
             let updatedLikes = [];
-            if (postData && postData.likes) {
-                const userLikeIndex = postData.likes.findIndex(like => like.uidUsuario === currentUser.uid);
-                if (userLikeIndex !== -1) {
-                    updatedLikes = postData.likes.filter((_, index) => index !== userLikeIndex);
-                } else {
-                    updatedLikes = [...postData.likes, {
-                        uidUsuario: currentUser.uid,
-                        nome: currentUser.displayName,
-                        data: new Date().toLocaleDateString()
-                    }];
-                }
+            let updatedDislikes = postData.dislikes || [];
+
+            const userLikeIndex = postData.likes ? postData.likes.findIndex(like => like.uidUsuario === currentUser.uid) : -1;
+            const userDislikeIndex = postData.dislikes ? postData.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid) : -1;
+
+            if (userLikeIndex !== -1) {
+                updatedLikes = postData.likes.filter((_, index) => index !== userLikeIndex);
             } else {
-                updatedLikes = [{
+                updatedLikes = [...(postData.likes || []), {
                     uidUsuario: currentUser.uid,
                     nome: currentUser.displayName,
                     data: new Date().toLocaleDateString()
                 }];
+                if (userDislikeIndex !== -1) {
+                    updatedDislikes = postData.dislikes.filter((_, index) => index !== userDislikeIndex);
+                }
             }
 
             // Atualizar o estado localmente
-            setLikes(updatedLikes.length);
             setLikedPosts((prevLikedPosts) => ({
                 ...prevLikedPosts,
                 [post.id]: updatedLikes.some(like => like.uidUsuario === currentUser.uid),
             }));
+            setDislikedPosts((prevDislikedPosts) => ({
+                ...prevDislikedPosts,
+                [post.id]: false,
+            }));
 
-            // Atualizar o post.likes no componente pai
-            onLikeUpdate(post.id, updatedLikes);
+            // Atualizar o post.likes e post.dislikes no componente pai
+            onLikeUpdate(post.id, updatedLikes, updatedDislikes);
 
-            await update(postRef, { likes: updatedLikes });
+            await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
         } catch (error) {
             console.error("Erro ao atualizar likes:", error);
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const computarDislike = async () => {
+        if (isUpdating) return; // Evitar múltiplas atualizações simultâneas
+        setIsUpdating(true);
+
+        const postRef = ref(database, `post/${post.id}`);
+
+        try {
+            const snapshot = await get(postRef);
+            const postData = snapshot.val();
+
+            let updatedDislikes = [];
+            let updatedLikes = postData.likes || [];
+
+            const userDislikeIndex = postData.dislikes ? postData.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid) : -1;
+            const userLikeIndex = postData.likes ? postData.likes.findIndex(like => like.uidUsuario === currentUser.uid) : -1;
+
+            if (userDislikeIndex !== -1) {
+                updatedDislikes = postData.dislikes.filter((_, index) => index !== userDislikeIndex);
+            } else {
+                updatedDislikes = [...(postData.dislikes || []), {
+                    uidUsuario: currentUser.uid,
+                    nome: currentUser.displayName,
+                    data: new Date().toLocaleDateString()
+                }];
+                if (userLikeIndex !== -1) {
+                    updatedLikes = postData.likes.filter((_, index) => index !== userLikeIndex);
+                }
+            }
+
+            // Atualizar o estado localmente
+            setDislikedPosts((prevDislikedPosts) => ({
+                ...prevDislikedPosts,
+                [post.id]: updatedDislikes.some(dislike => dislike.uidUsuario === currentUser.uid),
+            }));
+            setLikedPosts((prevLikedPosts) => ({
+                ...prevLikedPosts,
+                [post.id]: false,
+            }));
+
+            // Atualizar o post.likes e post.dislikes no componente pai
+            onLikeUpdate(post.id, updatedLikes, updatedDislikes);
+
+            await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
+        } catch (error) {
+            console.error("Erro ao atualizar dislikes:", error);
         } finally {
             setIsUpdating(false);
         }
@@ -108,20 +132,59 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
         }
     };
 
+    const verificarDislike = (postId) => {
+        if (post.dislikes) {
+            const userDislikeIndex = post.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid);
+            setDislikedPosts((prevDislikedPosts) => ({
+                ...prevDislikedPosts,
+                [postId]: userDislikeIndex !== -1,
+            }));
+        } else {
+            setDislikedPosts((prevDislikedPosts) => ({
+                ...prevDislikedPosts,
+                [postId]: false,
+            }));
+        }
+    };
+
     return (
-        <Button onClick={computarLike} disabled={isUpdating} className="ThumbUpIcon">
-            <ThumbUpIcon
-                style={{
-                    width: '35px',
-                    height: '35px',
-                    marginRight: '8px',
-                    color: likedPosts[post.id] ? '#6a0dad' : 'black',
-                    marginLeft: '7%'
-                }}
-            />
-            {/* <Typography style={{ color: 'black' }}> {likes + likesYouTube} </Typography> */}
-            <Typography style={{ color: 'black' }}> {likedPosts[post.id] ? 'Curtido' : 'Curtir'} </Typography>
-        </Button>
+        <>
+            <div className='ThumbUpIcon'>
+                <div className='like' style={{
+                    borderRadius: '50px',
+                    backgroundColor: likedPosts[post.id] ? '#6A1B9A' : 'white',
+                }}>
+                    <Button onClick={computarLike} disabled={isUpdating} className="">
+                        <ThumbUpIcon
+                            style={{
+                                width: '30px',
+                                height: '30px',
+                                marginRight: '8px',
+                                color: likedPosts[post.id] ? 'white' : 'black',
+                                marginLeft: '7%'
+                            }}
+                        />
+                    </Button>
+                </div>
+                {/* <p>|</p> */}
+                <div className='dislike' style={{
+                    borderRadius: '50px',
+                    backgroundColor: dislikedPosts[post.id] ? '#3E3E3E' : 'white',
+                }}>
+                    <Button onClick={computarDislike} disabled={isUpdating} className="">
+                        <ThumbDownIcon
+                            style={{
+                                width: '30px',
+                                height: '30px',
+                                marginRight: '8px',
+                                color: dislikedPosts[post.id] ? 'white' : 'black',
+                                marginLeft: '7%'
+                            }}
+                        />
+                    </Button>
+                </div>
+            </div>
+        </>
     );
 });
 

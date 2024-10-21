@@ -140,7 +140,7 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                             <Typography component="div" variant="body1">Pré-visualização:</Typography>
                             <iframe
                                 width="100%"
-                                height="400"
+                                height="300"
                                 src={videoEmbedURL}
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

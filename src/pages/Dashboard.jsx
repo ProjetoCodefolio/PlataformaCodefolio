@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./home.css";
 import Topbar from "../components/topbar/Topbar";
 import { Box } from "@mui/material";

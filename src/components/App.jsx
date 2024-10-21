@@ -16,21 +16,16 @@ import ProfileHeader from "../pages/profile";
 import MembersPage from "../pages/members";
 import FotosPage from "../pages/fotos";
 import MembroPage from "../pages/membro";
-import Post from './post/Post';
+import Portifolios from "../pages/portifolios";
+import Projetos from '../pages/projetos';
+import InitialPage from '../pages/InitialPage';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route
-            path="/"
-            element={
-              <PrivateRoute>
-                <Dashboard />
-              </PrivateRoute>
-            }
-          />
+          <Route path="/" element={<InitialPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -72,7 +67,22 @@ function App() {
               <MembroPage />
             </PrivateRoute>
           } />
-          <Route path="/" element={<Post />} /> {/* Rota inicial que renderiza Post */}
+          <Route
+            path='/portifolios'
+            element={
+              <PrivateRoute>
+                <Portifolios />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path='/projetos'
+            element={
+              <PrivateRoute>
+                <Projetos />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
@@ -80,7 +90,7 @@ function App() {
 }
 
 function PrivateRoute({ children }) {
-  const { currentUser } = useAuth(); 
+  const { currentUser } = useAuth();
   const location = useLocation();
 
   if (!currentUser) {

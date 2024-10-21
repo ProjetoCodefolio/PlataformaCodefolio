@@ -14,30 +14,30 @@
 .postTopRight {
   display: flex;
   justify-content: flex-end;
-  gap: 10px; /* Adiciona um gap entre os elementos */
+  gap: 10px;
 }
 
 .postUsername {
   font-weight: 500;
-  margin-right: 10px; /* Adiciona um espaço à direita */
+  margin-right: 10px;
 }
 
 .postDate {
   font-size: 14px;
   font-weight: 100;
-  margin-left: 10px; /* Adiciona um espaço à esquerda */
+  margin-left: 10px;
 }
 
 .postTittle {
   font-size: 15px;
-  margin-bottom: 10px; /* Adiciona um espaço abaixo */
+  margin-bottom: 10px;
   text-align: left;
   margin-left: 3% !important;
 }
 
 .postUser {
   row-gap: 10px;
-  margin-bottom: 10px; /* Adiciona um espaço abaixo */
+  margin-bottom: 10px;
 }
 
 .postProfileImage {
@@ -52,13 +52,8 @@
   display: flex;
   justify-content: space-between;
   margin-left: 3%;
+  justify-content: right !important;
 }
-
-/* .postBottomLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-} */
 
 .likeIcon {
   height: 25px;
@@ -116,40 +111,42 @@
 
 .tags-container {
   display: inline-flex;
-  justify-content: center; /* Centraliza as tags horizontalmente */
-  flex-wrap: wrap; /* Permite que as tags "quebrem linha" se necessário */
-  gap: 20px; /* Espaçamento entre as tags */
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
   padding: 20px;
 }
 
 .tag {
   display: flex;
   align-items: center;
-  background-color: #e6f2ff; /* Cor de fundo suave */
-  border-radius: 10px; /* Bordas arredondadas */
+  background-color: #e6f2ff;
+  border-radius: 10px;
   padding: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Sombra suave */
-  transition: background-color 0.3s ease; /* Animação suave ao passar o mouse */
-  width: fit-content; /* Garante que a tag se ajuste ao conteúdo */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+  width: fit-content;
 }
 
 .tag:hover {
-  background-color: #d0e7ff; /* Cor ao passar o mouse */
+  background-color: #d0e7ff;
+  /* Cor ao passar o mouse */
 }
 
 .icon {
-  width: 40px; /* Tamanho do ícone */
+  width: 40px;
+  /* Tamanho do ícone */
   height: 40px;
-  margin-right: 10px; /* Espaçamento entre o ícone e o texto */
+  margin-right: 10px;
+  /* Espaçamento entre o ícone e o texto */
 }
 
 .texto {
   font-size: 16px;
-  color: #007bff; /* Cor do texto */
+  color: #007bff;
   font-family: Arial, sans-serif;
   font-weight: bold;
 }
-
 
 
 /* Estilo do modal box */
@@ -204,51 +201,64 @@
   background-color: #e0e0e0;
 }
 
-/* Estilos para o componente Comentarios */
-.comentarios-container {
-  max-width: 600px;
-  /* margin: 0 auto;
-  padding: 20px; */
-  margin-left: 3%;
-  font-family: Arial, sans-serif;
-  background-color: #ffffff;
-  border-radius: 8px;
+.show-comments-container {
   display: flex;
   flex-direction: column;
-  align-items: center; /* Centraliza o conteúdo horizontalmente */
+  align-items: center;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 600px;
 }
 
+.comentarios-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .comentarios-form {
   display: flex;
-  flex-direction: row; /* Altera para deixar input e botão lado a lado */
   align-items: center;
-  margin-bottom: 20px;
-  width: 100%; /* Garante que o formulário ocupe toda a largura do contêiner */
+  width: 80%;
 }
 
-.comentarios-input {
-  flex: none; /* O input ocupa o espaço restante */
-  width: 90% !important; /* Garante que o input ocupe toda a largura do contêiner */
-  padding: 12px;
-  border-radius: 20px;
+.comentarios-input-container {
+  display: flex;
+  align-items: center;
+  width: 94% !important;
   border: 1px solid #ccc;
-  font-size: 16px;
+  border-radius: 20px;
+  padding: 0 8px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
+.comentarios-input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 20px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  outline: none;
+}
+
 .comentarios-button {
-  background-color: #6A1B9A !important;
-  color: #fff !important;
-  margin-left: 10px !important; /* Espaçamento entre o input e o botão */
+  padding: 8px;
+  border-radius: 0 20px 20px 0;
   border: none;
+  background-color: #007bff;
+  color: white;
   cursor: pointer;
+}
+
+
+.comentarios-button:hover {
+  background-color: #f0f0f0;
 }
 
 .comentarios-commentList {
   list-style: none;
-  padding: 0;
+  padding-top: 1%;
   margin: 0;
-  width: 100%; /* Garante que a lista ocupe toda a largura do contêiner */
+  width: 100%;
 }
 
 .comentarios-commentItem {
@@ -258,8 +268,8 @@
   border-radius: 8px;
   background-color: #f9f9f9;
   display: flex;
-  align-items: flex-start; /* Alinha os itens no início */
-  gap: 10px; /* Espaçamento entre a foto e o conteúdo */
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .comentarios-authorName {
@@ -268,31 +278,34 @@
 }
 
 .comentarios-toggleButton {
-  background-color: #6A1B9A;
-  color: #fff;
-  padding: 8px 16px;
+  background-color: #f0f0f0;
   border: none;
   border-radius: 20px;
+  padding: 8px 16px;
   cursor: pointer;
   font-size: 16px;
-  margin-bottom: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px; /* Espaçamento entre o texto e o ícone */
-  margin-left: 20% !important;
+  width: 20%;
+  margin-left: 10px;
 }
 
+.comentarios-toggleButton:hover {
+  background-color: #e0e0e0;
+}
+
+
 .comentarios-authorPhoto {
-  width: 40px; /* Definir a largura da imagem */
-  height: 40px; /* Definir a altura da imagem */
-  border-radius: 50%; /* Tornar a imagem circular */
-  object-fit: cover; /* Garantir que a imagem se ajuste corretamente */
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .comentarios-contentContainer {
   display: flex;
-  flex-direction: column; /* Coloca o nome e o comentário em coluna */
+  flex-direction: column;
 }
 
 .comentarios-authorName {
@@ -303,13 +316,84 @@
 }
 
 .comentarios-content {
-  margin-top: 8px; /* Remove a margem superior */
+  margin-top: 8px;
   display: flex;
   justify-content: left !important;
   text-align: left;
 }
 
 .ThumbUpIcon {
-  border: 1px solid #6A1B9A !important;
+  border: none !important;
   border-radius: 50px !important;
+  color: #000 !important;
+  display: flex !important;
+  margin-right: 80px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100%;
+  height: 100%;
+}
+
+.info-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  padding-top: 1%;
+}
+
+.info-comentarios {
+  display: flex;
+  align-items: right;
+  margin-right: 3% !important;
+  gap: 10px;
+}
+
+.info-likes {
+  display: flex;
+  align-items: left;
+  margin-left: 3% !important;
+  gap: 10px;
+}
+
+.divisor {
+  display: flex;
+  justify-content: center;
+  width: 95%;
+  border-bottom: 1px solid #ccc !important;
+  margin: 10px auto !important;
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.share-button {
+  border: none !important;
+  border-radius: 50px !important;
+  font-size: medium !important;
+  color: #000 !important;
+  display: flex !important;
+  margin-left: auto !important;
+  margin-right: 10px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100%;
+  height: 100%;
+}
+
+.comment-button {
+  border: none !important;
+  border-radius: 50px !important;
+  color: #000 !important;
+  display: flex !important;
+  margin-right: 10px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100%;
+  height: 100%;
+}
+
+.comenments-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }

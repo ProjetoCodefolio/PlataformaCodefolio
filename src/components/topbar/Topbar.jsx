@@ -79,21 +79,21 @@ export default function Topbar({ onSearch }) {
 
           <Box className="topbarRight">
             <Box className="topbarIcons">
-              <Link to="/" style={{ textDecoration: "none" }}>
+              <Link to="/dashboard" style={{ textDecoration: "none" }}>
                 <Box className="topbarIconCont">
-                  <Home style={{ fontSize: 32, /*color: 'black'*/ }} />
+                  <Home style={{ fontSize: 32 }} />
                   <span className="topbarIconText">Home</span>
                 </Box>
               </Link>
-              <Link to="/portfolios" style={{ textDecoration: "none" }}>
+              <Link to="/portifolios" style={{ textDecoration: "none" }}>
                 <Box className="topbarIconCont">
-                  <Work style={{ fontSize: 32, /* color: 'black' */}} />
+                  <Work style={{ fontSize: 32 }} />
                   <span className="topbarIconText">Portfólios</span>
                 </Box>
               </Link>
-              <Link to="/projects" style={{ textDecoration: "none" }}>
+              <Link to="/projetos" style={{ textDecoration: "none" }}>
                 <Box className="topbarIconCont">
-                  <Assignment style={{ fontSize: 32, /* color: 'black' */ }} />
+                  <Assignment style={{ fontSize: 32 }} />
                   <span className="topbarIconText">Projetos</span>
                 </Box>
               </Link>

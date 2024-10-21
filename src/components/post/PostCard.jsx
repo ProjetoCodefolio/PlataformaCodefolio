@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Card, CardContent, Typography, Grid } from '@mui/material';
+import { Box, Card, CardContent, Typography, Grid, Divider } from '@mui/material';
 import PostMenu from './Menu';
 import MembroLink from '../MembroLink';
 import EditPostModal from './EditPost';
-import Comentarios from './Comentarios';
+import AddComment from './AddComment';
+import ShowComments from './ShowComments';
 import Likes from './Likes';
 import YouTube from 'react-youtube';
 import './post.css';
 import { getYouTubeID } from './utils';
+import Informacoes from './Informacoes';
+import MyShare from './MyShare';
 import Tags from './PostTags';
 
 function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost, Delete, comments, setComments, updateLikes, userRole, currentUser, onPostEdited }) {
     const [isPostEdited, setIsPostEdited] = useState(false);
+    const [showAddComment, setShowAddComment] = useState(false); // Estado para controlar a exibição de AddComment
 
     useEffect(() => {
         if (isPostEdited) {
@@ -55,16 +59,13 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                         <b>{post.nome}</b>
                     </Typography>
 
-                    {/* <Typography component="div" variant="h6" className="postUser">
-                        {post.user}
-                    </Typography> */}
                     {post.link ? (
                         <>
-                            <br />
+                            <Divider className='divisor' />
                             <YouTube videoId={getYouTubeID(post.link)} opts={{ width: "95%", heigth: "95%" }} />
-                            <br />
+                            {/* <Divider className='divisor' /> */}
                             { /*<Tags tags={post.tags} />*/}
-                            <br />
+                            {/* <Divider className='divisor' /> */}
                             { /*<Comentarios postId={post.id} comments={comments} setComments={setComments} />*/}
                         </>
                     ) : (
@@ -74,8 +75,13 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                             alt={post.user} />
                     )}
                 </Box>
-                <Grid container spacing={2}>
-                    <Grid item xs={2}>
+
+                <Informacoes post={post} comments={comments} setComments={setComments} />
+
+                <Divider className='divisor' />
+
+                <Grid container spacing={3}>
+                    <Grid item xs={4}>
                         <Box className="postBottom">
                             <Box className="postBottomLeft">
                                 <Box style={{ display: "flex" }}>
@@ -84,11 +90,21 @@ function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost
                             </Box>
                         </Box>
                     </Grid>
-                    <Grid item xs={10}>
-                        <Comentarios postId={post.id} comments={comments} setComments={setComments} />
-
+                    <Grid item xs={4}>
+                        <ShowComments onShowComments={() => setShowAddComment(showAddComment ? false : true)} />
+                    </Grid>
+                    <Grid item xs={4}>
+                        <MyShare post={post} />
                     </Grid>
                 </Grid>
+
+                {showAddComment && (
+                    <>
+                        <Divider className='divisor' />
+                        <AddComment postId={post.id} comments={comments} setComments={setComments} />
+                    </>
+                )}
+
                 {(userRole === 'admin' || currentUser.uid === post.uidUser) && (
                     <>
                         {isEditModalOpen && (
