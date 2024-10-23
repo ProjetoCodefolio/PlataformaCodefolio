@@ -19,6 +19,7 @@ import MembroPage from "../pages/membro";
 import Portifolios from "../pages/portifolios";
 import Projetos from '../pages/projetos';
 import InitialPage from '../pages/InitialPage';
+import InitiativesPage from '../pages/InitiativesPage';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<InitialPage />} />
+          <Route path='/iniciativas' element={<InitiativesPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />

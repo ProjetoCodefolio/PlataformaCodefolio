@@ -1,15 +1,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
 
 /* Remove a margem padrão do corpo */
 body {
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Oculta qualquer conteúdo que ultrapasse os limites da tela */
-  font-family: 'DoubleBass', sans-serif !important;
-  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+  font-family: 'Poppins', sans-serif !important;
+  box-sizing: border-box;
 }
 
-/* Container principal com gradiente de fundo */ 
+/* Container principal com gradiente de fundo */
 .container {
   min-height: 100vh;
   max-width: 100%;
@@ -20,30 +20,39 @@ body {
   background: linear-gradient(110deg, #9041c1, #6A1B9A);
   color: white;
   text-align: left;
-  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+  box-sizing: border-box;
 }
 
 /* Container do conteúdo alinhado à esquerda */
-.content-page {
+.content-initial-page {
   width: 100%;
-  margin-top: 21%;
   font-size: 280% !important;
   display: flex;
   flex-direction: column;
-  margin-top: 10%;
+  margin-top: 15%;
   padding-left: 5% !important;
-  box-sizing: border-box; /* Inclui preenchimento e borda na largura e altura totais */
+  box-sizing: border-box;
 }
 
 .paragrapher {
   font-size: 130%;
-  font-family: 'Fredoka One', sans-serif !important;
+  font-family: 'Poppins', sans-serif !important;
   line-height: 1.2;
 }
 
+.complementar-text {
+  font-size: 40%;
+  margin-left: 3%;
+  margin-top: -2%;
+}
+
 .btn {
-  width: 30%;
-  height: 30%;
+  border-radius: 10px !important;
+  border: solid 1px white !important;
+  background-color: #6A1B9A;
+  color: white !important;
+  width: 100%;
+  height: 100%;
 }
 
 .btn-container {
@@ -56,9 +65,11 @@ body {
 
 .header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   width: 100%;
+  position: fixed;
+  top: 0;
+  z-index: 1000 !important;
 }
 
 .header-logo {
@@ -71,6 +82,71 @@ body {
   cursor: pointer;
 }
 
-.header-content {
+.header-links {
+  display: flex;
+  margin-left: auto;
   margin-right: 3%;
+}
+
+.header-content {
+  margin-left: 20px;
+  font-size: 130%;
+  font-family: 'Poppins', sans-serif !important;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.header-content.active {
+  color: black; /* Estilização quando a seção correspondente está visível */
+  text-decoration: underline;
+}
+
+.content-pages {
+  width: 100%;
+  font-size: 280% !important;
+  display: flex;
+  flex-direction: column;
+  margin-top: 15%;
+  padding-left: 5% !important;
+  box-sizing: border-box;
+}
+
+.section {
+  min-height: 100vh; /* Para garantir que a seção seja grande o suficiente para ser observada */
+}
+
+/* card */
+
+.card-container {
+  display: flex;
+  justify-content: center;
+  align-items: cen  ter;
+  margin-top: 20px;
+  gap: 20px;
+
+}
+
+.card {
+  background-color: #1e1e1e;
+  color: #fff;
+  width: 90%;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 16px rgba(82, 137, 255, 0.2);
+}
+
+h4 {
+  margin: 0 0 10px;
+}
+
+.class {
+  font-size: 40%;
+  line-height: 1.5;
 }
