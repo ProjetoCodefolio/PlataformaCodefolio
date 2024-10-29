@@ -1,15 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
 
-/* Remove a margem padrão do corpo */
 body {
   margin: 0;
   padding: 0;
   font-family: 'Poppins', sans-serif !important;
+  font-weight: 400; /* Define o peso da fonte como regular */
   box-sizing: border-box;
 }
 
-/* Container principal com gradiente de fundo */
 .container {
   min-height: 100vh;
   max-width: 100%;
@@ -23,20 +22,10 @@ body {
   box-sizing: border-box;
 }
 
-/* Container do conteúdo alinhado à esquerda */
-.content-initial-page {
-  width: 100%;
-  font-size: 280% !important;
-  display: flex;
-  flex-direction: column;
-  margin-top: 15%;
-  padding-left: 5% !important;
-  box-sizing: border-box;
-}
-
 .paragrapher {
   font-size: 130%;
   font-family: 'Poppins', sans-serif !important;
+  font-weight:bold; /* Define o peso da fonte como regular */
   line-height: 1.2;
 }
 
@@ -44,6 +33,16 @@ body {
   font-size: 40%;
   margin-left: 3%;
   margin-top: -2%;
+  text-emphasis: none;
+  font-family: 'Poppins', sans-serif !important;
+  font-weight: 400; /* Define o peso da fonte como regular */
+}
+
+.btn-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10%;
 }
 
 .btn {
@@ -51,16 +50,8 @@ body {
   border: solid 1px white !important;
   background-color: #6A1B9A;
   color: white !important;
-  width: 100%;
+  width: 10%;
   height: 100%;
-}
-
-.btn-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 5%;
-  margin-bottom: 10%;
 }
 
 .header {
@@ -72,10 +63,16 @@ body {
   z-index: 1000 !important;
 }
 
+.header-background {
+  background-color: rgba(122, 28, 180, 0.8);
+  transition: background-color 0.3s ease;
+}
+
 .header-logo {
   width: 100px;
   height: 50px;
   margin-left: 3%;
+  margin-top: 1%;
 }
 
 .header-logo:hover {
@@ -86,6 +83,7 @@ body {
   display: flex;
   margin-left: auto;
   margin-right: 3%;
+  margin-top: 1%;
 }
 
 .header-content {
@@ -97,7 +95,7 @@ body {
 }
 
 .header-content.active {
-  color: black; /* Estilização quando a seção correspondente está visível */
+  color: black;
   text-decoration: underline;
 }
 
@@ -106,34 +104,63 @@ body {
   font-size: 280% !important;
   display: flex;
   flex-direction: column;
-  margin-top: 15%;
+  margin-top: 10%;
   padding-left: 5% !important;
   box-sizing: border-box;
 }
 
-.section {
-  min-height: 100vh; /* Para garantir que a seção seja grande o suficiente para ser observada */
+#initial {  
+  font-size: 300% !important;
+  margin-bottom: -2.6%;
 }
 
-/* card */
+#iniciativas {
+  background-color: #6A1B9A;
+  color: white;
+  font-size: 200% !important;
+  padding: 1% 2%;
+}
+
+#card-iniciativas {
+  margin-top: 3%;
+  width: 100%;
+  max-width: 80000px;
+  font-family: 'Arial' sans-serif !important;
+}
+
+#card-iniciativas:hover {
+  transform: none;
+
+}
+
+.section {
+  min-height: 50vh;
+}
 
 .card-container {
   display: flex;
   justify-content: center;
-  align-items: cen  ter;
-  margin-top: 20px;
-  gap: 20px;
-
+  align-items: center;
+  justify-items: center;
+  align-items: center;
+  margin-top: -2%;
+  margin-bottom: 5%;
+  gap: 2%;
+  flex-wrap: wrap;
 }
 
 .card {
+  display: flex;
+  flex-direction: column;
   background-color: #1e1e1e;
   color: #fff;
-  width: 90%;
+  width: 80%;
+  max-width: 520px;
   padding: 20px;
+  margin: 1% 0;
   border-radius: 10px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  text-align: center;
+  text-align: left;
   transition: transform 0.3s ease;
 }
 
@@ -144,9 +171,76 @@ body {
 
 h4 {
   margin: 0 0 10px;
+  font-size: 70%;
 }
 
-.class {
+.description {
   font-size: 40%;
   line-height: 1.5;
+}
+
+.author {
+  font-size: 30%;
+  margin-top: 5%;
+}
+
+/* Media Queries for Responsiveness */
+@media (max-width: 768px) {
+  .paragrapher {
+    font-size: 1rem;
+  }
+
+  .complementar-text {
+    font-size: 0.6rem;
+  }
+
+  .btn {
+    width: 50%;
+  }
+
+  .header-content {
+    font-size: 1rem;
+  }
+
+  .content-pages {
+    font-size: 2rem;
+  }
+
+  #iniciativas {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .paragrapher {
+    font-size: 0.8rem;
+  }
+
+  .complementar-text {
+    font-size: 0.5rem;
+  }
+
+  .btn {
+    width: 70%;
+  }
+
+  .header-content {
+    font-size: 0.8rem;
+  }
+
+  .content-pages {
+    font-size: 1.5rem;
+  }
+
+  #iniciativas {
+    font-size: 1.2rem;
+  }
+
+  .card {
+    width: 100%;
+  }
 }
