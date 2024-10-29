@@ -7,6 +7,7 @@ import codefolio from '../assets/img/codefolio.png';
 export default function InitialPage() {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('');
+  const [headerBackground, setHeaderBackground] = useState(false);
 
   const handleClick = () => {
     navigate('/login');
@@ -45,66 +46,125 @@ export default function InitialPage() {
       observer.observe(section);
     });
 
+    const handleScroll = () => {
+      if (window.scrollY > 0) {
+        setHeaderBackground(true);
+      } else {
+        setHeaderBackground(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+
     return () => {
       sections.forEach(section => {
         observer.unobserve(section);
       });
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
   const cards = [
     {
-      title: 'Artigo 1Artigo 1Artigo 1Artigo 1',
-      description: 'Construção de Portfólios e Compartilhamento de Conhecimentos através da Extensão Universitária',
+      title: 'Modelos Interpretaveis com Inteligência Artificial Explicável' +
+        '(XAI) na Detecção de Intrusões em Redes Intra-Veiculares' +
+        'Controller Area Network (CAN)',
+      author: 'Felipe Dresch; Felipe Scherer',
+      description: 'Redes intra-veiculares que utilizam o protocolo Controller Area' +
+        'Network (CAN) sao vulneráveis a ataques como fuzzing, fabricação, DoS, spoofing, ' +
+        'replay, injeção de mensagens e injeção de falhas. Estudos existentes tipicamente' +
+        'abordam esse problema por meio de Sistemas de Detecção de Intrusoes (IDSs).' +
+        'Contudo, esses IDSs frequentemente carecem de explicabilidade,' +
+        'o que compromete sua confiabilidade e interpretabilidade, especialmente' +
+        'em redes CAN, onde os padroes de comunicação são variados. Este estudo' +
+        'investiga a explicabilidade dos IDSs em redes CAN, utilizando o conjunto de' +
+        'dados X-CANIDS, que contem dados reais de veículos. A biblioteca SHAP foi' +
+        'empregada para fornecer explicabilidade ao modelo, revelando as relações entre' +
+        'mensagens CAN e o comportamento dos atacantes, contribuindo para uma' +
+        'melhor interpretação das decisões do IDS',
     },
     {
-      title: 'Artigo 1',
-      description: 'Construção de Portfólios e Compartilhamento de Conhecimentos através da Extensão Universitária',
+      title: 'Codefólio: Construção de Portfólios e Compartilhamento de Conhecimentos através da Extensão Universitária',
+      author: 'Felipe Dresch; Felipe Scherer',
+      description: 'Este trabalho apresenta o Codefólio, um projeto de extensão desenvolvido' +
+        'para incentivar estudantes de graduação a demonstrarem suas habilidades' +
+        'e conhecimentos. O Codefólio é composto por três iniciativas: a platforma' +
+        'Codefólio, para estudantes compartilharem seus projetos; tutoria, para' +
+        'estudantes experientes oferecerem tutoria aos novos ingressantes; e workshops,' +
+        ' para promover a troca de conhecimentos entre estudantes e membros da comunidade' +
+        'externa. Como resultado, notou-se o engajamento dos estudantes nas' +
+        'atividades, mostrando os impactos positivos do projeto para com os alunos.' +
+        'Houve também um reconhecimento da comunidade externa dos conhecimentos' +
+        'e habilidades compartilhados durante as atividades.'
     },
     {
-      title: 'Artigo 1',
-      description: 'Construção de Portfólios e Compartilhamento de Conhecimentos através da Extensão Universitária',
+      title: 'Artigo 3',
+      author: 'Felipe Dresch; Felipe Scherer',
+      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
+    },
+    {
+      title: 'Artigo 4',
+      author: 'Felipe Dresch; Felipe Scherer',
+      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
+    },
+    {
+      title: 'Artigo 5',
+      author: 'Felipe Dresch; Felipe Scherer',
+      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
     }
   ];
 
   return (
     <>
       <div className='container'>
-        <div className='header'>
+        <div className={`header ${headerBackground ? 'header-background' : ''}`}>
           <img className='header-logo' src={codefolio} alt="Logo Codefólio" />
           <div className='header-links'>
             <p className={`paragrapher header-content ${activeSection === 'iniciativas' ? 'active' : ''}`} onClick={handleIniciativasClick}> Iniciativas</p>
             <p className={`paragrapher header-content ${activeSection === 'artigos' ? 'active' : ''}`} onClick={handleArtigosClick}> Artigos</p>
           </div>
         </div>
-        <div className='content-pages'>
+        <div id='initial' className='content-pages'>
           <p className='paragrapher'>
-            Construindo Conhecimento
+            Construindo Conhecimento;
             <br />
-            Documentando Competências
+            Documentando Competências;
             <br />
             Disseminando Aprendizado.
           </p>
           <p className='complementar-text'>
             Acesse o Codefólio e faça parte dessa jornada!
           </p>
-        </div>
-        <div className='btn-container'>
-          <Button className='btn' onClick={handleClick} > Entrar </Button>
+          <div className='btn-container'>
+            <Button className='btn' onClick={handleClick} > Entrar </Button>
+          </div>
         </div>
 
         {/* aqui começa a parte de iniciativas */}
         <div id='iniciativas' className='content-pages section'>
           <h1 className='paragrapher'>Nossas Iniciativas</h1>
-          <p className='paragrapher'>
-            Acima de tudo, é fundamental ressaltar que a
-            <br />
-            competitividade nas transações comerciais
-            <br />
-            causa impacto indireto na reavaliação dos
-            <br />
-            procedimentos normalmente adotados.
-          </p>
+          <div className="card-container">
+            <div id='card-iniciativas' className="card" key={0}>
+              <p className='paragrapher'>
+                O projeto Codefólio busca conectar a universidade e a comunidade através de ações educativas e colaborativas.
+                <br />
+                Ele se estrutura em três frentes:
+                <br />
+
+                <ul>
+                  <li>Uma plataforma digital para agregação de conteúdos produzidos por estudantes;</li>
+                  <li>Um programa de tutoria que promove a mentoria de alunos mais experientes aos iniciantes;</li>
+                  <li>Realização de workshops voltados para a comunidade</li>
+                </ul>
+
+                A iniciativa tem se mostrado eficaz na prática, com destaque para o uso de vídeos didáticos voltados à formação de professores do ensino básico.
+                <br />
+                Apesar do projeto ainda estar em desenvolvimento, seu objetivo futuro é ampliar o alcance junto aos docentes.
+                <br />
+                O Codefólio é um exemplo de extensão universitária bem-sucedida, promovendo a troca de saberes e fortalecendo laços entre a comunidade interna e externa.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* aqui começa a parte de artigos */}
@@ -113,11 +173,11 @@ export default function InitialPage() {
             {cards.map((card, index) => (
               <div className="card" key={index}>
                 <h4>{card.title}</h4>
-                <p className='class'>{card.description}</p>
+                <p className='description'>{card.description}</p>
+                <p className='author'>Autor(es): {card.author}</p>
               </div>
             ))}
           </div>
-
         </div>
       </div>
     </>
