@@ -69,48 +69,23 @@ export default function InitialPage() {
       title: 'Modelos Interpretaveis com Inteligência Artificial Explicável' +
         '(XAI) na Detecção de Intrusões em Redes Intra-Veiculares' +
         'Controller Area Network (CAN)',
-      author: 'Felipe Dresch; Felipe Scherer',
-      description: 'Redes intra-veiculares que utilizam o protocolo Controller Area' +
-        'Network (CAN) sao vulneráveis a ataques como fuzzing, fabricação, DoS, spoofing, ' +
-        'replay, injeção de mensagens e injeção de falhas. Estudos existentes tipicamente' +
-        'abordam esse problema por meio de Sistemas de Detecção de Intrusoes (IDSs).' +
-        'Contudo, esses IDSs frequentemente carecem de explicabilidade,' +
-        'o que compromete sua confiabilidade e interpretabilidade, especialmente' +
-        'em redes CAN, onde os padroes de comunicação são variados. Este estudo' +
-        'investiga a explicabilidade dos IDSs em redes CAN, utilizando o conjunto de' +
-        'dados X-CANIDS, que contem dados reais de veículos. A biblioteca SHAP foi' +
-        'empregada para fornecer explicabilidade ao modelo, revelando as relações entre' +
-        'mensagens CAN e o comportamento dos atacantes, contribuindo para uma' +
-        'melhor interpretação das decisões do IDS',
+      author: 'Felipe Dresch; Felipe Scherer'
     },
     {
       title: 'Codefólio: Construção de Portfólios e Compartilhamento de Conhecimentos através da Extensão Universitária',
-      author: 'Felipe Dresch; Felipe Scherer',
-      description: 'Este trabalho apresenta o Codefólio, um projeto de extensão desenvolvido' +
-        'para incentivar estudantes de graduação a demonstrarem suas habilidades' +
-        'e conhecimentos. O Codefólio é composto por três iniciativas: a platforma' +
-        'Codefólio, para estudantes compartilharem seus projetos; tutoria, para' +
-        'estudantes experientes oferecerem tutoria aos novos ingressantes; e workshops,' +
-        ' para promover a troca de conhecimentos entre estudantes e membros da comunidade' +
-        'externa. Como resultado, notou-se o engajamento dos estudantes nas' +
-        'atividades, mostrando os impactos positivos do projeto para com os alunos.' +
-        'Houve também um reconhecimento da comunidade externa dos conhecimentos' +
-        'e habilidades compartilhados durante as atividades.'
+      author: 'Felipe Dresch; Felipe Scherer, Nicolas Faria, Estefano Soares, Camilla Borchhardt, Silvio Quincozes, Williamson Silva',
     },
     {
       title: 'Artigo 3',
       author: 'Felipe Dresch; Felipe Scherer',
-      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
     },
     {
       title: 'Artigo 4',
       author: 'Felipe Dresch; Felipe Scherer',
-      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
     },
     {
       title: 'Artigo 5',
       author: 'Felipe Dresch; Felipe Scherer',
-      description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nam eu massa vitae mauris pharetra rutrum eu sit amet enim. Vivamus.',
     }
   ];
 
@@ -126,9 +101,9 @@ export default function InitialPage() {
         </div>
         <div id='initial' className='content-pages'>
           <p className='paragrapher'>
-            Construindo Conhecimento;
+            Construindo Conhecimento
             <br />
-            Documentando Competências;
+            Documentando Competências
             <br />
             Disseminando Aprendizado.
           </p>
@@ -173,7 +148,7 @@ export default function InitialPage() {
             {cards.map((card, index) => (
               <div className="card" key={index}>
                 <h4>{card.title}</h4>
-                <p className='description'>{card.description}</p>
+                {/* <p className='description'>{card.description}</p> */}
                 <p className='author'>Autor(es): {card.author}</p>
               </div>
             ))}
