@@ -20,13 +20,16 @@ import Portifolios from "../pages/portifolios";
 import Projetos from '../pages/projetos';
 import InitialPage from '../pages/InitialPage';
 import InitiativesPage from '../pages/InitiativesPage';
+import HomePage from '../pages/homePage';
 
 function App() {
+
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<InitialPage />} />
+          {/* <Route path="/" element={<InitialPage />} /> */}
+          <Route path="/" element={<HomePage />} />
           <Route path='/iniciativas' element={<InitiativesPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sign-up" element={<SignUp />} />
