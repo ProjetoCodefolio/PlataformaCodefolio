@@ -29,7 +29,7 @@ export const SectionThree = () => {
       ];
 
     return (
-        <S.Wrapper id="sec3">
+        <S.Wrapper id="artigos">
             <S.BoxAlgn>
                 {cards.slice(0,4).map((card, index)=>(
                     <BlackBox content={

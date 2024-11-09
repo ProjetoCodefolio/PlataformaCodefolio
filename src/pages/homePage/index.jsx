@@ -16,7 +16,7 @@ const HomePage = () => {
   return (
     <>
       <GlobalStyle />
-      <Header idSecTwo={'#sec2'} idSecThree={'#sec3'} />
+      <Header idSecTwo={'#iniciativas'} idSecThree={'#artigos'} />
       <S.Wrapper>
         <SectionOne />
         <SectionTwo />

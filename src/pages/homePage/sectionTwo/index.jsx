@@ -20,7 +20,7 @@ export const SectionTwo = () => {
         O Codefólio é um exemplo de extensão universitária bem-sucedida, promovendo a troca de saberes e fortalecendo laços entre a comunidade interna e externa.
     </S.Text>;
     return(
-        <S.Wrapper id="sec2">
+        <S.Wrapper id="iniciativas">
             <S.SubTitle>
                 Nossas Iniciativas
             </S.SubTitle>
