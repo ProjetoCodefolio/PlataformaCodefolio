@@ -5,3 +5,8 @@ export const Wrapper = styled.section`
     flex-direction: column;
     width: 100vw;
 `
+
+export const PageContentWrapper = styled.div`
+    display: flex;
+    padding-top: 80px;
+`
