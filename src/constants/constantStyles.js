@@ -23,6 +23,7 @@ export const colorConstants = {
         // purple600: '#8E24AA',  // Aproximado de #9041c1
         purple600: '#9041c1',
         // purple700: '#7B1FA2',
+        purple750: '#6A0DAD',
         purple800: '#6A1B9A',
         // purple900: '#4A148C',
     },
