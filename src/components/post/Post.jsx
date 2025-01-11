@@ -1,12 +1,13 @@
 import './post.css';
-import MyCard from './Card';
+// import MyCard from './Card';
+import { MyCards } from './components/myCard';
 import MyAlert from './Alert';
 import * as S from './styles';
 import MyConfirm from './Confirm';
 import PostCard from './PostCard';
 import Pagination from './Pagination';
 import Topbar from '../topbar/Topbar';
-import FilterPostCard from './FilterPost';
+// import FilterPostCard from './FilterPost';
 import CreatePostModal from './CreatePost';
 import { fetchPosts, abrirAlert } from './utils';
 import { database } from '../../service/firebase';
@@ -14,6 +15,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Box, Grid, CircularProgress } from '@mui/material';
 import { ref, get, remove, onValue } from 'firebase/database';
+import { FilterPost } from './components/filterPostCard';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -141,10 +143,14 @@ export default function Post({ member }) {
       <br />
 
       <S.WrapperContent>
-        <FilterPostCard onFilter={applyVideoFilter} />
+        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+          <FilterPost onFilter={applyVideoFilter}/>
+          {/* <FilterPostCard onFilter={applyVideoFilter} /> */}
+        </div>
 
-        <S.CardWrapper item xs={8}>
-        <MyCard userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated}/>
+        <S.CardWrapper>
+        <MyCards userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated}/>
+        {/* <MyCard userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated}/> */}
         <br /> <br />
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>

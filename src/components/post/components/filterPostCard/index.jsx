@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { database } from "../../../service/firebase";
+import { database } from "../../../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
-import { Card, CardContent, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
-import { abrirAlert } from "../utils";
-import MyAlert from "../Alert";
+import { abrirAlert } from "../../utils";
+import { useIsMobileHook } from "../../../../components/useIsMobileHook"
+import MyAlert from "../../Alert";
 import * as S from "./styles";
+import { colorConstants } from "../../../../constants/constantStyles";
 
 export const FilterPost = ({onFilter}) => {
     const [posts, setPosts] = useState([]);
@@ -95,20 +96,30 @@ export const FilterPost = ({onFilter}) => {
         });
     }, []);
 
+    const isMobile = useIsMobileHook();
+    const customStyle = {
+        padding: '6px',
+        margin: '0 2px',
+        border: isMobile ? `1px solid ${colorConstants.purple.purple600}`
+                            : 'none',
+    }
+
     return(
         <S.Wrapper>
             <S.Content>
-                <S.Title>Categorias de Vídeos</S.Title>
-                {tags.map((tag) => 
-                    <S.Option key={tag}>
-                        <S.CheckboxInput
-                            onChange={(e) => handleTagFilterChange(tag, e.target.checked)}
-                            checked={selectedFilterTags.includes(tag)}
-                        />
-                        <S.Text>{tag}</S.Text>
-                    </S.Option>
-                )}            
-                <S.Option>
+                {!isMobile && <S.Title>Categorias de Vídeos</S.Title>}
+                <S.Options>
+                    {tags.map((tag) => 
+                        <S.Option key={tag} style={customStyle}>
+                            <S.CheckboxInput
+                                onChange={(e) => handleTagFilterChange(tag, e.target.checked)}
+                                checked={selectedFilterTags.includes(tag)}
+                            />
+                            <S.Text>{tag}</S.Text>
+                        </S.Option>
+                    )}     
+                </S.Options>       
+                <S.Option style={{padding: '10px', justifySelf: 'center', gap: '12px'}}>
                     <S.FilterButton onClick={() => limparFiltros()}>LIMPAR</S.FilterButton>
                     <S.FilterButton onClick={() => filtrarPosts(selectedFilterTags)}>FILTRAR</S.FilterButton>
                 </S.Option>
