@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { database } from "../../service/firebase";
+import { database } from "../../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
 import { Card, CardContent, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
-import { abrirAlert } from "./utils";
-import MyAlert from "./Alert";
+import { abrirAlert } from "../utils";
+import MyAlert from "../Alert";
 import "./post.css";
 
 const FilterPostCard = ({ onFilter }) => {
