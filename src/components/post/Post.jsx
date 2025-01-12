@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Box, Grid, CircularProgress } from '@mui/material';
 import { ref, get, remove, onValue } from 'firebase/database';
 import { FilterPost } from './components/filterPostCard';
+import PostCards from './components/postCard';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -154,6 +155,11 @@ export default function Post({ member }) {
             </Box>
           ) : (
             posts.map((post) => (
+              <>
+              <PostCards 
+                key={post.id}
+                post={post}
+              />
               <PostCard
                 key={post.id}
                 post={post}
@@ -169,6 +175,7 @@ export default function Post({ member }) {
                 currentUser={currentUser}
                 onPostEdited={() => setIsPostEdited(true)}
               />
+              </>
             ))
           )}
         </S.CardWrapper>

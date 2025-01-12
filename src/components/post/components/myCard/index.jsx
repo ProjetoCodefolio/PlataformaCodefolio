@@ -5,6 +5,7 @@ import { Search } from "@mui/icons-material";
 import { PhotoCamera, Share, Article } from '@mui/icons-material';
 import CreatePostModal from "../../CreatePost";
 import MyAlert from '../../Alert';
+import { useIsMobileHook } from '../../../useIsMobileHook';
 
 export const MyCards = ({ userPhoto, setIsPostCreated }) => {
     const [isMediaModalOpen, setIsEditModalOpen] = useState(false);
@@ -18,20 +19,25 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
         setAlertOpen(true);
     }
 
+    const isMobile = useIsMobileHook();
+
     return(
         <S.Wrapper>
             <S.Line>
                 <Avatar
                     src={userPhoto}
                     alt='User Avatar'
-                    sx={{width: 48, height: 48}}
+                    sx={{
+                        width: 48,
+                        height: 48
+                    }}
                 />
 
                 <TextField
                     className="postInputField"
                     variant="outlined"
                     placeholder="Comece uma publicação"
-                    fullWidth
+                    fullWidth={!isMobile}
                     InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
@@ -55,13 +61,13 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
                     }}
                 />
             </S.Line>
-            <S.Line style={{justifyContent: 'flex-start'}}>
+            <S.Line style={{justifyContent: isMobile ? 'center' : 'flex-start'}}>
                 <Button
                     variant="outlined"
-                    startIcon={<PhotoCamera />}
                     sx={{
                         borderColor: "black",
                         color: "black",
+                        gap: '10px',
                         '&:hover': {
                             color: "#6A1B9A",
                             borderColor: "#6A1B9A",
@@ -70,12 +76,13 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
                     }}
                     onClick={() => setIsEditModalOpen(true)}
                 >
-                    Mídia
+                    <PhotoCamera />
+                    {isMobile ? "": "Mídia"}
                 </Button>
                 <Button
                     variant="outlined"
-                    startIcon={<Share />}
                     sx={{
+                        gap: '10px',
                         color: "black",
                         '&:hover': {
                             backgroundColor: 'transparent',
@@ -83,20 +90,22 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
                     }}
                     disabled
                 >
-                    Compartilhar experiência
+                    <Share />
+                    {isMobile ? "": "Compartilhar experiência"}
                 </Button>
                 <Button
                     variant="outlined"
-                    startIcon={<Article />}
                     sx={{
                         color: "black",
+                        gap:'10px',
                         '&:hover': {
                             backgroundColor: 'transparent',
                         },
                     }}
                     disabled
                 >
-                    Escrever artigo
+                    <Article />
+                    {isMobile ? "": "Escrever artigo"}
                 </Button>
             </S.Line>
             <CreatePostModal

@@ -11,7 +11,11 @@ export const Wrapper = styled.div`
 export const Line = styled.div`
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;    
     padding: 12px;
     gap: 12px;
+    
+    @media(min-width: 600px) {
+        justify-content: space-between;    
+    }
 `
