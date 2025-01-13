@@ -3,7 +3,7 @@ import { database } from "../../../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
 import { abrirAlert } from "../../utils";
 import { useIsMobileHook } from "../../../../components/useIsMobileHook"
-import MyAlert from "../../Alert";
+import MyAlert from "../alert/Alert";
 import * as S from "./styles";
 import { colorConstants } from "../../../../constants/constantStyles";
 
@@ -96,7 +96,7 @@ export const FilterPost = ({onFilter}) => {
         });
     }, []);
 
-    const isMobile = useIsMobileHook();
+    const isMobile = useIsMobileHook(750);
     const customStyle = {
         padding: '6px',
         margin: '0 2px',

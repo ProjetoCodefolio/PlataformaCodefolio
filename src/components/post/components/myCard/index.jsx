@@ -3,8 +3,8 @@ import * as S from './styles';
 import { Avatar, TextField, InputAdornment, Button } from "@mui/material";
 import { Search } from "@mui/icons-material";
 import { PhotoCamera, Share, Article } from '@mui/icons-material';
-import CreatePostModal from "../../CreatePost";
-import MyAlert from '../../Alert';
+import CreatePostModal from "../createPost/CreatePost";
+import MyAlert from '../alert/Alert';
 import { useIsMobileHook } from '../../../useIsMobileHook';
 
 export const MyCards = ({ userPhoto, setIsPostCreated }) => {

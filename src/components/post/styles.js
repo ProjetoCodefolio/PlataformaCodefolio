@@ -19,7 +19,7 @@ export const WrapperContent = styled.div`
     gap: 12px;
     align-items: center;
 
-    @media(min-width: 600px){
+    @media(min-width: 750px){
         flex-direction: row;
         align-items: flex-start;
         justify-content: center;

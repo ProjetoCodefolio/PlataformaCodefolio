@@ -139,11 +139,11 @@ import { IconButton } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send'; // Ícone de envio
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { useAuth } from "../../context/AuthContext";
-import { database } from "../../service/firebase";
-import MyAlert from './Alert';
-import { abrirAlert } from './utils';
-import './post.css';
+import { useAuth } from "../../../../context/AuthContext";
+import { database } from "../../../../service/firebase";
+import MyAlert from '../alert/Alert';
+import { abrirAlert } from '../../utils';
+import '../../post.css';
 
 export default function AddComment({ postId, comments, setComments }) {
   const { currentUser } = useAuth();
@@ -154,6 +154,7 @@ export default function AddComment({ postId, comments, setComments }) {
   const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta
   const quantidadeComentarios = comments[postId] ? comments[postId].length : 0;
 
+  
   useEffect(() => {
     const postRef = ref(database, `post/${postId}`);
     onValue(postRef, (snapshot) => {

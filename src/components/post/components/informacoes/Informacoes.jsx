@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { ref, onValue } from "firebase/database";
 import { Typography } from "@mui/material";
-import { database } from "../../service/firebase";
-import { getYouTubeID } from "./utils";
+import { database } from "../../../../service/firebase";
+import { getYouTubeID } from "../../utils";
 import axios from 'axios';
-import './post.css';
+import '../../post.css';
 
-const Informacoes = ({ post, comments, setComments }) => {
+const Informacoes = ({ post = {}, comments = {}, setComments }) => {
     const quantidadeComentarios = comments[post.id] ? comments[post.id].length : 0;
     const [likesYouTube, setLikesYouTube] = useState(0);
     const [likes, setLikes] = useState(post.likes ? post.likes.length : 0);

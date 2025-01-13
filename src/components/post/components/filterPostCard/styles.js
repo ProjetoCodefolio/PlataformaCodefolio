@@ -5,13 +5,13 @@ export const Wrapper = styled.div`
     display: flex;
     flex-direction: column;
     width: 100%;
-    @media(min-width: 600px) {
+    @media(min-width: 750px) {
         width: 200px;
     }
 `
 
 export const Content = styled.div`
-    @media(min-width: 600px) {
+    @media(min-width: 750px) {
         padding: 24px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         border-radius: 10px;
@@ -27,7 +27,7 @@ export const Title = styled.p`
 
 export const Options = styled.div`
     display: flex;
-    @media(min-width: 600px) {
+    @media(min-width: 750px) {
         flex-direction: column;
     }
 `
@@ -36,7 +36,7 @@ export const Option = styled.div`
     display: flex;
     align-items: center;
     border-radius: 10px;
-    @media(min-width: 600px) {
+    @media(min-width: 750px) {
         gap: 5px;
         padding-top: 12px;
     }
@@ -56,7 +56,7 @@ export const Text = styled.p`
     font-weight: ${textStyles.paragraph.p1.light.fontWeight};
     line-height: ${textStyles.paragraph.p1.light.lineHeight}px;
 
-    @media(min-width: 600px) {
+    @media(min-width: 750px) {
         font-size: ${textStyles.paragraph.p1.medium.fontSize}px;
         font-weight: ${textStyles.paragraph.p1.medium.fontWeight};
         line-height: ${textStyles.paragraph.p1.medium.lineHeight}px;

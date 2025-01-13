@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from '@mui/material';
 import { Share } from '@mui/icons-material';
-import MyAlert from './Alert';
-import { abrirAlert } from './utils';
+import MyAlert from '../alert/Alert';
+import { abrirAlert } from '../../utils';
+import { useIsMobileHook } from '../../../useIsMobileHook';
 
 
 const MyShare = ({ post }) => {
@@ -28,17 +29,21 @@ const MyShare = ({ post }) => {
 
     };
 
+    const isMobile = useIsMobileHook(700);
+
     return (
-        <>
+        <div>
             <Button
                 variant="outlined"
                 startIcon={<Share style={{ height: '30px', width: '30px' }}/>}
                 onClick={() => compartilhar()}
                 className='share-button'
+                style={{
+                    width: isMobile ? '100px' : '200px',
+                }}
             >
-                Compartilhar
+                {isMobile ? '' : 'Compartilhar'}
             </Button>
-
 
             <MyAlert
                 open={alertOpen}
@@ -46,7 +51,7 @@ const MyShare = ({ post }) => {
                 message={alertMessage}
                 severity={alertSeverity}
             />
-        </>
+        </div>
     )
 }
 

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Divider, Avatar } from '@mui/material';
-import PostMenu from '../../Menu';
+import PostMenu from '../menu/Menu';
 import MembroLink from '../../../MembroLink';
-import EditPostModal from '../../EditPost';
-import AddComment from '../../AddComment';
-import ShowComments from '../../ShowComments';
-import Likes from '../../Likes';
+import EditPostModal from '../editPost/EditPost';
+import AddComment from '../addComment/AddComment';
+import ShowComments from '../showComments/ShowComments';
+// import Likes from '../../Likes';
+import Likes from '../likes';
 import YouTube from 'react-youtube';
 import '../../post.css';
 import { getYouTubeID } from '../../utils';
-import Informacoes from '../../Informacoes';
-import MyShare from '../../MyShare';
+import Informacoes from '../informacoes/Informacoes';
+import MyShare from '../myShare/MyShare';
 import Tags from '../../PostTags';
 import * as S from './styles';
 
@@ -69,9 +70,19 @@ export default function PostCards ({
                 >
                     <b>{post.nome}</b>
                 </Typography>
+                <div style={{width: '100%'}}>
                 {post.link ? (
                         <>
-                            <Divider className='divisor' />
+                            <Divider sx={{
+                                displa: 'flex',
+                                justifyContent: 'center',
+                                alignSelf: 'center',
+                                width: '95%',
+                                borderBottom: '1px solid #ccc !important',
+                                marginTop: '10px !important',
+                                marginLeft: '6px',
+                                marginBottom: '10px !important',
+                            }} />
                             <YouTube videoId={getYouTubeID(post.link)} opts={{ width: "95%", heigth: "95%" }} />
                             {/* <Divider className='divisor' /> */}
                             { /*<Tags tags={post.tags} />*/}
@@ -84,6 +95,37 @@ export default function PostCards ({
                             src={post.userAvatar}
                             alt={post.user} />
                     )}
+                </div>
+                <div style={{width: '100%', marginLeft: '-30px'}}>
+                    <Informacoes post={post} comments={comments} setComments={setComments} />
+                    <Divider className='divisor' />
+                </div>
+                <S.LineWrapper style={{width: '98%', display: 'flex', justifyContent: 'space-around'}}>
+                    <Likes post={post} onLikeUpdate={updateLikes} />
+                    <ShowComments onShowComments={() => setShowAddComment(showAddComment ? false : true)} />
+                    <MyShare post={post} />
+                </S.LineWrapper>
+                {showAddComment && (
+                    <>
+                        <Divider className='divisor' />
+                        <AddComment postId={post.id} comments={comments} setComments={setComments} />
+                    </>
+                )}
+                {(userRole === 'admin' || currentUser?.uid === post?.uidUser) && (
+                    <>
+                        {isEditModalOpen && (
+                            <EditPostModal
+                                isOpen={isEditModalOpen}
+                                onClose={() => setIsEditModalOpen(false)}
+                                post={editingPost}
+                                onSave={() => {
+                                    setIsPostEdited(true);
+                                    setIsEditModalOpen(false);
+                                }}
+                            />
+                        )}
+                    </>
+                )}
             </S.LineWrapper>
         </S.Wrapper>
     );

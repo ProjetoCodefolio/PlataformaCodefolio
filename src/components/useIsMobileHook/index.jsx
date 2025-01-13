@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 
-export const useIsMobileHook = () => {
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+export const useIsMobileHook = (weight = 600) => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < weight);
 
     useEffect(() => {
         const handleResize = () => {
-            setIsMobile(window.innerWidth < 600);
+            setIsMobile(window.innerWidth < weight);
         };
 
         window.addEventListener('resize', handleResize);

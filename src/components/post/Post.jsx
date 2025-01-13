@@ -1,12 +1,12 @@
 import './post.css';
 import { MyCards } from './components/myCard';
-import MyAlert from './Alert';
+import MyAlert from './components/alert/Alert';
 import * as S from './styles';
-import MyConfirm from './Confirm';
-import PostCard from './PostCard';
-import Pagination from './Pagination';
+import MyConfirm from './components/confirm/Confirm';
+// import PostCard from './PostCard';
+import Pagination from './components/pagination/Pagination';
 import Topbar from '../topbar/Topbar';
-import CreatePostModal from './CreatePost';
+import CreatePostModal from './components/createPost/CreatePost';
 import { fetchPosts, abrirAlert } from './utils';
 import { database } from '../../service/firebase';
 import React, { useState, useEffect } from 'react';
@@ -155,12 +155,7 @@ export default function Post({ member }) {
             </Box>
           ) : (
             posts.map((post) => (
-              <>
               <PostCards 
-                key={post.id}
-                post={post}
-              />
-              <PostCard
                 key={post.id}
                 post={post}
                 Edit={handleEditClick(post)}
@@ -175,9 +170,23 @@ export default function Post({ member }) {
                 currentUser={currentUser}
                 onPostEdited={() => setIsPostEdited(true)}
               />
-              </>
-            ))
-          )}
+            )))}
+          
+              {/* <PostCard
+                key={post.id}
+                post={post}
+                Edit={handleEditClick(post)}
+                isEditModalOpen={isEditModalOpen}
+                setIsEditModalOpen={setIsEditModalOpen}
+                editingPost={editingPost}
+                Delete={handleDeleteClick(post.id)}
+                comments={comments}
+                setComments={setComments}
+                updateLikes={updateLikes}
+                userRole={userRole}
+                currentUser={currentUser}
+                onPostEdited={() => setIsPostEdited(true)}
+              /> */}
         </S.CardWrapper>
       </S.WrapperContent>
 
