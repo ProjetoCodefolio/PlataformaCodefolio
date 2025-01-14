@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { database } from "../../service/firebase";
+import { database } from "../../../../service/firebase";
 import { ref, get, update } from "firebase/database";
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
-import "./post.css";
+import "../../post.css";
 
 export const editarPost = async (postId, newTitle, newLink, newTags) => {
     const postRef = ref(database, `post/${postId}`);

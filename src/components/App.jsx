@@ -9,7 +9,8 @@ import {
 import { AuthProvider, useAuth } from "../context/AuthContext"; // Usando o contexto de autenticação
 import Login from "../pages/Login";
 import SignUp from "../pages/SignUp";
-import Dashboard from "../pages/Dashboard";
+import Dashboard2 from "../pages/Dashboard";
+import Dashboard from "../pages/dashboard";
 import VerifyEmail from "../pages/VerifyEmail";
 import ForgotPassword from "../pages/ForgotPassword";
 import ProfileHeader from "../pages/profile";
@@ -20,18 +21,29 @@ import Portifolios from "../pages/portifolios";
 import Projetos from '../pages/projetos';
 import InitialPage from '../pages/InitialPage';
 import InitiativesPage from '../pages/InitiativesPage';
+import HomePage from '../pages/homePage';
 
 function App() {
+
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<InitialPage />} />
+          {/* <Route path="/" element={<InitialPage />} /> */}
+          <Route path="/" element={<HomePage />} />
           <Route path='/iniciativas' element={<InitiativesPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route
+            path="/dashboard1"
+            element={
+              <PrivateRoute>
+                <Dashboard2 />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/dashboard"
             element={

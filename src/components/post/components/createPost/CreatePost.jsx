@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { database } from "../../service/firebase";
+import { database } from "../../../../service/firebase";
 import { ref, push, set, onValue } from "firebase/database";
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
-import { useAuth } from "../../context/AuthContext";
-import { fetchYouTubeComments } from "./utils";
+import { useAuth } from "../../../../context/AuthContext";
+import { fetchYouTubeComments } from "../../utils";
 
 const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle }) => {
     const [title, setTitle] = useState('');

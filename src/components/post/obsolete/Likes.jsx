@@ -159,9 +159,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                             style={{
                                 width: '30px',
                                 height: '30px',
-                                marginRight: '8px',
                                 color: likedPosts[post.id] ? 'white' : 'black',
-                                marginLeft: '7%'
                             }}
                         />
                     </Button>
@@ -176,9 +174,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                             style={{
                                 width: '30px',
                                 height: '30px',
-                                marginRight: '8px',
                                 color: dislikedPosts[post.id] ? 'white' : 'black',
-                                marginLeft: '7%'
                             }}
                         />
                     </Button>

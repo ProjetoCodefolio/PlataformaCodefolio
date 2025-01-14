@@ -1,23 +1,26 @@
 import { useEffect, useState } from "react";
-import { database } from "../../service/firebase";
+import { database } from "../../../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
-import { Card, CardContent, Typography, Button, Checkbox, FormControlLabel } from "@mui/material";
-import { abrirAlert } from "./utils";
-import MyAlert from "./Alert";
-import "./post.css";
+import { abrirAlert } from "../../utils";
+import { useIsMobileHook } from "../../../../components/useIsMobileHook"
+import MyAlert from "../alert/Alert";
+import * as S from "./styles";
+import { colorConstants } from "../../../../constants/constantStyles";
 
-const FilterPostCard = ({ onFilter }) => {
+export const FilterPost = ({onFilter}) => {
     const [posts, setPosts] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false);    
     const [tags, setTags] = useState([]);
     const [selectedFilterTags, setSelectedFilterTags] = useState([]);
     const [alertOpen, setAlertOpen] = useState(false); // Estado para controlar a visibilidade do alerta
     const [alertMessage, setAlertMessage] = useState(''); // Estado para a mensagem do alerta
-    const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta
+    const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta    
+
+    //formatar para botoes soltos na horizontal quando for mobile
 
     const handleTagFilterChange = (tag, isChecked) => {
         setSelectedFilterTags(prev => isChecked ? [...prev, tag] : prev.filter(t => t !== tag));
-    };
+    }
 
     const filtrarPosts = async (selectedCategory) => {
         setLoading(true);
@@ -93,73 +96,40 @@ const FilterPostCard = ({ onFilter }) => {
         });
     }, []);
 
-    return (
-        <Card sx={{ maxWidth: 345, m: 2 }}>
-            <CardContent>
-                <Typography component="div" variant="h6">
-                    Categorias de Vídeos
-                </Typography>
-                {tags.map((tag, index) => (
-                    <div key={index}>
-                        <FormControlLabel
-                            control={<Checkbox
+    const isMobile = useIsMobileHook(750);
+    const customStyle = {
+        padding: '6px',
+        margin: '0 2px',
+        border: isMobile ? `1px solid ${colorConstants.purple.purple600}`
+                            : 'none',
+    }
+
+    return(
+        <S.Wrapper>
+            <S.Content>
+                {!isMobile && <S.Title>Categorias de Vídeos</S.Title>}
+                <S.Options>
+                    {tags.map((tag) => 
+                        <S.Option key={tag} style={customStyle}>
+                            <S.CheckboxInput
                                 onChange={(e) => handleTagFilterChange(tag, e.target.checked)}
-                                checked={selectedFilterTags.includes(tag)} // Adicionado para controlar o estado marcado/desmarcado
-                                sx={{
-                                    color: "purple",
-                                    "&.Mui-checked": {
-                                        color: "purple",
-                                    },
-                                }}
-                            />}
-                            label={tag}
-                        />
-                    </div>
-                ))}
-
-                <br />
-
-                <Button
-                    onClick={() => limparFiltros()}
-                    sx={{
-                        backgroundColor: "purple",
-                        color: "white",
-                        marginRigth: "30%",
-                        ":hover": {
-                            backgroundColor: "purple",
-                            color: "white",
-                        },
-                    }}
-                >
-                    Limpar
-                </Button>
-
-                <Button
-                    onClick={() => filtrarPosts(selectedFilterTags)}
-                    sx={{
-                        backgroundColor: "purple",
-                        color: "white",
-                        marginLeft: "30%",
-                        ":hover": {
-                            backgroundColor: "purple",
-                            color: "white",
-                        },
-                    }}
-                >
-                    Filtrar
-                </Button>
-
+                                checked={selectedFilterTags.includes(tag)}
+                            />
+                            <S.Text>{tag}</S.Text>
+                        </S.Option>
+                    )}     
+                </S.Options>       
+                <S.Option style={{padding: '10px', justifySelf: 'center', gap: '12px'}}>
+                    <S.FilterButton onClick={() => limparFiltros()}>LIMPAR</S.FilterButton>
+                    <S.FilterButton onClick={() => filtrarPosts(selectedFilterTags)}>FILTRAR</S.FilterButton>
+                </S.Option>
                 <MyAlert
                     open={alertOpen}
                     onClose={() => setAlertOpen(false)}
                     message={alertMessage}
                     severity={alertSeverity}
                 />
-                
-            </CardContent>
-        </Card>
-
+            </S.Content>
+        </S.Wrapper>
     );
-};
-
-export default FilterPostCard;
+}

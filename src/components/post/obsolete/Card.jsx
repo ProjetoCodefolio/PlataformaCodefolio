@@ -3,8 +3,8 @@ import { Card, CardContent, Avatar, TextField, Button, Stack, InputAdornment } f
 import { Search } from "@mui/icons-material";
 import { PhotoCamera, Share, Article } from '@mui/icons-material';
 import codefolioImage from "../../assets/img/codefolio.jpg";
-import CreatePostModal from "./CreatePost"; // Importar o novo modal
-import MyAlert from './Alert'; // Importar o componente de alerta
+import CreatePostModal from "../CreatePost"; // Importar o novo modal
+import MyAlert from '../Alert'; // Importar o componente de alerta
 import "./post.css";
 
 const MyCard = ({ userPhoto, setIsPostCreated }) => {

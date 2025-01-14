@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Card, CardContent, Typography, Grid, Divider } from '@mui/material';
-import PostMenu from './Menu';
-import MembroLink from '../MembroLink';
-import EditPostModal from './EditPost';
-import AddComment from './AddComment';
-import ShowComments from './ShowComments';
-import Likes from './Likes';
+import PostMenu from '../Menu';
+import MembroLink from '../../MembroLink';
+import EditPostModal from '../EditPost';
+import AddComment from '../components/addComment/AddComment';
+import ShowComments from '../components/showComments/ShowComments';
+import Likes from '../components/likes';
 import YouTube from 'react-youtube';
 import './post.css';
-import { getYouTubeID } from './utils';
-import Informacoes from './Informacoes';
-import MyShare from './MyShare';
-import Tags from './PostTags';
+import { getYouTubeID } from '../utils';
+import Informacoes from '../Informacoes';
+import MyShare from '../MyShare';
+import Tags from '../PostTags';
 
 function PostCard({ post, Edit, isEditModalOpen, setIsEditModalOpen, editingPost, Delete, comments, setComments, updateLikes, userRole, currentUser, onPostEdited }) {
     const [isPostEdited, setIsPostEdited] = useState(false);
