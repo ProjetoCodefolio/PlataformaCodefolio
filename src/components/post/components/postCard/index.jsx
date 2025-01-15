@@ -143,7 +143,7 @@ import Informacoes from '../informacoes/Informacoes';
 import MyShare from '../myShare/MyShare';
 import { getYouTubeID } from '../../utils';
 import YouTube from 'react-youtube';
-import VideoWatchTracker from './VideoWatchTracker';
+import VideoWatcher from './VideoWatcher';
 import * as S from './styles';
 
 export default function PostCards ({
@@ -220,7 +220,7 @@ export default function PostCards ({
                                 marginBottom: '10px !important',
                             }} />
                             <YouTube videoId={getYouTubeID(post.link)} opts={{ width: "95%", heigth: "95%" }} onReady={handlePlayerReady} />
-                            <VideoWatchTracker player={playerInstance} />
+                            <VideoWatcher player={playerInstance} />
                         </>
                     ) : (
                         <img
