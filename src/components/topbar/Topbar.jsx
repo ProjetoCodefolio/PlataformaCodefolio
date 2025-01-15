@@ -97,6 +97,24 @@ export default function Topbar({ onSearch }) {
                   <span className="topbarIconText">Projetos</span>
                 </Box>
               </Link>
+              <Link to="/cursos" style={{ textDecoration: "none" }}>
+                <Box className="topbarIconCont">
+                  <Assignment style={{ fontSize: 32 }} />
+                  <span className="topbarIconText">CrudCursos</span>
+                </Box>
+              </Link>
+              <Link to="/listcurso" style={{ textDecoration: "none" }}>
+                <Box className="topbarIconCont">
+                  <Assignment style={{ fontSize: 32 }} />
+                  <span className="topbarIconText">ListCurso</span>
+                </Box>
+              </Link>
+              <Link to="/classes" style={{ textDecoration: "none" }}>
+                <Box className="topbarIconCont">
+                  <Assignment style={{ fontSize: 32 }} />
+                  <span className="topbarIconText">Classes</span>
+                </Box>
+              </Link>
             </Box>
             <Tooltip title="Account settings">
               <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>

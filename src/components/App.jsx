@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   BrowserRouter as Router,
   Route,
@@ -18,20 +18,22 @@ import MembersPage from "../pages/members";
 import FotosPage from "../pages/fotos";
 import MembroPage from "../pages/membro";
 import Portifolios from "../pages/portifolios";
-import Projetos from '../pages/projetos';
-import InitialPage from '../pages/InitialPage';
-import InitiativesPage from '../pages/InitiativesPage';
-import HomePage from '../pages/homePage';
+import Projetos from "../pages/projetos";
+import InitialPage from "../pages/InitialPage";
+import InitiativesPage from "../pages/InitiativesPage";
+import HomePage from "../pages/homePage";
+import Cursos from "../pages/course";
+import ListCursos from "../pages/course/list";
+import Classes from "../pages/course/classes";
 
 function App() {
-
   return (
     <AuthProvider>
       <Router>
         <Routes>
           {/* <Route path="/" element={<InitialPage />} /> */}
           <Route path="/" element={<HomePage />} />
-          <Route path='/iniciativas' element={<InitiativesPage />} />
+          <Route path="/iniciativas" element={<InitiativesPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sign-up" element={<SignUp />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
@@ -76,13 +78,16 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/membro" element={
-            <PrivateRoute>
-              <MembroPage />
-            </PrivateRoute>
-          } />
           <Route
-            path='/portifolios'
+            path="/membro"
+            element={
+              <PrivateRoute>
+                <MembroPage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/portifolios"
             element={
               <PrivateRoute>
                 <Portifolios />
@@ -90,10 +95,35 @@ function App() {
             }
           />
           <Route
-            path='/projetos'
+            path="/projetos"
             element={
               <PrivateRoute>
                 <Projetos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/cursos"
+            element={
+              <PrivateRoute>
+                <Cursos />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/listcurso"
+            element={
+              <PrivateRoute>
+                <ListCursos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/classes"
+            element={
+              <PrivateRoute>
+                <Classes />
               </PrivateRoute>
             }
           />
