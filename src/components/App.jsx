@@ -22,7 +22,7 @@ import Projetos from "../pages/projetos";
 import InitialPage from "../pages/InitialPage";
 import InitiativesPage from "../pages/InitiativesPage";
 import HomePage from "../pages/homePage";
-import Cursos from "../pages/course";
+import Cursos from "../pages/course/adminCourse";
 import ListCursos from "../pages/course/list";
 import Classes from "../pages/course/classes";
 
@@ -31,7 +31,6 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* <Route path="/" element={<InitialPage />} /> */}
           <Route path="/" element={<HomePage />} />
           <Route path="/iniciativas" element={<InitiativesPage />} />
           <Route path="/login" element={<Login />} />
@@ -103,14 +102,13 @@ function App() {
             }
           />
           <Route
-            path="/cursos"
+            path="/adm-cursos"
             element={
-              <PrivateRoute>
+              <AdminRoute>
                 <Cursos />
-              </PrivateRoute>
+              </AdminRoute>
             }
           />
-
           <Route
             path="/listcurso"
             element={
@@ -139,6 +137,21 @@ function PrivateRoute({ children }) {
 
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { currentUser, userDetails } = useAuth();
+  const location = useLocation();
+
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location }} />;
+  }
+
+  if (userDetails?.role !== "admin") {
+    return <Navigate to="/dashboard" state={{ from: location }} />;
   }
 
   return children;

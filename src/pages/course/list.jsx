@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,48 +11,43 @@ import {
   Button,
   Grid,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
+import {
+  fetchInProgressCourses,
+  fetchCompletedCourses,
+} from "../../service/courses";
+import { useAuth } from "../../context/AuthContext";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0);
+  const [inProgressCourses, setInProgressCourses] = useState([]);
+  const [completedCourses, setCompletedCourses] = useState([]);
+  const { userDetails } = useAuth();
+  const navigate = useNavigate(); // Inicializa o hook useNavigate
 
-  // Cursos simulados
-  const completedCourses = [
-    {
-      id: 1,
-      title: "JavaScript Básico",
-      description: "Curso introdutório sobre JavaScript.",
-    },
-    {
-      id: 2,
-      title: "HTML e CSS",
-      description: "Aprenda a criar sites do zero.",
-    },
-  ];
+  useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const inProgress = await fetchInProgressCourses(userDetails.userId);
+        const completed = await fetchCompletedCourses(userDetails.userId);
 
-  const inProgressCourses = [
-    {
-      id: 3,
-      title: "React Avançado",
-      description: "Domine a criação de SPAs com React.",
-    },
-  ];
+        setInProgressCourses(inProgress);
+        setCompletedCourses(completed);
+      } catch (error) {
+        console.error("Erro ao carregar cursos:", error);
+      }
+    };
 
-  const availableCourses = [
-    {
-      id: 4,
-      title: "Node.js para Iniciantes",
-      description: "Construa APIs com Node.js.",
-    },
-    {
-      id: 5,
-      title: "Python para Data Science",
-      description: "Explore dados com Python.",
-    },
-  ];
+    loadCourses();
+  }, [userDetails.userId]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
+  };
+
+  const handleContinueCourse = (course) => {
+    navigate(`/classes?courseId=${course.courseId}`);
   };
 
   const renderCourses = (courses, actionButtonLabel, onClickAction) => {
@@ -65,7 +60,7 @@ const MyCourses = () => {
         <Topbar />
         <Grid container spacing={3}>
           {courses.map((course) => (
-            <Grid item xs={12} sm={6} md={4} key={course.id}>
+            <Grid item xs={12} sm={6} md={4} key={course.courseId}>
               <Card
                 sx={{
                   backgroundColor: "#ffffff",
@@ -79,10 +74,13 @@ const MyCourses = () => {
               >
                 <CardContent>
                   <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
-                    {course.title}
+                    {course.title || "Título do Curso"}
                   </Typography>
                   <Typography variant="body2" color="textSecondary">
-                    {course.description}
+                    {course.description || "Descrição do curso"}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Progresso: {course.progress || 0}%
                   </Typography>
                 </CardContent>
                 <CardActions>
@@ -145,39 +143,30 @@ const MyCourses = () => {
             "& .MuiTab-root": { fontWeight: "bold" },
           }}
         >
-          <Tab label="Concluídos" />
           <Tab label="Em Andamento" />
-          <Tab label="Disponíveis" />
+          <Tab label="Concluídos" />
         </Tabs>
 
-        {/* Conteúdo baseado na aba selecionada */}
         {selectedTab === 0 && (
+          <Box>
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+              Cursos em Andamento
+            </Typography>
+            {renderCourses(
+              inProgressCourses,
+              "Continuar",
+              handleContinueCourse
+            )}
+          </Box>
+        )}
+
+        {selectedTab === 1 && (
           <Box>
             <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
               Cursos Concluídos
             </Typography>
             {renderCourses(completedCourses, "Ver Certificado", (course) =>
               alert(`Certificado de: ${course.title}`)
-            )}
-          </Box>
-        )}
-        {selectedTab === 1 && (
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              Cursos em Andamento
-            </Typography>
-            {renderCourses(inProgressCourses, "Continuar", (course) =>
-              alert(`Continuar curso: ${course.title}`)
-            )}
-          </Box>
-        )}
-        {selectedTab === 2 && (
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
-              Todos os Cursos Disponíveis
-            </Typography>
-            {renderCourses(availableCourses, "Inscrever-se", (course) =>
-              alert(`Inscrever-se no curso: ${course.title}`)
             )}
           </Box>
         )}

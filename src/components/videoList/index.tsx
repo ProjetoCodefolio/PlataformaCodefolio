@@ -1,53 +1,88 @@
 import React from "react";
 import {
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
   Box,
   Typography,
+  Button,
+  Card,
+  CardContent,
+  CardActions,
 } from "@mui/material";
-import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-const VideoList = ({ videos, setCurrentVideo }) => {
+const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
   return (
     <Box>
-      <List>
-        {videos.map((video) => (
-          <ListItem
+      {videos.map((video, index) => {
+        const isLocked =
+          index > 0 &&
+          (!videos[index - 1]?.watched || !videos[index - 1]?.quizPassed);
+
+        return (
+          <Card
             key={video.id}
-            button
-            onClick={() => setCurrentVideo(video)}
             sx={{
-              backgroundColor: "#ffffff",
-              color: "#333",
-              mb: 1,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "space-between",
+              padding: 2,
+              marginBottom: 2,
+              backgroundColor: isLocked ? "#f0f0f0" : "#fff",
               borderRadius: "8px",
-              boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
-              "&:hover": { backgroundColor: "#f0f0f0" },
+              boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+              opacity: isLocked ? 0.5 : 1,
             }}
           >
-            <ListItemIcon>
-              {video.watched ? (
-                <CheckCircleIcon sx={{ color: "#4caf50" }} />
+            <CardContent>
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+              >
+                <Box>
+                  <Typography variant="h6" fontWeight="bold">
+                    {video.title}
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    {video.duration}
+                  </Typography>
+                </Box>
+                {video.watched && (
+                  <CheckCircleIcon
+                    sx={{
+                      color: "#4caf50",
+                      fontSize: 24,
+                      marginLeft: "10px",
+                    }}
+                  />
+                )}
+              </Box>
+            </CardContent>
+            <CardActions>
+              {video.watched && video.quizId ? (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => onQuizStart(video.quizId)}
+                  fullWidth
+                  disabled={isLocked}
+                >
+                  Faça o Quiz
+                </Button>
               ) : (
-                <PlayCircleOutlineIcon sx={{ color: "#333" }} />
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setCurrentVideo(video)}
+                  fullWidth
+                  disabled={isLocked}
+                >
+                  {video.watched ? "Rever Vídeo" : "Assistir"}
+                </Button>
               )}
-            </ListItemIcon>
-            <ListItemText
-              primary={video.title}
-              secondary={video.duration}
-              sx={{
-                "& .MuiListItemText-primary": {
-                  fontWeight: video.watched ? 700 : 400,
-                },
-                "& .MuiListItemText-secondary": { color: "#888" },
-              }}
-            />
-          </ListItem>
-        ))}
-      </List>
+            </CardActions>
+          </Card>
+        );
+      })}
     </Box>
   );
 };

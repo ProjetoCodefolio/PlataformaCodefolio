@@ -16,16 +16,22 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const userRef = ref(database, `users/${user.uid}`);
-        const snapshot = await get(userRef);
-        if (snapshot.exists()) {
-          const data = snapshot.val();
+        try {
+          const userRef = ref(database, `users/${user.uid}`);
+          const snapshot = await get(userRef);
+          if (snapshot.exists()) {
+            const data = snapshot.val();
 
-          setUserDetails({
-            firstName: data.firstName,
-            lastName: data.lastName,
-            photoURL: data.photoURL,
-          });
+            setUserDetails({
+              userId: user.uid,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              photoURL: data.photoURL,
+              role: data.role || "user",
+            });
+          }
+        } catch (error) {
+          console.error("Erro ao buscar os detalhes do usuário:", error);
         }
       } else {
         setUserDetails(null);
@@ -39,6 +45,7 @@ export const AuthProvider = ({ children }) => {
   const value = {
     currentUser,
     userDetails,
+    isAdmin: userDetails?.role === "admin",
   };
 
   return (

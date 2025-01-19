@@ -1,65 +1,97 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import {
+  fetchCourseVideosWithWatchedStatus,
+  markVideoAsWatched,
+} from "../../service/courses";
 import VideoPlayer from "../../components/videoPlayerClasses";
 import VideoList from "../../components/videoList";
 import MaterialExtra from "../../components/MaterialExtra";
 import Quiz from "../../components/quiz";
-import { Box, Paper, Tabs, Tab, Typography, Button } from "@mui/material";
+import { Box, Paper, Tabs, Tab, Typography } from "@mui/material";
 import Topbar from "../../components/topbar/Topbar";
+import { useAuth } from "../../context/AuthContext";
 
 const Classes = () => {
-  const [videos, setVideos] = useState([
-    {
-      id: 1,
-      title: "Introdução ao JavaScript",
-      url: "https://www.youtube.com/watch?v=PRspkxdIi2w&list=PL-R1FQNkywO55236fniVp6LKGAVZXcmnr&index=2",
-      watched: false,
-      description: "Este é um vídeo introdutório ao JavaScript.",
-      duration: "00:05:28",
-    },
-    {
-      id: 2,
-      title: "Variáveis e Tipos de Dados",
-      url: "https://www.youtube.com/watch?v=gxx_1WGhgOY&list=PL-R1FQNkywO55236fniVp6LKGAVZXcmnr&index=3",
-      watched: false,
-      description: "Aprenda sobre variáveis e tipos de dados no JavaScript.",
-      duration: "00:04:29",
-    },
-    {
-      id: 3,
-      title: "Funções",
-      url: "https://www.youtube.com/watch?v=Jp59hG62XKY&list=PL-R1FQNkywO55236fniVp6LKGAVZXcmnr&index=8",
-      watched: false,
-      description: "Entenda como criar e utilizar funções no JavaScript.",
-      duration: "00:04:52",
-    },
-  ]);
-
-  const [currentVideoId, setCurrentVideoId] = useState(videos[0].id);
+  const [videos, setVideos] = useState([]);
+  const [currentVideoId, setCurrentVideoId] = useState(null);
   const [selectedTab, setSelectedTab] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
+  const { userDetails } = useAuth();
+  const location = useLocation();
+
+  const params = new URLSearchParams(location.search);
+  const courseId = params.get("courseId");
+
+  useEffect(() => {
+    const loadVideos = async () => {
+      if (courseId && userDetails?.userId) {
+        try {
+          const courseVideos = await fetchCourseVideosWithWatchedStatus(
+            courseId,
+            userDetails.userId
+          );
+
+          const sortedVideos = courseVideos
+            .map((video) => ({
+              ...video,
+              quizPassed: video.quizPassed || false,
+            }))
+            .sort((a, b) => a.order - b.order);
+
+          setVideos(sortedVideos);
+
+          const firstUnlockVideo = sortedVideos.find(
+            (video, index) =>
+              index === 0 ||
+              (sortedVideos[index - 1].watched &&
+                sortedVideos[index - 1].quizPassed)
+          );
+          setCurrentVideoId(firstUnlockVideo?.id || sortedVideos[0]?.id);
+        } catch (error) {
+          console.error("Erro ao carregar vídeos do curso:", error);
+        }
+      }
+    };
+
+    loadVideos();
+  }, [courseId, userDetails]);
 
   const currentVideo = videos.find((video) => video.id === currentVideoId);
 
-  // Marca o vídeo atual como assistido
-  const handleMarkAsWatched = () => {
-    setVideos((prevVideos) =>
-      prevVideos.map((video) =>
-        video.id === currentVideoId ? { ...video, watched: true } : video
-      )
-    );
-  };
-
-  // Avança para o próximo vídeo
-  const handleNextVideo = () => {
-    const currentIndex = videos.findIndex(
-      (video) => video.id === currentVideoId
-    );
-    if (currentIndex < videos.length - 1) {
-      setCurrentVideoId(videos[currentIndex + 1].id);
+  const handleMarkAsWatched = async () => {
+    try {
+      await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
+      setVideos((prevVideos) =>
+        prevVideos.map((video) =>
+          video.id === currentVideoId ? { ...video, watched: true } : video
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao marcar vídeo como assistido:", error);
     }
   };
 
-  // Alterna entre as abas
+  const handleQuizCompletion = async (isPassed) => {
+    setShowQuiz(false);
+
+    if (isPassed) {
+      setVideos((prevVideos) =>
+        prevVideos.map((video) =>
+          video.id === currentVideoId ? { ...video, quizPassed: true } : video
+        )
+      );
+
+      try {
+        await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
+      } catch (error) {
+        console.error("Erro ao atualizar status de quiz:", error);
+      }
+    } else {
+      alert("Você precisa passar no quiz para acessar o próximo vídeo.");
+    }
+  };
+
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
@@ -77,7 +109,6 @@ const Classes = () => {
           marginTop: "80px",
         }}
       >
-        {/* Player de vídeo e descrição */}
         <Box sx={{ flex: 3, display: "flex", flexDirection: "column", p: 2 }}>
           <Paper
             elevation={3}
@@ -90,10 +121,12 @@ const Classes = () => {
               borderRadius: "8px",
             }}
           >
-            {/* Verifica se é para exibir o vídeo ou o quiz */}
             {showQuiz ? (
-              <Quiz onClose={() => setShowQuiz(false)} />
-            ) : (
+              <Quiz
+                quizId={currentVideo?.quizId}
+                onComplete={handleQuizCompletion}
+              />
+            ) : currentVideo ? (
               <>
                 <Typography
                   variant="h5"
@@ -104,18 +137,22 @@ const Classes = () => {
                 <VideoPlayer
                   video={currentVideo}
                   onMarkAsWatched={handleMarkAsWatched}
-                  onNext={handleNextVideo}
-                  hasNext={
-                    videos.findIndex((video) => video.id === currentVideoId) <
-                    videos.length - 1
-                  }
+                  hasNext={videos.some(
+                    (video, index) =>
+                      index >
+                        videos.findIndex((v) => v.id === currentVideoId) &&
+                      video.watched &&
+                      video.quizPassed
+                  )}
                 />
               </>
+            ) : (
+              <Typography variant="h6" sx={{ color: "#888" }}>
+                Nenhum vídeo disponível.
+              </Typography>
             )}
           </Paper>
-
-          {/* Descrição do vídeo e botão para o quiz */}
-          {!showQuiz && (
+          {!showQuiz && currentVideo && (
             <Paper
               elevation={3}
               sx={{
@@ -138,18 +175,9 @@ const Classes = () => {
               >
                 {currentVideo.description}
               </Typography>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={() => setShowQuiz(true)}
-              >
-                Acessar Quiz
-              </Button>
             </Paper>
           )}
         </Box>
-
-        {/* Abas de Conteúdo e Materiais Extras */}
         <Box sx={{ flex: 2, p: 2, height: "100%" }}>
           <Paper
             elevation={3}
@@ -161,7 +189,6 @@ const Classes = () => {
               borderRadius: "8px",
             }}
           >
-            {/* Abas */}
             <Tabs
               value={selectedTab}
               onChange={handleTabChange}
@@ -175,8 +202,6 @@ const Classes = () => {
               <Tab label="Conteúdo" />
               <Tab label="Materiais Extras" />
             </Tabs>
-
-            {/* Conteúdo da aba selecionada */}
             <Box
               sx={{
                 flex: 1,
@@ -191,6 +216,7 @@ const Classes = () => {
                     setCurrentVideoId(video.id);
                     setShowQuiz(false);
                   }}
+                  onQuizStart={(quizId) => setShowQuiz(true)}
                 />
               ) : (
                 <MaterialExtra />
