@@ -24,7 +24,7 @@ const Classes = () => {
   const courseId = params.get("courseId");
 
   useEffect(() => {
-    const loadVideos = async () => {
+    const loadVideosAndProgress = async () => {
       if (courseId && userDetails?.userId) {
         try {
           const courseVideos = await fetchCourseVideosWithWatchedStatus(
@@ -33,40 +33,54 @@ const Classes = () => {
           );
 
           const sortedVideos = courseVideos
+            .sort((a, b) => a.order - b.order)
             .map((video) => ({
               ...video,
               quizPassed: video.quizPassed || false,
+            }));
+
+          console.log(
+            "Vídeos carregados com progresso:",
+            sortedVideos.map((video) => ({
+              title: video.title,
+              watched: video.watched,
+              quizPassed: video.quizPassed,
             }))
-            .sort((a, b) => a.order - b.order);
+          );
 
           setVideos(sortedVideos);
 
-          const firstUnlockVideo = sortedVideos.find(
-            (video, index) =>
-              index === 0 ||
-              (sortedVideos[index - 1].watched &&
-                sortedVideos[index - 1].quizPassed)
+          console.log(
+            "Quizzes aprovados:",
+            sortedVideos.filter((video) => video.quizPassed)
           );
-          setCurrentVideoId(firstUnlockVideo?.id || sortedVideos[0]?.id);
+
+          const firstUnwatchedVideo = sortedVideos.find(
+            (video) => !video.watched
+          );
+
+          setCurrentVideoId(firstUnwatchedVideo?.id || sortedVideos[0]?.id);
         } catch (error) {
-          console.error("Erro ao carregar vídeos do curso:", error);
+          console.error("Erro ao carregar vídeos e progresso do curso:", error);
         }
       }
     };
 
-    loadVideos();
+    loadVideosAndProgress();
   }, [courseId, userDetails]);
 
   const currentVideo = videos.find((video) => video.id === currentVideoId);
 
   const handleMarkAsWatched = async () => {
     try {
+      console.log("Marcando vídeo como assistido:", currentVideoId);
       await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
       setVideos((prevVideos) =>
         prevVideos.map((video) =>
           video.id === currentVideoId ? { ...video, watched: true } : video
         )
       );
+      console.log("Vídeo marcado como assistido no estado local");
     } catch (error) {
       console.error("Erro ao marcar vídeo como assistido:", error);
     }
@@ -76,16 +90,19 @@ const Classes = () => {
     setShowQuiz(false);
 
     if (isPassed) {
-      setVideos((prevVideos) =>
-        prevVideos.map((video) =>
-          video.id === currentVideoId ? { ...video, quizPassed: true } : video
-        )
-      );
-
       try {
+        console.log("Quiz concluído com sucesso:", currentVideo?.quizId);
+        setVideos((prevVideos) =>
+          prevVideos.map((video) =>
+            video.id === currentVideoId ? { ...video, quizPassed: true } : video
+          )
+        );
+
         await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
+
+        console.log("Quiz e vídeo marcados como concluídos no estado local");
       } catch (error) {
-        console.error("Erro ao atualizar status de quiz:", error);
+        console.error("Erro ao atualizar quiz ou vídeo como assistido:", error);
       }
     } else {
       alert("Você precisa passar no quiz para acessar o próximo vídeo.");
@@ -95,6 +112,10 @@ const Classes = () => {
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
+
+  useEffect(() => {
+    console.log("Estado atualizado de vídeos:", videos);
+  }, [videos]);
 
   return (
     <>

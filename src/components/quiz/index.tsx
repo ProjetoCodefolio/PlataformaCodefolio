@@ -50,7 +50,7 @@ const Quiz = ({ quizId, onComplete, courseId }) => {
             "Respostas do usuário enviadas para validação:",
             updatedAnswers
           );
-          evaluateQuiz(updatedAnswers);
+          evaluateQuiz(updatedAnswers); // Valida o quiz ao finalizar
         }
 
         return updatedAnswers;
@@ -72,7 +72,7 @@ const Quiz = ({ quizId, onComplete, courseId }) => {
           answers,
           quizId,
           userDetails.userId,
-          userDetails.courseId
+          courseId
         );
 
       console.log("Resultado da validação:", {
@@ -82,6 +82,27 @@ const Quiz = ({ quizId, onComplete, courseId }) => {
         totalPoints,
       });
 
+      // Atualiza o estado com o resultado do quiz
+      setResult({ isPassed, scorePercentage, earnedPoints, totalPoints });
+      setQuizCompleted(true);
+
+      if (isPassed) {
+        // Marca o quiz como concluído no backend
+        await fetch(`/api/studentCourses`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: userDetails.userId,
+            courseId,
+            quizId,
+            score: earnedPoints,
+          }),
+        });
+
+        console.log("Quiz marcado como concluído no backend.");
+      }
+
+      // Notifica o componente pai que o quiz foi concluído
       onComplete(isPassed);
     } catch (error) {
       console.error("Erro ao validar o quiz:", error);
@@ -109,8 +130,8 @@ const Quiz = ({ quizId, onComplete, courseId }) => {
             </Typography>
             <Typography sx={{ mt: 1 }}>
               {result.isPassed
-                ? " Parabéns, você passou!"
-                : " Você não passou. Tente novamente!"}
+                ? "Parabéns, você passou!"
+                : "Você não passou. Tente novamente!"}
             </Typography>
           </>
         ) : (
