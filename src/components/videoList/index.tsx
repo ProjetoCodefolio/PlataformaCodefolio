@@ -8,14 +8,25 @@ import {
   CardActions,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PlayCircleIcon from "@mui/icons-material/PlayCircle";
+import LockIcon from "@mui/icons-material/Lock";
+import ReplayIcon from "@mui/icons-material/Replay";
+import QuizIcon from "@mui/icons-material/Quiz";
 
 const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
   return (
     <Box>
       {videos.map((video, index) => {
+        const previousVideo = index > 0 ? videos[index - 1] : null;
+
         const isLocked =
-          index > 0 &&
-          (!videos[index - 1]?.watched || !videos[index - 1]?.quizPassed);
+          previousVideo &&
+          (!previousVideo.watched ||
+            (previousVideo.quizId && !previousVideo.quizPassed));
+
+        console.log(
+          `Vídeo: ${video.title} | Bloqueado: ${isLocked} | Assistido: ${video.watched} | Quiz passado: ${video.quizPassed}`
+        );
 
         return (
           <Card
@@ -30,6 +41,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
               borderRadius: "8px",
               boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
               opacity: isLocked ? 0.5 : 1,
+              position: "relative",
             }}
           >
             <CardContent>
@@ -55,28 +67,65 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                     }}
                   />
                 )}
+                {isLocked && (
+                  <LockIcon
+                    sx={{
+                      color: "#d32f2f",
+                      fontSize: 24,
+                      marginLeft: "10px",
+                    }}
+                  />
+                )}
               </Box>
             </CardContent>
-            <CardActions>
-              {video.watched && video.quizId ? (
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={() => onQuizStart(video.quizId)}
-                  fullWidth
-                  disabled={isLocked}
-                >
-                  Faça o Quiz
-                </Button>
-              ) : (
+
+            <CardActions
+              sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+            >
+              {!isLocked && (
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={() => setCurrentVideo(video)}
                   fullWidth
-                  disabled={isLocked}
+                  startIcon={<PlayCircleIcon />}
                 >
                   {video.watched ? "Rever Vídeo" : "Assistir"}
+                </Button>
+              )}
+
+              {video.quizId && !video.quizPassed && !isLocked && (
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => onQuizStart(video.quizId)}
+                  fullWidth
+                  startIcon={<QuizIcon />}
+                >
+                  Fazer Quiz
+                </Button>
+              )}
+
+              {video.quizId && video.quizPassed && !isLocked && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => onQuizStart(video.quizId)}
+                  fullWidth
+                  startIcon={<ReplayIcon />}
+                >
+                  Refazer Quiz
+                </Button>
+              )}
+
+              {isLocked && (
+                <Button
+                  variant="contained"
+                  disabled
+                  fullWidth
+                  startIcon={<LockIcon />}
+                >
+                  Bloqueado
                 </Button>
               )}
             </CardActions>

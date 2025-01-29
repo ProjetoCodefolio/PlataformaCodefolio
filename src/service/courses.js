@@ -198,27 +198,40 @@ export const fetchCourseVideosWithWatchedStatus = async (courseId, userId) => {
             get(studentCourseRef),
         ]);
 
-        if (videosSnapshot.exists() && studentCourseSnapshot.exists()) {
-            const videos = Object.entries(videosSnapshot.val()).map(([id, video]) => ({
-                ...video,
-                id,
-            }));
-
-            const studentCourse = studentCourseSnapshot.val();
-            const watchedVideos = studentCourse.watchedVideos || {};
-            const quizPassed = studentCourse.quizPassed || {};
-
-            return videos.map((video, index) => ({
-                ...video,
-                watched: !!watchedVideos[video.id],
-                quizPassed: !!quizPassed[video.id],
-                locked:
-                    index > 0 && (!watchedVideos[videos[index - 1].id] || !quizPassed[videos[index - 1].id]),
-            }));
+        if (!videosSnapshot.exists()) {
+            console.log("Nenhum vídeo encontrado para o curso.");
+            return [];
         }
-        return [];
+
+        if (!studentCourseSnapshot.exists()) {
+            console.log("Nenhum progresso encontrado para o estudante.");
+            return [];
+        }
+
+        const videos = Object.entries(videosSnapshot.val()).map(([id, video]) => ({
+            ...video,
+            id,
+        }));
+
+        const studentCourse = studentCourseSnapshot.val();
+        const watchedVideos = studentCourse.watchedVideos || {};
+        const quizPassed = studentCourse.quizPassed || {};
+
+        const processedVideos = videos.map((video, index) => ({
+            ...video,
+            watched: !!watchedVideos[video.id],
+            quizPassed: !!quizPassed[video.quizId],
+            locked:
+                index > 0 &&
+                (!watchedVideos[videos[index - 1].id] || !quizPassed[videos[index - 1].quizId]),
+        }));
+
+        console.log("Vídeos processados:", processedVideos);
+
+        return processedVideos;
     } catch (error) {
         console.error("Erro ao buscar vídeos do curso com progresso:", error);
         throw error;
     }
 };
+
