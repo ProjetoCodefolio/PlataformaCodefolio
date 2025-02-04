@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"; 
 import {
   Box,
   Typography,
-  Tabs,
-  Tab,
   Paper,
   Card,
   CardContent,
@@ -13,38 +11,27 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
-import { ref, get } from "firebase/database";
-import { database } from "../../service/firebase.jsx";
+import { ref, get, remove } from "firebase/database";
+import { database } from "../../service/firebase.jsx"; 
 import { useAuth } from "../../context/AuthContext";
 
-const MyCourses = () => {
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [inProgressCourses, setInProgressCourses] = useState([]);
-  const [completedCourses, setCompletedCourses] = useState([]);
+const ManageMyCourses = () => {
+  const [courses, setCourses] = useState([]);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadCourses = async () => {
       try {
-        // Usando a referência do nó "courses" do Realtime Database
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const coursesArray = Object.entries(data).map(([courseId, course]) => ({
+          const coursesData = Object.entries(data).map(([courseId, course]) => ({
             courseId,
             ...course,
           }));
-          // Separando cursos com base no progresso (supondo que progress seja um número entre 0 e 100)
-          const inProgress = coursesArray.filter(
-            (course) => (course.progress || 0) < 100
-          );
-          const completed = coursesArray.filter(
-            (course) => (course.progress || 0) >= 100
-          );
-          setInProgressCourses(inProgress);
-          setCompletedCourses(completed);
+          setCourses(coursesData);
         } else {
           console.log("Nenhum curso encontrado.");
         }
@@ -56,20 +43,27 @@ const MyCourses = () => {
     loadCourses();
   }, []);
 
-  const handleTabChange = (event, newValue) => {
-    setSelectedTab(newValue);
+  const handleEditCourse = (course) => {
+    navigate(`/adm-cursos?courseId=${course.courseId}`);
   };
 
-  const handleContinueCourse = (course) => {
-    navigate(`/classes?courseId=${course.courseId}`);
+  const handleCreateNewCourse = () => {
+    navigate(`/adm-cursos`);
   };
 
-  const handleViewCertificate = (course) => {
-    alert(`Certificado de: ${course.title}`);
+  const handleDeleteCourse = async (courseId) => {
+    try {
+      const courseRef = ref(database, `courses/${courseId}`);
+      await remove(courseRef);
+      setCourses(courses.filter((course) => course.courseId !== courseId));
+      console.log("Curso deletado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao deletar curso:", error);
+    }
   };
 
   const renderCourses = (courses, actionButtonLabel, onClickAction) => {
-    if (!courses || courses.length === 0) {
+    if (courses.length === 0) {
       return <Typography variant="body1">Nenhum curso encontrado.</Typography>;
     }
 
@@ -95,9 +89,6 @@ const MyCourses = () => {
                 <Typography variant="body2" color="textSecondary">
                   {course.description || "Descrição do curso"}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  Progresso: {course.progress || 0}%
-                </Typography>
               </CardContent>
               <CardActions>
                 <Button
@@ -107,6 +98,14 @@ const MyCourses = () => {
                   onClick={() => onClickAction(course)}
                 >
                   {actionButtonLabel}
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  onClick={() => handleDeleteCourse(course.courseId)}
+                >
+                  Deletar
                 </Button>
               </CardActions>
             </Card>
@@ -140,6 +139,26 @@ const MyCourses = () => {
         Meus Cursos
       </Typography>
 
+      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          sx={{
+            px: 4,
+            py: 1.5,
+            fontWeight: "bold",
+            fontSize: "16px",
+            backgroundColor: "#1976d2",
+            ":hover": {
+              backgroundColor: "#1565c0",
+            },
+          }}
+          onClick={handleCreateNewCourse}
+        >
+          Criar Novo Curso
+        </Button>
+      </Box>
+
       <Paper
         sx={{
           p: 2,
@@ -148,45 +167,18 @@ const MyCourses = () => {
           boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
         }}
       >
-        <Tabs
-          value={selectedTab}
-          onChange={handleTabChange}
-          textColor="primary"
-          indicatorColor="primary"
-          centered
-          sx={{
-            mb: 4,
-            "& .MuiTab-root": { fontWeight: "bold" },
-          }}
-        >
-          <Tab label="Em Andamento" />
-          <Tab label="Concluídos" />
-        </Tabs>
-
-        {selectedTab === 0 && (
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center",  fontWeight: "bold" }}>
-              Cursos em Andamento
-            </Typography>
-            {renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}
-          </Box>
-        )}
-
-        {selectedTab === 1 && (
-          <Box>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center", fontWeight: "bold" }}>
-              Cursos Concluídos
-            </Typography>
-            {renderCourses(
-              completedCourses,
-              "Ver Certificado",
-              handleViewCertificate
-            )}
-          </Box>
-        )}
+        <Box>
+          <Typography
+            variant="h6"
+            sx={{ mb: 2, fontWeight: "bold", textAlign: "center" }}
+          >
+            Cursos Disponíveis
+          </Typography>
+          {renderCourses(courses, "Editar Curso", handleEditCourse)}
+        </Box>
       </Paper>
     </Box>
   );
 };
 
-export default MyCourses;
+export default ManageMyCourses;

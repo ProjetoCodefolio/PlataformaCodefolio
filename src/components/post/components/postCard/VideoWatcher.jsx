@@ -1,33 +1,49 @@
 import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { ref, set, update, get, child } from 'firebase/database';
+import { ref, get, set, update, child } from 'firebase/database';
 import { database } from '../../../../service/firebase';
 import { useAuth } from '../../../../context/AuthContext';
 import { LinearProgress, Box, Typography } from '@mui/material';
 
-function VideoWatcher({ player, videoId, initialWatchTime, initialPercentageWatched }) {
+function VideoWatcher({ player, videoId, onMarkAsWatched }) {
     const [watchTime, setWatchTime] = useState(0);
     const [videoDuration, setVideoDuration] = useState(0);
-    const [percentageWatched, setPercentageWatched] = useState(initialPercentageWatched || 0);
-    const [lastSavedPercentage, setLastSavedPercentage] = useState(initialPercentageWatched || 0);
+    const [percentageWatched, setPercentageWatched] = useState(0);
+    const [lastSavedPercentage, setLastSavedPercentage] = useState(0);
     const { currentUser } = useAuth();
 
+    const roundNumber = (num) => Math.floor(num);
+
     useEffect(() => {
-        setPercentageWatched(initialPercentageWatched || 0);
-        setLastSavedPercentage(initialPercentageWatched || 0);
-        setWatchTime(initialWatchTime);
-    }, [initialPercentageWatched]);
+        const fetchWatchData = async () => {
+            const watchTimeRef = ref(database, 'videoWatchTime');
+            const userVideoRef = child(watchTimeRef, `${currentUser.uid}_${videoId}`);
+            const snapshot = await get(userVideoRef);
+
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                setPercentageWatched(data.percentageWatched || 0);
+                setLastSavedPercentage(data.percentageWatched || 0);
+                setWatchTime(data.watchedTimeInSeconds || 0);
+            }
+        };
+
+        if (currentUser && videoId) {
+            fetchWatchData();
+        }
+    }, [currentUser, videoId]);
 
     useEffect(() => {
         if (player) {
-            setVideoDuration(player.getDuration());
+            const duration = roundNumber(player.getDuration());
+            setVideoDuration(duration);
 
             const interval = setInterval(() => {
-                if (player.getPlayerState() === 1) { // vídeo em reprodução
-                    const currentTime = player.getCurrentTime();
-                    setWatchTime(currentTime); // Atualiza o tempo assistido com base no player
+                if (!player.paused) {
+                    const currentTime = roundNumber(player.getCurrentTime());
+                    setWatchTime(currentTime >= duration ? duration : currentTime);
                 }
-            }, 1000); // Verifica a cada segundo
+            }, 500);
 
             return () => clearInterval(interval);
         }
@@ -35,47 +51,45 @@ function VideoWatcher({ player, videoId, initialWatchTime, initialPercentageWatc
 
     useEffect(() => {
         if (videoDuration > 0) {
-            const percentage = ((watchTime / videoDuration) * 100).toFixed(2);
-            setPercentageWatched(parseFloat(percentage)); // Define a porcentagem com precisão
+            const calculatedPercentage = Math.min(
+                100,
+                parseFloat(((watchTime / videoDuration) * 100).toFixed(1))
+            );
 
-            if (parseFloat(percentage) - lastSavedPercentage >= 10) {
-                saveWatchTime(videoId, parseFloat(percentage));
-                setLastSavedPercentage(parseFloat(percentage) - (parseFloat(percentage) % 10)); // Atualiza a última porcentagem salva
+            if (calculatedPercentage > percentageWatched) {
+                setPercentageWatched(calculatedPercentage);
+            }
+
+            if (calculatedPercentage >= 90 && onMarkAsWatched) {
+                onMarkAsWatched();
+            }
+
+            if (calculatedPercentage - lastSavedPercentage >= 10 || calculatedPercentage === 100) {
+                saveWatchTime(videoId, calculatedPercentage);
+                setLastSavedPercentage(calculatedPercentage);
             }
         }
     }, [watchTime, videoDuration]);
 
-    useEffect(() => {
-        const handleBeforeUnload = (event) => {
-            event.preventDefault();
-            if (percentageWatched > lastSavedPercentage) {
-                saveWatchTime(videoId, percentageWatched);
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [percentageWatched, lastSavedPercentage, videoId]);
-
     const saveWatchTime = async (videoId, percentage) => {
         const watchTimeRef = ref(database, 'videoWatchTime');
         const userVideoRef = child(watchTimeRef, `${currentUser.uid}_${videoId}`);
-    
+
         const newWatchTimeData = {
-            videoId: videoId,
+            videoId,
             userId: currentUser.uid,
             watchedTime: `${Math.floor(watchTime / 60)}min ${Math.round(watchTime % 60)}s`,
             watchedTimeInSeconds: watchTime,
             videoDuration: `${Math.floor(videoDuration / 60)}min ${Math.round(videoDuration % 60)}s`,
             percentageWatched: percentage,
         };
-    
+
         const snapshot = await get(userVideoRef);
         if (snapshot.exists()) {
-            await update(userVideoRef, newWatchTimeData);
+            const existingData = snapshot.val();
+            if (percentage > existingData.percentageWatched) {
+                await update(userVideoRef, newWatchTimeData);
+            }
         } else {
             await set(userVideoRef, newWatchTimeData);
         }
@@ -97,23 +111,12 @@ function VideoWatcher({ player, videoId, initialWatchTime, initialPercentageWatc
                         },
                     }}
                 />
-                <Typography
-                    variant="body2"
-                    sx={{
-                        marginLeft: '10px',
-                        color: '#555',
-                        whiteSpace: 'nowrap',
-                    }}
-                >
+                <Typography variant="body2" sx={{ marginLeft: '10px', color: '#555' }}>
                     {percentageWatched}%
                 </Typography>
             </Box>
-            <p style={{ margin: '10px 0' }}>
-                <strong>Tempo assistido:</strong> {watchTime >= 60 ? `${Math.floor(watchTime / 60)}min ${Math.round(watchTime % 60)}s` : `${Math.round(watchTime)}s`}
-            </p>
-            <p>
-                <strong>Duração do vídeo:</strong> {videoDuration >= 60 ? `${Math.floor(videoDuration / 60)}min ${Math.round(videoDuration % 60)}s` : `${Math.round(videoDuration)}s`}
-            </p>
+            <p><strong>Tempo assistido:</strong> {watchTime}s</p>
+            <p><strong>Duração do vídeo:</strong> {videoDuration}s</p>
         </div>
     );
 }
@@ -121,16 +124,7 @@ function VideoWatcher({ player, videoId, initialWatchTime, initialPercentageWatc
 VideoWatcher.propTypes = {
     player: PropTypes.object,
     videoId: PropTypes.string.isRequired,
-    initialWatchTime: PropTypes.number.isRequired,
-    initialPercentageWatched: PropTypes.number.isRequired,
+    onMarkAsWatched: PropTypes.func,
 };
 
 export default VideoWatcher;
-
-// a ver:
-
-// captura dos eventos de fechar a página pra salvar o tempo assistido -> OK
-
-// pensar numa forma ok de salvar isso no banco de dados -> OK
-
-// tentar ver uma forma do player não poder ser avançado, apenas pausado e reproduzido -> não é uma grande prioridade

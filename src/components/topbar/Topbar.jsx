@@ -47,7 +47,7 @@ export default function Topbar({ onSearch }) {
   };
 
   const handleAdmCursoClick = () => {
-    navigate("/adm-cursos");
+    navigate("/manage-courses");
   };
 
   const handleSearchChange = (event) => {

@@ -1,4 +1,9 @@
-import React, { useState } from "react";
+import { ref, set, update, get, child } from 'firebase/database';
+import { database } from "../../../service/firebase";
+import { useLocation } from "react-router-dom";
+
+import React, { useEffect, useState } from "react";
+
 import {
   Box,
   TextField,
@@ -12,13 +17,24 @@ import {
   Tabs,
   Tab,
   Grid,
+  MenuItem,
+  Select,
+  FormHelperText,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Topbar from "../../../components/topbar/Topbar";
 
+
+
+
 const CourseForm = () => {
+  const [course, setCourse] = useState({});
+
   const [courseTitle, setCourseTitle] = useState("");
+  const [courseDescription, setCourseDescription] = useState("");
   const [videos, setVideos] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [quizQuestions, setQuizQuestions] = useState([]);
@@ -35,11 +51,40 @@ const CourseForm = () => {
   const [quizQuestion, setQuizQuestion] = useState("");
   const [quizOptions, setQuizOptions] = useState(["", ""]);
   const [correctOption, setCorrectOption] = useState(0);
+  const [minPercentage, setMinPercentage] = useState(0);
+
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const courseId = params.get("courseId");
+  console.log(courseId);
+
+
+  async function fetchCourse() {
+    const courseRef = ref(database, `courses/${courseId}`);
+    const courseSnapshot = await get(courseRef);
+    const courseData = courseSnapshot.val();
+  
+    if (courseData) {
+      setCourse(courseData);
+      setCourseTitle(courseData.title || "");
+      setCourseDescription(courseData.description || "");
+    }
+  }
+
+  useEffect(() => {
+    const loadCourse = async () => {
+      if (courseId) {
+        await fetchCourse();
+      }
+    };
+    loadCourse();
+  }, [courseId]);
+
+  console.log(course.title);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
-
   const handleAddVideo = () => {
     const newVideo = {
       id: videos.length + 1,
@@ -99,16 +144,36 @@ const CourseForm = () => {
     setQuizOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const courseData = {
       title: courseTitle,
-      videos,
-      materials,
-      quizQuestions,
+      videos: videos,
+      materials: materials,
+      quizQuestions: quizQuestions,
     };
-    console.log("Dados do Curso:", courseData);
+
+    try {
+      const courseRef = ref(database, "courses");
+      const newCourseRef = push(courseRef);
+
+      await set(newCourseRef, courseData);
+      alert("Curso salvo com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar o curso:", error);
+      alert("Erro ao salvar o curso.");
+    }
   };
 
+  // const handleSubmit = () => {
+  //   const courseData = {
+  //     title: courseTitle,
+  //     videos: videos,
+  //     materials: materials,
+  //     quizQuestions: quizQuestions,
+  //   };
+
+  // };
+  // console.log("Dados do Curso:", courseData);
   return (
     <>
       {" "}
@@ -151,6 +216,17 @@ const CourseForm = () => {
             onChange={(e) => setCourseTitle(e.target.value)}
             sx={{ mb: 4 }}
             variant="outlined"
+            disabled = {courseId ? true : false}
+          />
+
+          <TextField
+            label="Descrição"
+            fullWidth
+            value={courseDescription}
+            onChange={(e) => setCourseDescription(e.target.value)}
+            sx={{ mb: 4}}
+            variant="outlined"
+            disabled = {courseId ? true : false}
           />
 
           <Tabs
@@ -374,6 +450,30 @@ const CourseForm = () => {
               >
                 Adicionar Questão
               </Button>
+
+              <Grid item xs={12} sx={{ mt: 3 }}>
+                <InputLabel htmlFor="minPercentage">Nota Mínima (%)</InputLabel>
+                <FormControl fullWidth>
+                  <Select
+                    value={minPercentage}
+                    onChange={(e) => setMinPercentage(e.target.value)}
+                    inputProps={{ id: 'minPercentage' }}
+                  >
+                    {[...Array(11)].map((_, index) => {
+                      const value = index * 10;
+                      return (
+                        <MenuItem key={value} value={value}>
+                          {value}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                  <FormHelperText>
+                    Defina a porcentagem mínima necessária para aprovação. Se a porcentagem for igual a 0, o quizz não será obrigatório!
+                  </FormHelperText>
+                </FormControl>
+              </Grid>
+
 
               <List sx={{ mt: 4 }}>
                 {quizQuestions.map((question) => (

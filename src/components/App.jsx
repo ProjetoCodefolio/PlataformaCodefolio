@@ -6,7 +6,7 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "../context/AuthContext"; // Usando o contexto de autenticação
+import { AuthProvider, useAuth } from "../context/AuthContext"; 
 import Login from "../pages/Login";
 import SignUp from "../pages/SignUp";
 import Dashboard2 from "../pages/Dashboard";
@@ -25,6 +25,7 @@ import HomePage from "../pages/homePage";
 import Cursos from "../pages/course/adminCourse";
 import ListCursos from "../pages/course/list";
 import Classes from "../pages/course/classes";
+import ManageMyCourses from "../pages/course/ManageMyCourses";
 
 function App() {
   return (
@@ -125,12 +126,21 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/manage-courses"
+            element={
+              <PrivateRoute>
+                <ManageMyCourses />
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </Router>
     </AuthProvider>
   );
 }
 
+// Protege rotas privadas, exigindo autenticação
 function PrivateRoute({ children }) {
   const { currentUser } = useAuth();
   const location = useLocation();
@@ -142,6 +152,7 @@ function PrivateRoute({ children }) {
   return children;
 }
 
+// Protege rotas de administrador, exigindo autenticação e permissão de admin
 function AdminRoute({ children }) {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();

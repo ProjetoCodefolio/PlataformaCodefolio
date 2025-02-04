@@ -1,6 +1,47 @@
 import { ref, get, query, orderByChild, equalTo, update } from "firebase/database";
+import { collection, getDocs } from "firebase/firestore";
 import { database } from "./firebase";
 
+const fetchCourses = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "courses"));
+      const courses = [];
+      querySnapshot.forEach((doc) => {
+        courses.push({ id: doc.id, ...doc.data() });
+      });
+      setCourses(courses);
+    } catch (error) {
+      console.error("Erro ao buscar cursos: ", error);
+    }
+  };
+  
+export const fetchCourseById = async (courseId) => {
+    try {
+      const courseDoc = await getDoc(doc(db, "courses", courseId));
+      if (courseDoc.exists()) {
+        return { courseId: courseDoc.id, ...courseDoc.data() };
+      } else {
+        throw new Error("Curso não encontrado.");
+      }
+    } catch (error) {
+      console.error("Erro ao buscar curso:", error);
+      throw error;
+    }
+  };
+
+  export const fetchAllCourses = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "courses"));
+      const courses = querySnapshot.docs.map((doc) => ({
+        courseId: doc.id,
+        ...doc.data(),
+      }));
+      return courses;
+    } catch (error) {
+      console.error("Erro ao buscar cursos:", error);
+      throw error;
+    }
+  };
 
 export const fetchInProgressCourses = async (userId) => {
     try {
@@ -34,6 +75,14 @@ export const fetchInProgressCourses = async (userId) => {
         throw error;
     }
 };
+
+export const deleteCourse = async (courseId) => {
+    try {
+      await deleteDoc(doc(db, "courses", courseId));
+    } catch (error) {
+      console.error("Erro ao deletar curso:", error);
+    }
+  };
 
 
 export const fetchCompletedCourses = async (userId) => {
@@ -120,10 +169,11 @@ export const fetchQuizQuestions = async (quizId) => {
     }
 };
 
-export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId) => {
+export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId, minPercentage) => {
     console.log("Iniciando validação do quiz...");
     console.log("QuizId recebido:", quizId);
     console.log("UserAnswers recebidas:", userAnswers);
+
 
     try {
         const quizQuestions = await fetchQuizQuestions(quizId);
@@ -146,7 +196,7 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId)
         });
 
         const scorePercentage = (earnedPoints / totalPoints) * 100;
-        const isPassed = scorePercentage >= 70;
+        const isPassed = scorePercentage >= minPercentage;
 
 
         const userQuizRef = ref(database, `studentCourses/${userId}/quizPassed`);
