@@ -4,44 +4,44 @@ import { database } from "./firebase";
 
 const fetchCourses = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "courses"));
-      const courses = [];
-      querySnapshot.forEach((doc) => {
-        courses.push({ id: doc.id, ...doc.data() });
-      });
-      setCourses(courses);
+        const querySnapshot = await getDocs(collection(db, "courses"));
+        const courses = [];
+        querySnapshot.forEach((doc) => {
+            courses.push({ id: doc.id, ...doc.data() });
+        });
+        setCourses(courses);
     } catch (error) {
-      console.error("Erro ao buscar cursos: ", error);
+        console.error("Erro ao buscar cursos: ", error);
     }
-  };
-  
+};
+
 export const fetchCourseById = async (courseId) => {
     try {
-      const courseDoc = await getDoc(doc(db, "courses", courseId));
-      if (courseDoc.exists()) {
-        return { courseId: courseDoc.id, ...courseDoc.data() };
-      } else {
-        throw new Error("Curso não encontrado.");
-      }
+        const courseDoc = await getDoc(doc(db, "courses", courseId));
+        if (courseDoc.exists()) {
+            return { courseId: courseDoc.id, ...courseDoc.data() };
+        } else {
+            throw new Error("Curso não encontrado.");
+        }
     } catch (error) {
-      console.error("Erro ao buscar curso:", error);
-      throw error;
+        console.error("Erro ao buscar curso:", error);
+        throw error;
     }
-  };
+};
 
-  export const fetchAllCourses = async () => {
+export const fetchAllCourses = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "courses"));
-      const courses = querySnapshot.docs.map((doc) => ({
-        courseId: doc.id,
-        ...doc.data(),
-      }));
-      return courses;
+        const querySnapshot = await getDocs(collection(db, "courses"));
+        const courses = querySnapshot.docs.map((doc) => ({
+            courseId: doc.id,
+            ...doc.data(),
+        }));
+        return courses;
     } catch (error) {
-      console.error("Erro ao buscar cursos:", error);
-      throw error;
+        console.error("Erro ao buscar cursos:", error);
+        throw error;
     }
-  };
+};
 
 export const fetchInProgressCourses = async (userId) => {
     try {
@@ -78,11 +78,11 @@ export const fetchInProgressCourses = async (userId) => {
 
 export const deleteCourse = async (courseId) => {
     try {
-      await deleteDoc(doc(db, "courses", courseId));
+        await deleteDoc(doc(db, "courses", courseId));
     } catch (error) {
-      console.error("Erro ao deletar curso:", error);
+        console.error("Erro ao deletar curso:", error);
     }
-  };
+};
 
 
 export const fetchCompletedCourses = async (userId) => {
@@ -182,12 +182,12 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
         let totalPoints = 0;
         let earnedPoints = 0;
 
+        // Valida as respostas do usuário com base no ID da opção correta
         quizQuestions.forEach((question) => {
-            const userAnswer = userAnswers[question.id];
+            const userAnswer = userAnswers[question.id]; // ID da opção escolhida pelo usuário
             totalPoints += question.points;
 
-
-            if (userAnswer === question.options[parseInt(question.answer)]) {
+            if (userAnswer === question.answer) { // Comparação pelo ID da resposta correta
                 earnedPoints += question.points;
                 console.log(`Resposta correta para a questão ${question.id}.`);
             } else {
@@ -199,6 +199,7 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
         const isPassed = scorePercentage >= minPercentage;
 
 
+        // Atualiza o progresso do quiz no Firebase
         const userQuizRef = ref(database, `studentCourses/${userId}/quizPassed`);
         await update(userQuizRef, {
             [quizId]: isPassed,
@@ -217,6 +218,7 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
         throw error;
     }
 };
+
 
 
 

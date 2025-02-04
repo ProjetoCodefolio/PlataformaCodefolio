@@ -89,6 +89,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                   onClick={() => setCurrentVideo(video)}
                   fullWidth
                   startIcon={<PlayCircleIcon />}
+                  sx={{ marginLeft: "8px" }}
                 >
                   {video.watched ? "Rever Vídeo" : "Assistir"}
                 </Button>
