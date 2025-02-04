@@ -52,13 +52,17 @@ const ManageMyCourses = () => {
   };
 
   const handleDeleteCourse = async (courseId) => {
-    try {
-      const courseRef = ref(database, `courses/${courseId}`);
-      await remove(courseRef);
-      setCourses(courses.filter((course) => course.courseId !== courseId));
-      console.log("Curso deletado com sucesso!");
-    } catch (error) {
-      console.error("Erro ao deletar curso:", error);
+    let response = window.confirm("deseja realmente deletar?")
+
+    if(response) {
+      try {
+        const courseRef = ref(database, `courses/${courseId}`);
+        await remove(courseRef);
+        setCourses(courses.filter((course) => course.courseId !== courseId));
+        console.log("Curso deletado com sucesso!");
+      } catch (error) {
+        console.error("Erro ao deletar curso:", error);
+      }
     }
   };
 

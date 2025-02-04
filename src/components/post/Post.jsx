@@ -15,7 +15,6 @@ import { Box, Grid, CircularProgress } from '@mui/material';
 import { ref, get, remove, onValue } from 'firebase/database';
 import { FilterPost } from './components/filterPostCard';
 import PostCards from './components/postCard';
-import CreateQuizz from '../courseQuizzes/createQuizz';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -132,7 +131,6 @@ export default function Post({ member }) {
 
   return (
     <S.Wrapper>
-      <CreateQuizz></CreateQuizz>
       <Topbar onSearch={updateSearchTerm} />{/* Passar handleSearchChange para Topbar */}
       <S.WrapperModal>
         <CreatePostModal

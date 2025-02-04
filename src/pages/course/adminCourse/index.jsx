@@ -1,6 +1,7 @@
-import { ref, set, update, get, child } from 'firebase/database';
+import { ref, set, push, get, child } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation } from "react-router-dom";
+import { useAuth } from '../../../context/AuthContext';
 
 import React, { useEffect, useState } from "react";
 
@@ -26,12 +27,11 @@ import {
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Topbar from "../../../components/topbar/Topbar";
-
-
-
+import { video } from 'framer-motion/client';
 
 const CourseForm = () => {
-  const [course, setCourse] = useState({});
+
+  const [courseVideos, setCourseVideos] = useState([]);
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
@@ -54,18 +54,30 @@ const CourseForm = () => {
   const [minPercentage, setMinPercentage] = useState(0);
 
   const location = useLocation();
+  const { userDetails } = useAuth();
+
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
-  console.log(courseId);
 
+  async function fetchCourseVideos() {
+    const courseVideosRef = ref(database, 'courseVideos');
+    const snapshot = await get(courseVideosRef);
+    const courseVideos = snapshot.val();
+
+    if (courseVideos) {
+      const filteredVideos = Object.entries(courseVideos)
+        .filter(([key, video]) => video.courseId === courseId)
+        .map(([key, video]) => ({ id: key, ...video }));
+      setVideos(filteredVideos);
+    }
+  }
 
   async function fetchCourse() {
     const courseRef = ref(database, `courses/${courseId}`);
     const courseSnapshot = await get(courseRef);
     const courseData = courseSnapshot.val();
-  
+
     if (courseData) {
-      setCourse(courseData);
       setCourseTitle(courseData.title || "");
       setCourseDescription(courseData.description || "");
     }
@@ -75,12 +87,12 @@ const CourseForm = () => {
     const loadCourse = async () => {
       if (courseId) {
         await fetchCourse();
+        await fetchCourseVideos();
       }
     };
     loadCourse();
   }, [courseId]);
 
-  console.log(course.title);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -101,7 +113,10 @@ const CourseForm = () => {
   };
 
   const handleRemoveVideo = (id) => {
-    setVideos((prev) => prev.filter((video) => video.id !== id));
+    let response = window.confirm("Deseja realmente deletar este vídeo?")
+    if (response) {
+      setVideos((prev) => prev.filter((video) => video.id !== id));
+    }
   };
 
   const handleAddMaterial = () => {
@@ -144,36 +159,87 @@ const CourseForm = () => {
     setQuizOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
   };
 
-  const handleSubmit = async () => {
+  const saveCourse = async () => {
     const courseData = {
       title: courseTitle,
-      videos: videos,
-      materials: materials,
-      quizQuestions: quizQuestions,
+      description: courseDescription,
+      userId: userDetails.userId,
+      createdAt: new Date().toLocaleDateString(),
     };
 
-    try {
-      const courseRef = ref(database, "courses");
-      const newCourseRef = push(courseRef);
+    if (courseId) {
+      try {
+        const courseRef = ref(database, `courses/${courseId}`);
+        await set(courseRef, courseData);
 
-      await set(newCourseRef, courseData);
-      alert("Curso salvo com sucesso!");
-    } catch (error) {
-      console.error("Erro ao salvar o curso:", error);
-      alert("Erro ao salvar o curso.");
+        alert("Curso atualizado com sucesso!");
+      } catch (error) {
+        console.error("Erro ao atualizar o curso:", error);
+        alert("Erro ao atualizar o curso.");
+      }
+    } else {
+      try {
+        const courseRef = ref(database, "courses");
+        const newCourseRef = push(courseRef);
+        await set(newCourseRef, courseData);
+
+        alert("Curso salvo com sucesso!");
+      } catch (error) {
+        console.error("Erro ao salvar o curso:", error);
+        alert("Erro ao salvar o curso.");
+      }
     }
+  }
+
+  const saveVideos = async () => {
+    const courseVideosRef = ref(database, "courseVideos");
+    const snapshot = await get(courseVideosRef);
+    const existingVideos = snapshot.val() || {};
+
+    const existingVideoIds = new Set(Object.keys(existingVideos));
+    const currentVideoIds = new Set(videos.map(video => video.id));
+
+    // Remove videos that are no longer in the state and belong to the current course
+    for (const id of existingVideoIds) {
+      const video = existingVideos[id];
+      if (video.courseId === courseId && !currentVideoIds.has(id)) {
+        const videoRef = ref(database, `courseVideos/${id}`);
+        await set(videoRef, null);
+      }
+    }
+
+    // Add or update videos in the state
+    videos.forEach(async (video) => {
+      const videoData = {
+        courseId: courseId,
+        title: video.title,
+        url: video.url,
+        duration: video.duration,
+        description: video.description,
+      };
+
+      try {
+        if (!existingVideoIds.has(video.id)) {
+          const newVideoRef = push(courseVideosRef);
+          await set(newVideoRef, videoData);
+        } else {
+          const videoRef = ref(database, `courseVideos/${video.id}`);
+          await set(videoRef, videoData);
+        }
+      } catch (error) {
+        console.error("Erro ao salvar os vídeos:", error);
+        alert("Erro ao salvar os vídeos.");
+      }
+    });
+
+    alert("Vídeos salvos com sucesso!");
   };
 
-  // const handleSubmit = () => {
-  //   const courseData = {
-  //     title: courseTitle,
-  //     videos: videos,
-  //     materials: materials,
-  //     quizQuestions: quizQuestions,
-  //   };
+  const handleSubmit = async () => {
+    saveCourse();
+    saveVideos();
+  };
 
-  // };
-  // console.log("Dados do Curso:", courseData);
   return (
     <>
       {" "}
@@ -216,17 +282,17 @@ const CourseForm = () => {
             onChange={(e) => setCourseTitle(e.target.value)}
             sx={{ mb: 4 }}
             variant="outlined"
-            disabled = {courseId ? true : false}
+            disabled={courseId ? true : false}
           />
 
           <TextField
-            label="Descrição"
+            label="Descrição do Curso"
             fullWidth
             value={courseDescription}
             onChange={(e) => setCourseDescription(e.target.value)}
-            sx={{ mb: 4}}
+            sx={{ mb: 4 }}
             variant="outlined"
-            disabled = {courseId ? true : false}
+            disabled={courseId ? true : false}
           />
 
           <Tabs
