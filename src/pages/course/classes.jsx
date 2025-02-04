@@ -11,6 +11,7 @@ import Quiz from "../../components/quiz";
 import { Box, Paper, Tabs, Tab, Typography } from "@mui/material";
 import Topbar from "../../components/topbar/Topbar";
 import { useAuth } from "../../context/AuthContext";
+import { toast } from "react-toastify";
 
 const Classes = () => {
   const [videos, setVideos] = useState([]);
@@ -86,28 +87,43 @@ const Classes = () => {
     }
   };
 
-  const handleQuizCompletion = async (isPassed) => {
-    setShowQuiz(false);
+  // const handleQuizCompletion = async (isPassed) => {
+  //   setShowQuiz(false);
 
-    if (isPassed) {
-      try {
-        console.log("Quiz concluído com sucesso:", currentVideo?.quizId);
-        setVideos((prevVideos) =>
-          prevVideos.map((video) =>
-            video.id === currentVideoId ? { ...video, quizPassed: true } : video
-          )
-        );
+  //   if (!currentVideoId) {
+  //     console.error("Erro: Nenhum vídeo selecionado!");
+  //     return;
+  //   }
 
-        await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
+  //   if (!currentVideo) {
+  //     console.error("Erro: currentVideo não está definido!");
+  //     return;
+  //   }
 
-        console.log("Quiz e vídeo marcados como concluídos no estado local");
-      } catch (error) {
-        console.error("Erro ao atualizar quiz ou vídeo como assistido:", error);
-      }
-    } else {
-      alert("Você precisa passar no quiz para acessar o próximo vídeo.");
-    }
-  };
+  //   if (isPassed) {
+  //     try {
+  //       console.log("Quiz concluído com sucesso:", currentVideo?.quizId);
+
+  //       setVideos((prevVideos) => {
+  //         const updatedVideos = prevVideos.map((video) =>
+  //           video.id === currentVideoId ? { ...video, quizPassed: true } : video
+  //         );
+  //         console.log(
+  //           "Novo estado dos vídeos após passar no quiz:",
+  //           updatedVideos
+  //         );
+  //         return updatedVideos;
+  //       });
+
+  //       await markVideoAsWatched(userDetails.userId, courseId, currentVideoId);
+  //       console.log("Quiz e vídeo marcados como concluídos no estado local");
+  //     } catch (error) {
+  //       console.error("Erro ao atualizar quiz ou vídeo como assistido:", error);
+  //     }
+  //   } else {
+  //     alert("Você precisa passar no quiz para acessar o próximo vídeo.");
+  //   }
+  // };
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -145,7 +161,15 @@ const Classes = () => {
             {showQuiz ? (
               <Quiz
                 quizId={currentVideo?.quizId}
-                onComplete={handleQuizCompletion}
+                courseId={courseId}
+                currentVideoId={currentVideoId}
+                onComplete={(isPassed) => {
+                  if (!isPassed) {
+                    toast.warning(
+                      "Você precisa passar no quiz para acessar o próximo vídeo."
+                    );
+                  }
+                }}
               />
             ) : currentVideo ? (
               <>

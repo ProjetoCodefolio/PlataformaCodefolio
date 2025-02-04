@@ -132,12 +132,12 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId)
         let totalPoints = 0;
         let earnedPoints = 0;
 
+        // Valida as respostas do usuário com base no ID da opção correta
         quizQuestions.forEach((question) => {
-            const userAnswer = userAnswers[question.id];
+            const userAnswer = userAnswers[question.id]; // ID da opção escolhida pelo usuário
             totalPoints += question.points;
 
-
-            if (userAnswer === question.options[parseInt(question.answer)]) {
+            if (userAnswer === question.answer) { // Comparação pelo ID da resposta correta
                 earnedPoints += question.points;
                 console.log(`Resposta correta para a questão ${question.id}.`);
             } else {
@@ -146,9 +146,9 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId)
         });
 
         const scorePercentage = (earnedPoints / totalPoints) * 100;
-        const isPassed = scorePercentage >= 70;
+        const isPassed = scorePercentage >= 70; // Aprovado se acertar 70% ou mais
 
-
+        // Atualiza o progresso do quiz no Firebase
         const userQuizRef = ref(database, `studentCourses/${userId}/quizPassed`);
         await update(userQuizRef, {
             [quizId]: isPassed,
@@ -167,6 +167,7 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId)
         throw error;
     }
 };
+
 
 
 
