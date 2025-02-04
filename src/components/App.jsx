@@ -25,6 +25,7 @@ import HomePage from "../pages/homePage";
 import Cursos from "../pages/course/adminCourse";
 import ListCursos from "../pages/course/list";
 import Classes from "../pages/course/classes";
+import ManageMyCourses from "../pages/course/ManageMyCourses";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -126,6 +127,14 @@ function App() {
               element={
                 <PrivateRoute>
                   <Classes />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/manage-courses"
+              element={
+                <PrivateRoute>
+                  <ManageMyCourses />
                 </PrivateRoute>
               }
             />
