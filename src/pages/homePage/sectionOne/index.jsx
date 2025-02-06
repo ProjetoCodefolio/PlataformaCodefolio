@@ -1,12 +1,12 @@
     import { useNavigate } from "react-router-dom";
-    import Typography from "@material-ui/core/Typography";
+    import Typography  from "@mui/material/Typography";
     import * as S from "./styles";
     import "../../../tailwind.css";
     import React from "react";
 
     import astronautaHeader from "../../../assets/img/astronautaheader.svg";
 
-    export const SectionOne = () => {
+  const SectionOne = () => {
         const navigate = useNavigate();
         const handleLearnMore = () => {
             navigate("/learn-more");
@@ -64,3 +64,5 @@
             </S.Wrapper>
         );
     };
+
+export default SectionOne;

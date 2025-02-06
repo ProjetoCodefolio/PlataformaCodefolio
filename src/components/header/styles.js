@@ -87,7 +87,6 @@ export const MoreButton = styled.button`
     padding: 0.5rem;
     cursor: pointer;
 `;
-  
 
 export const Dropdown = styled.div`
     position: absolute;
@@ -97,7 +96,7 @@ export const Dropdown = styled.div`
     border-radius: 0.5rem;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     min-width: 200px;
-    background:${colorConstants.whiteBackground} ;
+    background: ${colorConstants.whiteBackground};
 `;
 
 export const DropdownItem = styled.a`
@@ -150,5 +149,3 @@ export const LogInButton = styled.button`
         background: ${colorConstants.purple.purple900};
     }
 `;
-
-

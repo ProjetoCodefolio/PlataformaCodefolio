@@ -1,7 +1,6 @@
-  import { Header } from "../../components/header";
-  import { SectionOne } from "./sectionOne";
-  import { SectionThree } from "./sectionThree";
-  import { SectionTwo } from "./sectionTwo";
+import Header from "../../components/header";
+  console.log("Header importado:", Header);
+  import SectionOne from "./sectionOne";
   import * as S from "./styles";
   import { createGlobalStyle } from "styled-components";
 
@@ -9,21 +8,18 @@
     html {
       scroll-behavior: smooth;
     }
-  `
+  `;
 
   const HomePage = () => {
-
     return (
       <>
         <GlobalStyle />
-        <Header idSecTwo={'#iniciativas'} idSecThree={'#artigos'} />
+        <Header /> 
         <S.Wrapper>
           <SectionOne />
-          {/* <SectionTwo />
-          <SectionThree /> */}
         </S.Wrapper>
       </>
     );
-  }
+  };
 
   export default HomePage;
