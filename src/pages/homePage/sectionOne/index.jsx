@@ -1,26 +1,48 @@
 import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
+import "../../../tailwind.css";
+import React from "react";
+import astronautaHeader from "../../../assets/img/astronautaheader.svg";
 
-export const SectionOne = () => {
+const SectionOne = () => {
+    const codefolio = "<Codefólio/>";
     const navigate = useNavigate();
 
-    const handleLogIn = () => {
-      navigate('/login');
-    }
+    const handleLearnMore = () => {
+        navigate("/learn-more");
+    };
 
-    return(
+    return (
         <S.Wrapper>
-            <S.Title>
-                Construindo Conhecimento
-                <br />
-                Documentando Competências
-                <br />
-                Disseminando Aprendizado.
-            </S.Title>
-            <S.Text>
-                Acesse o Codefólio e faça parte dessa jornada!
-            </S.Text>
-            <S.LogInButton onClick={handleLogIn}>Log In</S.LogInButton>
+            <S.ContentContainer>
+                <S.TextContainer>
+                    <S.MainTitle>
+                        {codefolio}
+                    </S.MainTitle>
+                    <S.Title>
+                        Construindo Conhecimento
+                        <br />
+                        Documentando Competências
+                        <br />
+                        Disseminando Aprendizado
+                    </S.Title>
+                    <S.Text>
+                        Acesse o Codefólio e faça parte dessa jornada!
+                    </S.Text>
+                    <S.Button onClick={handleLearnMore}>
+                        SAIBA MAIS
+                    </S.Button>
+                </S.TextContainer>
+                <S.ImageContainer>
+                    <img
+                        src={astronautaHeader}
+                        alt="Codefólio Illustration"
+                        className="section-one-image"
+                    />
+                </S.ImageContainer>
+            </S.ContentContainer>
         </S.Wrapper>
     );
-}
+};
+
+export default SectionOne;
