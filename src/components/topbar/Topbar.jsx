@@ -8,6 +8,8 @@ import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
+import VideoSettingsIcon from "@mui/icons-material/VideoSettings";
+import SmartDisplayIcon from "@mui/icons-material/SmartDisplay";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
 import Settings from "@mui/icons-material/Settings";
@@ -42,6 +44,10 @@ export default function Topbar({ onSearch }) {
 
   const handleProfileClick = () => {
     navigate("/profile");
+  };
+
+  const handleAdmCursoClick = () => {
+    navigate("/manage-courses");
   };
 
   const handleSearchChange = (event) => {
@@ -83,6 +89,12 @@ export default function Topbar({ onSearch }) {
                 <Box className="topbarIconCont">
                   <Home style={{ fontSize: 32 }} />
                   <span className="topbarIconText">Home</span>
+                </Box>
+              </Link>
+              <Link to="/listcurso" style={{ textDecoration: "none" }}>
+                <Box className="topbarIconCont">
+                  <SmartDisplayIcon style={{ fontSize: 32 }} />
+                  <span className="topbarIconText">Cursos</span>
                 </Box>
               </Link>
               <Link to="/portifolios" style={{ textDecoration: "none" }}>
@@ -146,6 +158,14 @@ export default function Topbar({ onSearch }) {
               </MenuItem>
 
               <Divider />
+              {userDetails?.role === "admin" && ( // Apenas para admin
+                <MenuItem onClick={handleAdmCursoClick}>
+                  <ListItemIcon>
+                    <VideoSettingsIcon fontSize="small" />
+                  </ListItemIcon>
+                  Gerenciamento de Cursos
+                </MenuItem>
+              )}
               <MenuItem onClick={handleProfileClick}>
                 <ListItemIcon>
                   <Person fontSize="small" />
