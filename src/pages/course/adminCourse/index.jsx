@@ -27,7 +27,6 @@ import {
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Topbar from "../../../components/topbar/Topbar";
-import { video } from 'framer-motion/client';
 
 const CourseForm = () => {
 

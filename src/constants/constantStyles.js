@@ -1,5 +1,8 @@
+import { IconBackground } from "@tabler/icons-react";
+
 export const colorConstants = {
     white : "#ffffff",
+    whiteBackground:"#f3f0f0",
     black : "#000000",
     gray : {
         gray50: '#FAFAFA',
@@ -43,9 +46,9 @@ export const textStyles = {
                 lineHeight: 20,
             },
             medium: {
-                fontWeight: 500,
-                fontSize: 16,
-                lineHeight: 24,
+                fontWeight: 400,
+                fontSize: 12,
+                lineHeight: 20,
             },
             bold: {
                 fontWeight: 700,
@@ -53,7 +56,7 @@ export const textStyles = {
                 lineHeight: 28,
             },
             larger: {
-                fontWeight: 700,
+                fontWeight: 400,
                 fontSize: 24,
                 lineHeight: 32,
             }
