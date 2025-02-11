@@ -94,7 +94,7 @@ const Section2Img = () => {
             }}
           />
         </Box>
-      </Box>
+      </Box> 
     </Box>
   );
 };

@@ -2,9 +2,10 @@ import styled from "styled-components";
 import { colorConstants, textStyles } from "../../../constants/constantStyles";
 
 export const Wrapper = styled.div`
+    margin-top:0;  
     display: flex;
     flex-direction: column;
-    color: ${colorConstants.white};
+    color: ${colorConstants.whiteBackground};
     padding: 20px;
     gap: 20px;
     @media(min-width: 600px) {

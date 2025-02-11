@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
-import "../../../tailwind.css";
 import React from "react";
 import astronautaHeader from "../../../assets/img/astronautaheader.svg";
 
@@ -13,7 +12,7 @@ const SectionOne = () => {
     };
 
     return (
-        <S.Wrapper>
+        <S.Wrapper id="sectionOne">
             <S.ContentContainer>
                 <S.TextContainer>
                     <S.MainTitle>

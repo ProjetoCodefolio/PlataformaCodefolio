@@ -38,10 +38,17 @@ const Header = () => {
         }
     };
 
+    const scrollToSectionOne = () => {
+        const sectionOne = document.getElementById('sectionOne');
+        if (sectionOne) {
+          sectionOne.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
     return (
         <S.HeaderWrapper>
             <S.LogoContainer>
-                <S.Logo src={logo2} alt="Logo" />
+                <S.Logo src={logo2} alt="Logo"  onClick={scrollToSectionOne} />
             </S.LogoContainer>
 
             <S.NavContainer>
