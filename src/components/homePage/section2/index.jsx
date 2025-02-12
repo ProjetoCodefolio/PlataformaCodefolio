@@ -59,14 +59,14 @@ const Section2Img = () => {
       >
 
         <Box>
-          <Typography variant="h4" sx={{ fontFamily: 'Arial Unicode MS, Arial, sans-serif', fontWeight: 'bold', color: '#7d2ead', marginBottom: '1rem' }}>
+          <Typography variant="h4" sx={{ fontFamily: 'Arial Unicode MS, Arial, sans-serif', fontWeight: 'bold', color: '#6A0DAD', marginBottom: '1rem' }}>
             O que é o Codefólio?
           </Typography>
           <Typography 
             variant="body1" 
             sx={{ 
               fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-              color: '#5A1996', 
+              color: '#6A0DAD', 
               fontSize: { xs: '1rem', md: '1.2rem' },
               maxWidth: { xs: '100%', md: '600px' }, 
               textAlign: { xs: 'justify', md: 'justify' }, 

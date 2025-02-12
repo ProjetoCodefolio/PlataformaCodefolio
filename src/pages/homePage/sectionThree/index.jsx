@@ -5,7 +5,7 @@ import Iniciativas from "../../../components/iniciativas";
 export const SectionThree = () => {
 
     return (
-        <S.Wrapper>
+        <S.Wrapper id="initiatives">
        <Iniciativas/>
        </S.Wrapper>
     );

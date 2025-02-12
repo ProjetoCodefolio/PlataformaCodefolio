@@ -6,10 +6,10 @@ export const Wrapper = styled.div`
     display: flex;
     flex-direction: column;
     color: ${colorConstants.whiteBackground};
-    padding: 20px;
+    padding: 10px 20px 40px 20px;
     gap: 20px;
     @media(min-width: 600px) {
-        padding: 80px;
+        padding: 0px 15px 60px 15px;
     }
 `
 
