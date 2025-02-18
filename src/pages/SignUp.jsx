@@ -47,7 +47,12 @@ const getFirebaseErrorMessage = (error) => {
 };
 
 export default function SignUp() {
+
   const navigate = useNavigate();
+
+  const handleLogoClick = () => {
+    navigate("/");
+  };
 
   const {
     register,
@@ -96,7 +101,7 @@ export default function SignUp() {
         sx={{ height: "100vh", backgroundColor: "#8445a3", justifyContent: "center", alignItems: "center" }}
       >
         <CssBaseline />
-        {/* Grid da Imagem - Oculto em telas pequenas */}
+    
         <Grid
           item
           xs={false}

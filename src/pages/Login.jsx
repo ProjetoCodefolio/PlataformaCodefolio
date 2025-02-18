@@ -122,10 +122,6 @@ export default function SignInSide() {
     }
   };
 
-  const handleLogoClick = () => {
-    navigate("/");
-  };
-
   return (
     <ThemeProvider theme={defaultTheme}>
       <Grid
@@ -166,7 +162,7 @@ export default function SignInSide() {
               fontFamily: "Arial Unicode"
             }}
           >
-            <img src={Logo} alt="Logo" style={{ width: "20%", height: "auto", marginBottom: "16px", alignSelf: "center", cursor: "pointer" }} onClick={handleLogoClick} />
+            <img src={Logo} alt="Logo" style={{ width: "20%", height: "auto", marginBottom: "16px", alignSelf: "center" }} />
             <Typography component="h1" variant="h5" align="center" fontFamily="Arial Unicode" fontWeight={800} fontSize={30} color={"#8445a3"}>
               Bem-vindo de volta!
             </Typography>
@@ -203,6 +199,12 @@ export default function SignInSide() {
                 sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: '#8445a3' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#8445a3', fontWeight: 'bold' } }}
               />
               <Grid container alignItems="center" sx={{ mb: 2 }}>
+                {/* <Grid item>
+                  <input type="checkbox" id="remember" style={{ accentColor: "#8445a3" }} />
+                  <Typography variant="body2" sx={{ display: "inline", ml: 1, fontSize: "0.95rem" }} fontFamily="Arial Unicode">
+                    Lembre-se de mim
+                  </Typography>
+                </Grid> */}
                 <Grid item xs textAlign="right">
                   <Link
                     href="/forgot-password"
