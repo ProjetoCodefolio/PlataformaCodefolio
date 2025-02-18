@@ -17,7 +17,8 @@ import {
 } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
-import BackgroundImage from "../../public/assets/img/codefolio.jpg";
+import Logo from "../../src/assets/img/logo2.gif";
+import CodeImage2 from "../../src/assets/img/undraw_pair-programming_9jyg.svg";
 
 const defaultTheme = createTheme();
 
@@ -87,45 +88,69 @@ export default function SignUp() {
     }
   };
 
-
-
-  // frontend
   return (
     <ThemeProvider theme={defaultTheme}>
-      <Grid container component="main" sx={{ height: "100vh", width: "100vw" }}>
+      <Grid
+        container
+        component="main"
+        sx={{ height: "100vh", backgroundColor: "#8445a3", justifyContent: "center", alignItems: "center" }}
+      >
         <CssBaseline />
+        {/* Grid da Imagem - Oculto em telas pequenas */}
         <Grid
           item
           xs={false}
-          sm={4}
-          md={7}
+          sm={5}
           sx={{
-            backgroundImage: `url(${BackgroundImage})`,
-            backgroundRepeat: "no-repeat",
-            backgroundColor: (t) =>
-              t.palette.mode === "light"
-                ? t.palette.grey[50]
-                : t.palette.grey[900],
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            display: { xs: "none", sm: "flex" },
+            justifyContent: "center",
+            alignItems: "center",
+            pr: 2
           }}
-        />
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
+        >
+          <img src={CodeImage2} alt="CodeImage2" style={{ width: "90%", maxWidth: "600px" }} />
+        </Grid>
+        <Grid
+          item
+          xs={12}
+          sm={5}
+          component={Paper}
+          elevation={6}
+          square
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            pl: { xs: 0, sm: 2 },
+            p: { xs: 2, sm: 0 },
+            mt: { xs: 2, sm: 0 }
+          }}
+        >
           <Box
             sx={{
-              my: 8,
-              mx: 4,
+              width: "100%",
+              maxWidth: 420,
+              p: { xs: 2, sm: 5 },
+              backgroundColor: "white",
+              borderRadius: "16px",
+              boxShadow: 3,
+              minHeight: { xs: "auto", sm: "600px" },
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "Arial Unicode"
             }}
           >
-            <Box
-              component="form"
-              noValidate
-              onSubmit={handleSubmit(onSubmit)}
-              sx={{ mt: 3 }}
-            >
+            <img src={Logo} alt="Logo" style={{ width: "20%", height: "auto", marginBottom: "16px", alignSelf: "center" }} />
+            <Typography component="h1" variant="h5" align="center" fontFamily="Arial Unicode" fontWeight={800} fontSize={30} color={"#8445a3"}>
+              Realizar Cadastro
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ mb: 2 }} fontFamily="Arial Unicode" color="#666666" fontSize={16}>
+              Por favor, preencha seus dados
+            </Typography>
+            <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)} sx={{ mt: 3 }}>
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
                   <TextField
@@ -139,6 +164,7 @@ export default function SignUp() {
                     {...register("firstName")}
                     error={!!errors.firstName}
                     helperText={errors.firstName?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: '#8445a3' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#8445a3', fontWeight: 'bold' } }}
                   />
                 </Grid>
                 <Grid item xs={12} sm={6}>
@@ -152,6 +178,7 @@ export default function SignUp() {
                     {...register("lastName")}
                     error={!!errors.lastName}
                     helperText={errors.lastName?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: '#8445a3' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#8445a3', fontWeight: 'bold' } }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -165,6 +192,7 @@ export default function SignUp() {
                     {...register("email")}
                     error={!!errors.email}
                     helperText={errors.email?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: '#8445a3' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#8445a3', fontWeight: 'bold' } }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -179,6 +207,7 @@ export default function SignUp() {
                     {...register("password")}
                     error={!!errors.password}
                     helperText={errors.password?.message}
+                    sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: '#8445a3' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#8445a3', fontWeight: 'bold' } }}
                   />
                 </Grid>
               </Grid>
@@ -191,14 +220,28 @@ export default function SignUp() {
                 type="submit"
                 fullWidth
                 variant="contained"
-                sx={{ mt: 3, mb: 2 }}
+                sx={{ 
+                  mt: 3, 
+                  mb: 2, 
+                  borderRadius: "24px", 
+                  fontFamily: "Arial Unicode", 
+                  backgroundColor: "#8445a3", 
+                  fontSize: "1.2rem", 
+                  textTransform: "none", 
+                  fontWeight: "bold-light" 
+                }}
               >
-                Inscrever-se
+                Cadastrar
               </Button>
-              <Grid container justifyContent="flex-end">
+              <Grid container justifyContent="center">
                 <Grid item>
-                  <Link href="/login" variant="body2">
-                    já tem uma conta? Entrar
+                  <Link
+                    href="/login"
+                    variant="body2"
+                    fontFamily="Arial Unicode"
+                    sx={{ textDecoration: "none", color: "#8445a3", fontSize: "1rem" }}
+                  >
+                    Já tem uma conta? Entrar
                   </Link>
                 </Grid>
               </Grid>
@@ -208,4 +251,5 @@ export default function SignUp() {
       </Grid>
     </ThemeProvider>
   );
+
 }
