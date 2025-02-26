@@ -6,17 +6,37 @@ export default function ShowComments({ onShowComments }) {
     const isMobile = useIsMobileHook(700);
 
     return (
-        <Button
-            variant="outlined"
-            startIcon={<CommentSharp style={{ height: '30px', width: '30px' }} />}
+        <div 
             onClick={onShowComments}
-            className='comment-button'
             style={{
                 display: 'flex',
-                width: isMobile ? '100px' : '200px',
+                alignItems: 'center',
+                cursor: 'pointer',
+                padding: '8px 12px',
+                gap: '4px',
+                borderRadius: '8px',
+                transition: 'background-color 0.2s',
+                width: 'fit-content'
             }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(144, 65, 193, 0.04)'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
         >
-            {isMobile ? '' : 'Comentários'}
-        </Button>
+            <CommentSharp 
+                sx={{
+                    width: '24px',
+                    height: '24px',
+                    color: '#666'
+                }}
+            />
+            {!isMobile && (
+                <span style={{ 
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    color: '#666'
+                }}>
+                    Comentários
+                </span>
+            )}
+        </div>
     );
 }

@@ -63,11 +63,9 @@ const Header = () => {
                                 <S.MenuItem onClick={() => scrollToSection('initiatives')}>Iniciativas</S.MenuItem>
                                 <S.MenuItem onClick={() => scrollToSection('articles')}>Artigos</S.MenuItem>
                                 <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
-                                <S.DropdownSignUpButton onClick={() => navigate('/sign-up')}>
-                                    Cadastrar
-                                </S.DropdownSignUpButton>
+                        
                                 <S.DropdownLogInButton onClick={() => navigate('/login')}>
-                                    Login
+                                    Entrar
                                 </S.DropdownLogInButton>
                             </S.MobileDropdown>
                         )}
@@ -81,11 +79,9 @@ const Header = () => {
                             <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
                         </S.DesktopMenu>
                         <S.AuthLinks>
-                            <S.SignUpButton onClick={() => navigate('/sign-up')}>
-                                Cadastrar
-                            </S.SignUpButton>
+                        
                             <S.LogInButton onClick={() => navigate('/login')}>
-                                Login
+                                Entrar
                             </S.LogInButton>
                         </S.AuthLinks>
                     </>

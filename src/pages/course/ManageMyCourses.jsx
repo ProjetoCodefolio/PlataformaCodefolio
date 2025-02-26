@@ -77,36 +77,80 @@ const ManageMyCourses = () => {
           <Grid item xs={12} sm={6} md={4} key={course.courseId}>
             <Card
               sx={{
-                backgroundColor: "#ffffff",
-                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                backgroundColor: "#ffffff !important",
+                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
                 borderRadius: "8px",
+                height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "space-between",
-                height: "100%",
+                transition: 'transform 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.02)',
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)"
+                }
               }}
             >
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ 
+                    fontWeight: "bold", 
+                    textAlign: "center",
+                    mb: 1,
+                    fontSize: "1rem", 
+                    color: "#333" 
+                  }}
+                >
                   {course.title || "Título do Curso"}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
+                <Typography 
+                  variant="body2" 
+                  color="textSecondary"
+                  sx={{
+                    fontSize: "0.875rem", 
+                    mb: 1
+                  }}
+                >
                   {course.description || "Descrição do curso"}
                 </Typography>
               </CardContent>
-              <CardActions>
+              <CardActions sx={{ p: 2, justifyContent: 'center', mt: 'auto', gap: 1 }}>
                 <Button
                   size="small"
                   variant="contained"
-                  color="primary"
+                  sx={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '8px',
+                    backgroundColor: '#9041c1',
+                    color: 'white',
+                    fontWeight: 500, 
+                    fontSize: '14px',
+                    textTransform: 'none',
+                    width: '45%',
+                    '&:hover': {
+                      backgroundColor: '#7d37a7'
+                    }
+                  }}
                   onClick={() => onClickAction(course)}
                 >
                   {actionButtonLabel}
                 </Button>
                 <Button
                   size="small"
-                  variant="outlined"
-                  color="error"
+                  variant="contained"
+                  sx={{ 
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    fontWeight: 500, 
+                    fontSize: '14px',
+                    textTransform: 'none',
+                    width: '45%',
+                    '&:hover': {
+                      backgroundColor: '#c82333'
+                    }
+                  }}
                   onClick={() => handleDeleteCourse(course.courseId)}
                 >
                   Deletar
@@ -131,31 +175,22 @@ const ManageMyCourses = () => {
       }}
     >
       <Topbar />
-      <Typography
-        variant="h4"
-        sx={{
-          mb: 4,
-          fontWeight: "bold",
-          textAlign: "center",
-          color: "#333",
-        }}
-      >
-        Meus Cursos
-      </Typography>
-
-      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+     
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8, mb: 3 }}>
         <Button
           variant="contained"
-          color="primary"
           sx={{
             px: 4,
             py: 1.5,
-            fontWeight: "bold",
-            fontSize: "16px",
-            backgroundColor: "#1976d2",
-            ":hover": {
-              backgroundColor: "#1565c0",
-            },
+            fontWeight: 500, 
+            fontSize: "14px", 
+            backgroundColor: "#9041c1",
+            color: "white",
+            borderRadius: "8px",
+            textTransform: "none",
+            '&:hover': {
+              backgroundColor: "#7d37a7"
+            }
           }}
           onClick={handleCreateNewCourse}
         >
@@ -174,7 +209,13 @@ const ManageMyCourses = () => {
         <Box>
           <Typography
             variant="h6"
-            sx={{ mb: 2, fontWeight: "bold", textAlign: "center" }}
+            sx={{ 
+              mb: 2, 
+              fontWeight: "bold", 
+              textAlign: "center",
+              color: "#333",
+              fontSize: "1.25rem" 
+            }}
           >
             Cursos Disponíveis
           </Typography>

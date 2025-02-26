@@ -20,7 +20,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     }, [post.id]);
     
     const computarLike = async () => {
-        if (isUpdating) return; // Evitar múltiplas atualizações simultâneas
+        if (isUpdating) return; 
         setIsUpdating(true);
 
         const postRef = ref(database, `post/${post.id}`);
@@ -48,7 +48,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                 }
             }
 
-            // Atualizar o estado localmente
+            
             setLikedPosts((prevLikedPosts) => ({
                 ...prevLikedPosts,
                 [post.id]: updatedLikes.some(like => like.uidUsuario === currentUser.uid),
@@ -58,7 +58,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                 [post.id]: false,
             }));
 
-            // Atualizar o post.likes e post.dislikes no componente pai
+          
             onLikeUpdate(post.id, updatedLikes, updatedDislikes);
 
             await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
@@ -70,7 +70,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     };
 
     const computarDislike = async () => {
-        if (isUpdating) return; // Evitar múltiplas atualizações simultâneas
+        if (isUpdating) return; 
         setIsUpdating(true);
 
         const postRef = ref(database, `post/${post.id}`);
@@ -98,7 +98,6 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                 }
             }
 
-            // Atualizar o estado localmente
             setDislikedPosts((prevDislikedPosts) => ({
                 ...prevDislikedPosts,
                 [post.id]: updatedDislikes.some(dislike => dislike.uidUsuario === currentUser.uid),
@@ -108,7 +107,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                 [post.id]: false,
             }));
 
-            // Atualizar o post.likes e post.dislikes no componente pai
+        
             onLikeUpdate(post.id, updatedLikes, updatedDislikes);
 
             await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
@@ -152,27 +151,47 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     return (
         <S.Wrapper>
             <S.ButtonWrapper>
-                <Button onClick={computarLike} disabled={isUpdating} 
-                        style={{backgroundColor: likedPosts[post.id] ? colorConstants.purple.purple800 : 'transparent',
-                                borderRadius: '20px'
-                        }}>
+                <Button 
+                    onClick={computarLike} 
+                    disabled={isUpdating}
+                    sx={{
+                        minWidth: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        backgroundColor: likedPosts[post.id] ? '#9041c1' : 'transparent',
+                        '&:hover': {
+                            backgroundColor: likedPosts[post.id] ? '#7d37a7' : 'rgba(144, 65, 193, 0.04)'
+                        }
+                    }}
+                >
                     <ThumbUpIcon
-                        style={{
-                            width: '30px',
-                            height: '30px',
-                            color: likedPosts[post.id] ? 'white' : 'black',
+                        sx={{
+                            width: '24px',
+                            height: '24px',
+                            color: likedPosts[post.id] ? 'white' : '#666'
                         }}
                     />
                 </Button>
-                <Button onClick={computarDislike} disabled={isUpdating} 
-                        style={{backgroundColor: dislikedPosts[post.id] ? 'black' : 'transparent',
-                                borderRadius: '20px'
-                        }}>
+                <Button 
+                    onClick={computarDislike} 
+                    disabled={isUpdating}
+                    sx={{
+                        minWidth: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        backgroundColor: dislikedPosts[post.id] ? '#666' : 'transparent',
+                        '&:hover': {
+                            backgroundColor: dislikedPosts[post.id] ? '#555' : 'rgba(0, 0, 0, 0.04)'
+                        }
+                    }}
+                >
                     <ThumbDownIcon
-                        style={{
-                            width: '30px',
-                            height: '30px',
-                            color: dislikedPosts[post.id] ? 'white' : 'black',
+                        sx={{
+                            width: '24px',
+                            height: '24px',
+                            color: dislikedPosts[post.id] ? 'white' : '#666'
                         }}
                     />
                 </Button>

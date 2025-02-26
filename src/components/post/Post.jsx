@@ -15,6 +15,7 @@ import { Box, Grid, CircularProgress } from '@mui/material';
 import { ref, get, remove, onValue } from 'firebase/database';
 import { FilterPost } from './components/filterPostCard';
 import PostCards from './components/postCard';
+import CourseListSideBar from './components/courseListSideBar';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -84,12 +85,12 @@ export default function Post({ member }) {
 
   const applyVideoFilter = (videos) => {
     setFilteredVideos(videos);
-    setCurrentPage(1); // Reset to the first page when applying a filter
+    setCurrentPage(1); 
   };
 
   const updateSearchTerm = (term) => {
     setSearchTerm(term);
-    setCurrentPage(1); // Reset to the first page when searching
+    setCurrentPage(1); 
   };
 
   const loadPosts = async () => {
@@ -131,63 +132,60 @@ export default function Post({ member }) {
 
   return (
     <S.Wrapper>
-      <Topbar onSearch={updateSearchTerm} />{/* Passar handleSearchChange para Topbar */}
+      <Topbar onSearch={updateSearchTerm} />
       <S.WrapperModal>
         <CreatePostModal
-          onPostCreated={() => { setIsPostCreated(true); loadPosts(); }}
-          abrirAlert={(message, severity) => abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)}
+          onPostCreated={() => {
+            setIsPostCreated(true);
+            loadPosts();
+          }}
+          abrirAlert={(message, severity) => 
+            abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)
+          }
         />
       </S.WrapperModal>
 
       <br />
 
       <S.WrapperContent>
-        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
-          <FilterPost onFilter={applyVideoFilter}/>
-        </div>
+        <S.GridContainer>
+          <S.SidebarLeft>
+            <FilterPost onFilter={applyVideoFilter} />
+          </S.SidebarLeft>
 
-        <S.CardWrapper>
-        <MyCards userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated}/>
-        <br /> <br />
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-              <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
-            </Box>
-          ) : (
-            posts.map((post) => (
-              <PostCards 
-                key={post.id}
-                post={post}
-                Edit={handleEditClick(post)}
-                isEditModalOpen={isEditModalOpen}
-                setIsEditModalOpen={setIsEditModalOpen}
-                editingPost={editingPost}
-                Delete={handleDeleteClick(post.id)}
-                comments={comments}
-                setComments={setComments}
-                updateLikes={updateLikes}
-                userRole={userRole}
-                currentUser={currentUser}
-                onPostEdited={() => setIsPostEdited(true)}
-              />
-            )))}
-          
-              {/* <PostCard
-                key={post.id}
-                post={post}
-                Edit={handleEditClick(post)}
-                isEditModalOpen={isEditModalOpen}
-                setIsEditModalOpen={setIsEditModalOpen}
-                editingPost={editingPost}
-                Delete={handleDeleteClick(post.id)}
-                comments={comments}
-                setComments={setComments}
-                updateLikes={updateLikes}
-                userRole={userRole}
-                currentUser={currentUser}
-                onPostEdited={() => setIsPostEdited(true)}
-              /> */}
-        </S.CardWrapper>
+          <S.MainContent>
+            <S.CardWrapper>
+              <MyCards userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated} />
+              {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+                  <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
+                </Box>
+              ) : (
+                posts.map((post) => (
+                  <PostCards
+                    key={post.id}
+                    post={post}
+                    Edit={handleEditClick(post)}
+                    isEditModalOpen={isEditModalOpen}
+                    setIsEditModalOpen={setIsEditModalOpen}
+                    editingPost={editingPost}
+                    Delete={handleDeleteClick(post.id)}
+                    comments={comments}
+                    setComments={setComments}
+                    updateLikes={updateLikes}
+                    userRole={userRole}
+                    currentUser={currentUser}
+                    onPostEdited={() => setIsPostEdited(true)}
+                  />
+                ))
+              )}
+            </S.CardWrapper>
+          </S.MainContent>
+
+          <S.SidebarRight>
+            <CourseListSideBar />
+          </S.SidebarRight>
+        </S.GridContainer>
       </S.WrapperContent>
 
       <Pagination

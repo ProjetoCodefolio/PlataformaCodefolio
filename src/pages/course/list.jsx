@@ -27,7 +27,7 @@ const MyCourses = () => {
   useEffect(() => {
     const loadCourses = async () => {
       try {
-        // Usando a referência do nó "courses" do Realtime Database
+       
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
         if (snapshot.exists()) {
@@ -36,7 +36,7 @@ const MyCourses = () => {
             courseId,
             ...course,
           }));
-          // Separando cursos com base no progresso (supondo que progress seja um número entre 0 e 100)
+         
           const inProgress = coursesArray.filter(
             (course) => (course.progress || 0) < 100
           );
@@ -79,31 +79,62 @@ const MyCourses = () => {
           <Grid item xs={12} sm={6} md={4} key={course.courseId}>
             <Card
               sx={{
-                backgroundColor: "#ffffff",
-                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                backgroundColor: "#ffffff !important",
+                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
                 borderRadius: "8px",
+                height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "space-between",
-                height: "100%",
+                transition: 'transform 0.2s ease-in-out', 
+                '&:hover': {
+                  transform: 'scale(1.02)', 
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)" 
+                }
               }}
             >
               <CardContent>
-                <Typography variant="h6" sx={{ fontWeight: "bold", mb: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{ 
+                    fontWeight: "bold", 
+                    textAlign: "center",
+                    mb: 1
+                  }}
+                >
                   {course.title || "Título do Curso"}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
+                <Typography 
+                  variant="body2" 
+                  color="textSecondary"
+                >
                   {course.description || "Descrição do curso"}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
+                <Typography 
+                  variant="body2" 
+                  color="textSecondary"
+                  sx={{ mt: 1 }}
+                >
                   Progresso: {course.progress || 0}%
                 </Typography>
               </CardContent>
-              <CardActions>
+              <CardActions sx={{ p: 2, justifyContent: 'center', mt: 'auto' }}>
                 <Button
                   size="small"
                   variant="contained"
-                  color="primary"
+                  sx={{ 
+                    m: 1,
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    backgroundColor: '#9041c1',
+                    color: 'white',
+                    fontWeight: 'bold',
+                    fontSize: '14px',
+                    textTransform: 'none',
+                    width: 'calc(100% - 16px)',
+                    '&:hover': {
+                      backgroundColor: '#7d37a7'
+                    }
+                  }}
                   onClick={() => onClickAction(course)}
                 >
                   {actionButtonLabel}
@@ -125,20 +156,11 @@ const MyCourses = () => {
         backgroundColor: "#f9f9f9",
         borderRadius: "12px",
         boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+        mt: 5, 
       }}
     >
       <Topbar />
-      <Typography
-        variant="h4"
-        sx={{
-          mb: 4,
-          fontWeight: "bold",
-          textAlign: "center",
-          color: "#333",
-        }}
-      >
-        Meus Cursos
-      </Typography>
+      <Box sx={{ height: "24px" }} /> 
 
       <Paper
         sx={{
@@ -152,11 +174,12 @@ const MyCourses = () => {
           value={selectedTab}
           onChange={handleTabChange}
           textColor="primary"
-          indicatorColor="primary"
           centered
           sx={{
             mb: 4,
             "& .MuiTab-root": { fontWeight: "bold" },
+            "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+            "& .Mui-selected": { color: "#9041c1 !important" },
           }}
         >
           <Tab label="Em Andamento" />
@@ -165,7 +188,15 @@ const MyCourses = () => {
 
         {selectedTab === 0 && (
           <Box>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center",  fontWeight: "bold" }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                mb: 2, 
+                textAlign: "center", 
+                fontWeight: "bold",
+                color: "#333"
+              }}
+            >
               Cursos em Andamento
             </Typography>
             {renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}
@@ -174,14 +205,18 @@ const MyCourses = () => {
 
         {selectedTab === 1 && (
           <Box>
-            <Typography variant="h6" sx={{ mb: 2, textAlign: "center", fontWeight: "bold" }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                mb: 2, 
+                textAlign: "center", 
+                fontWeight: "bold",
+                color: "#333"
+              }}
+            >
               Cursos Concluídos
             </Typography>
-            {renderCourses(
-              completedCourses,
-              "Ver Certificado",
-              handleViewCertificate
-            )}
+            {renderCourses(completedCourses, "Ver Certificado", handleViewCertificate)}
           </Box>
         )}
       </Paper>

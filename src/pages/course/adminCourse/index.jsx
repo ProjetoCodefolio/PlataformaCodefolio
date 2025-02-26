@@ -158,6 +158,17 @@ const CourseForm = () => {
     setQuizOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
   };
 
+  // Adicione a função de remover opção
+  const handleRemoveQuizOption = (indexToRemove) => {
+    if (quizOptions.length > 2) { // Mantém pelo menos 2 opções
+      setQuizOptions(prevOptions => prevOptions.filter((_, index) => index !== indexToRemove));
+      // Ajusta a opção correta se necessário
+      if (correctOption > quizOptions.length - 1) {
+        setCorrectOption(quizOptions.length - 1);
+      }
+    }
+  };
+
   const saveCourse = async () => {
     const courseData = {
       title: courseTitle,
@@ -198,7 +209,6 @@ const CourseForm = () => {
     const existingVideoIds = new Set(Object.keys(existingVideos));
     const currentVideoIds = new Set(videos.map(video => video.id));
 
-    // Remove videos that are no longer in the state and belong to the current course
     for (const id of existingVideoIds) {
       const video = existingVideos[id];
       if (video.courseId === courseId && !currentVideoIds.has(id)) {
@@ -207,7 +217,6 @@ const CourseForm = () => {
       }
     }
 
-    // Add or update videos in the state
     videos.forEach(async (video) => {
       const videoData = {
         courseId: courseId,
@@ -241,13 +250,12 @@ const CourseForm = () => {
 
   return (
     <>
-      {" "}
       <Topbar />
       <Box
         sx={{
           p: 4,
           maxWidth: "1200px",
-          margin: "0 auto",
+          margin: "64px auto 0", 
           backgroundColor: "#f9f9f9",
           borderRadius: "12px",
           boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
@@ -279,7 +287,17 @@ const CourseForm = () => {
             fullWidth
             value={courseTitle}
             onChange={(e) => setCourseTitle(e.target.value)}
-            sx={{ mb: 4 }}
+            sx={{
+              mb: 4,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: '#9041c1',
+                },
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#9041c1',
+              },
+            }}
             variant="outlined"
             disabled={courseId ? true : false}
           />
@@ -289,7 +307,17 @@ const CourseForm = () => {
             fullWidth
             value={courseDescription}
             onChange={(e) => setCourseDescription(e.target.value)}
-            sx={{ mb: 4 }}
+            sx={{
+              mb: 4,
+              '& .MuiOutlinedInput-root': {
+                '&.Mui-focused fieldset': {
+                  borderColor: '#9041c1',
+                },
+              },
+              '& .MuiInputLabel-root.Mui-focused': {
+                color: '#9041c1',
+              },
+            }}
             variant="outlined"
             disabled={courseId ? true : false}
           />
@@ -303,6 +331,8 @@ const CourseForm = () => {
             sx={{
               mb: 4,
               "& .MuiTab-root": { fontWeight: "bold" },
+              "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+              "& .Mui-selected": { color: "#9041c1 !important" },
             }}
           >
             <Tab label="Vídeos" />
@@ -320,6 +350,16 @@ const CourseForm = () => {
                     value={videoTitle}
                     onChange={(e) => setVideoTitle(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={6}>
@@ -329,6 +369,16 @@ const CourseForm = () => {
                     value={videoUrl}
                     onChange={(e) => setVideoUrl(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={6}>
@@ -338,6 +388,16 @@ const CourseForm = () => {
                     value={videoDuration}
                     onChange={(e) => setVideoDuration(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={6}>
@@ -349,17 +409,29 @@ const CourseForm = () => {
                     multiline
                     rows={3}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
               </Grid>
               <Button
                 variant="contained"
-                color="primary"
-                onClick={handleAddVideo}
                 sx={{
                   mt: 3,
                   p: 1.5,
                   fontWeight: "bold",
+                  backgroundColor: "#9041c1",
+                  '&:hover': {
+                    backgroundColor: "#7d37a7"
+                  }
                 }}
               >
                 Adicionar Vídeo
@@ -404,6 +476,16 @@ const CourseForm = () => {
                     value={materialName}
                     onChange={(e) => setMaterialName(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={8}>
@@ -413,14 +495,28 @@ const CourseForm = () => {
                     value={materialUrl}
                     onChange={(e) => setMaterialUrl(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 <Grid item xs={4}>
                   <Button
                     variant="contained"
-                    color="primary"
-                    fullWidth
-                    sx={{ height: "100%" }}
+                    sx={{
+                      height: "100%",
+                      backgroundColor: "#9041c1",
+                      '&:hover': {
+                        backgroundColor: "#7d37a7"
+                      }
+                    }}
                     onClick={handleAddMaterial}
                   >
                     Adicionar Material
@@ -467,28 +563,72 @@ const CourseForm = () => {
                     value={quizQuestion}
                     onChange={(e) => setQuizQuestion(e.target.value)}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
                 {quizOptions.map((option, index) => (
-                  <Grid item xs={6} key={index}>
-                    <TextField
-                      label={`Opção ${index + 1}`}
-                      fullWidth
-                      value={option}
-                      onChange={(e) =>
-                        handleUpdateQuizOption(index, e.target.value)
-                      }
-                      variant="outlined"
-                    />
+                  <Grid item xs={12} md={6} key={index}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <TextField
+                        label={`Opção ${index + 1}`}
+                        fullWidth
+                        value={option}
+                        onChange={(e) => handleUpdateQuizOption(index, e.target.value)}
+                        variant="outlined"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '&.Mui-focused fieldset': {
+                              borderColor: '#9041c1',
+                            },
+                          },
+                          '& .MuiInputLabel-root.Mui-focused': {
+                            color: '#9041c1',
+                          },
+                        }}
+                      />
+                      {quizOptions.length > 2 && ( // Só mostra o botão de remover se houver mais de 2 opções
+                        <IconButton 
+                          onClick={() => handleRemoveQuizOption(index)}
+                          sx={{
+                            color: '#666',
+                            '&:hover': {
+                              color: '#d32f2f'
+                            }
+                          }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </Box>
                   </Grid>
                 ))}
+
+                {/* Botão de adicionar opção */}
                 <Grid item xs={12}>
                   <Button
                     variant="outlined"
-                    color="primary"
+                    startIcon={<AddCircleIcon />}
+                    sx={{
+                      color: "#9041c1",
+                      borderColor: "#9041c1",
+                      '&:hover': {
+                        borderColor: "#7d37a7",
+                        color: "#7d37a7",
+                        backgroundColor: 'rgba(144, 65, 193, 0.04)'
+                      }
+                    }}
                     onClick={handleAddQuizOption}
                   >
-                    Adicionar Mais Opções
+                    Adicionar Opção
                   </Button>
                 </Grid>
                 <Grid item xs={12}>
@@ -497,20 +637,41 @@ const CourseForm = () => {
                     type="number"
                     fullWidth
                     value={correctOption}
-                    onChange={(e) => setCorrectOption(Number(e.target.value))}
+                    onChange={(e) => {
+                      const value = Math.max(1, parseInt(e.target.value) || 1);
+                      const maxValue = quizOptions.length;
+                      const finalValue = Math.min(value, maxValue);
+                      setCorrectOption(finalValue);
+                    }}
+                    inputProps={{ 
+                      min: 1,
+                      max: quizOptions.length
+                    }}
                     variant="outlined"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#9041c1',
+                        },
+                      },
+                      '& .MuiInputLabel-root.Mui-focused': {
+                        color: '#9041c1',
+                      },
+                    }}
                   />
                 </Grid>
               </Grid>
 
               <Button
                 variant="contained"
-                color="primary"
-                onClick={handleAddQuizQuestion}
                 sx={{
                   mt: 3,
                   p: 1.5,
                   fontWeight: "bold",
+                  backgroundColor: "#9041c1",
+                  '&:hover': {
+                    backgroundColor: "#7d37a7"
+                  }
                 }}
               >
                 Adicionar Questão
@@ -538,7 +699,6 @@ const CourseForm = () => {
                   </FormHelperText>
                 </FormControl>
               </Grid>
-
 
               <List sx={{ mt: 4 }}>
                 {quizQuestions.map((question) => (
@@ -574,14 +734,17 @@ const CourseForm = () => {
 
         <Button
           variant="contained"
-          color="secondary"
-          fullWidth
-          onClick={handleSubmit}
           sx={{
             p: 1.5,
             fontSize: "1.1rem",
             fontWeight: "bold",
+            backgroundColor: "#9041c1",
+            '&:hover': {
+              backgroundColor: "#7d37a7"
+            }
           }}
+          fullWidth
+          onClick={handleSubmit}
         >
           Salvar Curso
         </Button>

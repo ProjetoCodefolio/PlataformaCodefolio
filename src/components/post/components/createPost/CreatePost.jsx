@@ -103,24 +103,38 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: 600,
+                    width: '90%',
+                    maxWidth: '600px',
+                    maxHeight: '80vh',
                     bgcolor: 'background.paper',
-                    boxShadow: 24,
-                    p: 4,
+                    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+                    borderRadius: '12px',
+                    p: 3,
                     outline: 'none',
+                    overflow: 'auto',
                 }}
             >
-                <Typography component="div" variant="h6">
+                <Typography 
+                    component="div" 
+                    variant="h6"
+                    sx={{
+                        fontWeight: 'bold',
+                        color: '#333',
+                        mb: 2,
+                        fontSize: '1.1rem'
+                    }}
+                >
                     {modalTitle}
                 </Typography>
-                <br />
+                
                 <Box
                     component="form"
                     onSubmit={criarPost}
                     sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '20px',
+                        gap: '16px',
+                        width: '100%',
                     }}
                 >
                     <TextField
@@ -129,14 +143,39 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                         value={title}
                         onChange={handleTitleChange}
                         required
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
                     />
-
                     <TextField
                         label="Link do YouTube"
                         variant="outlined"
                         value={link}
                         onChange={handleLinkChangeAndUpdatePreview}
                         required
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
                     />
 
                     <TextField
@@ -149,6 +188,19 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                             renderValue: (selected) => selected.join(', '),
                         }}
                         helperText="Selecione as tags para o post"
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
                     >
                         {tags.map((tag, index) => (
                             <MenuItem key={index} value={tag}>
@@ -158,8 +210,18 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                     </TextField>
 
                     {previewLink && (
-                        <Box sx={{ mt: 2 }}>
-                            <Typography component="div" variant="body1">Pré-visualização:</Typography>
+                        <Box sx={{ mt: 1 }}>
+                            <Typography 
+                                component="div" 
+                                variant="body1"
+                                sx={{ 
+                                    mb: 1, 
+                                    fontWeight: 500,
+                                    fontSize: '0.9rem'
+                                }}
+                            >
+                                Pré-visualização:
+                            </Typography>
                             <iframe
                                 width="100%"
                                 height="300"
@@ -167,11 +229,25 @@ const CreatePostModal = ({ onPostCreated, abrirAlert, open, onClose, modalTitle 
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
+                                style={{ borderRadius: '8px' }}
                             ></iframe>
                         </Box>
                     )}
 
-                    <Button type="submit" variant="contained" sx={{ mt: '20px' }}>
+                    <Button 
+                        type="submit" 
+                        variant="contained" 
+                        sx={{ 
+                            mt: '16px',
+                            bgcolor: '#9041c1',
+                            padding: '8px',
+                            fontSize: '0.9rem',
+                            fontWeight: 'bold',
+                            '&:hover': {
+                                bgcolor: '#7d37a7'
+                            }
+                        }}
+                    >
                         Criar post
                     </Button>
                 </Box>

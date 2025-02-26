@@ -42,19 +42,41 @@ export default function PostCards({
     };
 
     const handleStateChange = (event) => {
-        // Lógica para controle do estado do vídeo, se necessário
+        
     };
 
     return (
         <S.Wrapper>
             <S.LineWrapper>
-                <S.ProfileButton>
+                <S.ProfileButton
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px', 
+                        padding: '16px',
+                        width: 'auto'
+                    }}
+                >
                     <Avatar
                         src={post.userAvatar}
                         alt={post.user}
-                        sx={{ width: 48, height: 48 }}
+                        sx={{ 
+                            width: 48,
+                            height: 48,
+                            border: '2px solid #9041c1' 
+                        }}
                     />
-                    <Typography component="div" variant="h6">
+                    <Typography 
+                        component="div" 
+                        variant="h6"
+                        sx={{
+                            fontSize: '1rem',
+                            fontWeight: '600', 
+                            color: '#1a1a1a', 
+                            letterSpacing: '-0.01em', 
+                            margin: '0 4px' 
+                        }}
+                    >
                         <MembroLink texto={post.user} user={post.uiUser} />
                     </Typography>
                 </S.ProfileButton>
@@ -65,64 +87,90 @@ export default function PostCards({
                 <Typography
                     component="div"
                     sx={{
-                        width: '100%',
-                        fontSize: '15px',
-                        marginBottom: '10px',
+                        width: '98%',
+                        fontSize: '1.2rem', 
+                        marginBottom: '8px',
+                        marginTop: '12px', 
                         textAlign: 'left',
-                        marginLeft: '3% !important',
+                        marginLeft: '1%',
+                        color: '#1a1a1a', 
+                        fontWeight: '600',
+                        padding: '0 8px',
+                        letterSpacing: '-0.01em',
+                        lineHeight: '1.3'
                     }}
                 >
-                    <b>{post.nome}</b>
+                    {post.nome}
                 </Typography>
 
-                <div style={{ width: '100%' }}>
-                    {post.link ? (
-                        <>
-                            <Divider
-                                sx={{
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignSelf: 'center',
-                                    width: '95%',
-                                    borderBottom: '1px solid #ccc !important',
-                                    marginTop: '10px !important',
-                                    marginLeft: '6px',
-                                    marginBottom: '10px !important',
-                                }}
-                            />
-                            <div style={{ position: 'relative', paddingTop: '56.25%', height: 0, overflow: 'hidden', width: '95%', margin: '0 auto', marginLeft: '2%' }}>
-                                <YouTube
-                                    videoId={getYouTubeID(post.link)}
-                                    opts={{
-                                        width: '100%',
-                                        height: '100%',
-                                        playerVars: { autoplay: 0 },
-                                    }}
-                                    onReady={handlePlayerReady}
-                                    onStateChange={handleStateChange}
-                                    style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                                />
-                            </div>
-                        </>
-                    ) : (
-                        <img className="postImage" src={post.userAvatar} alt={post.user} />
-                    )}
+                <div 
+                    style={{ 
+                        position: 'relative',
+                        paddingTop: '56.25%',
+                        height: 0,
+                        overflow: 'hidden',
+                        width: '100%',
+                        margin: '4px auto 8px', 
+                        borderRadius: '12px',
+                        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+                    }}
+                >
+                    <YouTube
+                        videoId={getYouTubeID(post.link)}
+                        opts={{
+                            width: '100%',
+                            height: '100%',
+                            playerVars: { 
+                                autoplay: 0,
+                                modestbranding: 1, 
+                                rel: 0 // 
+                            },
+                        }}
+                        onReady={handlePlayerReady}
+                        onStateChange={handleStateChange}
+                        style={{ 
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: '12px' 
+                        }}
+                    />
                 </div>
 
-                <div style={{ width: '100%', marginLeft: '-30px' }}>
+                <div 
+                    style={{ 
+                        width: '98%',
+                        margin: '8px auto', 
+                        padding: '0 8px'
+                    }}
+                >
                     <Informacoes post={post} comments={comments} setComments={setComments} />
-                    <Divider className="divisor" />
+                        <Divider 
+                            sx={{
+                                margin: '4px 0', 
+                                backgroundColor: 'rgba(0, 0, 0, 0.1)'
+                            }}
+                        />
                 </div>
 
-                <S.LineWrapper style={{ width: '98%', display: 'flex', justifyContent: 'space-around' }}>
-                    <Likes post={post} onLikeUpdate={updateLikes} />
+                <S.LineWrapper 
+                    style={{ 
+                        width: '98%', 
+                        display: 'flex',
+                        justifyContent: 'space-around',
+                        margin: '4px auto',
+                         
+                                            }}
+                                        >
+                                            <Likes post={post} onLikeUpdate={updateLikes} />
                     <ShowComments onShowComments={() => setShowAddComment(!showAddComment)} />
                     <MyShare post={post} />
                 </S.LineWrapper>
 
                 {showAddComment && (
                     <>
-                        <Divider className="divisor" />
                         <AddComment postId={post.id} comments={comments} setComments={setComments} />
                     </>
                 )}
