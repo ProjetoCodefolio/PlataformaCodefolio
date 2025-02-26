@@ -126,8 +126,12 @@ export const fetchCourseVideos = async (courseId) => {
 
         if (snapshot.exists()) {
             const videos = Object.entries(snapshot.val()).map(([id, video]) => ({
-                ...video,
                 id,
+                title: video.title || '',
+                url: video.url || '',
+                description: video.description || '',
+                duration: video.duration || '',
+                courseId: video.courseId
             }));
 
             console.log("Vídeos carregados:", videos);
