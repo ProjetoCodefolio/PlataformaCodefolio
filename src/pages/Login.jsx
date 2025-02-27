@@ -20,7 +20,9 @@ import {
 import { auth, database } from "../service/firebase";
 import { ref, get, query, orderByChild, equalTo, set } from "firebase/database";
 import { useNavigate } from "react-router-dom";
-import BackgroundImage from "../../public/assets/img/codefolio.jpg";
+import Logo from "../../src/assets/img/logo2.gif";
+import CodeImage from "../../src/assets/img/undraw_code-thinking_0vf2.svg";
+import GoogleIcon from "../../src/assets/img/googleicon.svg";
 
 const defaultTheme = createTheme();
 
@@ -122,117 +124,91 @@ export default function SignInSide() {
 
   return (
     <ThemeProvider theme={defaultTheme}>
-      <Grid container component="main" sx={{ height: "100vh" }}>
+      <Grid
+        container
+        component="main"
+        sx={{ height: "100vh", backgroundColor: "#8445a3", justifyContent: "center", alignItems: "center", p: { xs: 2, sm: 0 } }}
+      >
         <CssBaseline />
         <Grid
           item
-          xs={false}
-          sm={4}
-          md={7}
+          xs={12}
+          sm={6}
+          component={Paper}
+          elevation={6}
+          square
           sx={{
-            backgroundImage: `url(${BackgroundImage})`,
-            backgroundRepeat: "no-repeat",
-            backgroundColor: (t) =>
-              t.palette.mode === "light"
-                ? t.palette.grey[50]
-                : t.palette.grey[900],
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            display: "flex",
+            justifyContent: { xs: "center", sm: "flex-end" },
+            alignItems: "center",
+            padding: { xs: 2, sm: 0 },
+            backgroundColor: "transparent",
+            boxShadow: "none",
+            pr: { sm: 6 }
           }}
-        />
-        <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
+        >
           <Box
             sx={{
-              my: 8,
-              mx: 4,
+              width: "100%",
+              maxWidth: 420,
+              p: { xs: 3, sm: 5 },
+              backgroundColor: "white",
+              borderRadius: "16px",
+              boxShadow: 3,
+              minHeight: { xs: "auto", sm: "400px" },
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
+              justifyContent: "center",
+              fontFamily: "Arial Unicode",
+              textAlign: "center"
             }}
           >
-            <Typography component="h1" variant="h5">
-              Entrar
+            <img src={Logo} alt="Logo" style={{ width: "30%", height: "auto", marginBottom: "16px", alignSelf: "center" }} />
+            <Typography component="h1" variant="h5" fontFamily="Arial Unicode" fontWeight={800} fontSize={32} color={"#8445a3"} marginBottom="16px">
+              Seja bem vindo ao Codefólio!
             </Typography>
-            <Box
-              component="form"
-              noValidate
-              onSubmit={handleSubmit(onSubmit)}
-              sx={{ mt: 1 }}
+           
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleGoogleSignIn}
+              sx={{
+                mt: 1,
+                mb: 2,
+                borderRadius: "24px",
+                fontFamily: "Arial Unicode",
+                color: "white",
+                backgroundColor: "#8445a3",
+                fontSize: "1.3rem",
+                textTransform: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                fontWeight: "bold-light",
+                padding: "12px 0"
+              }}
             >
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    id="email"
-                    label="Email"
-                    name="email"
-                    autoComplete="email"
-                    autoFocus
-                    {...register("email")}
-                    error={!!errors.email}
-                    helperText={errors.email?.message}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    margin="normal"
-                    required
-                    fullWidth
-                    name="password"
-                    label="Senha"
-                    type="password"
-                    id="password"
-                    autoComplete="current-password"
-                    {...register("password")}
-                    error={!!errors.password}
-                    helperText={errors.password?.message}
-                  />
-                </Grid>
-              </Grid>
-              {errors.firebase && (
-                <Typography color="error">{errors.firebase.message}</Typography>
-              )}
-              {error && <Typography color="error">{error}</Typography>}
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    sx={{ mt: 3, mb: 2 }}
-                  >
-                    Entrar
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    onClick={handleGoogleSignIn}
-                    sx={{ mt: 1, mb: 2 }}
-                  >
-                    Entrar com Google
-                  </Button>
-                </Grid>
-              </Grid>
-              <Grid container>
-                <Grid item xs>
-                  <Link href="/forgot-password" variant="body2">
-                    Esqueceu sua senha?
-                  </Link>
-                </Grid>
-                <Grid item>
-                  <Link href="/sign-up" variant="body2">
-                    {"Não tem uma conta? Inscrever-se"}
-                  </Link>
-                </Grid>
-              </Grid>
-            </Box>
+              <img src={GoogleIcon} alt="Google" style={{ width: "24px", height: "24px" }} />
+              Entrar com Google
+            </Button>
           </Box>
+        </Grid>
+        <Grid
+          item
+          xs={6}
+          sx={{
+            display: { xs: "none", sm: "flex" },
+            justifyContent: "flex-start",
+            alignItems: "center",
+            pl: 2
+          }}
+        >
+          <img src={CodeImage} alt="Code Thinking" style={{ maxWidth: "70%", height: "auto" }} />
         </Grid>
       </Grid>
     </ThemeProvider>
   );
+  
 }
+
