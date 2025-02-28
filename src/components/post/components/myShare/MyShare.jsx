@@ -14,9 +14,7 @@ const MyShare = ({ post }) => {
     const postLink = post.link;
 
     const compartilhar = () => {
-        // abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, postLink, "success");
-
-        // quero adicionar o link ao clipboard do usuário
+      
         const el = document.createElement('textarea');
         el.value = postLink;
         document.body.appendChild(el);
@@ -33,17 +31,38 @@ const MyShare = ({ post }) => {
 
     return (
         <div>
-            <Button
-                variant="outlined"
-                startIcon={<Share style={{ height: '30px', width: '30px' }}/>}
+            <div 
                 onClick={() => compartilhar()}
-                className='share-button'
                 style={{
-                    width: isMobile ? '100px' : '200px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    padding: '8px 12px',
+                    gap: '4px',
+                    borderRadius: '8px',
+                    transition: 'background-color 0.2s',
+                    width: 'fit-content'
                 }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(144, 65, 193, 0.04)'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-                {isMobile ? '' : 'Compartilhar'}
-            </Button>
+                <Share 
+                    sx={{
+                        width: '24px',
+                        height: '24px',
+                        color: '#666'
+                    }}
+                />
+                {!isMobile && (
+                    <span style={{ 
+                        fontSize: '0.9rem',
+                        fontWeight: '500',
+                        color: '#666'
+                    }}>
+                        Compartilhar
+                    </span>
+                )}
+            </div>
 
             <MyAlert
                 open={alertOpen}

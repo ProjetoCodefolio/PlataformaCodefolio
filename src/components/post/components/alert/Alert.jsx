@@ -7,7 +7,7 @@ export default function MyAlert({ open, onClose, message, severity }) {
             open={open}
             autoHideDuration={6000}
             onClose={onClose}
-            anchorOrigin={{ vertical: 'top', horizontal: 'center' }} // Centraliza o alerta na tela
+            anchorOrigin={{ vertical: 'top', horizontal: 'center' }} 
         >
             <Alert
                 onClose={onClose}

@@ -9,11 +9,13 @@ export const Wrapper = styled.div`
     box-sizing: border-box;
     padding: 20px;
     width: 100%;
-    min-height: 60vh; 
+    min-height: 60vh;
+    margin-bottom: 60px; 
 
     @media (min-width: 768px) {
         padding: 40px 80px;
-        margin-top:0;
+        margin-top: 0;
+        margin-bottom: 100px; 
     }
 `;
 

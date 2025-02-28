@@ -6,5 +6,6 @@ export const Wrapper = styled.div`
 
 export const ButtonWrapper = styled.div`
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    margin: 0 8px;
 `

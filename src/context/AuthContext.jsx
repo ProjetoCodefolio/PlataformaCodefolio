@@ -42,10 +42,19 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  const updateUserProfile = (newData) => {
+    setCurrentUser(prevUser => ({
+      ...prevUser,
+      displayName: newData.displayName,
+      photoURL: newData.photoURL
+    }));
+  };
+
   const value = {
     currentUser,
     userDetails,
     isAdmin: userDetails?.role === "admin",
+    updateUserProfile // 
   };
 
   return (

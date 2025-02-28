@@ -1,30 +1,35 @@
 .topbarContainer {
   background-color: #6A0DAD;
-  height: 80px;
+  height: 50px; 
   width: 100%;
+  overflow-x: hidden; 
   display: flex;
+  justify-content: space-between;
   align-items: center;
+  padding: 0 20px;
+  box-sizing: border-box;
+  margin-bottom: 20px; 
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 1;
-  -webkit-box-shadow: 0px 1px 5px 0px rgba(166, 159, 166, 1);
-  -moz-box-shadow: 0px 1px 5px 0px rgba(166, 159, 166, 1);
-  box-shadow: 0px 1px 5px 0px rgba(166, 159, 166, 1);
+  z-index: 999; 
+  box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.topbarLeft {
-  flex: 1;
+.topbarLeft, .topbarRight {
   display: flex;
   align-items: center;
 }
 
+.topbarLeft img {
+  height: 37px;
+  width: auto;
+  margin-right: 20px;
+}
+
 .logo {
-  font-size: 24px;
-  margin-left: 20px;
-  font-weight: bold;
-  color: blue;
-  cursor: pointer;
+  font-size: 20px; 
+  margin-left: 15px; 
   font-family: cursive;
   opacity: 0.8;
 }
@@ -36,21 +41,21 @@
 }
 
 .searchbar {
-  width: 430px;
-  max-width: 600px;
-  height: 40px;
-  background-color: whitesmoke;
-  border-radius: 20px;
+  width: 250px; 
+  height: 30px; 
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
   display: flex;
   align-items: center;
-  padding: 0 15px;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 0 12px;
+  border: none;
+  transition: all 0.3s ease;
+  margin-left: 20px;
 }
 
 .searchIcon {
-  font-size: 20px !important;
-  margin-right: 10px;
+  font-size: 14px !important; 
+  margin-right: 6px; 
   color: #555;
 }
 
@@ -58,8 +63,8 @@
   background-color: whitesmoke;
   border: none;
   width: 1000%;
-  font-size: 16px;
-  padding: 8px 0;
+  font-size: 13px; 
+  padding: 4px 0; 
 }
 
 .searchInput:focus {
@@ -68,25 +73,22 @@
 }
 
 .topbarCenter {
-  flex: 3;
-  display: flex;
-  justify-content: left;
-  align-items: center;
+  display: none;
 }
 
 .topbarRight {
-  flex: 1.5;
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: flex-end; 
+  gap: 8px;
   color: white;
 }
 
 .topbarIcons {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Garante que os ícones estejam igualmente espaçados */
-  gap: 0; /* Remove qualquer gap extra */
+  gap: 4px;
 }
 
 .topbarIconItem {
@@ -111,39 +113,40 @@
 }
 
 .topbarImg {
-  width: 38px;
-  height: 38px;
+  width: 28px; 
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
   cursor: pointer;
+  margin-left: 10px;
 }
 
 .topbarIconCont {
   display: flex;
-  flex-direction: column; /* Alinha ícone e texto verticalmente */
-  align-items: center; /* Alinha os ícones verticalmente ao centro */
-  justify-content: center; /* Alinha os ícones horizontalmente ao centro */
-  height: 70px;
-  width: 70px;
-  margin-right: 5px; /* Remove o espaço entre os ícones */
-  padding: 0; /* Remove qualquer padding extra */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 43px; 
+  width: 43px; 
+  margin: 0 2px;
+  padding-bottom: 3px; 
   color: white;
+  margin-left: 5px; 
+  border-radius: 8px; 
+  transition: all 0.1s ease;
 }
 
 .topbarIconText {
-  font-size: 15px;
+  font-size: 10px; 
   font-family: sans-serif;
   color: white;
-  margin-top: 2px; /* Espaço entre o ícone e o texto */
+  margin-top: 1px; 
+  font-weight: 500;
 }
 
 .topbarIconCont:hover {
-  background-color: white;
-  color: black;
-
-  .topbarIconText {
-    color: black;
-  }
+  background-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .topbarIconCont:active {
@@ -170,6 +173,12 @@
   align-items: center;
 }
 
+
+.topbarIconCont svg {
+  font-size: 18px; 
+  margin-top: 3px; 
+}
+
 @media only screen and (max-width: 1000px) {
   .topbarCenter {
     display: flex;
@@ -177,13 +186,41 @@
   }
 
   .searchbar {
-    width: 80%;
+    width: 200px; 
+  }
+
+  .topbarIconText {
+    display: none;
+  }
+
+  .topbarIconCont {
+    width: 40px; 
+    height: 40px; 
+  }
+}
+
+@media only screen and (max-width: 768px) {
+  .searchbar {
+    width: 200px;
+  }
+
+  .topbarIconText {
+    display: none;
+  }
+
+  .topbarIconCont {
+    width: 35px;
+    height: 35px;
   }
 }
 
 @media only screen and (max-width: 600px) {
   .searchbar {
     display: none;
+  }
+  
+  .content {
+    padding: 0 10px;
   }
 }
 
@@ -192,5 +229,6 @@
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  justify-content: flex-start;
+  justify-content: space-between; 
+  padding: 0 20px;
 }

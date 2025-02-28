@@ -3,10 +3,10 @@ import Section2Img from "../../../components/homePage/section2"; // Importação
 
 const SectionTwo = () => {
     return (
-        <div id="sectionTwo"> {/* Adicione o id aqui */}
+        <div id="sectionTwo">
             <Section2Img />
         </div>
     );
 };
 
-export default SectionTwo;
+export default SectionTwo

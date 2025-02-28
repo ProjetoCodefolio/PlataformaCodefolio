@@ -1,3 +1,20 @@
+.S.Wrapper {
+  width: 100%;
+  overflow-x: hidden; 
+}
+
+.S.WrapperContent {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  overflow-x: hidden; 
+}
+
+.S.CardWrapper {
+  width: 100%;
+  overflow-x: hidden; 
+}
+
 .postTop {
   display: flex;
   justify-content: space-between;
@@ -148,7 +165,6 @@
   font-weight: bold;
 }
 
-
 /* Estilo do modal box */
 .modal-box {
   position: absolute;
@@ -251,7 +267,6 @@
   cursor: pointer;
 }
 
-
 .comentarios-button:hover {
   background-color: #f0f0f0;
 }
@@ -296,23 +311,8 @@
   background-color: #e0e0e0;
 }
 
-
 .comentarios-authorPhoto {
   width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.comentarios-contentContainer {
-  display: flex;
-  flex-direction: column;
-}
-
-.comentarios-authorName {
-  font-weight: bold;
-  margin-bottom: 5px;
-  display: flex;
   justify-content: left !important;
 }
 

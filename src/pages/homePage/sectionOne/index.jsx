@@ -1,19 +1,29 @@
 import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
-import "../../../tailwind.css";
 import React from "react";
 import astronautaHeader from "../../../assets/img/astronautaheader.svg";
 
 const SectionOne = () => {
     const codefolio = "<Codefólio/>";
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
 
-    const handleLearnMore = () => {
-        navigate("/learn-more");
+    const scrollToSectionSeven = () => {
+        const SectionSeven = document.getElementById('faq');
+        if (SectionSeven) {
+            const offset = -150; // Adjust this value as needed
+            const bodyRect = document.body.getBoundingClientRect().top;
+            const elementRect = SectionSeven.getBoundingClientRect().top;
+            const elementPosition = elementRect - bodyRect;
+            const offsetPosition = elementPosition + offset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
     };
-
     return (
-        <S.Wrapper>
+        <S.Wrapper id="sectionOne">
             <S.ContentContainer>
                 <S.TextContainer>
                     <S.MainTitle>
@@ -29,7 +39,7 @@ const SectionOne = () => {
                     <S.Text>
                         Acesse o Codefólio e faça parte dessa jornada!
                     </S.Text>
-                    <S.Button onClick={handleLearnMore}>
+                    <S.Button onClick={scrollToSectionSeven}>
                         SAIBA MAIS
                     </S.Button>
                 </S.TextContainer>
