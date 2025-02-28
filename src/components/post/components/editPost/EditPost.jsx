@@ -58,13 +58,13 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
     }, [link]);
 
     const handleSave = async (e) => {
-        e.preventDefault(); // Previne o comportamento padrão do formulário
+        e.preventDefault(); 
         const postId = post.id;
         await editarPost(postId, title, link, tagsSelecionadas);
         if (onSave) {
             onSave();
         }
-        onClose(); // Fecha o modal
+        onClose(); 
     };
 
     return (
@@ -80,24 +80,37 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: 600,
+                    width: '90%',
+                    maxWidth: '600px', 
+                    maxHeight: '80vh', 
                     bgcolor: 'background.paper',
-                    boxShadow: 24,
-                    p: 4,
+                    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
+                    borderRadius: '12px',
+                    p: 3, 
                     outline: 'none',
+                    overflow: 'auto',
                 }}
             >
-                <Typography component="div" variant="h6">
+                <Typography 
+                    component="div" 
+                    variant="h6"
+                    sx={{
+                        fontWeight: 'bold',
+                        color: '#333',
+                        mb: 2, 
+                        fontSize: '1.1rem' 
+                    }}
+                >
                     Editar Post
                 </Typography>
-                <br />
                 <Box
                     component="form"
                     onSubmit={handleSave}
                     sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '20px',
+                        gap: '16px', 
+                        width: '100%',
                     }}
                 >
                     <TextField
@@ -106,6 +119,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         required
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
                     />
 
                     <TextField
@@ -114,6 +140,19 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                         value={link}
                         onChange={(e) => setLink(e.target.value)}
                         required
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
                     />
 
                     <TextField
@@ -126,8 +165,21 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                             renderValue: (selected) => selected.join(', '),
                         }}
                         helperText="Selecione as tags para o post"
-                        required>
-
+                        required
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                '&:hover fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                                '&.Mui-focused fieldset': {
+                                    borderColor: '#9041c1',
+                                },
+                            },
+                            '& .MuiInputLabel-root.Mui-focused': {
+                                color: '#9041c1',
+                            },
+                        }}
+                    >
                         {allTags.map((tag) => (
                             <MenuItem key={tag} value={tag}>
                                 {tag}
@@ -136,20 +188,44 @@ const EditPostModal = ({ isOpen, onClose, post, onSave }) => {
                     </TextField>
 
                     {videoEmbedURL && (
-                        <Box sx={{ mt: 2 }}>
-                            <Typography component="div" variant="body1">Pré-visualização:</Typography>
+                        <Box sx={{ mt: 1 }}> {/* Reduzido de mt: 2 para mt: 1 */}
+                            <Typography 
+                                component="div" 
+                                variant="body1"
+                                sx={{ 
+                                    mb: 1, 
+                                    fontWeight: 500,
+                                    fontSize: '0.9rem' 
+                                }}
+                            >
+                                Pré-visualização:
+                            </Typography>
                             <iframe
                                 width="100%"
-                                height="300"
+                                height="300" 
                                 src={videoEmbedURL}
                                 frameBorder="0"
                                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                 allowFullScreen
+                                style={{ borderRadius: '8px' }}
                             ></iframe>
                         </Box>
                     )}
 
-                    <Button type="submit" variant="contained" sx={{ mt: '20px' }}>
+                    <Button 
+                        type="submit" 
+                        variant="contained" 
+                        sx={{ 
+                            mt: '16px', 
+                            bgcolor: '#9041c1',
+                            padding: '8px', 
+                            fontSize: '0.9rem', 
+                            fontWeight: 'bold',
+                            '&:hover': {
+                                bgcolor: '#7d37a7'
+                            }
+                        }}
+                    >
                         Editar Post
                     </Button>
                 </Box >

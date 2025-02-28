@@ -1,175 +1,138 @@
-import { ref, set, push, get } from 'firebase/database';
+import { ref, set, push, get, update } from 'firebase/database';
 import { database } from "../../../service/firebase";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from '../../../context/AuthContext';
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   Box,
   TextField,
   Button,
   Typography,
   Paper,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
   Tabs,
   Tab,
   Grid,
-  MenuItem,
-  Select,
-  FormHelperText,
-  FormControl,
-  InputLabel,
+  Modal,
 } from "@mui/material";
-import AddCircleIcon from "@mui/icons-material/AddCircle";
-import DeleteIcon from "@mui/icons-material/Delete";
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
+import CourseQuizzesTab from './CourseQuizzesTab';
+import { toast } from 'react-toastify';
 
 const CourseForm = () => {
-
-  const courseVideosRef = useRef();
-  const courseMaterialsRef = useRef();
-
-  const [courseTitle, setCourseTitle] = useState("");
-  const [courseDescription, setCourseDescription] = useState("");
-
-  const [quizQuestions, setQuizQuestions] = useState([]);
-  const [selectedTab, setSelectedTab] = useState(0);
-
-  const [quizQuestion, setQuizQuestion] = useState("");
-  const [quizOptions, setQuizOptions] = useState(["", ""]);
-  const [correctOption, setCorrectOption] = useState(0);
-  const [minPercentage, setMinPercentage] = useState(0);
-
+  const navigate = useNavigate();
   const location = useLocation();
   const { userDetails } = useAuth();
-
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
 
-  async function fetchCourse() {
-    const courseRef = ref(database, `courses/${courseId}`);
-    const courseSnapshot = await get(courseRef);
-    const courseData = courseSnapshot.val();
+  const courseVideosRef = useRef();
+  const courseMaterialsRef = useRef();
+  const courseQuizzesRef = useRef();
 
-    if (courseData) {
-      setCourseTitle(courseData.title || "");
-      setCourseDescription(courseData.description || "");
-    }
-  }
+  const [courseTitle, setCourseTitle] = useState("");
+  const [courseDescription, setCourseDescription] = useState("");
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   useEffect(() => {
     const loadCourse = async () => {
       if (courseId) {
-        await fetchCourse();
+        const courseRef = ref(database, `courses/${courseId}`);
+        const courseSnapshot = await get(courseRef);
+        const courseData = courseSnapshot.val();
+
+        if (courseData) {
+          setCourseTitle(courseData.title || "");
+          setCourseDescription(courseData.description || "");
+        }
       }
     };
     loadCourse();
   }, [courseId]);
 
-
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
 
-  const handleAddQuizQuestion = () => {
-    const newQuestion = {
-      id: quizQuestions.length + 1,
-      question: quizQuestion,
-      options: quizOptions,
-      correctOption,
-    };
-    setQuizQuestions((prev) => [...prev, newQuestion]);
-    setQuizQuestion("");
-    setQuizOptions(["", ""]);
-    setCorrectOption(0);
-  };
-
-  const handleRemoveQuizQuestion = (id) => {
-    setQuizQuestions((prev) => prev.filter((question) => question.id !== id));
-  };
-
-  const handleAddQuizOption = () => {
-    setQuizOptions((prev) => [...prev, ""]);
-  };
-
-  const handleUpdateQuizOption = (index, value) => {
-    setQuizOptions((prev) => prev.map((opt, i) => (i === index ? value : opt)));
-  };
-
-  const saveCourse = async () => {
-    const courseData = {
-      title: courseTitle,
-      description: courseDescription,
-      userId: userDetails.userId,
-      createdAt: new Date().toLocaleDateString(),
-    };
-
-    // if (courseId) {
-    //   try {
-    //     const courseRef = ref(database, `courses/${courseId}`);
-    //     await set(courseRef, courseData);
-
-    //     alert("Curso atualizado com sucesso!");
-    //   } catch (error) {
-    //     console.error("Erro ao atualizar o curso:", error);
-    //     alert("Erro ao atualizar o curso.");
-    //   }
-    // } else {
+  const handleSubmit = useCallback(async () => {
     try {
-      const courseRef = ref(database, "courses");
-      const newCourseRef = push(courseRef);
-      await set(newCourseRef, courseData);
+      if (!userDetails?.userId) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
 
-      alert("Curso salvo com sucesso!");
+      if (!courseTitle.trim() || !courseDescription.trim()) {
+        toast.error("Preencha todos os campos obrigatórios");
+        return;
+      }
+
+      // Verifica se há quizzes sem questões
+      const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
+      if (quizzes.some(quiz => quiz.questions.length === 0)) {
+        toast.error("Não é possível salvar um curso com quizzes sem questões");
+        return;
+      }
+
+      const courseData = {
+        title: courseTitle,
+        description: courseDescription,
+        userId: userDetails.userId,
+        updatedAt: new Date().toISOString(),
+        ...(courseId ? {} : { createdAt: new Date().toISOString() }),
+      };
+
+      let finalCourseId = courseId;
+      if (!courseId) {
+        const courseRef = ref(database, "courses");
+        const newCourseRef = push(courseRef);
+        await set(newCourseRef, courseData);
+        finalCourseId = newCourseRef.key;
+      } else {
+        const courseRef = ref(database, `courses/${courseId}`);
+        await update(courseRef, courseData);
+      }
+
+      await Promise.all([
+        courseVideosRef.current?.saveVideos(finalCourseId),
+        courseMaterialsRef.current?.saveMaterials(finalCourseId),
+        courseQuizzesRef.current?.saveQuizzes(finalCourseId),
+      ]);
+
+      setShowSuccessModal(!courseId);
+      setShowUpdateModal(!!courseId);
+      toast.success(`Curso ${courseId ? "atualizado" : "criado"} com sucesso!`);
     } catch (error) {
-      console.error("Erro ao salvar o curso:", error);
-      alert("Erro ao salvar o curso.");
+      console.error("Erro ao salvar curso:", error);
+      toast.error("Erro ao salvar o curso: " + error.message);
     }
-    // }
-  }
+  }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
 
-  const handleSubmit = async () => {
-    if (!courseId) {
-      await saveCourse();
-    }
-    if (courseVideosRef.current) {
-      await courseVideosRef.current.saveVideos();
-    }
-    if (courseMaterialsRef.current) {
-      await courseMaterialsRef.current.saveMaterials();
-    }
-  };
+  const isFormValid = useCallback(() => {
+    const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
+    return (
+      courseTitle.trim() !== "" &&
+      courseDescription.trim() !== "" &&
+      !quizzes.some(quiz => quiz.questions.length === 0) // Impede salvamento se houver quizzes sem questões
+    );
+  }, [courseTitle, courseDescription]);
 
   return (
     <>
-      {" "}
       <Topbar />
       <Box
         sx={{
           p: 4,
           maxWidth: "1200px",
-          margin: "0 auto",
+          margin: "64px auto 0",
           backgroundColor: "#f9f9f9",
           borderRadius: "12px",
           boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
         }}
       >
-        <Typography
-          variant="h4"
-          sx={{
-            mb: 4,
-            fontWeight: "bold",
-            textAlign: "center",
-            color: "#333",
-          }}
-        >
-          Cadastro de Curso
-        </Typography>
-
         <Paper
           sx={{
             p: 4,
@@ -179,35 +142,72 @@ const CourseForm = () => {
             boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
           }}
         >
-          <TextField
-            label="Título do Curso"
-            fullWidth
-            value={courseTitle}
-            onChange={(e) => setCourseTitle(e.target.value)}
-            sx={{ mb: 4 }}
-            variant="outlined"
-            disabled={courseId ? true : false}
-          />
+          <Typography
+            variant="h5"
+            sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
+          >
+            {courseId ? "Editar Curso" : "Criar Novo Curso"}
+          </Typography>
 
-          <TextField
-            label="Descrição do Curso"
-            fullWidth
-            value={courseDescription}
-            onChange={(e) => setCourseDescription(e.target.value)}
-            sx={{ mb: 4 }}
-            variant="outlined"
-            disabled={courseId ? true : false}
-          />
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12}>
+              <TextField
+                label="Título do Curso"
+                fullWidth
+                required
+                value={courseTitle}
+                onChange={(e) => setCourseTitle(e.target.value)}
+                variant="outlined"
+                disabled={!!courseId}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Descrição do Curso"
+                fullWidth
+                required
+                value={courseDescription}
+                onChange={(e) => setCourseDescription(e.target.value)}
+                variant="outlined"
+                disabled={!!courseId}
+                multiline
+                rows={3}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
 
           <Tabs
             value={selectedTab}
             onChange={handleTabChange}
-            textColor="primary"
             indicatorColor="primary"
+            textColor="primary"
             centered
             sx={{
               mb: 4,
-              "& .MuiTab-root": { fontWeight: "bold" },
+              "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+              "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
             }}
           >
             <Tab label="Vídeos" />
@@ -215,143 +215,98 @@ const CourseForm = () => {
             <Tab label="Quiz" />
           </Tabs>
 
-          {selectedTab === 0 && (
-            <CourseVideosTab ref={courseVideosRef} />
-          )}
-
-          {selectedTab === 1 && (
-            <CourseMaterialsTab ref={courseMaterialsRef} />
-          )}
-
-          {selectedTab === 2 && (
-            <Box>
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Pergunta"
-                    fullWidth
-                    value={quizQuestion}
-                    onChange={(e) => setQuizQuestion(e.target.value)}
-                    variant="outlined"
-                  />
-                </Grid>
-                {quizOptions.map((option, index) => (
-                  <Grid item xs={6} key={index}>
-                    <TextField
-                      label={`Opção ${index + 1}`}
-                      fullWidth
-                      value={option}
-                      onChange={(e) =>
-                        handleUpdateQuizOption(index, e.target.value)
-                      }
-                      variant="outlined"
-                    />
-                  </Grid>
-                ))}
-                <Grid item xs={12}>
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    onClick={handleAddQuizOption}
-                  >
-                    Adicionar Mais Opções
-                  </Button>
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Opção Correta"
-                    type="number"
-                    fullWidth
-                    value={correctOption}
-                    onChange={(e) => setCorrectOption(Number(e.target.value))}
-                    variant="outlined"
-                  />
-                </Grid>
-              </Grid>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleAddQuizQuestion}
-                sx={{
-                  mt: 3,
-                  p: 1.5,
-                  fontWeight: "bold",
-                }}
-              >
-                Adicionar Questão
-              </Button>
-
-              <Grid item xs={12} sx={{ mt: 3 }}>
-                <InputLabel htmlFor="minPercentage">Nota Mínima (%)</InputLabel>
-                <FormControl fullWidth>
-                  <Select
-                    value={minPercentage}
-                    onChange={(e) => setMinPercentage(e.target.value)}
-                    inputProps={{ id: 'minPercentage' }}
-                  >
-                    {[...Array(11)].map((_, index) => {
-                      const value = index * 10;
-                      return (
-                        <MenuItem key={value} value={value}>
-                          {value}
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                  <FormHelperText>
-                    Defina a porcentagem mínima necessária para aprovação. Se a porcentagem for igual a 0, o quizz não será obrigatório!
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
-
-
-              <List sx={{ mt: 4 }}>
-                {quizQuestions.map((question) => (
-                  <ListItem
-                    key={question.id}
-                    sx={{
-                      p: 2,
-                      border: "1px solid #ddd",
-                      borderRadius: "8px",
-                      mb: 2,
-                    }}
-                    secondaryAction={
-                      <IconButton
-                        edge="end"
-                        onClick={() => handleRemoveQuizQuestion(question.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    }
-                  >
-                    <ListItemText
-                      primary={question.question}
-                      secondary={`Opções: ${question.options.join(
-                        ", "
-                      )} | Correta: ${question.correctOption + 1}`}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
+          {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
+          {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
+          {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
         </Paper>
 
-        <Button
-          variant="contained"
-          color="secondary"
-          fullWidth
-          onClick={handleSubmit}
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/manage-courses")}
+            sx={{
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": { borderColor: "#7d37a7" },
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={!isFormValid()}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+              "&.Mui-disabled": {
+                backgroundColor: "rgba(0, 0, 0, 0.12)",
+                color: "rgba(0, 0, 0, 0.26)",
+              },
+            }}
+          >
+            Salvar Curso
+          </Button>
+        </Box>
+      </Box>
+
+      <Modal open={showSuccessModal} aria-labelledby="success-modal-title">
+        <Box
           sx={{
-            p: 1.5,
-            fontSize: "1.1rem",
-            fontWeight: "bold",
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            textAlign: "center",
           }}
         >
-          Salvar Curso
-        </Button>
-      </Box>
+          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
+            Curso criado com sucesso!
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate("/manage-courses")}
+            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+          >
+            Voltar
+          </Button>
+        </Box>
+      </Modal>
+
+      <Modal open={showUpdateModal} aria-labelledby="update-modal-title">
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            textAlign: "center",
+          }}
+        >
+          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <Typography id="update-modal-title" variant="h6" sx={{ mb: 2 }}>
+            Curso atualizado com sucesso!
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => navigate("/manage-courses")}
+            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+          >
+            Voltar
+          </Button>
+        </Box>
+      </Modal>
     </>
   );
 };

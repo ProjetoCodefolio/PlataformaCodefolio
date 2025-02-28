@@ -1,0 +1,130 @@
+.section {
+  padding: 0;
+  width: 100%;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.wrapper {
+  border-radius: 1rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  margin: 1rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
+  margin-bottom: 1.5rem;
+  padding: 1.5rem;
+}
+
+.icon {
+  color: #8B5CF6;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+}
+
+.faqContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1.5rem 1.5rem 1.5rem;
+  margin-top: 0;
+}
+
+.faqItem {
+  border-radius: 0.5rem;
+  overflow: hidden;
+  width: 100%;
+}
+
+.faqButton {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: clamp(0.9rem, 2.5vw, 1rem);
+  font-weight: 500;
+}
+
+.toggleIcon {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  color: #8B5CF6;
+  background-color: #EDE9FE;
+  width: clamp(25px, 6vw, 30px);
+  height: clamp(25px, 6vw, 30px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.faqButton:active .toggleIcon {
+  background-color: #C4B5FD;
+}
+
+.faqQuestion {
+  color: #666;
+  transition: color 0.3s ease;
+  padding-right: 1rem;
+}
+
+.faqQuestion:hover {
+  color: #8B5CF6;
+}
+
+.faqAnswer {
+  padding: 0.8rem;
+  color: #666;
+  line-height: 1.6;
+  font-size: clamp(0.85rem, 2.5vw, 1rem);
+}
+
+.faqAnswerText {
+  color: #666;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+  
+  .wrapper {
+    margin: 0.5rem;
+  }
+  
+  .title {
+    padding: 2rem 1rem 1rem 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .faqContainer {
+    padding: 0 1rem 1rem 1rem;
+  }
+  
+  .faqButton {
+    padding: 0.6rem;
+  }
+  
+  .faqAnswer {
+    padding: 0.6rem;
+  }
+}
+
+.faqQuestionOpen {
+  color: #8B5CF6;
+}

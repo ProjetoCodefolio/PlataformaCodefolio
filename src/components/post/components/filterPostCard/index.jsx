@@ -12,11 +12,10 @@ export const FilterPost = ({onFilter}) => {
     const [loading, setLoading] = useState(false);    
     const [tags, setTags] = useState([]);
     const [selectedFilterTags, setSelectedFilterTags] = useState([]);
-    const [alertOpen, setAlertOpen] = useState(false); // Estado para controlar a visibilidade do alerta
-    const [alertMessage, setAlertMessage] = useState(''); // Estado para a mensagem do alerta
-    const [alertSeverity, setAlertSeverity] = useState('success'); // Estado para a severidade do alerta    
+    const [alertOpen, setAlertOpen] = useState(false); 
+    const [alertMessage, setAlertMessage] = useState(''); 
+    const [alertSeverity, setAlertSeverity] = useState('success');    
 
-    //formatar para botoes soltos na horizontal quando for mobile
 
     const handleTagFilterChange = (tag, isChecked) => {
         setSelectedFilterTags(prev => isChecked ? [...prev, tag] : prev.filter(t => t !== tag));
@@ -50,7 +49,7 @@ export const FilterPost = ({onFilter}) => {
             });
 
             setPosts(filteredPosts);
-            onFilter(filteredPosts); // Call the callback function with the filtered posts
+            onFilter(filteredPosts); 
         }
         setLoading(false);
     };

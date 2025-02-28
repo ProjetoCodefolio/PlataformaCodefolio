@@ -126,8 +126,12 @@ export const fetchCourseVideos = async (courseId) => {
 
         if (snapshot.exists()) {
             const videos = Object.entries(snapshot.val()).map(([id, video]) => ({
-                ...video,
                 id,
+                title: video.title || '',
+                url: video.url || '',
+                description: video.description || '',
+                duration: video.duration || '',
+                courseId: video.courseId
             }));
 
             console.log("Vídeos carregados:", videos);
@@ -145,20 +149,24 @@ export const fetchCourseVideos = async (courseId) => {
 
 export const fetchQuizQuestions = async (quizId) => {
     console.log("QuizId recebido:", quizId);
-    const quizRef = ref(database, `courseQuizzes/${quizId}`);
+    const [courseId, videoId] = quizId.split('/');
+    const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
 
     try {
         const snapshot = await get(quizRef);
-
         if (snapshot.exists()) {
             const data = snapshot.val();
             console.log("Dados do quiz recebidos:", data);
-
-
-            return Object.entries(data.questions).map(([id, question]) => ({
-                id,
-                ...question,
-            }));
+            return {
+                questions: data.questions.map((question, index) => ({
+                    id: index, // Usar índice como ID
+                    question: question.question,
+                    options: question.options,
+                    correctOption: question.correctOption,
+                    points: 1,
+                })),
+                minPercentage: data.minPercentage || 0,
+            };
         } else {
             console.log("Quiz não encontrado para o quizId:", quizId);
             throw new Error("Quiz não encontrado!");
@@ -174,20 +182,18 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
     console.log("QuizId recebido:", quizId);
     console.log("UserAnswers recebidas:", userAnswers);
 
-
     try {
-        const quizQuestions = await fetchQuizQuestions(quizId);
-        console.log("Questões do quiz:", quizQuestions);
+        const quizData = await fetchQuizQuestions(quizId);
+        const quizQuestions = quizData.questions;
 
         let totalPoints = 0;
         let earnedPoints = 0;
 
-        // Valida as respostas do usuário com base no ID da opção correta
         quizQuestions.forEach((question) => {
-            const userAnswer = userAnswers[question.id]; // ID da opção escolhida pelo usuário
+            const userAnswer = userAnswers[question.id];
             totalPoints += question.points;
 
-            if (userAnswer === question.answer) { // Comparação pelo ID da resposta correta
+            if (userAnswer === question.correctOption) {
                 earnedPoints += question.points;
                 console.log(`Resposta correta para a questão ${question.id}.`);
             } else {
@@ -196,14 +202,7 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
         });
 
         const scorePercentage = (earnedPoints / totalPoints) * 100;
-        const isPassed = scorePercentage >= minPercentage;
-
-
-        // Atualiza o progresso do quiz no Firebase
-        const userQuizRef = ref(database, `studentCourses/${userId}/quizPassed`);
-        await update(userQuizRef, {
-            [quizId]: isPassed,
-        });
+        const isPassed = scorePercentage >= (minPercentage || 0);
 
         console.log("Validação concluída:", {
             isPassed,
@@ -218,7 +217,6 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
         throw error;
     }
 };
-
 
 
 

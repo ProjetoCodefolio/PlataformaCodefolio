@@ -30,18 +30,25 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const scrollToSection = (sectionId, offset = -50) => {
+        const section = document.getElementById(sectionId);
+        if (section) {
+            const bodyRect = document.body.getBoundingClientRect().top;
+            const elementRect = section.getBoundingClientRect().top;
+            const elementPosition = elementRect - bodyRect;
+            const offsetPosition = elementPosition + offset;
 
-    const scrollToSectionTwo = () => {
-        const sectionTwo = document.getElementById('sectionTwo');
-        if (sectionTwo) {
-            sectionTwo.scrollIntoView({ behavior: 'smooth' });
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
         }
     };
 
     return (
         <S.HeaderWrapper>
             <S.LogoContainer>
-                <S.Logo src={logo2} alt="Logo" />
+                <S.Logo src={logo2} alt="Logo" onClick={() => scrollToSection('sectionOne')} />
             </S.LogoContainer>
 
             <S.NavContainer>
@@ -52,15 +59,13 @@ const Header = () => {
                         </S.MenuButton>
                         {dropdownOpen && (
                             <S.MobileDropdown>
-                                <S.MenuItem onClick={scrollToSectionTwo}>Sobre</S.MenuItem>
-                                <S.MenuItem href="#initiatives">Iniciativas</S.MenuItem>
-                                <S.MenuItem href="#articles">Artigos</S.MenuItem>
-                                <S.MenuItem href="#platform">Plataforma</S.MenuItem>
-                                <S.DropdownSignUpButton onClick={() => navigate('/sign-up')}>
-                                    Cadastrar
-                                </S.DropdownSignUpButton>
+                                <S.MenuItem onClick={() => scrollToSection('sectionTwo')}>Sobre</S.MenuItem>
+                                <S.MenuItem onClick={() => scrollToSection('initiatives')}>Iniciativas</S.MenuItem>
+                                <S.MenuItem onClick={() => scrollToSection('articles')}>Artigos</S.MenuItem>
+                                <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
+                        
                                 <S.DropdownLogInButton onClick={() => navigate('/login')}>
-                                    Login
+                                    Entrar
                                 </S.DropdownLogInButton>
                             </S.MobileDropdown>
                         )}
@@ -68,17 +73,15 @@ const Header = () => {
                 ) : (
                     <>
                         <S.DesktopMenu>
-                            <S.MenuItem onClick={scrollToSectionTwo}>Sobre</S.MenuItem>
-                            <S.MenuItem href="#initiatives">Iniciativas</S.MenuItem>
-                            <S.MenuItem href="#articles">Artigos</S.MenuItem>
-                            <S.MenuItem href="#platform">Plataforma</S.MenuItem>
+                            <S.MenuItem onClick={() => scrollToSection('sectionTwo')}>Sobre</S.MenuItem>
+                            <S.MenuItem onClick={() => scrollToSection('initiatives', -400)}>Iniciativas</S.MenuItem>
+                            <S.MenuItem onClick={() => scrollToSection('articles')}>Artigos</S.MenuItem>
+                            <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
                         </S.DesktopMenu>
                         <S.AuthLinks>
-                            <S.SignUpButton onClick={() => navigate('/sign-up')}>
-                                Cadastrar
-                            </S.SignUpButton>
+                        
                             <S.LogInButton onClick={() => navigate('/login')}>
-                                Login
+                                Entrar
                             </S.LogInButton>
                         </S.AuthLinks>
                     </>
