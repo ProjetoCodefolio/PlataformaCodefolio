@@ -20,7 +20,7 @@ export const LineWrapper = styled.div`
   
   &[style*="column"] {
     align-items: flex-start;
-    gap: 12px; // Reduzido de 16px para 12px
+    gap: 10px; // Reduzido de 16px para 12px
   }
 
   /* Container do vídeo */
@@ -40,6 +40,6 @@ export const ProfileButton = styled.div`
   gap: 24px; // Aumentado de 12px para 24px para mais espaço entre foto e nome
 
   &:hover {
-    background-color: rgba(144, 65, 193, 0.04);
+    background-color: transparent; 
   }
 `;

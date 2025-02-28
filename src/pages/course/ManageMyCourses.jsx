@@ -56,7 +56,7 @@ const ManageMyCourses = () => {
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
         toast.error("Erro ao carregar os cursos");
-        setCourses([]); // Garante que o estado seja limpo em caso de erro
+        setCourses([]); 
       }
     };
 
@@ -83,10 +83,10 @@ const ManageMyCourses = () => {
 
       console.log("Deletando curso:", courseId);
 
-      // Deleta o curso
+      
       await remove(ref(database, `courses/${courseId}`));
 
-      // Remove os vídeos do curso
+      
       const videosRef = ref(database, "courseVideos");
       const videosSnapshot = await get(videosRef);
       if (videosSnapshot.exists()) {
@@ -254,18 +254,7 @@ const ManageMyCourses = () => {
           }}
         >
           <Box>
-            <Typography
-              variant="h6"
-              sx={{ 
-                mb: 2, 
-                fontWeight: "bold", 
-                textAlign: "center",
-                color: "#333",
-                fontSize: "1.25rem" 
-              }}
-            >
-              Cursos Disponíveis
-            </Typography>
+
             {renderCourses(courses, "Editar Curso", handleEditCourse)}
           </Box>
         </Paper>

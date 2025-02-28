@@ -2,29 +2,18 @@ import { ref, set, push, get, update } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from '../../../context/AuthContext';
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   Box,
   TextField,
   Button,
   Typography,
   Paper,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
   Tabs,
   Tab,
   Grid,
-  MenuItem,
-  Select,
-  FormHelperText,
-  FormControl,
-  InputLabel,
   Modal,
 } from "@mui/material";
-import AddCircleIcon from "@mui/icons-material/AddCircle";
-import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
@@ -34,28 +23,21 @@ import { toast } from 'react-toastify';
 
 const CourseForm = () => {
   const navigate = useNavigate();
-
-  // Referências para os componentes de abas
-  const courseVideosRef = useRef();
-  const courseMaterialsRef = useRef();
-  const courseQuizzesRef = useRef();
-
-  // Estados para os campos do formulário
-  const [courseTitle, setCourseTitle] = useState("");
-  const [courseDescription, setCourseDescription] = useState("");
-
-  // Estados para controle de abas e modais
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-
-  // Dados do curso e autenticação
   const location = useLocation();
   const { userDetails } = useAuth();
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
 
-  // Busca os dados do curso ao carregar o componente (se courseId existir)
+  const courseVideosRef = useRef();
+  const courseMaterialsRef = useRef();
+  const courseQuizzesRef = useRef();
+
+  const [courseTitle, setCourseTitle] = useState("");
+  const [courseDescription, setCourseDescription] = useState("");
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+
   useEffect(() => {
     const loadCourse = async () => {
       if (courseId) {
@@ -72,13 +54,11 @@ const CourseForm = () => {
     loadCourse();
   }, [courseId]);
 
-  // Função para alternar entre as abas
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
 
-  // Função para salvar ou atualizar o curso
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     try {
       if (!userDetails?.userId) {
         toast.error("Usuário não autenticado");
@@ -90,80 +70,55 @@ const CourseForm = () => {
         return;
       }
 
-      console.log("Iniciando salvamento do curso...");
+      // Verifica se há quizzes sem questões
+      const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
+      if (quizzes.some(quiz => quiz.questions.length === 0)) {
+        toast.error("Não é possível salvar um curso com quizzes sem questões");
+        return;
+      }
 
+      const courseData = {
+        title: courseTitle,
+        description: courseDescription,
+        userId: userDetails.userId,
+        updatedAt: new Date().toISOString(),
+        ...(courseId ? {} : { createdAt: new Date().toISOString() }),
+      };
+
+      let finalCourseId = courseId;
       if (!courseId) {
-        console.log("Criando novo curso...");
-        const courseData = {
-          title: courseTitle,
-          description: courseDescription,
-          userId: userDetails.userId,
-          createdAt: new Date().toISOString()
-        };
-
-        // Salva o curso
         const courseRef = ref(database, "courses");
         const newCourseRef = push(courseRef);
         await set(newCourseRef, courseData);
-
-        const newCourseId = newCourseRef.key;
-        console.log("Novo curso criado com ID:", newCourseId);
-
-        // Salva os vídeos
-        if (courseVideosRef.current) {
-          console.log("Salvando vídeos para o novo curso...");
-          try {
-            await courseVideosRef.current.saveVideos(newCourseId);
-            console.log("Vídeos salvos com sucesso!");
-          } catch (error) {
-            console.error("Erro ao salvar vídeos:", error);
-            toast.error("Erro ao salvar os vídeos");
-            return;
-          }
-        }
-
-        // Mostra o modal de sucesso
-        setShowSuccessModal(true);
-        toast.success("Curso criado com sucesso!");
+        finalCourseId = newCourseRef.key;
       } else {
-        console.log("Atualizando curso existente...");
-        const courseData = {
-          title: courseTitle,
-          description: courseDescription,
-          updatedAt: new Date().toISOString()
-        };
-
-        // Atualiza o curso
         const courseRef = ref(database, `courses/${courseId}`);
         await update(courseRef, courseData);
-
-        // Atualiza os vídeos
-        if (courseVideosRef.current) {
-          console.log("Atualizando vídeos do curso...");
-          try {
-            await courseVideosRef.current.saveVideos(courseId);
-            console.log("Vídeos atualizados com sucesso!");
-          } catch (error) {
-            console.error("Erro ao atualizar vídeos:", error);
-            toast.error("Erro ao atualizar os vídeos");
-            return;
-          }
-        }
-
-        // Mostra o modal de atualização
-        setShowUpdateModal(true);
-        toast.success("Curso atualizado com sucesso!");
       }
+
+      await Promise.all([
+        courseVideosRef.current?.saveVideos(finalCourseId),
+        courseMaterialsRef.current?.saveMaterials(finalCourseId),
+        courseQuizzesRef.current?.saveQuizzes(finalCourseId),
+      ]);
+
+      setShowSuccessModal(!courseId);
+      setShowUpdateModal(!!courseId);
+      toast.success(`Curso ${courseId ? "atualizado" : "criado"} com sucesso!`);
     } catch (error) {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
-  };
+  }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
 
-  // Verifica se o formulário é válido
-  const isFormValid = () => {
-    return courseTitle.trim() !== "" && courseDescription.trim() !== "";
-  };
+  const isFormValid = useCallback(() => {
+    const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
+    return (
+      courseTitle.trim() !== "" &&
+      courseDescription.trim() !== "" &&
+      !quizzes.some(quiz => quiz.questions.length === 0) // Impede salvamento se houver quizzes sem questões
+    );
+  }, [courseTitle, courseDescription]);
 
   return (
     <>
@@ -187,128 +142,166 @@ const CourseForm = () => {
             boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
           }}
         >
-          {/* Campos do formulário */}
-          <TextField
-            label="Título do Curso"
-            fullWidth
-            required
-            value={courseTitle}
-            onChange={(e) => setCourseTitle(e.target.value)}
-            sx={{ mb: 4 }}
-            variant="outlined"
-            disabled={!!courseId} // Desabilita edição se courseId existir
-          />
-          <TextField
-            label="Descrição do Curso"
-            fullWidth
-            required
-            value={courseDescription}
-            onChange={(e) => setCourseDescription(e.target.value)}
-            sx={{ mb: 4 }}
-            variant="outlined"
-            disabled={!!courseId} // Desabilita edição se courseId existir
-          />
+          <Typography
+            variant="h5"
+            sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
+          >
+            {courseId ? "Editar Curso" : "Criar Novo Curso"}
+          </Typography>
 
-          {/* Abas */}
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid item xs={12}>
+              <TextField
+                label="Título do Curso"
+                fullWidth
+                required
+                value={courseTitle}
+                onChange={(e) => setCourseTitle(e.target.value)}
+                variant="outlined"
+                disabled={!!courseId}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Descrição do Curso"
+                fullWidth
+                required
+                value={courseDescription}
+                onChange={(e) => setCourseDescription(e.target.value)}
+                variant="outlined"
+                disabled={!!courseId}
+                multiline
+                rows={3}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
+
           <Tabs
             value={selectedTab}
             onChange={handleTabChange}
-            textColor="primary"
             indicatorColor="primary"
+            textColor="primary"
             centered
-            sx={{ mb: 4 }}
+            sx={{
+              mb: 4,
+              "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+              "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+            }}
           >
             <Tab label="Vídeos" />
             <Tab label="Materiais Extras" />
             <Tab label="Quiz" />
           </Tabs>
 
-          {/* Conteúdo das abas */}
           {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
           {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
           {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
         </Paper>
 
-        {/* Botão de salvar */}
-        <Button
-          variant="contained"
-          sx={{
-            p: 1.5,
-            fontSize: "1.1rem",
-            fontWeight: "bold",
-            backgroundColor: "#9041c1",
-            '&:hover': { backgroundColor: "#7d37a7" },
-            '&.Mui-disabled': {
-              backgroundColor: 'rgba(0, 0, 0, 0.12)',
-              color: 'rgba(0, 0, 0, 0.26)'
-            }
-          }}
-          fullWidth
-          onClick={handleSubmit}
-          disabled={!isFormValid()}
-        >
-          Salvar Curso
-        </Button>
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => navigate("/manage-courses")}
+            sx={{
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": { borderColor: "#7d37a7" },
+            }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            disabled={!isFormValid()}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+              "&.Mui-disabled": {
+                backgroundColor: "rgba(0, 0, 0, 0.12)",
+                color: "rgba(0, 0, 0, 0.26)",
+              },
+            }}
+          >
+            Salvar Curso
+          </Button>
+        </Box>
       </Box>
 
-      {/* Modal de sucesso (criação) */}
-      <Modal
-        open={showSuccessModal}
-        aria-labelledby="success-modal-title"
-        aria-describedby="success-modal-description"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          boxShadow: 24,
-          p: 4,
-          textAlign: 'center'
-        }}>
-          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
-          <Typography id="success-modal-title" variant="h6" component="h2" sx={{ mb: 2 }}>
+      <Modal open={showSuccessModal} aria-labelledby="success-modal-title">
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            textAlign: "center",
+          }}
+        >
+          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
             Curso criado com sucesso!
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate('/manage-courses')}
-            sx={{ backgroundColor: "#9041c1", '&:hover': { backgroundColor: "#7d37a7" } }}
+            onClick={() => navigate("/manage-courses")}
+            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
             Voltar
           </Button>
         </Box>
       </Modal>
 
-      {/* Modal de sucesso (atualização) */}
-      <Modal
-        open={showUpdateModal}
-        aria-labelledby="update-modal-title"
-        aria-describedby="update-modal-description"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          boxShadow: 24,
-          p: 4,
-          textAlign: 'center'
-        }}>
-          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
-          <Typography id="update-modal-title" variant="h6" component="h2" sx={{ mb: 2 }}>
+      <Modal open={showUpdateModal} aria-labelledby="update-modal-title">
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 4,
+            textAlign: "center",
+          }}
+        >
+          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <Typography id="update-modal-title" variant="h6" sx={{ mb: 2 }}>
             Curso atualizado com sucesso!
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate('/manage-courses')}
-            sx={{ backgroundColor: "#9041c1", '&:hover': { backgroundColor: "#7d37a7" } }}
+            onClick={() => navigate("/manage-courses")}
+            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
             Voltar
           </Button>

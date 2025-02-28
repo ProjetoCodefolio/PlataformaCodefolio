@@ -1,8 +1,7 @@
-import { ref as firebaseRef, set, push, get } from 'firebase/database';
+import { ref as firebaseRef, set, push, get, remove } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation } from "react-router-dom";
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
-
 import {
     Box,
     TextField,
@@ -12,21 +11,27 @@ import {
     ListItem,
     ListItemText,
     Grid,
+    Modal,
+    Typography,
+    FormControlLabel,
+    Switch,
 } from "@mui/material";
-
 import DeleteIcon from "@mui/icons-material/Delete";
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import { toast } from "react-toastify";
 
 const CourseVideosTab = forwardRef((props, ref) => {
-
     const [videos, setVideos] = useState([]);
-
     const [videoTitle, setVideoTitle] = useState("");
     const [videoUrl, setVideoUrl] = useState("");
     const [videoDuration, setVideoDuration] = useState("");
     const [videoDescription, setVideoDescription] = useState("");
+    const [requiresPrevious, setRequiresPrevious] = useState(true);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [videoToDelete, setVideoToDelete] = useState(null);
 
     const location = useLocation();
-
     const params = new URLSearchParams(location.search);
     const courseId = params.get("courseId");
 
@@ -37,124 +42,125 @@ const CourseVideosTab = forwardRef((props, ref) => {
 
         if (courseVideos) {
             const filteredVideos = Object.entries(courseVideos)
-                .filter(([key, video]) => video.courseId === courseId)
-                .map(([key, video]) => ({ id: key, ...video }));
+                .filter(([_, video]) => video.courseId === courseId)
+                .map(([key, video]) => ({
+                    id: key,
+                    ...video,
+                    requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
+                }));
             setVideos(filteredVideos);
         }
     }
 
-    // Adicione validação de URL
-    const validateVideoUrl = (url) => {
-        try {
-            new URL(url);
-            return true;
-        } catch {
-            return false;
-        }
-    };
-
-    // Modifique a função handleAddVideo
     const handleAddVideo = async () => {
         if (!videoTitle.trim() || !videoUrl.trim()) {
-            alert("Título e URL são obrigatórios");
+            toast.error("Título e URL são obrigatórios");
             return;
         }
-    
+
         try {
             const courseVideosRef = firebaseRef(database, "courseVideos");
             const newVideoRef = push(courseVideosRef);
             
-            // Estrutura igual aos vídeos antigos
             const videoData = {
-                courseId: courseId,
+                courseId: courseId || null,
                 title: videoTitle.trim(),
                 url: videoUrl.trim(),
                 duration: videoDuration || '',
-                description: videoDescription || ''
+                description: videoDescription || '',
+                order: videos.length,
+                requiresPrevious,
             };
-    
+
             await set(newVideoRef, videoData);
-    
-            setVideos(prev => [...prev, { 
-                ...videoData, 
-                id: newVideoRef.key 
-            }]);
-    
-            // Limpa os campos
+
+            setVideos(prev => [...prev, { ...videoData, id: newVideoRef.key }]);
             setVideoTitle("");
             setVideoUrl("");
             setVideoDuration("");
             setVideoDescription("");
-    
-            alert("Vídeo adicionado com sucesso!");
-    
+            setRequiresPrevious(true);
+            setShowSuccessModal(true);
         } catch (error) {
             console.error("Erro ao adicionar vídeo:", error);
-            alert("Erro ao adicionar vídeo");
+            toast.error("Erro ao adicionar vídeo");
         }
     };
 
     const handleRemoveVideo = (id) => {
-        let response = window.confirm("Deseja realmente deletar este vídeo?")
-        if (response) {
-            setVideos((prev) => prev.filter((video) => video.id !== id));
+        const video = videos.find((v) => v.id === id);
+        setVideoToDelete(video);
+        setShowDeleteModal(true);
+    };
+
+    const confirmRemoveVideo = async () => {
+        if (videoToDelete && videoToDelete.id) {
+            try {
+                const videoRef = firebaseRef(database, `courseVideos/${videoToDelete.id}`);
+                await remove(videoRef);
+                setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
+                toast.success("Vídeo deletado com sucesso!");
+            } catch (error) {
+                console.error("Erro ao excluir vídeo:", error);
+                toast.error("Erro ao excluir vídeo");
+            }
         }
+        setShowDeleteModal(false);
+        setVideoToDelete(null);
     };
 
     useImperativeHandle(ref, () => ({
         async saveVideos(newCourseId = null) {
             try {
-              const targetCourseId = newCourseId || courseId;
-              
-              if (!targetCourseId) {
-                throw new Error("ID do curso não disponível");
-              }
-      
-              const courseVideosRef = firebaseRef(database, "courseVideos");
-              
-              // Salva cada vídeo
-              for (const video of videos) {
-                const videoData = {
-                  courseId: targetCourseId,
-                  title: video.title,
-                  url: video.url,
-                  duration: video.duration || '',
-                  description: video.description || ''
-                };
-      
-                if (video.id) {
-                  // Atualiza vídeo existente
-                  await set(firebaseRef(database, `courseVideos/${video.id}`), videoData);
-                } else {
-                  // Cria novo vídeo
-                  const newVideoRef = push(courseVideosRef);
-                  await set(newVideoRef, videoData);
+                const targetCourseId = newCourseId || courseId;
+                if (!targetCourseId) throw new Error("ID do curso não disponível");
+
+                const courseVideosRef = firebaseRef(database, "courseVideos");
+                const snapshot = await get(courseVideosRef);
+                const existingVideos = snapshot.val() || {};
+
+                const existingVideoIds = new Set(Object.keys(existingVideos));
+                const currentVideoIds = new Set(videos.map(video => video.id).filter(id => id));
+
+                for (const id of existingVideoIds) {
+                    if (!currentVideoIds.has(id) && existingVideos[id].courseId === targetCourseId) {
+                        await remove(firebaseRef(database, `courseVideos/${id}`));
+                    }
                 }
-              }
-      
-              console.log("Vídeos salvos com sucesso!");
-              return true;
+
+                for (const [index, video] of videos.entries()) {
+                    const videoData = {
+                        courseId: targetCourseId,
+                        title: video.title,
+                        url: video.url,
+                        duration: video.duration || '',
+                        description: video.description || '',
+                        order: index,
+                        requiresPrevious: video.requiresPrevious,
+                    };
+
+                    if (video.id && existingVideoIds.has(video.id)) {
+                        await set(firebaseRef(database, `courseVideos/${video.id}`), videoData);
+                    } else {
+                        const newVideoRef = push(courseVideosRef);
+                        await set(newVideoRef, videoData);
+                        video.id = newVideoRef.key;
+                    }
+                }
+                console.log("Vídeos salvos com sucesso!");
+                return true;
             } catch (error) {
-              console.error("Erro ao salvar vídeos:", error);
-              throw error;
+                console.error("Erro ao salvar vídeos:", error);
+                throw error;
             }
-          }
-      }));
+        }
+    }));
 
-      useEffect(() => {
-        const loadCourse = async () => {
-            if (courseId) {
-                console.log("Buscando vídeos para o curso:", courseId);
-                await fetchCourseVideos();
-            }
-        };
-        loadCourse();
-    }, [courseId]);
-
-    // Adicione um console.log para debug
     useEffect(() => {
-        console.log("Videos atuais:", videos);
-    }, [videos]);
+        if (courseId) {
+            fetchCourseVideos();
+        }
+    }, [courseId]);
 
     return (
         <Box sx={{ mt: 4 }}>
@@ -168,26 +174,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         variant="outlined"
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: '#666',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#9041c1',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#9041c1',
-                                },
+                                '& fieldset': { borderColor: '#666' },
+                                '&:hover fieldset': { borderColor: '#9041c1' },
+                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
                             },
                             '& .MuiInputLabel-root': {
                                 color: '#666',
-                                '&.Mui-focused': {
-                                    color: '#9041c1',
-                                },
-                            },
-                            '& .MuiInputBase-input': {
-                                '&::selection': {
-                                    backgroundColor: 'rgba(144, 65, 193, 0.1)',
-                                },
+                                '&.Mui-focused': { color: '#9041c1' },
                             },
                         }}
                     />
@@ -201,26 +194,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         variant="outlined"
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: '#666',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#9041c1',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#9041c1',
-                                },
+                                '& fieldset': { borderColor: '#666' },
+                                '&:hover fieldset': { borderColor: '#9041c1' },
+                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
                             },
                             '& .MuiInputLabel-root': {
                                 color: '#666',
-                                '&.Mui-focused': {
-                                    color: '#9041c1',
-                                },
-                            },
-                            '& .MuiInputBase-input': {
-                                '&::selection': {
-                                    backgroundColor: 'rgba(144, 65, 193, 0.1)',
-                                },
+                                '&.Mui-focused': { color: '#9041c1' },
                             },
                         }}
                     />
@@ -234,26 +214,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         variant="outlined"
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: '#666',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#9041c1',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#9041c1',
-                                },
+                                '& fieldset': { borderColor: '#666' },
+                                '&:hover fieldset': { borderColor: '#9041c1' },
+                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
                             },
                             '& .MuiInputLabel-root': {
                                 color: '#666',
-                                '&.Mui-focused': {
-                                    color: '#9041c1',
-                                },
-                            },
-                            '& .MuiInputBase-input': {
-                                '&::selection': {
-                                    backgroundColor: 'rgba(144, 65, 193, 0.1)',
-                                },
+                                '&.Mui-focused': { color: '#9041c1' },
                             },
                         }}
                     />
@@ -269,28 +236,41 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         variant="outlined"
                         sx={{
                             '& .MuiOutlinedInput-root': {
-                                '& fieldset': {
-                                    borderColor: '#666',
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: '#9041c1',
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: '#9041c1',
-                                },
+                                '& fieldset': { borderColor: '#666' },
+                                '&:hover fieldset': { borderColor: '#9041c1' },
+                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
                             },
                             '& .MuiInputLabel-root': {
                                 color: '#666',
-                                '&.Mui-focused': {
-                                    color: '#9041c1',
-                                },
-                            },
-                            '& .MuiInputBase-input': {
-                                '&::selection': {
-                                    backgroundColor: 'rgba(144, 65, 193, 0.1)',
-                                },
+                                '&.Mui-focused': { color: '#9041c1' },
                             },
                         }}
+                    />
+                </Grid>
+                <Grid item xs={12}>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={requiresPrevious}
+                                onChange={(e) => setRequiresPrevious(e.target.checked)}
+                                sx={{
+                                    '& .MuiSwitch-switchBase': {
+                                        color: '#9041c1', // Cor quando desmarcado
+                                        '&.Mui-checked': {
+                                            color: '#9041c1', // Cor quando marcado
+                                        },
+                                        '&.Mui-checked + .MuiSwitch-track': {
+                                            backgroundColor: '#9041c1', // Cor da trilha quando marcado
+                                        },
+                                    },
+                                    '& .MuiSwitch-track': {
+                                        backgroundColor: '#666', // Cor da trilha quando desmarcado
+                                    },
+                                }}
+                            />
+                        }
+                        label="Exige completar vídeos anteriores"
+                        sx={{ color: '#666' }}
                     />
                 </Grid>
             </Grid>
@@ -303,9 +283,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                     p: 1.5,
                     fontWeight: "bold",
                     backgroundColor: "#9041c1",
-                    '&:hover': {
-                        backgroundColor: "#7d37a7"
-                    }
+                    '&:hover': { backgroundColor: "#7d37a7" }
                 }}
             >
                 Adicionar Vídeo
@@ -321,20 +299,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                             borderRadius: "8px",
                             mb: 2,
                             backgroundColor: "white",
-                            '&:hover': {
-                                backgroundColor: "rgba(144, 65, 193, 0.04)"
-                            }
+                            '&:hover': { backgroundColor: "rgba(144, 65, 193, 0.04)" }
                         }}
                         secondaryAction={
                             <IconButton
                                 edge="end"
                                 onClick={() => handleRemoveVideo(video.id)}
-                                sx={{
-                                    color: '#666',
-                                    '&:hover': {
-                                        color: '#d32f2f'
-                                    }
-                                }}
+                                sx={{ color: '#666', '&:hover': { color: '#d32f2f' } }}
                             >
                                 <DeleteIcon />
                             </IconButton>
@@ -342,25 +313,82 @@ const CourseVideosTab = forwardRef((props, ref) => {
                     >
                         <ListItemText
                             primary={video.title}
-                            secondary={`URL: ${video.url} | Duração: ${video.duration}`}
-                            primaryTypographyProps={{
-                                sx: {
-                                    fontWeight: 500,
-                                    color: '#333',
-                                    '&:hover': {
-                                        color: '#9041c1'
-                                    }
-                                }
-                            }}
-                            secondaryTypographyProps={{
-                                sx: {
-                                    color: '#666'
-                                }
-                            }}
+                            secondary={`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"}`}
+                            primaryTypographyProps={{ sx: { fontWeight: 500, color: '#333' } }}
+                            secondaryTypographyProps={{ sx: { color: '#666' } }}
                         />
                     </ListItem>
                 ))}
             </List>
+
+            <Modal
+                open={showSuccessModal}
+                onClose={() => setShowSuccessModal(false)}
+                aria-labelledby="success-modal-title"
+            >
+                <Box sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 400,
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    boxShadow: 24,
+                    p: 4,
+                    textAlign: 'center',
+                }}>
+                    <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
+                    <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
+                        Vídeo adicionado com sucesso!
+                    </Typography>
+                    <Button
+                        variant="contained"
+                        onClick={() => setShowSuccessModal(false)}
+                        sx={{ backgroundColor: "#9041c1", '&:hover': { backgroundColor: "#7d37a7" } }}
+                    >
+                        OK
+                    </Button>
+                </Box>
+            </Modal>
+
+            <Modal
+                open={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                aria-labelledby="delete-modal-title"
+            >
+                <Box sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 400,
+                    bgcolor: 'background.paper',
+                    borderRadius: 2,
+                    boxShadow: 24,
+                    p: 4,
+                    textAlign: 'center',
+                }}>
+                    <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2 }}>
+                        Tem certeza que deseja excluir "{videoToDelete?.title}"?
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={confirmRemoveVideo}
+                        >
+                            Sim, Excluir
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            onClick={() => setShowDeleteModal(false)}
+                        >
+                            Cancelar
+                        </Button>
+                    </Box>
+                </Box>
+            </Modal>
         </Box>
     );
 });
