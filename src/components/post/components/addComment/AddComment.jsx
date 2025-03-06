@@ -40,6 +40,17 @@ export default function AddComment({ postId, comments, setComments }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if(!currentUser) {
+      abrirAlert(
+          setAlertMessage,
+          setAlertSeverity,
+          setAlertOpen,
+          "Você precisa estar logado para comentar.",
+          "error"
+      );
+      return;
+    }
     
     if (!comentario.trim()) {
         abrirAlert(

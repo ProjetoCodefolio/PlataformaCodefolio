@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
+import LoginIcon from '@mui/icons-material/Login';
+import Logout from "@mui/icons-material/Logout";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import VideoSettingsIcon from "@mui/icons-material/VideoSettings";
@@ -13,12 +15,11 @@ import SmartDisplayIcon from "@mui/icons-material/SmartDisplay";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
 import Settings from "@mui/icons-material/Settings";
-import Logout from "@mui/icons-material/Logout";
 import Help from "@mui/icons-material/Help";
-import { signOut } from "firebase/auth";
 import { auth } from "../../service/firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import logo from "../../assets/img/codefolio.png";
 
 export default function Topbar({ onSearch }) {
@@ -54,6 +55,64 @@ export default function Topbar({ onSearch }) {
     setSearchTerm(event.target.value);
     onSearch(event.target.value); 
   };
+
+  const getFirebaseErrorMessage = (error) => {
+    let erroTipo = error.code ? error.code : error;
+    switch (erroTipo) {
+      case "INVALID_LOGIN_CREDENTIALS":
+        return "As credenciais de login são inválidas.";
+      case "auth/invalid-email":
+        return "O email fornecido é inválido.";
+      case "auth/user-disabled":
+        return "Este usuário foi desativado.";
+      case "auth/user-not-found":
+        return "Nenhum usuário encontrado com este email.";
+      case "auth/wrong-password":
+        return "A senha está incorreta.";
+      case "auth/invalid-credential":
+        return "Credencial inválida.";
+      default:
+        return "Ocorreu um erro desconhecido. Tente novamente.";
+    }
+  };
+
+  const checkIfEmailExists = async (email) => {
+      const usersRef = ref(database, "users");
+      const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
+      const snapshot = await get(emailQuery);
+      return snapshot.exists();
+    };
+  
+    const saveUserToDatabase = async (user) => {
+      const userRef = ref(database, `users/${user.uid}`);
+      await set(userRef, {
+        firstName: user.displayName?.split(" ")[0] || "",
+        lastName: user.displayName?.split(" ").slice(1).join(" ") || "",
+        email: user.email,
+        photoURL: user.photoURL || "",
+        gitURL: "",
+        linkedinURL: "",
+        instagramURL: "",
+        facebookURL: "",
+        youtubeURL: "",
+      });
+    };
+  
+    const handleGoogleSignIn = async () => {
+      const provider = new GoogleAuthProvider();
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        const emailExists = await checkIfEmailExists(user.email);
+        if (!emailExists) {
+          await saveUserToDatabase(user);
+        }
+        navigate("/dashboard");
+      } catch (error) {
+        const message = getFirebaseErrorMessage(error);
+        setError(message);
+      }
+    };
 
   return (
     <Box className="topbarContainer">
@@ -131,43 +190,54 @@ export default function Topbar({ onSearch }) {
             transformOrigin={{ horizontal: "right", vertical: "top" }}
             anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
           >
-            <MenuItem>
-              {userDetails?.firstName} {userDetails?.lastName}
-            </MenuItem>
-
-            <Divider />
-            {userDetails?.role === "admin" && ( 
-              <MenuItem onClick={handleAdmCursoClick}>
+            {!userDetails ? (
+              <MenuItem onClick={handleGoogleSignIn}>
                 <ListItemIcon>
-                  <VideoSettingsIcon fontSize="small" />
+                  <LoginIcon fontSize="small" />
                 </ListItemIcon>
-                Gerenciamento de Cursos
+                Entrar
               </MenuItem>
+            ):(
+              <>
+              <MenuItem>
+                {userDetails?.firstName} {userDetails?.lastName}
+              </MenuItem>
+
+              <Divider />
+              {userDetails?.role === "admin" && ( 
+                <MenuItem onClick={handleAdmCursoClick}>
+                  <ListItemIcon>
+                    <VideoSettingsIcon fontSize="small" />
+                  </ListItemIcon>
+                  Gerenciamento de Cursos
+                </MenuItem>
+              )}
+              <MenuItem onClick={handleProfileClick}>
+                <ListItemIcon>
+                  <Person fontSize="small" />
+                </ListItemIcon>
+                Perfil
+              </MenuItem>
+              <MenuItem>
+                <ListItemIcon>
+                  <Settings fontSize="small" />
+                </ListItemIcon>
+                Configurações e privacidade
+              </MenuItem>
+              <MenuItem>
+                <ListItemIcon>
+                  <Help fontSize="small" />
+                </ListItemIcon>
+                Ajuda e suporte
+              </MenuItem>
+              <MenuItem onClick={handleLogout}>
+                <ListItemIcon>
+                  <Logout fontSize="small" onClick={() => handleLogout()} />
+                </ListItemIcon>
+                Sair
+              </MenuItem>
+              </>
             )}
-            <MenuItem onClick={handleProfileClick}>
-              <ListItemIcon>
-                <Person fontSize="small" />
-              </ListItemIcon>
-              Perfil
-            </MenuItem>
-            <MenuItem>
-              <ListItemIcon>
-                <Settings fontSize="small" />
-              </ListItemIcon>
-              Configurações e privacidade
-            </MenuItem>
-            <MenuItem>
-              <ListItemIcon>
-                <Help fontSize="small" />
-              </ListItemIcon>
-              Ajuda e suporte
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
-                <Logout fontSize="small" onClick={() => handleLogout()} />
-              </ListItemIcon>
-              Sair
-            </MenuItem>
           </Menu>
         </Box>
       </div>

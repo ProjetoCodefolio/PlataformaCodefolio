@@ -152,7 +152,7 @@ function PrivateRoute({ children }) {
   const location = useLocation();
 
   if (!currentUser) {
-    return <Navigate to="/login" state={{ from: location }} />;
+    // return <Navigate to="/login" state={{ from: location }} />;
   }
 
   return children;
