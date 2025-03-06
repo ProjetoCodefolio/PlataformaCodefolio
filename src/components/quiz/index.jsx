@@ -137,9 +137,9 @@ const Quiz = ({ quizId, courseId, currentVideoId, onComplete, onSubmit }) => {
                                 <Typography variant="body2" sx={{ color: "#666" }}>
                                     Sua resposta: {q.options[result.userAnswers[q.id]] || "Não respondida"}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: result.userAnswers[q.id] === q.correctOption ? "#4caf50" : "#d32f2f" }}>
+                                {/* <Typography variant="body2" sx={{ color: result.userAnswers[q.id] === q.correctOption ? "#4caf50" : "#d32f2f" }}>
                                     Resposta correta: {q.options[q.correctOption]}
-                                </Typography>
+                                </Typography> */}
                             </Box>
                         ))}
                     </Box>
