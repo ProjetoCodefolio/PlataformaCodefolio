@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
+import { Link } from 'react-router-dom';
 import { ref, get, set } from "firebase/database";
 import { database } from "../../service/firebase";
 import { VideoPlayer } from "../../components/videoPlayerClasses";
@@ -26,33 +27,39 @@ const Classes = () => {
     const videoPlayerRef = useRef(null);
     const [loadingVideos, setLoadingVideos] = useState(false);
 
-    const fetchVideosData = async () => {
+        const fetchVideosData = async () => {
         setLoadingVideos(true);
         try {
-            if (!courseId || !userDetails?.userId) return;
-
+            if (!courseId) return;
+    
             const courseRef = ref(database, `courses/${courseId}`);
             const courseSnapshot = await get(courseRef);
             const courseData = courseSnapshot.val();
             setCourseTitle(courseData?.title || "Curso sem título");
-
+    
             const courseVideosRef = ref(database, "courseVideos");
             const snapshot = await get(courseVideosRef);
             const videosData = snapshot.val();
-
-            const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
-            const progressSnapshot = await get(progressRef);
-            const progressData = progressSnapshot.val() || {};
-
-            const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
-            const quizzesSnapshot = await get(quizzesRef);
-            const quizzesData = quizzesSnapshot.val() || {};
-
+    
+            // Obter progresso apenas se o usuário estiver logado
+            let progressData = {};
+            let quizzesData = {};
+            
+            if (userDetails?.userId) {
+                const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
+                const progressSnapshot = await get(progressRef);
+                progressData = progressSnapshot.val() || {};
+    
+                const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
+                const quizzesSnapshot = await get(quizzesRef);
+                quizzesData = quizzesSnapshot.val() || {};
+            }
+    
             if (videosData) {
                 const filteredVideos = await Promise.all(
                     Object.entries(videosData)
                         .filter(([_, video]) => video.courseId === courseId)
-                        .map(async ([id, video]) => {
+                        .map(async ([id, video], index) => {
                             const quizData = quizzesData[id] || null;
                             const userProgress = progressData[id] || {};
                             return {
@@ -70,16 +77,19 @@ const Classes = () => {
                                 quizId: quizData ? `${courseId}/${id}` : null,
                                 minPercentage: quizData ? quizData.minPercentage : 0,
                                 requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
+                                isLocked: !userDetails?.userId && index > 1 // Mudança aqui: alterado de >= 2 para > 1
                             };
                         })
                 );
-
+    
                 const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
                 setVideos(sortedVideos);
                 if (sortedVideos.length > 0 && !currentVideoId) {
                     setCurrentVideoId(sortedVideos[0].id);
                 }
-                updateCourseProgress(sortedVideos);
+                if (userDetails?.userId) {
+                    updateCourseProgress(sortedVideos);
+                }
             }
         } catch (error) {
             toast.error("Erro ao carregar os dados do curso.");
@@ -121,11 +131,25 @@ const Classes = () => {
     };
 
     const saveVideoProgress = async (currentTime, duration) => {
-        if (!userDetails?.userId || !currentVideo?.id) return;
-
         const percentage = Math.floor((currentTime / duration) * 100);
+        
+        if (!userDetails?.userId) {
+            // Para usuários não logados, atualiza apenas o estado local
+            const updatedVideos = videos.map((v) =>
+                v.id === currentVideo.id ? { 
+                    ...v, 
+                    watched: percentage >= 90, 
+                    progress: percentage,
+                    watchedTime: currentTime
+                } : v
+            );
+            setVideos(updatedVideos);
+            return;
+        }
+    
+        // Código existente para usuários logados
         const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`);
-
+        
         try {
             const wasWatched = currentVideo.watched;
             await set(progressRef, {
@@ -174,6 +198,23 @@ const Classes = () => {
     };
 
     const handleVideoSelect = (video) => {
+        if (!userDetails?.userId) {
+            const videoIndex = videos.findIndex(v => v.id === video.id);
+            if (videoIndex > 1) { // Mudança aqui: alterado de > 1 para manter consistência
+                toast.warn("Faça login para acessar este conteúdo!");
+                return;
+            }
+    
+            // Para o segundo vídeo, verifica se o anterior foi concluído
+            if (videoIndex === 1) {
+                const previousVideo = videos[0];
+                if (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed)) {
+                    toast.warn("Complete o vídeo anterior primeiro!");
+                    return;
+                }
+            }
+        }
+    
         setCurrentVideoId(video.id);
         setShowQuiz(false);
         if (videoPlayerRef.current) {
@@ -188,6 +229,33 @@ const Classes = () => {
 
     const handleQuizSubmit = async (userAnswers) => {
         try {
+            // Para usuários não logados
+            if (!userDetails?.userId) {
+                const currentVideoIndex = videos.findIndex(v => v.id === currentVideoId);
+                if (currentVideoIndex > 1) { // alterado de > 1 para manter consistência
+                    toast.warn("Faça login para acessar este conteúdo!");
+                    return;
+                }
+                
+                // Validação local para usuários não logados
+                const correctAnswersCount = userAnswers.filter(answer => answer.isCorrect).length;
+                const scorePercentage = (correctAnswersCount / userAnswers.length) * 100;
+                const isPassed = scorePercentage >= (currentVideo.minPercentage || 70);
+    
+                if (isPassed) {
+                    const updatedVideos = videos.map((v) =>
+                        v.id === currentVideoId ? { ...v, quizPassed: true } : v
+                    );
+                    setVideos(updatedVideos);
+                    toast.success("Quiz concluído com sucesso! ✅");
+                    setShowQuiz(false);
+                } else {
+                    toast.warn(`Pontuação insuficiente: ${scorePercentage.toFixed(2)}%. Tente novamente!`);
+                }
+                return;
+            }
+    
+            // Código existente para usuários logados
             const { isPassed, scorePercentage } = await validateQuizAnswers(
                 userAnswers,
                 `${courseId}/${currentVideoId}`,
@@ -195,7 +263,7 @@ const Classes = () => {
                 courseId,
                 currentVideo.minPercentage
             );
-
+    
             if (isPassed) {
                 await handleQuizPassed(currentVideoId);
             } else {
@@ -209,7 +277,49 @@ const Classes = () => {
     return (
         <>
             <Topbar />
-            <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: { xs: "column", md: "row" }, backgroundColor: "#f5f5fa", color: "#333", marginTop: "80px", p: { xs: 1, sm: 2 }, gap: 2 }}>
+            {/* Adicione após o Topbar no return do componente */}
+            {!userDetails?.userId && (
+                <Box 
+                    sx={{ 
+                        backgroundColor: "#fff3cd", 
+                        color: "#856404", 
+                        p: 2, 
+                        textAlign: "center",
+                        position: "fixed",
+                        top: "64px",
+                        width: "100%",
+                        zIndex: 1000,
+                        borderBottom: "1px solid #ffeeba"
+                    }}
+                >
+                    <Typography>
+                        Você está no modo preview. Para acessar todo o conteúdo, 
+                        <Button 
+                            component={Link} 
+                            to="/login" 
+                            sx={{ 
+                                ml: 1,
+                                color: "#856404",
+                                textDecoration: "underline"
+                            }}
+                        >
+                            faça login
+                        </Button>
+                    </Typography>
+                </Box>
+            )}
+                <Box 
+                    sx={{ 
+                        minHeight: "100vh", 
+                        display: "flex", 
+                        flexDirection: { xs: "column", md: "row" }, 
+                        backgroundColor: "#f5f5fa", 
+                        color: "#333", 
+                        marginTop: !userDetails?.userId ? "125px" : "80px", // Aumenta o espaço quando há aviso
+                        p: { xs: 1, sm: 2 }, 
+                        gap: 2 
+                    }}
+                >
                 <Box sx={{ flex: { xs: 1, md: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
                     <Paper elevation={3} sx={{ width: "100%", overflow: "hidden", backgroundColor: "#ffffff", borderRadius: "16px" }}>
                         {showQuiz ? (
