@@ -19,6 +19,7 @@ import { useAuth } from "../../context/AuthContext";
 
 const MyCourses = () => {
     const [selectedTab, setSelectedTab] = useState(0);
+    const [availableCourses, setAvailableCourses] = useState([]);
     const [inProgressCourses, setInProgressCourses] = useState([]);
     const [completedCourses, setCompletedCourses] = useState([]);
     const { userDetails } = useAuth();
@@ -53,14 +54,20 @@ const MyCourses = () => {
                         return {
                             ...course,
                             progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
-                            status: studentCourse.status || "in_progress",
+                            accessed: studentCourse.progress !== undefined, // Indica se o curso foi acessado
                         };
                     });
 
                     console.log("Cursos enriquecidos:", enrichedCourses);
 
-                    const inProgress = enrichedCourses.filter(course => course.status === "in_progress");
-                    const completed = enrichedCourses.filter(course => course.status === "completed");
+                
+                    const available = enrichedCourses.filter(course => !course.accessed);
+                    
+                    const inProgress = enrichedCourses.filter(course => course.accessed && course.progress < 100);
+        
+                    const completed = enrichedCourses.filter(course => course.progress === 100);
+
+                    setAvailableCourses(available);
                     setInProgressCourses(inProgress);
                     setCompletedCourses(completed);
                 } else {
@@ -78,12 +85,16 @@ const MyCourses = () => {
         setSelectedTab(newValue);
     };
 
+    const handleStartCourse = (course) => {
+        navigate(`/classes?courseId=${course.courseId}`);
+    };
+
     const handleContinueCourse = (course) => {
         navigate(`/classes?courseId=${course.courseId}`);
     };
 
-    const handleViewCertificate = (course) => {
-        alert(`Certificado de: ${course.title}`);
+    const handleViewCourse = (course) => {
+        navigate(`/classes?courseId=${course.courseId}`);
     };
 
     const renderCourses = (courses, actionButtonLabel, onClickAction) => {
@@ -200,19 +211,26 @@ const MyCourses = () => {
                         "& .Mui-selected": { color: "#9041c1 !important" },
                     }}
                 >
+                    <Tab label="Disponíveis" />
                     <Tab label="Em Andamento" />
                     <Tab label="Concluídos" />
                 </Tabs>
 
                 {selectedTab === 0 && (
                     <Box>
-                        {renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}
+                        {renderCourses(availableCourses, "Começar", handleStartCourse)}
                     </Box>
                 )}
 
                 {selectedTab === 1 && (
                     <Box>
-                        {renderCourses(completedCourses, "Ver Certificado", handleViewCertificate)}
+                        {renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}
+                    </Box>
+                )}
+
+                {selectedTab === 2 && (
+                    <Box>
+                        {renderCourses(completedCourses, "Ver Curso", handleViewCourse)}
                     </Box>
                 )}
             </Paper>

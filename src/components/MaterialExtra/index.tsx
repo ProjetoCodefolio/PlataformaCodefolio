@@ -54,7 +54,7 @@ const MaterialExtra = ({ courseId }) => {
     }, [courseId]);
 
     return (
-        <Box sx={{ p: 2, backgroundColor: "", minHeight: "100%" }}>
+        <Box sx={{ p: 2, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
             {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: 5 }}>
                     <CircularProgress sx={{ color: "#9041c1" }} />
@@ -72,10 +72,9 @@ const MaterialExtra = ({ courseId }) => {
                             justifyContent: "space-between",
                             padding: 2,
                             marginBottom: 2,
-                            backgroundColor: "#fff",
+                            backgroundColor: "#F5F5FA", 
                             borderRadius: "16px",
-                            boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                            "&:hover": { boxShadow: "0px 3px 10px rgba(0, 0, 0, 0.15)" }, 
+                            border: "1px solid #e0e0e0",
                         }}
                     >
                         <CardContent>
@@ -98,7 +97,7 @@ const MaterialExtra = ({ courseId }) => {
                                 sx={{
                                     backgroundColor: "#9041c1",
                                     borderRadius: "12px",
-                                    "&:hover": { backgroundColor: "#7d37a7" }, 
+                                    "&:hover": { backgroundColor: "#7d37a7" },
                                     textTransform: "none",
                                     fontWeight: 500,
                                     px: 4,

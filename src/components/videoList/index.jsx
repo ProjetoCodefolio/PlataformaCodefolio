@@ -12,9 +12,24 @@ import PlayCircleIcon from "@mui/icons-material/PlayCircle";
 import LockIcon from "@mui/icons-material/Lock";
 import ReplayIcon from "@mui/icons-material/Replay";
 import QuizIcon from "@mui/icons-material/Quiz";
+import { toast } from "react-toastify";
 
-const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
+const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => {
     console.log("Videos no VideoList:", videos);
+
+    const handleLockedClick = (video, previousVideo) => {
+        if (previousVideo) {
+            if (!previousVideo.watched) {
+                toast.warn(`Você precisa assistir o vídeo anterior: "${previousVideo.title}" antes de prosseguir!`);
+            } else if (previousVideo.quizId && !previousVideo.quizPassed) {
+                toast.warn(`Você precisa completar o quiz do vídeo anterior: "${previousVideo.title}" antes de prosseguir!`);
+            }
+        }
+    };
+
+    const handleQuizLockedClick = (video) => {
+        toast.warn(`Você precisa assistir o vídeo "${video.title}" para liberar o quiz!`);
+    };
 
     return (
         <Box>
@@ -25,6 +40,8 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                     previousVideo &&
                     (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed));
                 const isCompleted = video.watched && (!video.quizId || video.quizPassed);
+                const isCurrent = video.id === currentVideoId;
+                const isQuizLocked = !video.watched;
 
                 return (
                     <Card
@@ -35,9 +52,11 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                             justifyContent: "space-between",
                             padding: 2,
                             marginBottom: 2,
-                            backgroundColor: isLocked ? "#f0f0f0" : "#fff",
+                            backgroundColor: "#F5F5FA",
                             borderRadius: "16px",
-                            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+                            border: isCurrent
+                                ? "2px solid #9041c1"
+                                : "1px solid #e0e0e0",
                             opacity: isLocked ? 0.5 : 1,
                             position: "relative",
                         }}
@@ -52,9 +71,25 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                                     <Typography variant="h6" fontWeight="bold" sx={{ color: "#333" }}>
                                         {video.title}
                                     </Typography>
-                                    {video.quizId && (
+                                    {isCurrent && (
+                                        <Typography
+                                            variant="body2"
+                                            sx={{ color: "#9041c1", fontWeight: "bold", mt: 0.5 }}
+                                        >
+                                            Vídeo atual
+                                        </Typography>
+                                    )}
+                                    {isLocked && (
+                                        <Typography
+                                            variant="body2"
+                                            sx={{ color: "#d32f2f", fontWeight: "bold", mt: 0.5 }}
+                                        >
+                                            Vídeo bloqueado
+                                        </Typography>
+                                    )}
+                                    {video.quizId && !isLocked && !isCurrent && (
                                         <Typography variant="body2" color="textSecondary">
-                                            {video.quizPassed ? "Quiz concluído ✅" : "Quiz pendente"}
+                                            {video.quizPassed ? "Quiz concluído ✅" : isQuizLocked ? "Quiz bloqueado 🔒" : "Quiz pendente"}
                                         </Typography>
                                     )}
                                 </Box>
@@ -89,7 +124,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                                 pb: 2,
                             }}
                         >
-                            {!isLocked && (
+                            {!isLocked ? (
                                 <Button
                                     variant="contained"
                                     onClick={() => setCurrentVideo(video)}
@@ -105,50 +140,10 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                                 >
                                     {video.watched ? "Rever Vídeo" : "Assistir"}
                                 </Button>
-                            )}
-
-                            {video.quizId && !video.quizPassed && !isLocked && (
+                            ) : (
                                 <Button
                                     variant="contained"
-                                    onClick={() => onQuizStart(video.quizId)}
-                                    startIcon={<QuizIcon />}
-                                    sx={{
-                                        backgroundColor: "#9041c1",
-                                        borderRadius: "12px",
-                                        "&:hover": { backgroundColor: "#7d37a7" },
-                                        textTransform: "none",
-                                        fontWeight: 500,
-                                        flex: 1,
-                                    }}
-                                >
-                                    Fazer Quiz
-                                </Button>
-                            )}
-
-                            {video.quizId && video.quizPassed && !isLocked && (
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => onQuizStart(video.quizId)}
-                                    startIcon={<ReplayIcon />}
-                                    sx={{
-                                        borderColor: "#9041c1",
-                                        color: "#9041c1",
-                                        borderRadius: "12px",
-                                        "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
-                                        textTransform: "none",
-                                        fontWeight: 500,
-                                        flex: 1,
-                                    }}
-                                >
-                                    Refazer Quiz
-                                </Button>
-                            )}
-
-                            {isLocked && (
-                                <Button
-                                    variant="contained"
-                                    disabled
-                                    fullWidth
+                                    onClick={() => handleLockedClick(video, previousVideo)}
                                     startIcon={<LockIcon />}
                                     sx={{
                                         backgroundColor: "#e0e0e0",
@@ -156,10 +151,84 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart }) => {
                                         color: "#666",
                                         textTransform: "none",
                                         fontWeight: 500,
+                                        flex: 1,
                                     }}
                                 >
                                     Bloqueado
                                 </Button>
+                            )}
+
+                            {video.quizId && !video.quizPassed && !isLocked && (
+                                isQuizLocked ? (
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => handleQuizLockedClick(video)}
+                                        startIcon={<LockIcon />}
+                                        sx={{
+                                            backgroundColor: "#e0e0e0",
+                                            borderRadius: "12px",
+                                            color: "#666",
+                                            textTransform: "none",
+                                            fontWeight: 500,
+                                            flex: 1,
+                                        }}
+                                    >
+                                        Quiz Bloqueado
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => onQuizStart(video.quizId)}
+                                        startIcon={<QuizIcon />}
+                                        sx={{
+                                            backgroundColor: "#9041c1",
+                                            borderRadius: "12px",
+                                            "&:hover": { backgroundColor: "#7d37a7" },
+                                            textTransform: "none",
+                                            fontWeight: 500,
+                                            flex: 1,
+                                        }}
+                                    >
+                                        Fazer Quiz
+                                    </Button>
+                                )
+                            )}
+
+                            {video.quizId && video.quizPassed && !isLocked && (
+                                isQuizLocked ? (
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => handleQuizLockedClick(video)}
+                                        startIcon={<LockIcon />}
+                                        sx={{
+                                            backgroundColor: "#e0e0e0",
+                                            borderRadius: "12px",
+                                            color: "#666",
+                                            textTransform: "none",
+                                            fontWeight: 500,
+                                            flex: 1,
+                                        }}
+                                    >
+                                        Quiz Bloqueado
+                                    </Button>
+                                ) : (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={() => onQuizStart(video.quizId)}
+                                        startIcon={<ReplayIcon />}
+                                        sx={{
+                                            borderColor: "#9041c1",
+                                            color: "#9041c1",
+                                            borderRadius: "12px",
+                                            "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
+                                            textTransform: "none",
+                                            fontWeight: 500,
+                                            flex: 1,
+                                        }}
+                                    >
+                                        Refazer Quiz
+                                    </Button>
+                                )
                             )}
                         </CardActions>
                     </Card>

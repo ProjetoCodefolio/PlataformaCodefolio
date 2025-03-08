@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import { Link } from 'react-router-dom';
+import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get, set } from "firebase/database";
 import { database } from "../../service/firebase";
 import { VideoPlayer } from "../../components/videoPlayerClasses";
 import VideoList from "../../components/videoList";
 import MaterialExtra from "../../components/MaterialExtra";
 import Quiz from "../../components/quiz";
-import { Box, Paper, Tabs, Tab, Typography, CircularProgress, Divider, Button, Modal } from "@mui/material";
+import { Box, Tabs, Tab, Typography, CircularProgress, Divider, Button, Modal } from "@mui/material";
 import Topbar from "../../components/topbar/Topbar";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
+import Confetti from "react-confetti";
+import CelebrationIcon from "@mui/icons-material/Celebration";
 
 const Classes = () => {
     const [videos, setVideos] = useState([]);
@@ -26,35 +27,49 @@ const Classes = () => {
     const courseId = params.get("courseId");
     const videoPlayerRef = useRef(null);
     const [loadingVideos, setLoadingVideos] = useState(false);
+    const navigate = useNavigate();
+    const modalRef = useRef(null);
+    const [modalDimensions, setModalDimensions] = useState({ width: 0, height: 0 });
 
-        const fetchVideosData = async () => {
+    useEffect(() => {
+        if (showCompletionModal && modalRef.current) {
+            const { offsetWidth, offsetHeight } = modalRef.current;
+            setModalDimensions({ width: offsetWidth, height: offsetHeight });
+        }
+    }, [showCompletionModal]);
+
+    useEffect(() => {
+        console.log("userDetails (on mount/update):", userDetails);
+    }, [userDetails]);
+
+    const fetchVideosData = async () => {
+        console.log("userDetails (fetchVideosData):", userDetails);
         setLoadingVideos(true);
         try {
             if (!courseId) return;
-    
+
             const courseRef = ref(database, `courses/${courseId}`);
             const courseSnapshot = await get(courseRef);
             const courseData = courseSnapshot.val();
             setCourseTitle(courseData?.title || "Curso sem título");
-    
+
             const courseVideosRef = ref(database, "courseVideos");
             const snapshot = await get(courseVideosRef);
             const videosData = snapshot.val();
-    
-            // Obter progresso apenas se o usuário estiver logado
+
             let progressData = {};
             let quizzesData = {};
-            
+
             if (userDetails?.userId) {
                 const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
-    
+
                 const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
                 const quizzesSnapshot = await get(quizzesRef);
                 quizzesData = quizzesSnapshot.val() || {};
             }
-    
+
             if (videosData) {
                 const filteredVideos = await Promise.all(
                     Object.entries(videosData)
@@ -77,11 +92,11 @@ const Classes = () => {
                                 quizId: quizData ? `${courseId}/${id}` : null,
                                 minPercentage: quizData ? quizData.minPercentage : 0,
                                 requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-                                isLocked: !userDetails?.userId && index > 1 // Mudança aqui: alterado de >= 2 para > 1
+                                isLocked: !userDetails?.userId && index > 1,
                             };
                         })
                 );
-    
+
                 const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
                 setVideos(sortedVideos);
                 if (sortedVideos.length > 0 && !currentVideoId) {
@@ -106,9 +121,7 @@ const Classes = () => {
 
     const updateCourseProgress = async (updatedVideos) => {
         const totalVideos = updatedVideos.length;
-        const completedVideos = updatedVideos.filter(v => 
-            v.watched && (!v.quizId || v.quizPassed)
-        ).length;
+        const completedVideos = updatedVideos.filter((v) => v.watched && (!v.quizId || v.quizPassed)).length;
         const progressPercentage = (completedVideos / totalVideos) * 100;
 
         console.log("Atualizando progresso do curso:", { completedVideos, totalVideos, progressPercentage });
@@ -132,24 +145,19 @@ const Classes = () => {
 
     const saveVideoProgress = async (currentTime, duration) => {
         const percentage = Math.floor((currentTime / duration) * 100);
-        
+
         if (!userDetails?.userId) {
-            // Para usuários não logados, atualiza apenas o estado local
             const updatedVideos = videos.map((v) =>
-                v.id === currentVideo.id ? { 
-                    ...v, 
-                    watched: percentage >= 90, 
-                    progress: percentage,
-                    watchedTime: currentTime
-                } : v
+                v.id === currentVideo.id
+                    ? { ...v, watched: percentage >= 90, progress: percentage, watchedTime: currentTime }
+                    : v
             );
             setVideos(updatedVideos);
             return;
         }
-    
-        // Código existente para usuários logados
+
         const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`);
-        
+
         try {
             const wasWatched = currentVideo.watched;
             await set(progressRef, {
@@ -165,7 +173,6 @@ const Classes = () => {
             );
             setVideos(updatedVideos);
 
-            
             if (!wasWatched && percentage >= 90) {
                 await updateCourseProgress(updatedVideos);
             }
@@ -186,9 +193,7 @@ const Classes = () => {
                 lastUpdated: new Date().toISOString(),
             });
 
-            const updatedVideos = videos.map((v) =>
-                v.id === videoId ? { ...v, quizPassed: true } : v
-            );
+            const updatedVideos = videos.map((v) => (v.id === videoId ? { ...v, quizPassed: true } : v));
             setVideos(updatedVideos);
             await updateCourseProgress(updatedVideos);
             toast.success("Quiz concluído com sucesso! ✅");
@@ -199,13 +204,12 @@ const Classes = () => {
 
     const handleVideoSelect = (video) => {
         if (!userDetails?.userId) {
-            const videoIndex = videos.findIndex(v => v.id === video.id);
-            if (videoIndex > 1) { // Mudança aqui: alterado de > 1 para manter consistência
+            const videoIndex = videos.findIndex((v) => v.id === video.id);
+            if (videoIndex > 1) {
                 toast.warn("Faça login para acessar este conteúdo!");
                 return;
             }
-    
-            // Para o segundo vídeo, verifica se o anterior foi concluído
+
             if (videoIndex === 1) {
                 const previousVideo = videos[0];
                 if (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed)) {
@@ -214,7 +218,7 @@ const Classes = () => {
                 }
             }
         }
-    
+
         setCurrentVideoId(video.id);
         setShowQuiz(false);
         if (videoPlayerRef.current) {
@@ -229,33 +233,29 @@ const Classes = () => {
 
     const handleQuizSubmit = async (userAnswers) => {
         try {
-            // Para usuários não logados
             if (!userDetails?.userId) {
-                const currentVideoIndex = videos.findIndex(v => v.id === currentVideoId);
-                if (currentVideoIndex > 1) { // alterado de > 1 para manter consistência
+                const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
+                if (currentVideoIndex > 1) {
                     toast.warn("Faça login para acessar este conteúdo!");
                     return;
                 }
-                
-                // Validação local para usuários não logados
-                const correctAnswersCount = userAnswers.filter(answer => answer.isCorrect).length;
+
+                const correctAnswersCount = userAnswers.filter((answer) => answer.isCorrect).length;
                 const scorePercentage = (correctAnswersCount / userAnswers.length) * 100;
                 const isPassed = scorePercentage >= (currentVideo.minPercentage || 70);
-    
+
                 if (isPassed) {
                     const updatedVideos = videos.map((v) =>
                         v.id === currentVideoId ? { ...v, quizPassed: true } : v
                     );
                     setVideos(updatedVideos);
                     toast.success("Quiz concluído com sucesso! ✅");
-                    setShowQuiz(false);
                 } else {
                     toast.warn(`Pontuação insuficiente: ${scorePercentage.toFixed(2)}%. Tente novamente!`);
                 }
                 return;
             }
-    
-            // Código existente para usuários logados
+
             const { isPassed, scorePercentage } = await validateQuizAnswers(
                 userAnswers,
                 `${courseId}/${currentVideoId}`,
@@ -263,7 +263,7 @@ const Classes = () => {
                 courseId,
                 currentVideo.minPercentage
             );
-    
+
             if (isPassed) {
                 await handleQuizPassed(currentVideoId);
             } else {
@@ -274,126 +274,245 @@ const Classes = () => {
         }
     };
 
+    const handleNextVideo = () => {
+        const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
+        if (currentVideoIndex < videos.length - 1) {
+            const nextVideo = videos[currentVideoIndex + 1];
+            handleVideoSelect(nextVideo);
+        } else {
+            toast.info("Este é o último vídeo do curso!");
+        }
+    };
+
     return (
         <>
             <Topbar />
-            {/* Adicione após o Topbar no return do componente */}
-            {!userDetails?.userId && (
-                <Box 
-                    sx={{ 
-                        backgroundColor: "#fff3cd", 
-                        color: "#856404", 
-                        p: 2, 
-                        textAlign: "center",
-                        position: "fixed",
-                        top: "64px",
-                        width: "100%",
-                        zIndex: 1000,
-                        borderBottom: "1px solid #ffeeba"
+            <Box
+                sx={{
+                    minHeight: "calc(100vh - 64px)",
+                    display: "flex",
+                    flexDirection: { xs: "column", md: "row" },
+                    backgroundColor: "#F5F5FA",
+                    color: "#333",
+                    pt: !userDetails?.userId ? 2 : 10, 
+                    pb: { xs: 1, sm: 2 },
+                    px: { xs: 1, sm: 2 },
+                    gap: 2,
+                    alignItems: "flex-start",
+                }}
+            >
+                <Box
+                    sx={{
+                        flex: { xs: 1, md: 3 },
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                        backgroundColor: "#F5F5FA",
                     }}
                 >
-                    <Typography>
-                        Você está no modo preview. Para acessar todo o conteúdo, 
-                        <Button 
-                            component={Link} 
-                            to="/login" 
-                            sx={{ 
-                                ml: 1,
-                                color: "#856404",
-                                textDecoration: "underline"
+                    {showQuiz ? (
+                        <Quiz
+                            quizId={`${courseId}/${currentVideoId}`}
+                            courseId={courseId}
+                            currentVideoId={currentVideoId}
+                            videos={videos}
+                            onComplete={(isPassed) => {
+                                if (isPassed) handleQuizPassed(currentVideoId);
+                                setShowQuiz(false);
+                            }}
+                            onSubmit={handleQuizSubmit}
+                            onNextVideo={handleNextVideo}
+                        />
+                    ) : loadingVideos ? (
+                        <Box
+                            sx={{
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
+                                p: 5,
+                                height: "400px",
+                                backgroundColor: "#F5F5FA",
                             }}
                         >
-                            faça login
-                        </Button>
-                    </Typography>
-                </Box>
-            )}
-                <Box 
-                    sx={{ 
-                        minHeight: "100vh", 
-                        display: "flex", 
-                        flexDirection: { xs: "column", md: "row" }, 
-                        backgroundColor: "#f5f5fa", 
-                        color: "#333", 
-                        marginTop: !userDetails?.userId ? "125px" : "80px", // Aumenta o espaço quando há aviso
-                        p: { xs: 1, sm: 2 }, 
-                        gap: 2 
-                    }}
-                >
-                <Box sx={{ flex: { xs: 1, md: 3 }, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Paper elevation={3} sx={{ width: "100%", overflow: "hidden", backgroundColor: "#ffffff", borderRadius: "16px" }}>
-                        {showQuiz ? (
-                            <Quiz
-                                quizId={`${courseId}/${currentVideoId}`}
-                                courseId={courseId}
-                                currentVideoId={currentVideoId}
-                                onComplete={(isPassed) => {
-                                    if (isPassed) handleQuizPassed(currentVideoId);
-                                    setShowQuiz(false);
-                                }}
-                                onSubmit={handleQuizSubmit}
-                            />
-                        ) : loadingVideos ? (
-                            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: 5, height: "400px" }}>
-                                <CircularProgress color="secondary" />
-                                <Typography variant="body1" sx={{ ml: 2, color: "#888" }}>Carregando vídeos...</Typography>
-                            </Box>
-                        ) : currentVideo ? (
+                            <CircularProgress color="secondary" />
+                            <Typography variant="body1" sx={{ ml: 2, color: "#888" }}>
+                                Carregando vídeos...
+                            </Typography>
+                        </Box>
+                    ) : currentVideo ? (
+                        <Box
+                            sx={{
+                                backgroundColor: "#F5F5FA",
+                            }}
+                        >
                             <VideoPlayer
                                 ref={videoPlayerRef}
                                 video={{ ...currentVideo, title: `${courseTitle} - ${currentVideo.title}` }}
                                 onProgress={saveVideoProgress}
+                                videos={videos}
+                                onVideoChange={handleVideoSelect}
                             />
-                        ) : (
-                            <Box sx={{ p: 5, textAlign: "center" }}>
-                                <Typography variant="h6" sx={{ color: "#888" }}>Nenhum vídeo disponível.</Typography>
-                            </Box>
-                        )}
-                    </Paper>
+                        </Box>
+                    ) : (
+                        <Box sx={{ p: 5, textAlign: "center", backgroundColor: "#F5F5FA" }}>
+                            <Typography variant="h6" sx={{ color: "#888" }}>
+                                Nenhum vídeo disponível.
+                            </Typography>
+                        </Box>
+                    )}
                 </Box>
-                <Box sx={{ flex: { xs: 1, md: 2 }, height: { xs: "auto", md: "calc(100vh - 100px)" }, minWidth: { md: "320px" } }}>
-                    <Paper elevation={3} sx={{ height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "16px", overflow: "hidden" }}>
-                        <Tabs value={selectedTab} onChange={(e, newValue) => setSelectedTab(newValue)} textColor="inherit" indicatorColor="primary" variant="fullWidth" sx={{ '& .MuiTab-root': { color: '#666', '&.Mui-selected': { color: '#9041c1' } }, '& .MuiTabs-indicator': { backgroundColor: '#9041c1' } }}>
+                <Box
+                    sx={{
+                        flex: { xs: 1, md: 2 },
+                        height: { xs: "auto", md: "calc(100vh - 100px)" },
+                        minWidth: { md: "320px" },
+                    }}
+                >
+                    <Box
+                        sx={{
+                            height: "100%",
+                            display: "flex",
+                            flexDirection: "column",
+                            backgroundColor: "#F5F5FA",
+                            borderRadius: "16px",
+                            overflow: "hidden",
+                            border: "1px solid #e0e0e0",
+                        }}
+                    >
+                        <Tabs
+                            value={selectedTab}
+                            onChange={(e, newValue) => setSelectedTab(newValue)}
+                            textColor="inherit"
+                            indicatorColor="primary"
+                            variant="fullWidth"
+                            sx={{
+                                "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+                                "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                            }}
+                        >
                             <Tab label="Conteúdo" />
                             <Tab label="Materiais Extras" />
                         </Tabs>
                         <Divider />
-                        <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+                        <Box sx={{ flex: 1, overflowY: "auto", p: 2, backgroundColor: "#F5F5FA" }}>
                             {selectedTab === 0 ? (
-                                <VideoList videos={videos} setCurrentVideo={handleVideoSelect} onQuizStart={handleQuizStart} />
+                                <VideoList
+                                    videos={videos}
+                                    setCurrentVideo={handleVideoSelect}
+                                    onQuizStart={handleQuizStart}
+                                    currentVideoId={currentVideoId}
+                                />
                             ) : (
                                 <MaterialExtra courseId={courseId} />
                             )}
                         </Box>
-                    </Paper>
+                    </Box>
                 </Box>
             </Box>
 
             <Modal open={showCompletionModal} onClose={() => setShowCompletionModal(false)}>
                 <Box
+                    ref={modalRef}
                     sx={{
                         position: "absolute",
                         top: "50%",
                         left: "50%",
                         transform: "translate(-50%, -50%)",
-                        width: 400,
-                        bgcolor: "background.paper",
-                        borderRadius: 2,
-                        boxShadow: 24,
-                        p: 4,
+                        width: { xs: "90%", sm: 500 },
+                        bgcolor: "#fff",
+                        borderRadius: "20px",
+                        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.3)",
+                        p: { xs: 3, sm: 4 },
                         textAlign: "center",
+                        background: "linear-gradient(135deg, #9041c1 0%, #7d37a7 100%)",
+                        color: "#fff",
+                        animation: "zoomIn 0.5s ease-in-out",
+                        "@keyframes zoomIn": {
+                            "0%": { transform: "translate(-50%, -50%) scale(0.5)", opacity: 0 },
+                            "100%": { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+                        },
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 2,
                     }}
                 >
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                        Parabéns! Você concluiu o curso "{courseTitle}"!
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        onClick={() => setShowCompletionModal(false)}
-                        sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+                    {showCompletionModal && (
+                        <Confetti
+                            width={modalDimensions.width}
+                            height={modalDimensions.height}
+                            recycle={false}
+                            numberOfPieces={150}
+                            colors={["#9041c1", "#7d37a7", "#4caf50", "#f5f5fa"]}
+                            style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                pointerEvents: "none",
+                            }}
+                        />
+                    )}
+                   
+                    <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        sx={{
+                            mb: 1,
+                            background: "linear-gradient(45deg, #fff 0%, #ffeb3b 100%)",
+                            WebkitBackgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            textShadow: "2px 2px 4px rgba(0, 0, 0, 0.2)",
+                        }}
                     >
-                        Fechar
-                    </Button>
+                        🎉 Parabéns, {userDetails?.firstName || "Aluno"}!
+                    </Typography>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Você conquistou o curso "{courseTitle}" com sucesso!
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 3, opacity: 0.8, maxWidth: "80%", mx: "auto" }}>
+                     Continue aprendendo e explorando novos desafios.
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => {
+                                setShowCompletionModal(false);
+                                navigate("/dashboard");
+                            }}
+                            sx={{
+                                backgroundColor: "#fff",
+                                color: "#9041c1",
+                                borderRadius: "16px",
+                                "&:hover": { backgroundColor: "#f5f5fa", color: "#7d37a7" },
+                                textTransform: "none",
+                                fontWeight: 600,
+                                px: 4,
+                                py: 1.5,
+                                minWidth: 180,
+                            }}
+                        >
+                            Explorar Outros Cursos
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            onClick={() => setShowCompletionModal(false)}
+                            sx={{
+                                borderColor: "#fff",
+                                color: "#fff",
+                                borderRadius: "16px",
+                                "&:hover": { borderColor: "#f5f5fa", color: "#f5f5fa" },
+                                textTransform: "none",
+                                fontWeight: 500,
+                                px: 4,
+                                py: 1.5,
+                                minWidth: 120,
+                            }}
+                        >
+                            Fechar
+                        </Button>
+                    </Box>
                 </Box>
             </Modal>
         </>
