@@ -12,6 +12,7 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import Confetti from "react-confetti";
+import { setLogLevel } from "firebase/app";
 
 const Classes = () => {
     const [videos, setVideos] = useState([]);
@@ -20,6 +21,7 @@ const Classes = () => {
     const [showQuiz, setShowQuiz] = useState(false);
     const [courseTitle, setCourseTitle] = useState("");
     const [showCompletionModal, setShowCompletionModal] = useState(false);
+    const [showLogInModal, setShowLogInModal] = useState(false);
     const { userDetails } = useAuth();
     const location = useLocation();
     const params = new URLSearchParams(location.search);
@@ -35,7 +37,12 @@ const Classes = () => {
             const { offsetWidth, offsetHeight } = modalRef.current;
             setModalDimensions({ width: offsetWidth, height: offsetHeight });
         }
-    }, [showCompletionModal]);
+
+        if (showLogInModal && modalRef.current) {
+            const { offsetWidth, offsetHeight } = modalRef.current;
+            setModalDimensions({ width: offsetWidth, height: offsetHeight });
+        }
+    }, [showCompletionModal, showLogInModal]);
 
     useEffect(() => {
         console.log("userDetails (on mount/update):", userDetails);
@@ -64,10 +71,11 @@ const Classes = () => {
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
 
-                const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
-                const quizzesSnapshot = await get(quizzesRef);
-                quizzesData = quizzesSnapshot.val() || {};
             }
+
+            const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
+            const quizzesSnapshot = await get(quizzesRef);
+            quizzesData = quizzesSnapshot.val() || {};
 
             if (videosData) {
                 const filteredVideos = await Promise.all(
@@ -208,6 +216,7 @@ const Classes = () => {
             const videoIndex = videos.findIndex((v) => v.id === video.id);
             if (videoIndex > 1) {
                 toast.warn("Faça login para acessar este conteúdo!");
+                setShowLogInModal(true);
                 return;
             }
 
@@ -238,13 +247,25 @@ const Classes = () => {
                 const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
                 if (currentVideoIndex > 1) {
                     toast.warn("Faça login para acessar este conteúdo!");
+                    setShowLogInModal(true);
                     return;
                 }
-
-                const correctAnswersCount = userAnswers.filter((answer) => answer.isCorrect).length;
-                const scorePercentage = (correctAnswersCount / userAnswers.length) * 100;
+    
+                // Buscar as questões do quiz
+                const quizData = await fetchQuizQuestions(`${courseId}/${currentVideoId}`);
+                let correctAnswersCount = 0;
+                
+                // Calcular respostas corretas
+                Object.entries(userAnswers).forEach(([questionId, userAnswer]) => {
+                    const question = quizData.questions[questionId];
+                    if (question && userAnswer === question.correctOption) {
+                        correctAnswersCount++;
+                    }
+                });
+    
+                const scorePercentage = (correctAnswersCount / quizData.questions.length) * 100;
                 const isPassed = scorePercentage >= (currentVideo.minPercentage || 70);
-
+    
                 if (isPassed) {
                     const updatedVideos = videos.map((v) =>
                         v.id === currentVideoId ? { ...v, quizPassed: true } : v
@@ -256,21 +277,21 @@ const Classes = () => {
                 }
                 return;
             }
-
+    
+            // Para usuários logados
             const { isPassed, scorePercentage } = await validateQuizAnswers(
                 userAnswers,
                 `${courseId}/${currentVideoId}`,
-                userDetails.userId,
-                courseId,
                 currentVideo.minPercentage
             );
-
+    
             if (isPassed) {
                 await handleQuizPassed(currentVideoId);
             } else {
                 toast.warn(`Pontuação insuficiente: ${scorePercentage.toFixed(2)}%. Tente novamente!`);
             }
         } catch (error) {
+            console.error("Erro ao validar quiz:", error);
             toast.error("Erro ao validar o quiz.");
         }
     };
@@ -283,6 +304,10 @@ const Classes = () => {
         } else {
             toast.info("Este é o último vídeo do curso!");
         }
+    };
+
+    const handleLogin = () => {
+        console.log("Redirecionando para a página de login...");
     };
 
     return (
@@ -406,6 +431,67 @@ const Classes = () => {
                     </Box>
                 </Box>
             </Box>
+
+            <Modal open={showLogInModal} onClose={() => setShowLogInModal(false)}>
+                <Box
+                    ref={modalRef}
+                    sx={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        width: { xs: "90%", sm: 500 },
+                        bgcolor: "#fff",
+                        borderRadius: "20px",
+                        boxShadow: "0 12px 40px rgba(0, 0, 0, 0.3)",
+                        p: { xs: 3, sm: 4 },
+                        textAlign: "center",
+                        background: "linear-gradient(135deg, #9041c1 0%, #7d37a7 100%)",
+                        color: "#fff",
+                        animation: "zoomIn 0.5s ease-in-out",
+                        "@keyframes zoomIn": {
+                            "0%": { transform: "translate(-50%, -50%) scale(0.5)", opacity: 0 },
+                            "100%": { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+                        },
+                        overflow: "hidden",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 2,
+                    }}
+                >
+                    {showLogInModal && (
+                    <>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                        Faça login para prosseguir com o curso!
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
+                        <Button
+                            variant="contained"
+                            onClick={() => {
+                                setShowLogInModal(true);
+                                handleLogin();
+                            }}
+                            sx={{
+                                backgroundColor: "#fff",
+                                color: "#9041c1",
+                                borderRadius: "16px",
+                                "&:hover": { backgroundColor: "#f5f5fa", color: "#7d37a7" },
+                                textTransform: "none",
+                                fontWeight: 600,
+                                px: 4,
+                                py: 1.5,
+                                minWidth: 180,
+                            }}
+                        >
+                            Fazer Login
+                        </Button>
+                    </Box>
+                    </>
+                    )}
+                </Box>
+            </Modal>
 
             <Modal open={showCompletionModal} onClose={() => setShowCompletionModal(false)}>
                 <Box
