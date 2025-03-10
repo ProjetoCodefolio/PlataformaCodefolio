@@ -76,8 +76,8 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             const result = await validateQuizAnswers(
                 answers,
                 quizId,
-                userDetails.userId,
-                courseId,
+                /*userDetails.userId,
+                courseId,*/
                 questions[0]?.minPercentage || 70
             );
             const calculatedPercentage = (result.earnedPoints / result.totalPoints) * 100;
@@ -93,6 +93,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             setQuizCompleted(true);
             onSubmit(answers);
         } catch (error) {
+            console.log("caiu em quiz")
             toast.error("Erro ao validar o quiz.");
             setQuizCompleted(false);
         }
