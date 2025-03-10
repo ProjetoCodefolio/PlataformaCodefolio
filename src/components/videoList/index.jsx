@@ -43,6 +43,9 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                 const isCurrent = video.id === currentVideoId;
                 const isQuizLocked = !video.watched;
 
+                // Log para depurar quizId e watched
+                console.log(`Video ${video.title}:`, { quizId: video.quizId, watched: video.watched, isQuizLocked });
+
                 return (
                     <Card
                         key={video.id}
@@ -158,7 +161,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                 </Button>
                             )}
 
-                            {video.quizId && !video.quizPassed && !isLocked && (
+                            {video.quizId && !video.quizPassed && (
                                 isQuizLocked ? (
                                     <Button
                                         variant="contained"
@@ -195,40 +198,22 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                             )}
 
                             {video.quizId && video.quizPassed && !isLocked && (
-                                isQuizLocked ? (
-                                    <Button
-                                        variant="contained"
-                                        onClick={() => handleQuizLockedClick(video)}
-                                        startIcon={<LockIcon />}
-                                        sx={{
-                                            backgroundColor: "#e0e0e0",
-                                            borderRadius: "12px",
-                                            color: "#666",
-                                            textTransform: "none",
-                                            fontWeight: 500,
-                                            flex: 1,
-                                        }}
-                                    >
-                                        Quiz Bloqueado
-                                    </Button>
-                                ) : (
-                                    <Button
-                                        variant="outlined"
-                                        onClick={() => onQuizStart(video.quizId)}
-                                        startIcon={<ReplayIcon />}
-                                        sx={{
-                                            borderColor: "#9041c1",
-                                            color: "#9041c1",
-                                            borderRadius: "12px",
-                                            "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
-                                            textTransform: "none",
-                                            fontWeight: 500,
-                                            flex: 1,
-                                        }}
-                                    >
-                                        Refazer Quiz
-                                    </Button>
-                                )
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => onQuizStart(video.quizId)}
+                                    startIcon={<ReplayIcon />}
+                                    sx={{
+                                        borderColor: "#9041c1",
+                                        color: "#9041c1",
+                                        borderRadius: "12px",
+                                        "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
+                                        textTransform: "none",
+                                        fontWeight: 500,
+                                        flex: 1,
+                                    }}
+                                >
+                                    Refazer Quiz
+                                </Button>
                             )}
                         </CardActions>
                     </Card>

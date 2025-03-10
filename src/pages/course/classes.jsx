@@ -12,7 +12,6 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import Confetti from "react-confetti";
-import CelebrationIcon from "@mui/icons-material/Celebration";
 
 const Classes = () => {
     const [videos, setVideos] = useState([]);
@@ -77,7 +76,7 @@ const Classes = () => {
                         .map(async ([id, video], index) => {
                             const quizData = quizzesData[id] || null;
                             const userProgress = progressData[id] || {};
-                            return {
+                            const videoObj = {
                                 id,
                                 title: video.title || "Sem título",
                                 url: video.url || "",
@@ -92,8 +91,9 @@ const Classes = () => {
                                 quizId: quizData ? `${courseId}/${id}` : null,
                                 minPercentage: quizData ? quizData.minPercentage : 0,
                                 requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-                                isLocked: !userDetails?.userId && index > 1,
                             };
+                            console.log(`Video ${video.title} quizId:`, videoObj.quizId);
+                            return videoObj;
                         })
                 );
 
@@ -153,6 +153,7 @@ const Classes = () => {
                     : v
             );
             setVideos(updatedVideos);
+            console.log("Videos atualizados (não logado):", updatedVideos);
             return;
         }
 
@@ -294,7 +295,7 @@ const Classes = () => {
                     flexDirection: { xs: "column", md: "row" },
                     backgroundColor: "#F5F5FA",
                     color: "#333",
-                    pt: !userDetails?.userId ? 2 : 10, 
+                    pt: !userDetails?.userId ? 2 : 10,
                     pb: { xs: 1, sm: 2 },
                     px: { xs: 1, sm: 2 },
                     gap: 2,
@@ -340,11 +341,7 @@ const Classes = () => {
                             </Typography>
                         </Box>
                     ) : currentVideo ? (
-                        <Box
-                            sx={{
-                                backgroundColor: "#F5F5FA",
-                            }}
-                        >
+                        <Box sx={{ backgroundColor: "#F5F5FA" }}>
                             <VideoPlayer
                                 ref={videoPlayerRef}
                                 video={{ ...currentVideo, title: `${courseTitle} - ${currentVideo.title}` }}
@@ -454,7 +451,6 @@ const Classes = () => {
                             }}
                         />
                     )}
-                   
                     <Typography
                         variant="h4"
                         fontWeight="bold"
@@ -472,7 +468,7 @@ const Classes = () => {
                         Você conquistou o curso "{courseTitle}" com sucesso!
                     </Typography>
                     <Typography variant="body2" sx={{ mb: 3, opacity: 0.8, maxWidth: "80%", mx: "auto" }}>
-                     Continue aprendendo e explorando novos desafios.
+                        Continue aprendendo e explorando novos desafios.
                     </Typography>
                     <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
                         <Button
