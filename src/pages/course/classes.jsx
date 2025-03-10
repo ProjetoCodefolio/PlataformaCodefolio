@@ -70,7 +70,6 @@ const Classes = () => {
                 const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
-
             }
 
             const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
@@ -308,11 +307,12 @@ const Classes = () => {
 
     const handleLogin = () => {
         console.log("Redirecionando para a página de login...");
+        navigate("/login"); // Adicionei a navegação real para a página de login
     };
 
     return (
         <>
-            <Topbar />
+            <Topbar hideSearch={true} />
             <Box
                 sx={{
                     minHeight: "calc(100vh - 64px)",

@@ -22,7 +22,7 @@ import { useAuth } from "../../context/AuthContext";
 import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import logo from "../../assets/img/codefolio.png";
 
-export default function Topbar({ onSearch }) {
+export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada prop hideSearch com valor padrão false
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -49,6 +49,12 @@ export default function Topbar({ onSearch }) {
 
   const handleLogout = async () => {
     await signOut(auth);
+    navigate("/login");
+    handleClose();
+    handleMobileMenuClose();
+  };
+
+  const handleLearnMore = async () => {
     navigate("/home");
     handleClose();
     handleMobileMenuClose();
@@ -91,43 +97,16 @@ export default function Topbar({ onSearch }) {
     }
   };
 
-  const checkIfEmailExists = async (email) => {
-    const usersRef = ref(database, "users");
-    const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
-    const snapshot = await get(emailQuery);
-    return snapshot.exists();
-  };
-
-  const saveUserToDatabase = async (user) => {
-    const userRef = ref(database, `users/${user.uid}`);
-    await set(userRef, {
-      firstName: user.displayName?.split(" ")[0] || "",
-      lastName: user.displayName?.split(" ").slice(1).join(" ") || "",
-      email: user.email,
-      photoURL: user.photoURL || "",
-      gitURL: "",
-      linkedinURL: "",
-      instagramURL: "",
-      facebookURL: "",
-      youtubeURL: "",
-    });
-  };
-
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      const emailExists = await checkIfEmailExists(user.email);
-      if (!emailExists) {
-        await saveUserToDatabase(user);
-      }
       navigate("/dashboard");
       handleClose();
       handleMobileMenuClose();
     } catch (error) {
       const message = getFirebaseErrorMessage(error);
-      setError(message);
+      console.error(message);
     }
   };
 
@@ -138,16 +117,18 @@ export default function Topbar({ onSearch }) {
           <Link to="/" style={{ textDecoration: "none" }}>
             <img src={logo} alt="CodeFolio Logo" />
           </Link>
-          <Box className="searchbar">
-            <Search className="searchIcon" />
-            <input
-              placeholder="Pesquisar"
-              className="searchInput"
-              border="none"
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
-          </Box>
+          {!hideSearch && ( // Condição para exibir a barra de pesquisa
+            <Box className="searchbar">
+              <Search className="searchIcon" />
+              <input
+                placeholder="Pesquisar"
+                className="searchInput"
+                border="none"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+            </Box>
+          )}
         </Box>
 
         <Box className="topbarRight">
@@ -174,104 +155,103 @@ export default function Topbar({ onSearch }) {
             <MenuIcon />
           </IconButton>
 
-         <Menu
-  anchorEl={mobileMenuAnchorEl}
-  open={mobileMenuOpen}
-  onClose={handleMobileMenuClose}
-  anchorOrigin={{ vertical: "top", horizontal: "right" }}
-  transformOrigin={{ vertical: "top", horizontal: "right" }}
-  PaperProps={{
-    elevation: 0,
-    sx: {
-      overflow: "visible",
-      filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
-      mt: 4.2,
-      ml:3,
-      "&:before": {
-        content: '""',
-        display: "block",
-        position: "absolute",
-        top: 0, // Posiciona a setinha no topo do menu
-        right: 38, // Ajusta a posição horizontal para alinhar com o ícone de hambúrguer
-        width: 10, // Tamanho da setinha
-        height: 10,
-        bgcolor: "background.paper", // Cor branca, igual ao fundo do menu
-        transform: "translateY(-50%) rotate(45deg)", // Rotaciona para formar um triângulo apontando para baixo
-        zIndex: 0, // Coloca a setinha atrás do menu
-      },
-    },
-  }}
->
-  {/* Conteúdo do menu permanece o mesmo */}
-  {userDetails && (
-    <MenuItem>
-      <Avatar
-        src={userDetails?.photoURL || "default-avatar-url.jpg"}
-        alt="Profile Picture"
-        sx={{ width: 24, height: 24, mr: 1 }}
-      />
-      {userDetails?.firstName} {userDetails?.lastName}
-    </MenuItem>
-  )}
-  {userDetails && <Divider />}
-  <MenuItem onClick={() => navigate("/dashboard")}>
-    <ListItemIcon>
-      <Home fontSize="small" />
-    </ListItemIcon>
-    Home
-  </MenuItem>
-  <MenuItem onClick={() => navigate("/listcurso")}>
-    <ListItemIcon>
-      <SmartDisplay fontSize="small" />
-    </ListItemIcon>
-    Cursos
-  </MenuItem>
-  {userDetails?.role === "admin" && (
-    <MenuItem onClick={handleAdmCursoClick}>
-      <ListItemIcon>
-        <VideoSettingsIcon fontSize="small" />
-      </ListItemIcon>
-      Gerenciamento de Cursos
-    </MenuItem>
-  )}
-  {userDetails && (
-    <>
-      <Divider />
-      <MenuItem onClick={handleProfileClick}>
-        <ListItemIcon>
-          <Person fontSize="small" />
-        </ListItemIcon>
-        Perfil
-      </MenuItem>
-      <MenuItem>
-        <ListItemIcon>
-          <Settings fontSize="small" />
-        </ListItemIcon>
-        Configurações e privacidade
-      </MenuItem>
-      <MenuItem>
-        <ListItemIcon>
-          <Help fontSize="small" />
-        </ListItemIcon>
-        Ajuda e suporte
-      </MenuItem>
-      <MenuItem onClick={handleLogout}>
-        <ListItemIcon>
-          <Logout fontSize="small" />
-        </ListItemIcon>
-        Sair
-      </MenuItem>
-    </>
-  )}
-  {!userDetails && (
-    <MenuItem onClick={handleGoogleSignIn}>
-      <ListItemIcon>
-        <LoginIcon fontSize="small" />
-      </ListItemIcon>
-      Entrar
-    </MenuItem>
-  )}
-</Menu>
+          <Menu
+            anchorEl={mobileMenuAnchorEl}
+            open={mobileMenuOpen}
+            onClose={handleMobileMenuClose}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            PaperProps={{
+              elevation: 0,
+              sx: {
+                overflow: "visible",
+                filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                mt: 4.2,
+                ml: 3,
+                "&:before": {
+                  content: '""',
+                  display: "block",
+                  position: "absolute",
+                  top: 0,
+                  right: 38,
+                  width: 10,
+                  height: 10,
+                  bgcolor: "background.paper",
+                  transform: "translateY(-50%) rotate(45deg)",
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            {userDetails && (
+              <MenuItem>
+                <Avatar
+                  src={userDetails?.photoURL || "default-avatar-url.jpg"}
+                  alt="Profile Picture"
+                  sx={{ width: 24, height: 24, mr: 1 }}
+                />
+                {userDetails?.firstName} {userDetails?.lastName}
+              </MenuItem>
+            )}
+            {userDetails && <Divider />}
+            <MenuItem onClick={() => navigate("/dashboard")}>
+              <ListItemIcon>
+                <Home fontSize="small" />
+              </ListItemIcon>
+              Home
+            </MenuItem>
+            <MenuItem onClick={() => navigate("/listcurso")}>
+              <ListItemIcon>
+                <SmartDisplay fontSize="small" />
+              </ListItemIcon>
+              Cursos
+            </MenuItem>
+            {userDetails?.role === "admin" && (
+              <MenuItem onClick={handleAdmCursoClick}>
+                <ListItemIcon>
+                  <VideoSettingsIcon fontSize="small" />
+                </ListItemIcon>
+                Gerenciamento de Cursos
+              </MenuItem>
+            )}
+            {userDetails && (
+              <>
+                <Divider />
+                <MenuItem onClick={handleProfileClick}>
+                  <ListItemIcon>
+                    <Person fontSize="small" />
+                  </ListItemIcon>
+                  Perfil
+                </MenuItem>
+                <MenuItem>
+                  <ListItemIcon>
+                    <Settings fontSize="small" />
+                  </ListItemIcon>
+                  Configurações e privacidade
+                </MenuItem>
+                <MenuItem onClick={handleLearnMore}>
+                  <ListItemIcon>
+                    <Help fontSize="small" />
+                  </ListItemIcon>
+                  Saiba mais
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <Logout fontSize="small" />
+                  </ListItemIcon>
+                  Sair
+                </MenuItem>
+              </>
+            )}
+            {!userDetails && (
+              <MenuItem onClick={handleGoogleSignIn}>
+                <ListItemIcon>
+                  <LoginIcon fontSize="small" />
+                </ListItemIcon>
+                Entrar
+              </MenuItem>
+            )}
+          </Menu>
 
           <Tooltip title="Account settings">
             <IconButton
@@ -352,11 +332,11 @@ export default function Topbar({ onSearch }) {
                   </ListItemIcon>
                   Configurações e privacidade
                 </MenuItem>
-                <MenuItem>
+                <MenuItem onClick={handleLearnMore}>
                   <ListItemIcon>
                     <Help fontSize="small" />
                   </ListItemIcon>
-                  Ajuda e suporte
+                  Saiba mais
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>
                   <ListItemIcon>

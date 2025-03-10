@@ -121,7 +121,7 @@ const CourseForm = () => {
 
   return (
     <>
-      <Topbar />
+        <Topbar hideSearch={true} />
       <Box
         sx={{
           p: 4,

@@ -22,6 +22,9 @@ const MyCourses = () => {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [inProgressCourses, setInProgressCourses] = useState([]);
   const [completedCourses, setCompletedCourses] = useState([]);
+  const [filteredAvailableCourses, setFilteredAvailableCourses] = useState([]);
+  const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
+  const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
@@ -67,6 +70,9 @@ const MyCourses = () => {
           setAvailableCourses(available);
           setInProgressCourses(inProgress);
           setCompletedCourses(completed);
+          setFilteredAvailableCourses(available); // Inicializa os filtrados
+          setFilteredInProgressCourses(inProgress);
+          setFilteredCompletedCourses(completed);
         } else {
           console.log("Nenhum curso encontrado.");
         }
@@ -80,6 +86,31 @@ const MyCourses = () => {
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
+  };
+
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    setFilteredAvailableCourses(
+      availableCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+    setFilteredInProgressCourses(
+      inProgressCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+    setFilteredCompletedCourses(
+      completedCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
   };
 
   const handleStartCourse = (course) => {
@@ -196,7 +227,7 @@ const MyCourses = () => {
         alignItems: "center",
       }}
     >
-      <Topbar />
+      <Topbar onSearch={handleSearch} />
       <Box sx={{ height: { xs: "16px", sm: "24px" } }} />
 
       <Paper
@@ -209,43 +240,48 @@ const MyCourses = () => {
           maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
         }}
       >
-        
-   <Tabs
-  value={selectedTab}
-  onChange={handleTabChange}
-  textColor="inherit"
-  centered
-  variant={{ xs: "scrollable", sm: "standard" }}
-  scrollButtons={{ xs: "auto", sm: false }}
-  sx={{
-    mb: { xs: 2, sm: 4 },
-    "& .MuiTab-root": {
-      fontWeight: "bold",
-      color: "#666",
-      "&.Mui-selected": { color: "#9041c1" },
-      fontSize: { xs: "0.7rem", sm: "1rem" }, // Tamanho da fonte reduzido em telas pequenas
-      padding: { xs: "8px 8px", sm: "12px 16px" }, // Padding lateral reduzido em telas pequenas
-      minWidth: { xs: "90px", sm: "auto" }, // Largura mínima aumentada para 90px em telas pequenas
-      whiteSpace: { xs: "normal", sm: "nowrap" }, // Permite quebra de linha em telas pequenas
-      wordBreak: { xs: "break-word", sm: "normal" }, // Permite quebra de palavra em telas pequenas
-      textAlign: "center", // Centraliza o texto
-    },
-    "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-  }}
->
-  <Tab label="Disponíveis" />
-  <Tab label="Em Andamento" />
-  <Tab label="Concluídos" />
-</Tabs>
+        <Tabs
+          value={selectedTab}
+          onChange={handleTabChange}
+          textColor="inherit"
+          centered
+          variant={{ xs: "scrollable", sm: "standard" }}
+          scrollButtons={{ xs: "auto", sm: false }}
+          sx={{
+            mb: { xs: 2, sm: 4 },
+            "& .MuiTab-root": {
+              fontWeight: "bold",
+              color: "#666",
+              "&.Mui-selected": { color: "#9041c1" },
+              fontSize: { xs: "0.7rem", sm: "1rem" },
+              padding: { xs: "8px 8px", sm: "12px 16px" },
+              minWidth: { xs: "90px", sm: "auto" },
+              whiteSpace: { xs: "normal", sm: "nowrap" },
+              wordBreak: { xs: "break-word", sm: "normal" },
+              textAlign: "center",
+            },
+            "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+          }}
+        >
+          <Tab label="Disponíveis" />
+          <Tab label="Em Andamento" />
+          <Tab label="Concluídos" />
+        </Tabs>
 
         {selectedTab === 0 && (
-          <Box sx={{ p: { xs: 1, sm: 2 } }}>{renderCourses(availableCourses, "Começar", handleStartCourse)}</Box>
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredAvailableCourses, "Começar", handleStartCourse)}
+          </Box>
         )}
         {selectedTab === 1 && (
-          <Box sx={{ p: { xs: 1, sm: 2 } }}>{renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}</Box>
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredInProgressCourses, "Continuar", handleContinueCourse)}
+          </Box>
         )}
         {selectedTab === 2 && (
-          <Box sx={{ p: { xs: 1, sm: 2 } }}>{renderCourses(completedCourses, "Ver Curso", handleViewCourse)}</Box>
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredCompletedCourses, "Ver Curso", handleViewCourse)}
+          </Box>
         )}
       </Paper>
     </Box>
