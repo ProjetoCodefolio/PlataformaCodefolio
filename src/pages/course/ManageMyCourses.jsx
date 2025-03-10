@@ -21,6 +21,7 @@ import WarningIcon from "@mui/icons-material/Warning";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -49,19 +50,33 @@ const ManageMyCourses = () => {
 
           console.log("Cursos carregados:", coursesData);
           setCourses(coursesData);
+          setFilteredCourses(coursesData); // Inicializa os filtrados
         } else {
           console.log("Nenhum curso encontrado.");
           setCourses([]);
+          setFilteredCourses([]);
         }
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
         toast.error("Erro ao carregar os cursos");
         setCourses([]);
+        setFilteredCourses([]);
       }
     };
 
     loadCourses();
   }, [userDetails]);
+
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    setFilteredCourses(
+      courses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+  };
 
   const handleEditCourse = (course) => {
     navigate(`/adm-cursos?courseId=${course.courseId}`);
@@ -71,7 +86,7 @@ const ManageMyCourses = () => {
     navigate(`/adm-cursos`);
   };
 
-  const handleDeleteCourse = async (courseId) => {
+  const handleDeleteCourse = (courseId) => {
     setCourseToDelete(courseId);
     setDeleteModalOpen(true);
   };
@@ -97,6 +112,7 @@ const ManageMyCourses = () => {
       }
 
       setCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
+      setFilteredCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
       setDeleteModalOpen(false);
       setCourseToDelete(null);
       toast.success("Curso deletado com sucesso!");
@@ -160,58 +176,55 @@ const ManageMyCourses = () => {
                 </Typography>
               </CardContent>
               <CardActions
-  sx={{
-    p: 2,
-    justifyContent: "center",
-    mt: "auto",
-    gap: 2,
-    display: "flex",
-    flexDirection: "row", // Mantém os botões lado a lado no mobile
-    alignItems: "center",
-  }}
->
-  <Button
-    variant="contained"
-    sx={{
-      backgroundColor: "#9041c1",
-      color: "white",
-      borderRadius: "12px",
-      "&:hover": { backgroundColor: "#7d37a7" },
-      textTransform: "none",
-      fontWeight: 500,
-      fontSize: { xs: "12px", sm: "14px" },
-      px: 2,
-      py: 1,
-      width: "auto", // Remove o 100% para manter lado a lado
-      minWidth: "120px", // Mantém um tamanho mínimo para não ficarem muito pequenos
-    }}
-    onClick={() => onClickAction(course)}
-  >
-    {actionButtonLabel}
-  </Button>
-  <Button
-    variant="contained"
-    sx={{
-      backgroundColor: "#dc3545",
-      color: "white",
-      borderRadius: "12px",
-      "&:hover": { backgroundColor: "#c82333" },
-      textTransform: "none",
-      fontWeight: 500,
-      fontSize: { xs: "12px", sm: "14px" },
-      px: 2,
-      py: 1,
-      width: "auto", // Remove o 100% para manter lado a lado
-      minWidth: "120px", // Mantém um tamanho mínimo
-    }}
-    onClick={() => handleDeleteCourse(course.courseId)}
-  >
-    Deletar
-  </Button>
-</CardActions>
-
-
-
+                sx={{
+                  p: 2,
+                  justifyContent: "center",
+                  mt: "auto",
+                  gap: 2,
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#9041c1",
+                    color: "white",
+                    borderRadius: "12px",
+                    "&:hover": { backgroundColor: "#7d37a7" },
+                    textTransform: "none",
+                    fontWeight: 500,
+                    fontSize: { xs: "12px", sm: "14px" },
+                    px: 2,
+                    py: 1,
+                    width: "auto",
+                    minWidth: "120px",
+                  }}
+                  onClick={() => onClickAction(course)}
+                >
+                  {actionButtonLabel}
+                </Button>
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    borderRadius: "12px",
+                    "&:hover": { backgroundColor: "#c82333" },
+                    textTransform: "none",
+                    fontWeight: 500,
+                    fontSize: { xs: "12px", sm: "14px" },
+                    px: 2,
+                    py: 1,
+                    width: "auto",
+                    minWidth: "120px",
+                  }}
+                  onClick={() => handleDeleteCourse(course.courseId)}
+                >
+                  Deletar
+                </Button>
+              </CardActions>
             </Card>
           </Grid>
         ))}
@@ -232,7 +245,7 @@ const ManageMyCourses = () => {
         alignItems: "center",
       }}
     >
-      <Topbar />
+      <Topbar onSearch={handleSearch} />
 
       <Box sx={{ display: "flex", justifyContent: "center", mt: { xs: 3, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
         <Button
@@ -264,7 +277,9 @@ const ManageMyCourses = () => {
           maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
         }}
       >
-        <Box sx={{ p: { xs: 1, sm: 2 } }}>{renderCourses(courses, "Editar Curso", handleEditCourse)}</Box>
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
+          {renderCourses(filteredCourses, "Editar Curso", handleEditCourse)}
+        </Box>
       </Paper>
 
       <Modal

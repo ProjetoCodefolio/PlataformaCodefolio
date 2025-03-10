@@ -155,7 +155,7 @@ export default function ProfileHeader() {
  
   return (
     <>
-      <Topbar />
+      <Topbar hideSearch={true} />
       <Box
         sx={{
           width: "100%",

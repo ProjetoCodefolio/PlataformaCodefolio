@@ -70,7 +70,6 @@ const Classes = () => {
                 const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
-
             }
 
             const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
@@ -308,11 +307,12 @@ const Classes = () => {
 
     const handleLogin = () => {
         console.log("Redirecionando para a página de login...");
+        navigate("/login"); // Adicionei a navegação real para a página de login
     };
 
     return (
         <>
-            <Topbar />
+            <Topbar hideSearch={true} />
             <Box
                 sx={{
                     minHeight: "calc(100vh - 64px)",
@@ -462,33 +462,33 @@ const Classes = () => {
                     }}
                 >
                     {showLogInModal && (
-                    <>
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-                        Faça login para prosseguir com o curso!
-                    </Typography>
-                    <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
-                        <Button
-                            variant="contained"
-                            onClick={() => {
-                                setShowLogInModal(true);
-                                handleLogin();
-                            }}
-                            sx={{
-                                backgroundColor: "#fff",
-                                color: "#9041c1",
-                                borderRadius: "16px",
-                                "&:hover": { backgroundColor: "#f5f5fa", color: "#7d37a7" },
-                                textTransform: "none",
-                                fontWeight: 600,
-                                px: 4,
-                                py: 1.5,
-                                minWidth: 180,
-                            }}
-                        >
-                            Fazer Login
-                        </Button>
-                    </Box>
-                    </>
+                        <>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                                Faça login para prosseguir com o curso!
+                            </Typography>
+                            <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
+                                <Button
+                                    variant="contained"
+                                    onClick={() => {
+                                        setShowLogInModal(true);
+                                        handleLogin();
+                                    }}
+                                    sx={{
+                                        backgroundColor: "#fff",
+                                        color: "#9041c1",
+                                        borderRadius: "16px",
+                                        "&:hover": { backgroundColor: "#f5f5fa", color: "#7d37a7" },
+                                        textTransform: "none",
+                                        fontWeight: 600,
+                                        px: 4,
+                                        py: 1.5,
+                                        minWidth: 180,
+                                    }}
+                                >
+                                    Fazer Login
+                                </Button>
+                            </Box>
+                        </>
                     )}
                 </Box>
             </Modal>
