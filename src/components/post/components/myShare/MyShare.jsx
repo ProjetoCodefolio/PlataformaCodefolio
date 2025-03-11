@@ -48,13 +48,15 @@ const MyShare = ({ post }) => {
             >
                 <Share 
                     sx={{
+                        fontFamily: 'Arial, sans-serif',
                         width: '24px',
                         height: '24px',
                         color: '#666'
                     }}
                 />
                 {!isMobile && (
-                    <span style={{ 
+                    <span style={{
+                        fontFamily: 'Arial, sans-serif',
                         fontSize: '0.9rem',
                         fontWeight: '500',
                         color: '#666'

@@ -76,8 +76,6 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             const result = await validateQuizAnswers(
                 answers,
                 quizId,
-                /*userDetails.userId,
-                courseId,*/
                 questions[0]?.minPercentage || 70
             );
             const calculatedPercentage = (result.earnedPoints / result.totalPoints) * 100;
@@ -93,7 +91,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             setQuizCompleted(true);
             onSubmit(answers);
         } catch (error) {
-            console.log("caiu em quiz")
+            console.log("caiu em quiz");
             toast.error("Erro ao validar o quiz.");
             setQuizCompleted(false);
         }
@@ -116,12 +114,20 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
         return currentVideoIndex < videos.length - 1;
     };
 
-    if (loading) return <Typography sx={{ textAlign: "center", mt: 4, color: "#666" }}>Carregando o quiz...</Typography>;
-    if (questions.length === 0) return (
-        <Box sx={{ textAlign: "center", mt: 4 }}>
-            <Typography variant="h6" color="error">Nenhuma pergunta disponível.</Typography>
-        </Box>
-    );
+    if (loading)
+        return (
+            <Typography sx={{ textAlign: "center", mt: { xs: 2, sm: 4 }, color: "#666" }}>
+                Carregando o quiz...
+            </Typography>
+        );
+    if (questions.length === 0)
+        return (
+            <Box sx={{ textAlign: "center", mt: { xs: 2, sm: 4 } }}>
+                <Typography variant="h6" color="error">
+                    Nenhuma pergunta disponível.
+                </Typography>
+            </Box>
+        );
 
     if (quizCompleted && result) {
         return (
@@ -131,15 +137,15 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     flexDirection: "column",
                     alignItems: "center",
                     minHeight: "70vh",
-                    padding: 3,
+                    padding: { xs: 1, sm: 3 }, 
                     backgroundColor: "#F5F5FA",
                 }}
             >
                 <Box
                     sx={{
                         width: "100%",
-                        maxWidth: "780px",
-                        p: 4,
+                        maxWidth: { xs: "100%", sm: "780px" }, 
+                        p: { xs: 2, sm: 4 }, 
                         borderRadius: "16px",
                         backgroundColor: "#F5F5FA",
                         boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
@@ -149,10 +155,11 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     <Typography
                         variant="h4"
                         sx={{
-                            mb: 3,
+                            mb: { xs: 2, sm: 3 },
                             textAlign: "center",
                             color: "#333",
                             fontWeight: 600,
+                            fontSize: { xs: "1.5rem", sm: "2.25rem" }, 
                         }}
                     >
                         Resultado do Quiz
@@ -160,9 +167,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     <Typography
                         variant="h6"
                         sx={{
-                            mb: 2,
+                            mb: { xs: 1, sm: 2 },
                             textAlign: "center",
                             color: "#666",
+                            fontSize: { xs: "1rem", sm: "1.25rem" }, 
                         }}
                     >
                         Pontuação: {result.earnedPoints}/{result.totalPoints} ({result.scorePercentage.toFixed(2)}%)
@@ -170,21 +178,22 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     <Typography
                         variant="h5"
                         sx={{
-                            mb: 3,
+                            mb: { xs: 2, sm: 3 },
                             textAlign: "center",
                             color: result.isPassed ? "#4caf50" : "#d32f2f",
                             fontWeight: "bold",
+                            fontSize: { xs: "1.25rem", sm: "1.75rem" }, 
                         }}
                     >
                         {result.isPassed ? "Parabéns, você passou!" : "Você não atingiu a nota mínima."}
                     </Typography>
-                    <Box sx={{ mb: 4 }}>
+                    <Box sx={{ mb: { xs: 2, sm: 4 } }}>
                         {questions.map((q) => (
                             <Box
                                 key={q.id}
                                 sx={{
-                                    mb: 3,
-                                    p: 2,
+                                    mb: { xs: 1, sm: 3 },
+                                    p: { xs: 1, sm: 2 },
                                     border: "1px solid #e0e0e0",
                                     borderRadius: "8px",
                                     backgroundColor: "#ffffff",
@@ -196,6 +205,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                         mb: 1,
                                         fontWeight: 500,
                                         color: "#333",
+                                        fontSize: { xs: "0.9rem", sm: "1rem" }, 
                                     }}
                                 >
                                     {q.question}
@@ -204,6 +214,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                     variant="body2"
                                     sx={{
                                         color: "#666",
+                                        fontSize: { xs: "0.85rem", sm: "0.875rem" }, 
                                     }}
                                 >
                                     Sua resposta: {q.options[result.userAnswers[q.id]] || "Não respondida"}
@@ -214,9 +225,9 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     <Box
                         sx={{
                             display: "flex",
+                            flexDirection: { xs: "column", sm: "row" }, 
                             justifyContent: "center",
-                            gap: 2,
-                            flexWrap: "wrap",
+                            gap: { xs: 1, sm: 2 }, 
                         }}
                     >
                         {!result.isPassed && (
@@ -229,8 +240,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                     "&:hover": { backgroundColor: "#7d37a7" },
                                     textTransform: "none",
                                     fontWeight: 500,
-                                    px: 4,
-                                    py: 1.5,
+                                    px: { xs: 2, sm: 4 }, 
+                                    py: { xs: 0.5, sm: 1.5 },
+                                    fontSize: { xs: "0.8rem", sm: "0.875rem" }, 
+                                    width: { xs: "100%", sm: "auto" }, 
                                 }}
                             >
                                 Refazer Quiz
@@ -245,8 +258,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                 "&:hover": { backgroundColor: "#7d37a7" },
                                 textTransform: "none",
                                 fontWeight: 500,
-                                px: 4,
-                                py: 1.5,
+                                px: { xs: 2, sm: 4 },
+                                py: { xs: 0.5, sm: 1.5 },
+                                fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                                width: { xs: "100%", sm: "auto" },
                             }}
                         >
                             Voltar ao Vídeo
@@ -261,8 +276,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                     "&:hover": { backgroundColor: "#388e3c" },
                                     textTransform: "none",
                                     fontWeight: 500,
-                                    px: 4,
-                                    py: 1.5,
+                                    px: { xs: 2, sm: 4 },
+                                    py: { xs: 0.5, sm: 1.5 },
+                                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                                    width: { xs: "100%", sm: "auto" },
                                 }}
                             >
                                 Ir para o Próximo Vídeo
@@ -281,15 +298,15 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 flexDirection: "column",
                 alignItems: "center",
                 minHeight: "70vh",
-                padding: 3,
+                padding: { xs: 1, sm: 3 },
                 backgroundColor: "#F5F5FA",
             }}
         >
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: "780px",
-                    p: 4,
+                    maxWidth: { xs: "100%", sm: "780px" }, 
+                    p: { xs: 2, sm: 4 }, 
                     borderRadius: "16px",
                     backgroundColor: "#F5F5FA",
                     boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
@@ -299,10 +316,11 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 <Typography
                     variant="h4"
                     sx={{
-                        mb: 2,
+                        mb: { xs: 1, sm: 2 },
                         textAlign: "center",
                         color: "#333",
                         fontWeight: 600,
+                        fontSize: { xs: "1.5rem", sm: "2.25rem" }, 
                     }}
                 >
                     Quiz
@@ -310,9 +328,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 <Typography
                     variant="h6"
                     sx={{
-                        mb: 3,
+                        mb: { xs: 1, sm: 3 },
                         textAlign: "center",
                         color: "#666",
+                        fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                 >
                     {`Questão ${currentQuestionIndex + 1} de ${questions.length}`}
@@ -321,7 +340,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     variant="determinate"
                     value={((currentQuestionIndex + 1) / questions.length) * 100}
                     sx={{
-                        mb: 4,
+                        mb: { xs: 2, sm: 4 },
                         height: 10,
                         borderRadius: 5,
                         backgroundColor: "#e0e0e0",
@@ -334,9 +353,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 <Typography
                     variant="h6"
                     sx={{
-                        mb: 4,
+                        mb: { xs: 2, sm: 4 },
                         color: "#333",
                         fontWeight: 500,
+                        fontSize: { xs: "1rem", sm: "1.25rem" }, 
                     }}
                 >
                     {currentQuestion?.question || "Pergunta indisponível"}
@@ -344,25 +364,35 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 <RadioGroup
                     value={selectedOption}
                     onChange={(e) => setSelectedOption(e.target.value)}
-                    sx={{ mb: 4 }}
+                    sx={{ mb: { xs: 2, sm: 4 } }}
                 >
                     {currentQuestion?.options.map((option, index) => (
                         <FormControlLabel
                             key={index}
                             value={index.toString()}
-                            control={<Radio sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" } }} />}
+                            control={<Radio sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" }, fontSize: { xs: "0.9rem", sm: "1rem" } }} />}
                             label={option}
                             sx={{
                                 backgroundColor: "#F5F5FA",
                                 borderRadius: "8px",
-                                mb: 1,
-                                p: 1,
+                                mb: { xs: 0.5, sm: 1 }, 
+                                p: { xs: 0.5, sm: 1 }, 
                                 "&:hover": { backgroundColor: "#f0f0f0" },
+                                "& .MuiFormControlLabel-label": {
+                                    fontSize: { xs: "0.9rem", sm: "1rem" }, 
+                                },
                             }}
                         />
                     ))}
                 </RadioGroup>
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Box
+D                    sx={{
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" }, 
+                        justifyContent: "space-between",
+                        gap: { xs: 1, sm: 2 }, 
+                    }}
+                >
                     <Button
                         variant="outlined"
                         onClick={handlePrevious}
@@ -374,8 +404,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
                             textTransform: "none",
                             fontWeight: 500,
-                            px: 4,
-                            py: 1.5,
+                            px: { xs: 2, sm: 4 }, 
+                            py: { xs: 0.5, sm: 1.5 },
+                            fontSize: { xs: "0.8rem", sm: "0.875rem" }, 
+                            width: { xs: "100%", sm: "auto" }, 
                         }}
                     >
                         Voltar
@@ -389,8 +421,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             "&:hover": { backgroundColor: "#7d37a7" },
                             textTransform: "none",
                             fontWeight: 500,
-                            px: 4,
-                            py: 1.5,
+                            px: { xs: 2, sm: 4 },
+                            py: { xs: 0.5, sm: 1.5 },
+                            fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                            width: { xs: "100%", sm: "auto" },
                         }}
                     >
                         {currentQuestionIndex === questions.length - 1 ? "Finalizar" : "Próxima"}

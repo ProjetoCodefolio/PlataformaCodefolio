@@ -20,6 +20,7 @@ export const Content = styled.div`
     box-sizing: border-box; // Evita que padding afete o tamanho total do card
 `;
 export const Title = styled.h6`
+    font-family: Arial, sans-serif;
     margin: 0 0 16px 0;
     color: #333;
     font-weight: bold;

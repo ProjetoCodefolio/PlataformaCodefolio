@@ -10,7 +10,6 @@ import { debounce } from "lodash";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-// CSS personalizado para sobrescrever o fundo do YouTube player
 const styles = `
   .youtube-player .ytp-chrome-bottom,
   .youtube-player .html5-video-container {
@@ -24,7 +23,7 @@ const styles = `
 const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, ref) => {
     if (!video || !video.url) {
         return (
-            <Box sx={{ p: 4, textAlign: "center", backgroundColor: "#F5F5FA" }}>
+            <Box sx={{ p: { xs: 2, sm: 4 }, textAlign: "center", backgroundColor: "#F5F5FA" }}>
                 <Typography variant="h6" color="error">
                     Erro: Nenhum vídeo disponível
                 </Typography>
@@ -77,7 +76,6 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
         fetchWatchData();
     }, [video]);
 
-    // Inserir CSS personalizado no documento
     useEffect(() => {
         const styleSheet = document.createElement("style");
         styleSheet.textContent = styles;
@@ -89,7 +87,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
         <Box
             sx={{
                 width: "100%",
-                maxWidth: "840px",
+                maxWidth: { xs: "100%", sm: "840px" }, // 100% em mobile
                 mx: "auto",
                 display: "flex",
                 flexDirection: "column",
@@ -100,12 +98,12 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: "780px",
+                    maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
                     position: "relative",
                     borderRadius: "12px",
-                    overflow: "hidden", 
+                    overflow: "hidden",
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-                    ml: 2,
+                    ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
                     backgroundColor: "#F5F5FA",
                 }}
             >
@@ -113,7 +111,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                     <Box
                         sx={{
                             width: "100%",
-                            paddingTop: "56.25%", 
+                            paddingTop: "56.25%", // Proporção 16:9 responsiva
                             position: "relative",
                             backgroundColor: "#F5F5FA",
                             overflow: "hidden",
@@ -123,7 +121,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                             videoId={video.url.match(/(?:youtu\.be\/|youtube\.com\/.*v=)([^#&?]*)/)[1]}
                             opts={{
                                 width: "100%",
-                                height: "450",
+                                height: "100%", // Ajusta à proporção
                                 playerVars: {
                                     autoplay: 0,
                                     modestbranding: 1,
@@ -136,10 +134,10 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                             className="youtube-player"
                             style={{
                                 position: "absolute",
-                                top: "-8px", 
+                                top: 0,
                                 left: 0,
                                 width: "100%",
-                                height: "calc(100% + 20px)", 
+                                height: "100%",
                                 backgroundColor: "#F5F5FA",
                             }}
                         />
@@ -151,7 +149,6 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                         controls
                         style={{
                             width: "100%",
-                            height: "450px",
                             borderRadius: "12px",
                             objectFit: "cover",
                             backgroundColor: "#F5F5FA",
@@ -181,9 +178,9 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                 <Box
                     sx={{
                         width: "100%",
-                        maxWidth: "780px",
-                        mt: 3,
-                        ml: 2,
+                        maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
+                        mt: { xs: 2, sm: 3 }, // Menor margem em mobile
+                        ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
                         backgroundColor: "#F5F5FA",
                     }}
                 >
@@ -325,9 +322,9 @@ function VideoWatcher({
         <Box
             sx={{
                 width: "100%",
-                maxWidth: "780px",
+                maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
                 mt: 1,
-                ml: 2,
+                ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
                 backgroundColor: "#F5F5FA",
             }}
         >

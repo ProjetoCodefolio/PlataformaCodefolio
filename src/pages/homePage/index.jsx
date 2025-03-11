@@ -14,6 +14,7 @@ const GlobalStyle = createGlobalStyle`
     scroll-behavior: smooth;
   }
   body {
+    font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     overflow-x: hidden; /* Adiciona esta linha para evitar overflow horizontal */
