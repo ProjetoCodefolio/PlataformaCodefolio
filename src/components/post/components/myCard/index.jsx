@@ -102,6 +102,7 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
                 >
                     <PhotoCamera 
                         sx={{
+                            fontFamily: 'Arial, sans-serif',
                             width: '24px',
                             height: '24px',
                             color: '#666',
@@ -109,7 +110,8 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
                         }}
                     />
                     {!isMobile && (
-                        <span style={{ 
+                        <span style={{
+                            fontFamily: 'Arial, sans-serif',
                             fontSize: '0.9rem',
                             fontWeight: '500',
                             color: '#666',
@@ -122,6 +124,7 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
 
                 <div 
                     style={{
+                        fontFamily: 'Arial, sans-serif',
                         display: 'flex',
                         alignItems: 'center',
                         padding: '8px 12px',
@@ -151,6 +154,7 @@ export const MyCards = ({ userPhoto, setIsPostCreated }) => {
 
                 <div 
                     style={{
+                        fontFamily: 'Arial, sans-serif',
                         display: 'flex',
                         alignItems: 'center',
                         padding: '8px 12px',

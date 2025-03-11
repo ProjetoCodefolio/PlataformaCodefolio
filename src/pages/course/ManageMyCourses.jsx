@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"; 
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -8,19 +8,20 @@ import {
   CardActions,
   Button,
   Grid,
-  Modal
+  Modal,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
 import { ref, get, remove } from "firebase/database";
-import { database } from "../../service/firebase.jsx"; 
+import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import WarningIcon from '@mui/icons-material/Warning';
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import WarningIcon from "@mui/icons-material/Warning";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -37,7 +38,7 @@ const ManageMyCourses = () => {
         console.log("Iniciando carregamento dos cursos...");
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
-        
+
         if (snapshot.exists()) {
           const data = snapshot.val();
           const coursesData = Object.entries(data)
@@ -45,23 +46,37 @@ const ManageMyCourses = () => {
               courseId,
               ...course,
             }))
-            .filter(course => course.userId === userDetails.userId);
+            .filter((course) => course.userId === userDetails.userId);
 
           console.log("Cursos carregados:", coursesData);
           setCourses(coursesData);
+          setFilteredCourses(coursesData); // Inicializa os filtrados
         } else {
           console.log("Nenhum curso encontrado.");
           setCourses([]);
+          setFilteredCourses([]);
         }
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
         toast.error("Erro ao carregar os cursos");
-        setCourses([]); 
+        setCourses([]);
+        setFilteredCourses([]);
       }
     };
 
     loadCourses();
   }, [userDetails]);
+
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    setFilteredCourses(
+      courses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+  };
 
   const handleEditCourse = (course) => {
     navigate(`/adm-cursos?courseId=${course.courseId}`);
@@ -71,7 +86,7 @@ const ManageMyCourses = () => {
     navigate(`/adm-cursos`);
   };
 
-  const handleDeleteCourse = async (courseId) => {
+  const handleDeleteCourse = (courseId) => {
     setCourseToDelete(courseId);
     setDeleteModalOpen(true);
   };
@@ -83,10 +98,8 @@ const ManageMyCourses = () => {
 
       console.log("Deletando curso:", courseId);
 
-      
       await remove(ref(database, `courses/${courseId}`));
 
-      
       const videosRef = ref(database, "courseVideos");
       const videosSnapshot = await get(videosRef);
       if (videosSnapshot.exists()) {
@@ -98,11 +111,8 @@ const ManageMyCourses = () => {
         }
       }
 
-      // Atualiza a lista de cursos
-      setCourses(prevCourses => 
-        prevCourses.filter(course => course.courseId !== courseId)
-      );
-
+      setCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
+      setFilteredCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
       setDeleteModalOpen(false);
       setCourseToDelete(null);
       toast.success("Curso deletado com sucesso!");
@@ -114,88 +124,101 @@ const ManageMyCourses = () => {
 
   const renderCourses = (courses, actionButtonLabel, onClickAction) => {
     if (courses.length === 0) {
-      return <Typography variant="body1">Nenhum curso encontrado.</Typography>;
+      return <Typography variant="body1" color="textSecondary">Nenhum curso encontrado.</Typography>;
     }
 
     return (
-      <Grid container spacing={3}>
+      <Grid container spacing={2}>
         {courses.map((course) => (
           <Grid item xs={12} sm={6} md={4} key={course.courseId}>
             <Card
               sx={{
-                backgroundColor: "#ffffff !important",
+                backgroundColor: "#ffffff",
                 boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                borderRadius: "8px",
+                borderRadius: "16px",
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
-                transition: 'transform 0.2s ease-in-out',
-                '&:hover': {
-                  transform: 'scale(1.02)',
-                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)"
-                }
+                transition: "transform 0.2s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                },
               }}
             >
-              <CardContent>
+              <CardContent sx={{ flex: 1 }}>
                 <Typography
                   variant="subtitle1"
-                  sx={{ 
-                    fontWeight: "bold", 
+                  sx={{
+                    fontWeight: "bold",
                     textAlign: "center",
                     mb: 1,
-                    fontSize: "1rem", 
-                    color: "#333" 
+                    color: "#333",
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
                   }}
                 >
                   {course.title || "Título do Curso"}
                 </Typography>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   color="textSecondary"
                   sx={{
-                    fontSize: "0.875rem", 
-                    mb: 1
+                    mb: 1,
+                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
                   }}
                 >
                   {course.description || "Descrição do curso"}
                 </Typography>
               </CardContent>
-              <CardActions sx={{ p: 2, justifyContent: 'center', mt: 'auto', gap: 1 }}>
+              <CardActions
+                sx={{
+                  p: 2,
+                  justifyContent: "center",
+                  mt: "auto",
+                  gap: 2,
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
                 <Button
-                  size="small"
                   variant="contained"
-                  sx={{ 
-                    padding: '8px 16px', 
-                    borderRadius: '8px',
-                    backgroundColor: '#9041c1',
-                    color: 'white',
-                    fontWeight: 500, 
-                    fontSize: '14px',
-                    textTransform: 'none',
-                    width: '45%',
-                    '&:hover': {
-                      backgroundColor: '#7d37a7'
-                    }
+                  sx={{
+                    backgroundColor: "#9041c1",
+                    color: "white",
+                    borderRadius: "12px",
+                    "&:hover": { backgroundColor: "#7d37a7" },
+                    textTransform: "none",
+                    fontWeight: 500,
+                    fontSize: { xs: "12px", sm: "14px" },
+                    px: 2,
+                    py: 1,
+                    width: "auto",
+                    minWidth: "120px",
                   }}
                   onClick={() => onClickAction(course)}
                 >
                   {actionButtonLabel}
                 </Button>
                 <Button
-                  size="small"
                   variant="contained"
-                  sx={{ 
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    fontWeight: 500, 
-                    fontSize: '14px',
-                    textTransform: 'none',
-                    width: '45%',
-                    '&:hover': {
-                      backgroundColor: '#c82333'
-                    }
+                  sx={{
+                    backgroundColor: "#dc3545",
+                    color: "white",
+                    borderRadius: "12px",
+                    "&:hover": { backgroundColor: "#c82333" },
+                    textTransform: "none",
+                    fontWeight: 500,
+                    fontSize: { xs: "12px", sm: "14px" },
+                    px: 2,
+                    py: 1,
+                    width: "auto",
+                    minWidth: "120px",
                   }}
                   onClick={() => handleDeleteCourse(course.courseId)}
                 >
@@ -210,93 +233,101 @@ const ManageMyCourses = () => {
   };
 
   return (
-    <>
-      <Box
+    <Box
+      sx={{
+        minHeight: "calc(100vh - 64px)",
+        backgroundColor: "#F5F5FA",
+        pt: { xs: 8, sm: 10 },
+        pb: { xs: 1, sm: 2 },
+        px: { xs: 1, sm: 2 },
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Topbar onSearch={handleSearch} />
+
+      <Box sx={{ display: "flex", justifyContent: "center", mt: { xs: 3, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
+        <Button
+          variant="contained"
+          sx={{
+            px: { xs: 2, sm: 4 },
+            py: { xs: 1, sm: 1.5 },
+            fontWeight: 500,
+            fontSize: { xs: "12px", sm: "14px" },
+            backgroundColor: "#9041c1",
+            color: "white",
+            borderRadius: "12px",
+            textTransform: "none",
+            "&:hover": { backgroundColor: "#7d37a7" },
+          }}
+          onClick={handleCreateNewCourse}
+        >
+          Criar Novo Curso
+        </Button>
+      </Box>
+
+      <Paper
         sx={{
-          p: 4,
-          maxWidth: "1200px",
-          margin: "0 auto",
-          backgroundColor: "#f9f9f9",
-          borderRadius: "12px",
-          boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
+          p: { xs: 1, sm: 2 },
+          backgroundColor: "#ffffff",
+          borderRadius: "16px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+          width: "100%",
+          maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
         }}
       >
-        <Topbar />
-       
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 8, mb: 3 }}>
-          <Button
-            variant="contained"
-            sx={{
-              px: 4,
-              py: 1.5,
-              fontWeight: 500, 
-              fontSize: "14px", 
-              backgroundColor: "#9041c1",
-              color: "white",
-              borderRadius: "8px",
-              textTransform: "none",
-              '&:hover': {
-                backgroundColor: "#7d37a7"
-              }
-            }}
-            onClick={handleCreateNewCourse}
-          >
-            Criar Novo Curso
-          </Button>
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
+          {renderCourses(filteredCourses, "Editar Curso", handleEditCourse)}
         </Box>
+      </Paper>
 
-        <Paper
-          sx={{
-            p: 2,
-            backgroundColor: "#ffffff",
-            borderRadius: "12px",
-            boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-          }}
-        >
-          <Box>
-
-            {renderCourses(courses, "Editar Curso", handleEditCourse)}
-          </Box>
-        </Paper>
-      </Box>
-      
       <Modal
         open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         aria-labelledby="delete-modal-title"
       >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 400,
-          bgcolor: 'background.paper',
-          borderRadius: 2,
-          boxShadow: 24,
-          p: 4,
-          textAlign: 'center'
-        }}>
-          <WarningIcon sx={{ 
-            fontSize: 60, 
-            color: '#dc3545',
-            mb: 2
-          }} />
-          
-          <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90%", sm: 400 },
+            bgcolor: "background.paper",
+            borderRadius: "16px",
+            boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+            p: { xs: 2, sm: 4 },
+            textAlign: "center",
+          }}
+        >
+          <WarningIcon sx={{ fontSize: { xs: 40, sm: 60 }, color: "#dc3545", mb: 2 }} />
+          <Typography
+            variant="h6"
+            component="h2"
+            sx={{
+              mb: 2,
+              color: "#333",
+              fontSize: { xs: "1rem", sm: "1.25rem" },
+            }}
+          >
             Tem certeza que deseja deletar esse curso?
           </Typography>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap" }}>
             <Button
               variant="outlined"
               onClick={() => setDeleteModalOpen(false)}
               sx={{
-                color: '#666',
-                borderColor: '#666',
-                '&:hover': {
-                  borderColor: '#444',
-                }
+                color: "#666",
+                borderColor: "#666",
+                borderRadius: "12px",
+                "&:hover": { borderColor: "#444", backgroundColor: "#f5f5f5" },
+                textTransform: "none",
+                fontWeight: 500,
+                fontSize: { xs: "12px", sm: "14px" },
+                px: 2,
+                py: 1,
+                width: { xs: "100%", sm: "auto" },
               }}
             >
               Cancelar
@@ -305,10 +336,15 @@ const ManageMyCourses = () => {
               variant="contained"
               onClick={confirmDeleteCourse}
               sx={{
-                backgroundColor: '#dc3545',
-                '&:hover': {
-                  backgroundColor: '#c82333'
-                }
+                backgroundColor: "#dc3545",
+                "&:hover": { backgroundColor: "#c82333" },
+                borderRadius: "12px",
+                textTransform: "none",
+                fontWeight: 500,
+                fontSize: { xs: "12px", sm: "14px" },
+                px: 2,
+                py: 1,
+                width: { xs: "100%", sm: "auto" },
               }}
             >
               Deletar
@@ -316,7 +352,7 @@ const ManageMyCourses = () => {
           </Box>
         </Box>
       </Modal>
-    </>
+    </Box>
   );
 };
 

@@ -45,8 +45,8 @@ export const TextContainer = styled.div`
 `;
 
 export const MainTitle = styled.h1`
-    font-family: "Arial Unicode MS", Arial, sans-serif;  /* Fonte Arial Unicode */
-    font-weight: ${textStyles.principal.h1.bold.fontWeight};  /* Mantém o mesmo peso da fonte */
+    font-family: Arial, sans-serif;
+    font-weight: ${textStyles.principal.h1.bold.fontWeight};
     margin-bottom: 1px;
     line-height: 1;
     font-size: 3.2rem;
@@ -57,7 +57,7 @@ export const MainTitle = styled.h1`
 `;
 
 export const Title = styled.p`
-    font-family: "Arial Unicode MS", Arial, sans-serif;  
+    font-family: Arial, sans-serif;
     margin-top: 1rem;
     font-size: ${textStyles.paragraph.p1.medium.fontSize}px;
     font-weight: ${textStyles.principal.h1.bold.fontWeight}; 
@@ -72,7 +72,7 @@ export const Title = styled.p`
 `;
 
 export const Text = styled.p`
-    font-family: "Arial Unicode MS", Arial, sans-serif;  
+    font-family: Arial, sans-serif;
     margin-top: 1rem;
     font-size: ${textStyles.paragraph.p1.bold.fontSize}px;
     font-weight: ${textStyles.principal.h1.bold.fontWeight}; 
@@ -81,10 +81,10 @@ export const Text = styled.p`
 `;
 
 export const Button = styled.button`
+    font-family: Arial, sans-serif;
     margin-top: 2rem;
     background-color: ${colorConstants.purple.purple750};
     color: ${colorConstants.white};
-    font-family: "Arial Unicode MS", Arial, sans-serif;  
     font-size: 1rem;
     font-weight: bold;
     padding: 0.5rem 1rem;

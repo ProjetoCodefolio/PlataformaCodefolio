@@ -86,10 +86,10 @@ export default function PostCards({
                             backgroundColor: 'transparent',
                         }}
                     >
-                        <MembroLink texto={capitalizeName(post.user)} user={post.uiUser} />
+                        {capitalizeName(post.user)}{/* <MembroLink texto={capitalizeName(post.user)} user={post.uiUser} /> */}
                     </Typography>
                 </S.ProfileButton>
-                <PostMenu post={post} onEdit={Edit} onDelete={Delete} />
+                {userRole === "admin" && <PostMenu post={post} onEdit={Edit} onDelete={Delete} />}
             </S.LineWrapper>
 
             <S.LineWrapper style={{ flexDirection: 'column' }}>

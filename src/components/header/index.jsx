@@ -2,13 +2,24 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
 import logo2 from "../../assets/img/logo2.gif";
-import hamburgerIcon from "../../assets/img/hamburger-icon.svg"; 
+import hamburgerIcon from "../../assets/img/hamburger-icon.svg";
+import { useAuth } from "../../context/AuthContext";
+import { handleGoogleSignIn, getFirebaseErrorMessage } from "../../utils/authUtils";
 
 const Header = () => {
-    const navigate = useNavigate();
+    const [error, setError] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const navigate = useNavigate();
     const dropdownRef = useRef(null);
+    const { userDetails } = useAuth();
+
+    const handleLogin = () => {
+        handleGoogleSignIn(navigate, null, (error) => {
+            const message = getFirebaseErrorMessage(error);
+            setError(message);
+        });
+    };
 
     useEffect(() => {
         const handleResize = () => {
@@ -63,10 +74,17 @@ const Header = () => {
                                 <S.MenuItem onClick={() => scrollToSection('initiatives')}>Iniciativas</S.MenuItem>
                                 <S.MenuItem onClick={() => scrollToSection('articles')}>Artigos</S.MenuItem>
                                 <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
-                        
-                                <S.DropdownLogInButton onClick={() => navigate('/login')}>
-                                    Entrar
-                                </S.DropdownLogInButton>
+
+
+                                {userDetails ? (
+                                    <S.DropdownLogInButton onClick={() => navigate('/dashboard')}>
+                                        Voltar
+                                    </S.DropdownLogInButton>
+                                ) : (
+                                    <S.DropdownLogInButton onClick={handleLogin}>
+                                        Entrar
+                                    </S.DropdownLogInButton>
+                                )}
                             </S.MobileDropdown>
                         )}
                     </S.MobileMenu>
@@ -79,10 +97,16 @@ const Header = () => {
                             <S.MenuItem onClick={() => scrollToSection('platform')}>Plataforma</S.MenuItem>
                         </S.DesktopMenu>
                         <S.AuthLinks>
-                        
-                            <S.LogInButton onClick={() => navigate('/login')}>
-                                Entrar
-                            </S.LogInButton>
+
+                            {userDetails ? (
+                                <S.LogInButton onClick={() => navigate('/dashboard')}>
+                                    Voltar
+                                </S.LogInButton>
+                            ) : (
+                                <S.LogInButton onClick={handleLogin}>
+                                    Entrar
+                                </S.LogInButton>
+                            )}
                         </S.AuthLinks>
                     </>
                 )}

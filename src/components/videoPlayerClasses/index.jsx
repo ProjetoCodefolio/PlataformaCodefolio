@@ -3,17 +3,31 @@ import PropTypes from "prop-types";
 import { ref, get } from "firebase/database";
 import { database } from "../../service/firebase";
 import { useAuth } from "../../context/AuthContext";
-import { LinearProgress, Box, Typography, Paper } from "@mui/material";
+import { LinearProgress, Box, Typography, IconButton } from "@mui/material";
 import YouTube from "react-youtube";
 import { toast } from "react-toastify";
 import { debounce } from "lodash";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
+const styles = `
+  .youtube-player .ytp-chrome-bottom,
+  .youtube-player .html5-video-container {
+    background-color: #F5F5FA !important;
+  }
+  .youtube-player iframe {
+    background-color: #F5F5FA !important;
+  }
+`;
+
+const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, ref) => {
     if (!video || !video.url) {
         return (
-            <Paper elevation={3} sx={{ p: 4, textAlign: "center", borderRadius: "12px" }}>
-                <Typography variant="h6" color="error">Erro: Nenhum vídeo disponível</Typography>
-            </Paper>
+            <Box sx={{ p: { xs: 2, sm: 4 }, textAlign: "center", backgroundColor: "#F5F5FA" }}>
+                <Typography variant="h6" color="error">
+                    Erro: Nenhum vídeo disponível
+                </Typography>
+            </Box>
         );
     }
 
@@ -33,7 +47,7 @@ const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
             player: event.target,
         };
         setPlayer(event.target);
-        event.target.seekTo(video.watchedTime || 0); // Apenas define o início, sem forçar
+        event.target.seekTo(video.watchedTime || 0);
     };
 
     useEffect(() => {
@@ -62,62 +76,72 @@ const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
         fetchWatchData();
     }, [video]);
 
+    useEffect(() => {
+        const styleSheet = document.createElement("style");
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+        return () => document.head.removeChild(styleSheet);
+    }, []);
+
     return (
-        <Paper
-            elevation={4}
+        <Box
             sx={{
                 width: "100%",
+                maxWidth: { xs: "100%", sm: "840px" }, // 100% em mobile
+                mx: "auto",
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
-                borderRadius: "16px",
-                overflow: "hidden",
-                background: "linear-gradient(to bottom, rgb(255, 255, 255), #ffffff)",
-                p: 3,
+                alignItems: "flex-start",
+                backgroundColor: "#F5F5FA",
             }}
         >
-            <Typography
-                variant="h5"
-                sx={{
-                    mb: 2,
-                    fontWeight: 600,
-                    color: "#333",
-                    marginRight: "5%",
-                    textAlign: "center",
-                    width: "100%",
-                }}
-            >
-                {video.title || "Vídeo"}
-            </Typography>
-
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: "780px",
+                    maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
                     position: "relative",
-                    display: "flex",
-                    justifyContent: "center",
                     borderRadius: "12px",
                     overflow: "hidden",
-                    marginRight: "5%",
+                    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
+                    ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                    backgroundColor: "#F5F5FA",
                 }}
             >
                 {video.url.includes("youtube.com") || video.url.includes("youtu.be") ? (
-                    <YouTube
-                        videoId={video.url.match(/(?:youtu\.be\/|youtube\.com\/.*v=)([^#&?]*)/)[1]}
-                        opts={{
-                            width: "780px",
-                            height: "450",
-                            playerVars: {
-                                autoplay: 0,
-                                modestbranding: 1,
-                                rel: 0,
-                                fs: 1,
-                            },
+                    <Box
+                        sx={{
+                            width: "100%",
+                            paddingTop: "56.25%", // Proporção 16:9 responsiva
+                            position: "relative",
+                            backgroundColor: "#F5F5FA",
+                            overflow: "hidden",
                         }}
-                        onReady={onReady}
-                        className="youtube-player"
-                    />
+                    >
+                        <YouTube
+                            videoId={video.url.match(/(?:youtu\.be\/|youtube\.com\/.*v=)([^#&?]*)/)[1]}
+                            opts={{
+                                width: "100%",
+                                height: "100%", // Ajusta à proporção
+                                playerVars: {
+                                    autoplay: 0,
+                                    modestbranding: 1,
+                                    rel: 0,
+                                    fs: 1,
+                                    iv_load_policy: 3,
+                                },
+                            }}
+                            onReady={onReady}
+                            className="youtube-player"
+                            style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                backgroundColor: "#F5F5FA",
+                            }}
+                        />
+                    </Box>
                 ) : (
                     <video
                         ref={videoRef}
@@ -125,10 +149,9 @@ const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
                         controls
                         style={{
                             width: "100%",
-                            height: "450px",
                             borderRadius: "12px",
                             objectFit: "cover",
-                            background: "#000",
+                            backgroundColor: "#F5F5FA",
                         }}
                     />
                 )}
@@ -145,11 +168,22 @@ const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
                     setWatchTime={setWatchTime}
                     percentageWatched={percentageWatched}
                     setPercentageWatched={setPercentageWatched}
+                    videos={videos}
+                    currentVideo={video}
+                    onVideoChange={onVideoChange}
                 />
             )}
 
             {video.description && (
-                <Box sx={{ width: "100%", mt: 3, px: 2 }}>
+                <Box
+                    sx={{
+                        width: "100%",
+                        maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
+                        mt: { xs: 2, sm: 3 }, // Menor margem em mobile
+                        ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                        backgroundColor: "#F5F5FA",
+                    }}
+                >
                     <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: "#555" }}>
                         Descrição:
                     </Typography>
@@ -158,7 +192,7 @@ const VideoPlayer = forwardRef(({ video, onProgress }, ref) => {
                     </Typography>
                 </Box>
             )}
-        </Paper>
+        </Box>
     );
 });
 
@@ -174,6 +208,8 @@ VideoPlayer.propTypes = {
         watched: PropTypes.bool,
     }).isRequired,
     onProgress: PropTypes.func,
+    videos: PropTypes.array.isRequired,
+    onVideoChange: PropTypes.func.isRequired,
 };
 
 VideoPlayer.displayName = "VideoPlayer";
@@ -188,10 +224,14 @@ function VideoWatcher({
     setWatchTime,
     percentageWatched,
     setPercentageWatched,
+    videos,
+    currentVideo,
+    onVideoChange,
 }) {
     const { userDetails } = useAuth();
     const progressInterval = useRef(null);
     const [lastSavedPercentage, setLastSavedPercentage] = useState(percentageWatched);
+    const hasNotified90Percent = useRef(false);
 
     const debouncedSaveProgress = debounce((currentTime, duration) => {
         if (onProgress) {
@@ -209,16 +249,20 @@ function VideoWatcher({
 
                 if (duration > 0) {
                     const newPercentage = Math.floor((currentTime / duration) * 100);
-                    // Só atualiza se o tempo atual for maior que o registrado
                     if (currentTime > watchTime) {
                         setWatchTime(currentTime);
                         setPercentageWatched(newPercentage);
+
+                        if (lastSavedPercentage < 90 && newPercentage >= 90 && !hasNotified90Percent.current) {
+                            toast.success("Progresso do vídeo salvo com sucesso!");
+                            hasNotified90Percent.current = true;
+                        }
+
                         if (newPercentage >= lastSavedPercentage) {
                             debouncedSaveProgress(currentTime, duration);
                             setLastSavedPercentage(newPercentage);
                         }
                     }
-                 
                 }
             } catch (error) {
                 console.error("Erro ao monitorar progresso:", error);
@@ -231,29 +275,96 @@ function VideoWatcher({
             if (progressInterval.current) {
                 clearInterval(progressInterval.current);
             }
+            hasNotified90Percent.current = false;
         };
-    }, [player, videoId, watchTime, debouncedSaveProgress, setPercentageWatched, setWatchTime]);
+    }, [player, videoId, watchTime, debouncedSaveProgress, setPercentageWatched, setWatchTime, lastSavedPercentage]);
+
+    const currentIndex = videos.findIndex((v) => v.id === currentVideo.id);
+    const hasPrevious = currentIndex > 0;
+    const hasNext = currentIndex < videos.length - 1;
+
+    const handlePrevious = () => {
+        if (hasPrevious) {
+            const previousVideo = videos[currentIndex - 1];
+            if (isVideoLocked(previousVideo)) {
+                toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
+                return;
+            }
+            onVideoChange(previousVideo);
+        }
+    };
+
+    const handleNext = () => {
+        if (hasNext) {
+            const nextVideo = videos[currentIndex + 1];
+            if (isVideoLocked(nextVideo)) {
+                toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
+                return;
+            }
+            onVideoChange(nextVideo);
+        }
+    };
+
+    const isVideoLocked = (video) => {
+        const videoIndex = videos.findIndex((v) => v.id === video.id);
+        const previousVideo = videoIndex > 0 ? videos[videoIndex - 1] : null;
+
+        if (videoIndex === 0) return false;
+
+        return (
+            video.requiresPrevious &&
+            previousVideo &&
+            (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed))
+        );
+    };
 
     return (
-        <Box sx={{ width: "90%", maxWidth: "780px", mt: 3, mb: 1 }}>
-            <Box sx={{ position: "relative", height: "10px", mb: 1 }}>
-                <LinearProgress
-                    variant="determinate"
-                    value={percentageWatched}
-                    sx={{
-                        height: 10,
-                        borderRadius: 5,
-                        marginRight: "5.5%",
-                        backgroundColor: "#e0e0e0",
-                        "& .MuiLinearProgress-bar": {
-                            backgroundColor: percentageWatched >= 90 ? "#4caf50" : "#9041c1",
+        <Box
+            sx={{
+                width: "100%",
+                maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
+                mt: 1,
+                ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                backgroundColor: "#F5F5FA",
+            }}
+        >
+            <Box sx={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box sx={{ flex: 1, position: "relative" }}>
+                    <LinearProgress
+                        variant="determinate"
+                        value={percentageWatched}
+                        sx={{
+                            width: "100%",
+                            height: 10,
                             borderRadius: 5,
-                            transition: "transform 0.3s ease-in-out",
-                        },
-                    }}
-                />
+                            backgroundColor: "#e0e0e0",
+                            "& .MuiLinearProgress-bar": {
+                                backgroundColor: percentageWatched >= 90 ? "#4caf50" : "#9041c1",
+                                borderRadius: 5,
+                                transition: "transform 0.3s ease-in-out",
+                            },
+                        }}
+                    />
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 2 }}>
+                    <IconButton
+                        onClick={handlePrevious}
+                        disabled={!hasPrevious}
+                        sx={{ color: hasPrevious ? "#9041c1" : "#cccccc" }}
+                    >
+                        <ArrowBackIcon />
+                    </IconButton>
+                    <IconButton
+                        onClick={handleNext}
+                        disabled={!hasNext}
+                        sx={{ color: hasNext ? "#9041c1" : "#cccccc" }}
+                    >
+                        <ArrowForwardIcon />
+                    </IconButton>
+                </Box>
             </Box>
-            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
+            <Box sx={{ width: "100%", mt: 1, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 500 }}>
                     {formatTime(watchTime)}
                 </Typography>
@@ -265,7 +376,6 @@ function VideoWatcher({
                         backgroundColor: percentageWatched >= 90 ? "rgba(76, 175, 80, 0.1)" : "rgba(144, 65, 193, 0.1)",
                         px: 1.5,
                         py: 0.5,
-                        marginRight: "4.5%",
                         borderRadius: 10,
                     }}
                 >
