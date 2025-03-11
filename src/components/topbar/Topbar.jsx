@@ -16,11 +16,10 @@ import Settings from "@mui/icons-material/Settings";
 import Help from "@mui/icons-material/Help";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
-import { auth } from "../../service/firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
 import logo from "../../assets/img/codefolio.png";
+import { handleGoogleSignIn, handleSignOut } from "../../utils/authUtils";
 
 export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada prop hideSearch com valor padrão false
   const [anchorEl, setAnchorEl] = useState(null);
@@ -47,9 +46,14 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
     setMobileMenuAnchorEl(null);
   };
 
+  const handleLogin = () => {
+    handleGoogleSignIn(null);
+    handleClose();
+    handleMobileMenuClose();
+  };
+
   const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/login");
+    handleSignOut(navigate);
     handleClose();
     handleMobileMenuClose();
   };
@@ -77,38 +81,6 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
     onSearch(event.target.value);
   };
 
-  const getFirebaseErrorMessage = (error) => {
-    let erroTipo = error.code ? error.code : error;
-    switch (erroTipo) {
-      case "INVALID_LOGIN_CREDENTIALS":
-        return "As credenciais de login são inválidas.";
-      case "auth/invalid-email":
-        return "O email fornecido é inválido.";
-      case "auth/user-disabled":
-        return "Este usuário foi desativado.";
-      case "auth/user-not-found":
-        return "Nenhum usuário encontrado com este email.";
-      case "auth/wrong-password":
-        return "A senha está incorreta.";
-      case "auth/invalid-credential":
-        return "Credencial inválida.";
-      default:
-        return "Ocorreu um erro desconhecido. Tente novamente.";
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      navigate("/dashboard");
-      handleClose();
-      handleMobileMenuClose();
-    } catch (error) {
-      const message = getFirebaseErrorMessage(error);
-      console.error(message);
-    }
-  };
 
   return (
     <Box className="topbarContainer">
@@ -244,7 +216,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
               </>
             )}
             {!userDetails && (
-              <MenuItem onClick={handleGoogleSignIn}>
+              <MenuItem onClick={handleLogin}>
                 <ListItemIcon>
                   <LoginIcon fontSize="small" />
                 </ListItemIcon>
@@ -300,7 +272,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
             anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
           >
             {!userDetails ? (
-              <MenuItem onClick={handleGoogleSignIn}>
+              <MenuItem onClick={handleLogin}>
                 <ListItemIcon>
                   <LoginIcon fontSize="small" />
                 </ListItemIcon>
