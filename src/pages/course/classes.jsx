@@ -9,7 +9,8 @@ import Quiz from "../../components/quiz";
 import { Box, Tabs, Tab, Typography, CircularProgress, Divider, Button, Modal } from "@mui/material";
 import Topbar from "../../components/topbar/Topbar";
 import { useAuth } from "../../context/AuthContext";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import LoginModal from '../../components/modals/LoginModal';
 import CompletionModal from '../../components/modals/CompletionModal';
@@ -71,7 +72,6 @@ const Classes = () => {
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
             } else {
-                // Carregar do localStorage
                 const storedProgress = localStorage.getItem('videoProgress');
                 if (storedProgress) {
                     progressData = JSON.parse(storedProgress);
@@ -126,7 +126,7 @@ const Classes = () => {
         }
     };
 
-        useEffect(() => {
+    useEffect(() => {
         const transferLocalStorageToFirebase = async () => {
             if (userDetails?.userId) {
                 const storedProgress = localStorage.getItem('videoProgress');
@@ -143,7 +143,7 @@ const Classes = () => {
                         });
                     }
                     localStorage.removeItem('videoProgress');
-                    fetchVideosData(); // Recarregar dados do Firebase
+                    fetchVideosData();
                 }
             }
         };
@@ -193,7 +193,6 @@ const Classes = () => {
             setVideos(updatedVideos);
             console.log("Videos atualizados (não logado):", updatedVideos);
     
-            // Salvar no localStorage
             localStorage.setItem('videoProgress', JSON.stringify(updatedVideos));
             return;
         }
@@ -284,11 +283,9 @@ const Classes = () => {
                     return;
                 }
     
-                // Buscar as questões do quiz
                 const quizData = await fetchQuizQuestions(`${courseId}/${currentVideoId}`);
                 let correctAnswersCount = 0;
                 
-                // Calcular respostas corretas
                 Object.entries(userAnswers).forEach(([questionId, userAnswer]) => {
                     const question = quizData.questions[questionId];
                     if (question && userAnswer === question.correctOption) {
@@ -312,7 +309,6 @@ const Classes = () => {
                 return;
             }
     
-            // Para usuários logados
             const { isPassed, scorePercentage } = await validateQuizAnswers(
                 userAnswers,
                 `${courseId}/${currentVideoId}`,
@@ -342,11 +338,44 @@ const Classes = () => {
 
     const handleLogin = () => {
         console.log("Redirecionando para a página de login...");
-        navigate("/login"); // Adicionei a navegação real para a página de login
+        navigate("/login");
     };
 
     return (
         <>
+            <style>
+                {`
+                    @media (max-width: 600px) {
+                        .Toastify__toast {
+                            width: 90vw !important;
+                            min-height: auto !important;
+                            font-size: 0.9rem !important;
+                            padding: 8px 12px !important;
+                            margin: 8px auto !important;
+                            border-radius: 8px !important;
+                            margin-top: 50px !important;
+                        }
+                        .Toastify__toast-body {
+                            margin: 0 !important;
+                        }
+                    }
+                `}
+            </style>
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                style={{
+                    width: { xs: "90%", sm: "auto" },
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                }}
+            />
             <Topbar hideSearch={true} />
             <Box
                 sx={{
@@ -355,10 +384,10 @@ const Classes = () => {
                     flexDirection: { xs: "column", md: "row" },
                     backgroundColor: "#F5F5FA",
                     color: "#333",
-                    pt: 10,
-                    pb: { xs: 1, sm: 2 },
-                    px: { xs: 1, sm: 2 },
-                    gap: 2,
+                    pt: { xs: 8, md: 10 },
+                    pb: { xs: 1, md: 2 },
+                    px: { xs: 0, md: 2 },
+                    gap: { xs: 1, md: 2 },
                     alignItems: "flex-start",
                 }}
             >
@@ -367,8 +396,9 @@ const Classes = () => {
                         flex: { xs: 1, md: 3 },
                         display: "flex",
                         flexDirection: "column",
-                        gap: 2,
+                        gap: { xs: 1, md: 2 },
                         backgroundColor: "#F5F5FA",
+                        width: "100%",
                     }}
                 >
                     {showQuiz ? (
@@ -390,8 +420,8 @@ const Classes = () => {
                                 display: "flex",
                                 justifyContent: "center",
                                 alignItems: "center",
-                                p: 5,
-                                height: "400px",
+                                p: { xs: 2, sm: 5 },
+                                height: { xs: "200px", sm: "400px" },
                                 backgroundColor: "#F5F5FA",
                             }}
                         >
@@ -401,7 +431,7 @@ const Classes = () => {
                             </Typography>
                         </Box>
                     ) : currentVideo ? (
-                        <Box sx={{ backgroundColor: "#F5F5FA" }}>
+                        <Box sx={{ backgroundColor: "#F5F5FA", width: "100%" }}>
                             <VideoPlayer
                                 ref={videoPlayerRef}
                                 video={{ ...currentVideo, title: `${courseTitle} - ${currentVideo.title}` }}
@@ -411,7 +441,7 @@ const Classes = () => {
                             />
                         </Box>
                     ) : (
-                        <Box sx={{ p: 5, textAlign: "center", backgroundColor: "#F5F5FA" }}>
+                        <Box sx={{ p: { xs: 2, sm: 5 }, textAlign: "center", backgroundColor: "#F5F5FA" }}>
                             <Typography variant="h6" sx={{ color: "#888" }}>
                                 Nenhum vídeo disponível.
                             </Typography>
@@ -423,6 +453,7 @@ const Classes = () => {
                         flex: { xs: 1, md: 2 },
                         height: { xs: "auto", md: "calc(100vh - 100px)" },
                         minWidth: { md: "320px" },
+                        width: "100%",
                     }}
                 >
                     <Box
@@ -451,7 +482,7 @@ const Classes = () => {
                             <Tab label="Materiais Extras" />
                         </Tabs>
                         <Divider />
-                        <Box sx={{ flex: 1, overflowY: "auto", p: 2, backgroundColor: "#F5F5FA" }}>
+                        <Box sx={{ flex: 1, overflowY: "auto", p: { xs: 1, sm: 2 }, backgroundColor: "#F5F5FA" }}>
                             {selectedTab === 0 ? (
                                 <VideoList
                                     videos={videos}
@@ -477,8 +508,8 @@ const Classes = () => {
                 open={showCompletionModal}
                 onClose={() => setShowCompletionModal(false)}
                 onExplore={() => {
-                setShowCompletionModal(false);
-                navigate("/dashboard");
+                    setShowCompletionModal(false);
+                    navigate("/dashboard");
                 }}
                 modalRef={modalRef}
                 modalDimensions={modalDimensions}

@@ -54,9 +54,9 @@ const MaterialExtra = ({ courseId }) => {
     }, [courseId]);
 
     return (
-        <Box sx={{ p: 2, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
+        <Box sx={{ p: { xs: 1, sm: 2 }, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
             {loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: 5 }}>
+                <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: { xs: 2, sm: 5 } }}>
                     <CircularProgress sx={{ color: "#9041c1" }} />
                     <Typography variant="body1" sx={{ ml: 2, color: "#666" }}>
                         Carregando materiais...
@@ -70,9 +70,9 @@ const MaterialExtra = ({ courseId }) => {
                             display: "flex",
                             flexDirection: "column",
                             justifyContent: "space-between",
-                            padding: 2,
-                            marginBottom: 2,
-                            backgroundColor: "#F5F5FA", 
+                            padding: { xs: 1, sm: 2 }, // Menor padding em mobile
+                            marginBottom: { xs: 1, sm: 2 }, // Menor margem em mobile
+                            backgroundColor: "#F5F5FA",
                             borderRadius: "16px",
                             border: "1px solid #e0e0e0",
                         }}
@@ -81,12 +81,16 @@ const MaterialExtra = ({ courseId }) => {
                             <Typography
                                 variant="h6"
                                 fontWeight="bold"
-                                sx={{ color: "#333", mb: 1 }}
+                                sx={{
+                                    color: "#333",
+                                    mb: 1,
+                                    fontSize: { xs: "1rem", sm: "1.25rem" }, // Menor fonte em mobile
+                                }}
                             >
                                 {material.name}
                             </Typography>
                         </CardContent>
-                        <CardActions sx={{ px: 2, pb: 2 }}>
+                        <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: 2 }}>
                             <Button
                                 variant="contained"
                                 href={material.url}
@@ -100,8 +104,9 @@ const MaterialExtra = ({ courseId }) => {
                                     "&:hover": { backgroundColor: "#7d37a7" },
                                     textTransform: "none",
                                     fontWeight: 500,
-                                    px: 4,
+                                    px: { xs: 2, sm: 4 }, // Menor padding horizontal em mobile
                                     py: 1.5,
+                                    fontSize: { xs: "0.8rem", sm: "0.875rem" }, // Menor fonte em mobile
                                 }}
                             >
                                 Acessar Material
@@ -120,8 +125,11 @@ const MaterialExtra = ({ courseId }) => {
                         color: "#aaa",
                     }}
                 >
-                    <DescriptionIcon sx={{ fontSize: 60, mb: 2, color: "#bbb" }} />
-                    <Typography variant="h6" sx={{ color: "#555", mb: 1, fontWeight: 600 }}>
+                    <DescriptionIcon sx={{ fontSize: { xs: 40, sm: 60 }, mb: 2, color: "#bbb" }} />
+                    <Typography
+                        variant="h6"
+                        sx={{ color: "#555", mb: 1, fontWeight: 600, fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                    >
                         Materiais Extras
                     </Typography>
                     <Typography variant="body1" sx={{ textAlign: "center", color: "#666" }}>
