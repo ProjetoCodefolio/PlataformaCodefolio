@@ -3,7 +3,6 @@ import { MyCards } from './components/myCard';
 import MyAlert from './components/alert/Alert';
 import * as S from './styles';
 import MyConfirm from './components/confirm/Confirm';
-// import PostCard from './PostCard';
 import Pagination from './components/pagination/Pagination';
 import Topbar from '../topbar/Topbar';
 import CreatePostModal from './components/createPost/CreatePost';

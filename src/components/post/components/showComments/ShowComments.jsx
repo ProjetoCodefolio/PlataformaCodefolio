@@ -23,6 +23,7 @@ export default function ShowComments({ onShowComments }) {
         >
             <CommentSharp 
                 sx={{
+                    fontFamily: 'Arial, sans-serif',
                     width: '24px',
                     height: '24px',
                     color: '#666'
@@ -30,6 +31,7 @@ export default function ShowComments({ onShowComments }) {
             />
             {!isMobile && (
                 <span style={{ 
+                    fontFamily: 'Arial, sans-serif',
                     fontSize: '0.9rem',
                     fontWeight: '500',
                     color: '#666'
