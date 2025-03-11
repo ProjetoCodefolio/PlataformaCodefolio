@@ -177,7 +177,7 @@ export const fetchQuizQuestions = async (quizId) => {
     }
 };
 
-export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId, minPercentage) => {
+export const validateQuizAnswers = async (userAnswers, quizId, /*userId, courseId,*/ minPercentage) => {
     console.log("Iniciando validação do quiz...");
     console.log("QuizId recebido:", quizId);
     console.log("UserAnswers recebidas:", userAnswers);
@@ -218,7 +218,46 @@ export const validateQuizAnswers = async (userAnswers, quizId, userId, courseId,
     }
 };
 
+// export const validateQuizAnswersNonLogged = async (userAnswers, quizId, minPercentage) => {
+//     console.log("Iniciando validação do quiz...");
+//     console.log("QuizId recebido:", quizId);
+//     console.log("UserAnswers recebidas:", userAnswers);
 
+//     try {
+//         const quizData = await fetchQuizQuestions(quizId);
+//         const quizQuestions = quizData.questions;
+
+//         let totalPoints = 0;
+//         let earnedPoints = 0;
+
+//         quizQuestions.forEach((question) => {
+//             const userAnswer = userAnswers[question.id];
+//             totalPoints += question.points;
+
+//             if (userAnswer === question.correctOption) {
+//                 earnedPoints += question.points;
+//                 console.log(`Resposta correta para a questão ${question.id}.`);
+//             } else {
+//                 console.log(`Resposta incorreta para a questão ${question.id}.`);
+//             }
+//         });
+
+//         const scorePercentage = (earnedPoints / totalPoints) * 100;
+//         const isPassed = scorePercentage >= (minPercentage || 0);
+
+//         console.log("Validação concluída:", {
+//             isPassed,
+//             scorePercentage,
+//             earnedPoints,
+//             totalPoints,
+//         });
+
+//         return { isPassed, scorePercentage, earnedPoints, totalPoints };
+//     } catch (error) {
+//         console.error("Erro ao validar as respostas do quiz:", error);
+//         throw error;
+//     }
+// };
 
 
 export const markQuizAsCompleted = async (userId, quizId) => {

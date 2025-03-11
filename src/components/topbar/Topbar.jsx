@@ -1,32 +1,33 @@
 import { useState } from "react";
 import "./topbar.css";
 import Box from "@mui/material/Box";
-import { Search, Person, Home, Work, Assignment } from "@mui/icons-material";
+import { Search, Home, Menu as MenuIcon, SmartDisplay } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
+import LoginIcon from '@mui/icons-material/Login';
+import Logout from "@mui/icons-material/Logout";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import VideoSettingsIcon from "@mui/icons-material/VideoSettings";
-import SmartDisplayIcon from "@mui/icons-material/SmartDisplay";
+import Person from "@mui/icons-material/Person";
+import Settings from "@mui/icons-material/Settings";
+import Help from "@mui/icons-material/Help";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";
-import Settings from "@mui/icons-material/Settings";
-import Logout from "@mui/icons-material/Logout";
-import Help from "@mui/icons-material/Help";
-import { signOut } from "firebase/auth";
-import { auth } from "../../service/firebase";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/img/codefolio.png";
+import { handleGoogleSignIn, handleSignOut } from "../../utils/authUtils";
 
-export default function Topbar({ onSearch }) {
+export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada prop hideSearch com valor padrão false
   const [anchorEl, setAnchorEl] = useState(null);
-  const [searchTerm, setSearchTerm] = useState(""); 
+  const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const open = Boolean(anchorEl);
+  const mobileMenuOpen = Boolean(mobileMenuAnchorEl);
   const navigate = useNavigate();
-
   const { userDetails } = useAuth();
 
   const handleClick = (event) => {
@@ -37,23 +38,49 @@ export default function Topbar({ onSearch }) {
     setAnchorEl(null);
   };
 
+  const handleMobileMenuClick = (event) => {
+    setMobileMenuAnchorEl(event.currentTarget);
+  };
+
+  const handleMobileMenuClose = () => {
+    setMobileMenuAnchorEl(null);
+  };
+
+  const handleLogin = () => {
+    handleGoogleSignIn(null);
+    handleClose();
+    handleMobileMenuClose();
+  };
+
   const handleLogout = async () => {
-    await signOut(auth);
-    navigate("/login");
+    handleSignOut(navigate);
+    handleClose();
+    handleMobileMenuClose();
+  };
+
+  const handleLearnMore = async () => {
+    navigate("/home");
+    handleClose();
+    handleMobileMenuClose();
   };
 
   const handleProfileClick = () => {
     navigate("/profile");
+    handleClose();
+    handleMobileMenuClose();
   };
 
   const handleAdmCursoClick = () => {
     navigate("/manage-courses");
+    handleClose();
+    handleMobileMenuClose();
   };
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
-    onSearch(event.target.value); 
+    onSearch(event.target.value);
   };
+
 
   return (
     <Box className="topbarContainer">
@@ -62,19 +89,22 @@ export default function Topbar({ onSearch }) {
           <Link to="/" style={{ textDecoration: "none" }}>
             <img src={logo} alt="CodeFolio Logo" />
           </Link>
-          <Box className="searchbar">
-            <Search className="searchIcon" />
-            <input
-              placeholder="Pesquisar"
-              className="searchInput"
-              value={searchTerm}
-              onChange={handleSearchChange}
-            />
-          </Box>
+          {!hideSearch && ( // Condição para exibir a barra de pesquisa
+            <Box className="searchbar">
+              <Search className="searchIcon" />
+              <input
+                placeholder="Pesquisar"
+                className="searchInput"
+                border="none"
+                value={searchTerm}
+                onChange={handleSearchChange}
+              />
+            </Box>
+          )}
         </Box>
 
         <Box className="topbarRight">
-          <Box className="topbarIcons">
+          <Box className="topbarIcons desktopIcons">
             <Link to="/dashboard" style={{ textDecoration: "none" }}>
               <Box className="topbarIconCont">
                 <Home />
@@ -83,13 +113,124 @@ export default function Topbar({ onSearch }) {
             </Link>
             <Link to="/listcurso" style={{ textDecoration: "none" }}>
               <Box className="topbarIconCont">
-                <SmartDisplayIcon />
+                <SmartDisplay />
                 <span className="topbarIconText">Cursos</span>
               </Box>
             </Link>
           </Box>
+
+          <IconButton
+            className="mobileMenuButton"
+            onClick={handleMobileMenuClick}
+            sx={{ display: { xs: "block", md: "none" }, color: "white" }}
+          >
+            <MenuIcon />
+          </IconButton>
+
+          <Menu
+            anchorEl={mobileMenuAnchorEl}
+            open={mobileMenuOpen}
+            onClose={handleMobileMenuClose}
+            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+            PaperProps={{
+              elevation: 0,
+              sx: {
+                overflow: "visible",
+                filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
+                mt: 4.2,
+                ml: 3,
+                "&:before": {
+                  content: '""',
+                  display: "block",
+                  position: "absolute",
+                  top: 0,
+                  right: 38,
+                  width: 10,
+                  height: 10,
+                  bgcolor: "background.paper",
+                  transform: "translateY(-50%) rotate(45deg)",
+                  zIndex: 0,
+                },
+              },
+            }}
+          >
+            {userDetails && (
+              <MenuItem>
+                <Avatar
+                  src={userDetails?.photoURL || "default-avatar-url.jpg"}
+                  alt="Profile Picture"
+                  sx={{ width: 24, height: 24, mr: 1 }}
+                />
+                {userDetails?.firstName} {userDetails?.lastName}
+              </MenuItem>
+            )}
+            {userDetails && <Divider />}
+            <MenuItem onClick={() => navigate("/dashboard")}>
+              <ListItemIcon>
+                <Home fontSize="small" />
+              </ListItemIcon>
+              Home
+            </MenuItem>
+            <MenuItem onClick={() => navigate("/listcurso")}>
+              <ListItemIcon>
+                <SmartDisplay fontSize="small" />
+              </ListItemIcon>
+              Cursos
+            </MenuItem>
+            {userDetails?.role === "admin" && (
+              <MenuItem onClick={handleAdmCursoClick}>
+                <ListItemIcon>
+                  <VideoSettingsIcon fontSize="small" />
+                </ListItemIcon>
+                Gerenciamento de Cursos
+              </MenuItem>
+            )}
+            {userDetails && (
+              <>
+                <Divider />
+                <MenuItem onClick={handleProfileClick}>
+                  <ListItemIcon>
+                    <Person fontSize="small" />
+                  </ListItemIcon>
+                  Perfil
+                </MenuItem>
+                <MenuItem>
+                  <ListItemIcon>
+                    <Settings fontSize="small" />
+                  </ListItemIcon>
+                  Configurações e privacidade
+                </MenuItem>
+                <MenuItem onClick={handleLearnMore}>
+                  <ListItemIcon>
+                    <Help fontSize="small" />
+                  </ListItemIcon>
+                  Saiba mais
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <Logout fontSize="small" />
+                  </ListItemIcon>
+                  Sair
+                </MenuItem>
+              </>
+            )}
+            {!userDetails && (
+              <MenuItem onClick={handleLogin}>
+                <ListItemIcon>
+                  <LoginIcon fontSize="small" />
+                </ListItemIcon>
+                Entrar
+              </MenuItem>
+            )}
+          </Menu>
+
           <Tooltip title="Account settings">
-            <IconButton onClick={handleClick} size="small" sx={{ ml: 2 }}>
+            <IconButton
+              onClick={handleClick}
+              size="small"
+              sx={{ ml: 2, display: { xs: "none", md: "block" } }}
+            >
               <Avatar
                 src={userDetails?.photoURL || "default-avatar-url.jpg"}
                 alt="Profile Picture"
@@ -101,7 +242,6 @@ export default function Topbar({ onSearch }) {
             anchorEl={anchorEl}
             open={open}
             onClose={handleClose}
-            onClick={handleClose}
             PaperProps={{
               elevation: 0,
               sx: {
@@ -131,43 +271,53 @@ export default function Topbar({ onSearch }) {
             transformOrigin={{ horizontal: "right", vertical: "top" }}
             anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
           >
-            <MenuItem>
-              {userDetails?.firstName} {userDetails?.lastName}
-            </MenuItem>
-
-            <Divider />
-            {userDetails?.role === "admin" && ( 
-              <MenuItem onClick={handleAdmCursoClick}>
+            {!userDetails ? (
+              <MenuItem onClick={handleLogin}>
                 <ListItemIcon>
-                  <VideoSettingsIcon fontSize="small" />
+                  <LoginIcon fontSize="small" />
                 </ListItemIcon>
-                Gerenciamento de Cursos
+                Entrar
               </MenuItem>
+            ) : (
+              <>
+                <MenuItem>
+                  {userDetails?.firstName} {userDetails?.lastName}
+                </MenuItem>
+                <Divider />
+                {userDetails?.role === "admin" && (
+                  <MenuItem onClick={handleAdmCursoClick}>
+                    <ListItemIcon>
+                      <VideoSettingsIcon fontSize="small" />
+                    </ListItemIcon>
+                    Gerenciamento de Cursos
+                  </MenuItem>
+                )}
+                <MenuItem onClick={handleProfileClick}>
+                  <ListItemIcon>
+                    <Person fontSize="small" />
+                  </ListItemIcon>
+                  Perfil
+                </MenuItem>
+                <MenuItem>
+                  <ListItemIcon>
+                    <Settings fontSize="small" />
+                  </ListItemIcon>
+                  Configurações e privacidade
+                </MenuItem>
+                <MenuItem onClick={handleLearnMore}>
+                  <ListItemIcon>
+                    <Help fontSize="small" />
+                  </ListItemIcon>
+                  Saiba mais
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <Logout fontSize="small" />
+                  </ListItemIcon>
+                  Sair
+                </MenuItem>
+              </>
             )}
-            <MenuItem onClick={handleProfileClick}>
-              <ListItemIcon>
-                <Person fontSize="small" />
-              </ListItemIcon>
-              Perfil
-            </MenuItem>
-            <MenuItem>
-              <ListItemIcon>
-                <Settings fontSize="small" />
-              </ListItemIcon>
-              Configurações e privacidade
-            </MenuItem>
-            <MenuItem>
-              <ListItemIcon>
-                <Help fontSize="small" />
-              </ListItemIcon>
-              Ajuda e suporte
-            </MenuItem>
-            <MenuItem onClick={handleLogout}>
-              <ListItemIcon>
-                <Logout fontSize="small" onClick={() => handleLogout()} />
-              </ListItemIcon>
-              Sair
-            </MenuItem>
           </Menu>
         </Box>
       </div>

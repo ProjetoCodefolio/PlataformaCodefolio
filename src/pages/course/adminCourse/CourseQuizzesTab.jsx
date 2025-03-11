@@ -97,7 +97,6 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       toast.error("Selecione um vídeo para o quiz");
       return;
     }
-    // Verifica se já existe um quiz para o vídeo selecionado
     if (quizzes.some(quiz => quiz.videoId === newQuizVideoId)) {
       toast.error("Já existe um quiz associado a este vídeo");
       return;
@@ -546,28 +545,56 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                   {quiz.questions.map((question) => (
                     <ListItem
                       key={question.id}
-                      sx={{ p: 2, borderBottom: "1px solid #e0e0e0" }}
-                      secondaryAction={
-                        <Box>
-                          <IconButton
-                            onClick={() => handleEditQuestion(quiz, question)}
-                            sx={{ color: "#9041c1" }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            onClick={() => handleRemoveQuestion(quiz, question.id)}
-                            sx={{ color: "#d32f2f" }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Box>
-                      }
+                      sx={{
+                        p: 2,
+                        borderBottom: "1px solid #e0e0e0",
+                        display: "flex",
+                        alignItems: "center",
+                      }}
                     >
                       <ListItemText
                         primary={question.question}
                         secondary={`Opções: ${question.options.join(", ")} | Correta: ${question.options[question.correctOption]}`}
+                        sx={{
+                          pr: 10, // Espaço reservado para os botões
+                          flex: 1, // Faz o texto ocupar o espaço disponível
+                        }}
+                        primaryTypographyProps={{
+                          sx: {
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                          },
+                        }}
+                        secondaryTypographyProps={{
+                          sx: {
+                            wordBreak: "break-word",
+                            whiteSpace: "normal",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          },
+                        }}
                       />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          position: "absolute",
+                          right: 16,
+                        }}
+                      >
+                        <IconButton
+                          onClick={() => handleEditQuestion(quiz, question)}
+                          sx={{ color: "#9041c1" }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleRemoveQuestion(quiz, question.id)}
+                          sx={{ color: "#d32f2f" }}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
                     </ListItem>
                   ))}
                 </List>

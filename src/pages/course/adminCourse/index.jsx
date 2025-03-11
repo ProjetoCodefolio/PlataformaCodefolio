@@ -70,7 +70,6 @@ const CourseForm = () => {
         return;
       }
 
-      // Verifica se há quizzes sem questões
       const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
       if (quizzes.some(quiz => quiz.questions.length === 0)) {
         toast.error("Não é possível salvar um curso com quizzes sem questões");
@@ -116,13 +115,13 @@ const CourseForm = () => {
     return (
       courseTitle.trim() !== "" &&
       courseDescription.trim() !== "" &&
-      !quizzes.some(quiz => quiz.questions.length === 0) // Impede salvamento se houver quizzes sem questões
+      !quizzes.some(quiz => quiz.questions.length === 0) 
     );
   }, [courseTitle, courseDescription]);
 
   return (
     <>
-      <Topbar />
+        <Topbar hideSearch={true} />
       <Box
         sx={{
           p: 4,

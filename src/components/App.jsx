@@ -8,19 +8,12 @@ import {
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import Login from "../pages/Login";
-import SignUp from "../pages/SignUp";
-import Dashboard2 from "../pages/Dashboard";
 import Dashboard from "../pages/dashboard";
-import VerifyEmail from "../pages/VerifyEmail";
-import ForgotPassword from "../pages/ForgotPassword";
 import ProfileHeader from "../pages/profile";
 import MembersPage from "../pages/members";
-import FotosPage from "../pages/fotos";
 import MembroPage from "../pages/membro";
 import Portifolios from "../pages/portifolios";
 import Projetos from "../pages/projetos";
-import InitialPage from "../pages/InitialPage";
-import InitiativesPage from "../pages/InitiativesPage";
 import HomePage from "../pages/homePage";
 import Cursos from "../pages/course/adminCourse";
 import ListCursos from "../pages/course/list";
@@ -37,20 +30,10 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/iniciativas" element={<InitiativesPage />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/sign-up" element={<SignUp />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route
-              path="/dashboard1"
-              element={
-                <PrivateRoute>
-                  <Dashboard2 />
-                </PrivateRoute>
-              }
-            />
+            <Route path="/home" element={<HomePage />} />
+
             <Route
               path="/dashboard"
               element={
@@ -59,6 +42,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/profile"
               element={
@@ -67,6 +51,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/members"
               element={
@@ -75,14 +60,7 @@ function App() {
                 </PrivateRoute>
               }
             />
-            <Route
-              path="/fotos"
-              element={
-                <PrivateRoute>
-                  <FotosPage />
-                </PrivateRoute>
-              }
-            />
+
             <Route
               path="/membro"
               element={
@@ -91,6 +69,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/portifolios"
               element={
@@ -99,6 +78,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/projetos"
               element={
@@ -107,6 +87,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/adm-cursos"
               element={
@@ -115,6 +96,7 @@ function App() {
                 </AdminRoute>
               }
             />
+
             <Route
               path="/listcurso"
               element={
@@ -123,6 +105,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/classes"
               element={
@@ -131,6 +114,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
             <Route
               path="/manage-courses"
               element={
@@ -139,6 +123,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+
           </Routes>
         </Router>
       </AuthProvider>
@@ -152,7 +137,7 @@ function PrivateRoute({ children }) {
   const location = useLocation();
 
   if (!currentUser) {
-    return <Navigate to="/login" state={{ from: location }} />;
+    // return <Navigate to="/login" state={{ from: location }} />;
   }
 
   return children;

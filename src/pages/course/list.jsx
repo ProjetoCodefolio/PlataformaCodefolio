@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import {
-    Box,
-    Typography,
-    Tabs,
-    Tab,
-    Paper,
-    Card,
-    CardContent,
-    CardActions,
-    Button,
-    Grid,
+  Box,
+  Typography,
+  Tabs,
+  Tab,
+  Paper,
+  Card,
+  CardContent,
+  CardActions,
+  Button,
+  Grid,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
@@ -18,206 +18,288 @@ import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
 
 const MyCourses = () => {
-    const [selectedTab, setSelectedTab] = useState(0);
-    const [inProgressCourses, setInProgressCourses] = useState([]);
-    const [completedCourses, setCompletedCourses] = useState([]);
-    const { userDetails } = useAuth();
-    const navigate = useNavigate();
+  const [selectedTab, setSelectedTab] = useState(0);
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [inProgressCourses, setInProgressCourses] = useState([]);
+  const [completedCourses, setCompletedCourses] = useState([]);
+  const [filteredAvailableCourses, setFilteredAvailableCourses] = useState([]);
+  const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
+  const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
+  const { userDetails } = useAuth();
+  const navigate = useNavigate();
 
-    useEffect(() => {
-        const loadCourses = async () => {
-            if (!userDetails?.userId) {
-                console.log("Usuário não autenticado. Aguardando userId...");
-                return;
-            }
+  useEffect(() => {
+    const loadCourses = async () => {
+      
+      try {
+        if (userDetails) {
+          const coursesRef = ref(database, "courses");
+          const snapshot = await get(coursesRef);
+          if (snapshot.exists()) {
+            const coursesData = snapshot.val();
+            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
+              courseId,
+              title: course.title,
+              description: course.description,
+            }));
 
-            try {
-                const coursesRef = ref(database, "courses");
-                const snapshot = await get(coursesRef);
-                if (snapshot.exists()) {
-                    const coursesData = snapshot.val();
-                    const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
-                        courseId,
-                        title: course.title,
-                        description: course.description,
-                    }));
+            const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
+            const studentSnapshot = await get(studentCoursesRef);
+            const studentCourses = studentSnapshot.val() || {};
 
-                    const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
-                    const studentSnapshot = await get(studentCoursesRef);
-                    const studentCourses = studentSnapshot.val() || {};
+            console.log("StudentCourses carregado:", studentCourses);
 
-                    console.log("StudentCourses carregado:", studentCourses);
+            const enrichedCourses = coursesArray.map((course) => {
+              const studentCourse = studentCourses[course.courseId] || {};
+              return {
+                ...course,
+                progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
+                accessed: studentCourse.progress !== undefined,
+              };
+            });
 
-                    const enrichedCourses = coursesArray.map(course => {
-                        const studentCourse = studentCourses[course.courseId] || {};
-                        return {
-                            ...course,
-                            progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
-                            status: studentCourse.status || "in_progress",
-                        };
-                    });
+            console.log("Cursos enriquecidos:", enrichedCourses);
 
-                    console.log("Cursos enriquecidos:", enrichedCourses);
+            const available = enrichedCourses.filter((course) => !course.accessed);
+            const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
+            const completed = enrichedCourses.filter((course) => course.progress === 100);
 
-                    const inProgress = enrichedCourses.filter(course => course.status === "in_progress");
-                    const completed = enrichedCourses.filter(course => course.status === "completed");
-                    setInProgressCourses(inProgress);
-                    setCompletedCourses(completed);
-                } else {
-                    console.log("Nenhum curso encontrado.");
-                }
-            } catch (error) {
-                console.error("Erro ao carregar cursos:", error);
-            }
-        };
+            setAvailableCourses(available);
+            setInProgressCourses(inProgress);
+            setCompletedCourses(completed);
+            setFilteredAvailableCourses(available); // Inicializa os filtrados
+            setFilteredInProgressCourses(inProgress);
+            setFilteredCompletedCourses(completed);
+          } else {
+            console.log("Nenhum curso encontrado.");
+          }
+        } else {
 
-        loadCourses();
-    }, [userDetails]);
+          const coursesRef = ref(database, "courses");
+          const snapshot = await get(coursesRef);
+          if (snapshot.exists()) {
+            const coursesData = snapshot.val();
+            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
+              courseId,
+              title: course.title,
+              description: course.description,
+            }));
 
-    const handleTabChange = (event, newValue) => {
-        setSelectedTab(newValue);
-    };
-
-    const handleContinueCourse = (course) => {
-        navigate(`/classes?courseId=${course.courseId}`);
-    };
-
-    const handleViewCertificate = (course) => {
-        alert(`Certificado de: ${course.title}`);
-    };
-
-    const renderCourses = (courses, actionButtonLabel, onClickAction) => {
-        if (!courses || courses.length === 0) {
-            return <Typography variant="body1">Nenhum curso encontrado.</Typography>;
+            setAvailableCourses(coursesArray);
+            setFilteredAvailableCourses(coursesArray);
+          }
         }
 
-        return (
-            <Grid container spacing={3}>
-                {courses.map((course) => (
-                    <Grid item xs={12} sm={6} md={4} key={course.courseId}>
-                        <Card
-                            sx={{
-                                backgroundColor: "#ffffff !important",
-                                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                                borderRadius: "8px",
-                                height: "100%",
-                                display: "flex",
-                                flexDirection: "column",
-                                transition: 'transform 0.2s ease-in-out',
-                                '&:hover': {
-                                    transform: 'scale(1.02)',
-                                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)"
-                                }
-                            }}
-                        >
-                            <CardContent>
-                                <Typography
-                                    variant="subtitle1"
-                                    sx={{
-                                        fontWeight: "bold",
-                                        textAlign: "center",
-                                        mb: 1
-                                    }}
-                                >
-                                    {course.title || "Título do Curso"}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    color="textSecondary"
-                                >
-                                    {course.description || "Descrição do curso"}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    color="textSecondary"
-                                    sx={{ mt: 1 }}
-                                >
-                                    Progresso: {(course.progress || 0).toFixed(2)}%
-                                </Typography>
-                            </CardContent>
-                            <CardActions sx={{ p: 2, justifyContent: 'center', mt: 'auto' }}>
-                                <Button
-                                    size="small"
-                                    variant="contained"
-                                    sx={{
-                                        m: 1,
-                                        padding: '6px 10px',
-                                        borderRadius: '8px',
-                                        backgroundColor: '#9041c1',
-                                        color: 'white',
-                                        fontWeight: 'bold',
-                                        fontSize: '14px',
-                                        textTransform: 'none',
-                                        width: 'calc(100% - 16px)',
-                                        '&:hover': {
-                                            backgroundColor: '#7d37a7'
-                                        }
-                                    }}
-                                    onClick={() => onClickAction(course)}
-                                >
-                                    {actionButtonLabel}
-                                </Button>
-                            </CardActions>
-                        </Card>
-                    </Grid>
-                ))}
-            </Grid>
-        );
+      } catch (error) {
+        console.error("Erro ao carregar cursos:", error);
+      }
     };
 
-    return (
-        <Box
-            sx={{
-                p: 4,
-                maxWidth: "1200px",
-                margin: "0 auto",
-                backgroundColor: "#f9f9f9",
-                borderRadius: "12px",
-                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
-                mt: 5,
-            }}
-        >
-            <Topbar />
-            <Box sx={{ height: "24px" }} />
+    loadCourses();
+  }, [userDetails]);
 
-            <Paper
-                sx={{
-                    p: 2,
-                    backgroundColor: "#ffffff",
-                    borderRadius: "12px",
-                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                }}
-            >
-                <Tabs
-                    value={selectedTab}
-                    onChange={handleTabChange}
-                    textColor="primary"
-                    centered
-                    sx={{
-                        mb: 4,
-                        "& .MuiTab-root": { fontWeight: "bold" },
-                        "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-                        "& .Mui-selected": { color: "#9041c1 !important" },
-                    }}
-                >
-                    <Tab label="Em Andamento" />
-                    <Tab label="Concluídos" />
-                </Tabs>
+  const handleTabChange = (event, newValue) => {
+    setSelectedTab(newValue);
+  };
 
-                {selectedTab === 0 && (
-                    <Box>
-                        {renderCourses(inProgressCourses, "Continuar", handleContinueCourse)}
-                    </Box>
-                )}
-
-                {selectedTab === 1 && (
-                    <Box>
-                        {renderCourses(completedCourses, "Ver Certificado", handleViewCertificate)}
-                    </Box>
-                )}
-            </Paper>
-        </Box>
+  const handleSearch = (searchTerm) => {
+    const term = searchTerm.toLowerCase();
+    setFilteredAvailableCourses(
+      availableCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
     );
+    setFilteredInProgressCourses(
+      inProgressCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+    setFilteredCompletedCourses(
+      completedCourses.filter(
+        (course) =>
+          course.title.toLowerCase().includes(term) ||
+          course.description.toLowerCase().includes(term)
+      )
+    );
+  };
+
+  const handleStartCourse = (course) => {
+    navigate(`/classes?courseId=${course.courseId}`);
+  };
+
+  const handleContinueCourse = (course) => {
+    navigate(`/classes?courseId=${course.courseId}`);
+  };
+
+  const handleViewCourse = (course) => {
+    navigate(`/classes?courseId=${course.courseId}`);
+  };
+
+  const renderCourses = (courses, actionButtonLabel, onClickAction) => {
+    if (!courses || courses.length === 0) {
+      return <Typography variant="body1" color="textSecondary">Nenhum curso encontrado.</Typography>;
+    }
+
+    return (
+      <Grid container spacing={2}>
+        {courses.map((course) => (
+          <Grid item xs={12} sm={6} md={4} key={course.courseId}>
+            <Card
+              sx={{
+                backgroundColor: "#ffffff",
+                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                borderRadius: "16px",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                transition: "transform 0.2s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                },
+              }}
+            >
+              <CardContent sx={{ flex: 1 }}>
+                <Typography
+                  variant="subtitle1"
+                  sx={{
+                    fontWeight: "bold",
+                    textAlign: "center",
+                    mb: 1,
+                    color: "#333",
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                  }}
+                >
+                  {course.title || "Título do Curso"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    mb: 1,
+                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {course.description || "Descrição do curso"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    mt: 1,
+                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                  }}
+                >
+                  Progresso: {(course.progress || 0).toFixed(2)}%
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ p: 2, justifyContent: "center", mt: "auto" }}>
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#9041c1",
+                    color: "white",
+                    borderRadius: "8px",
+                    "&:hover": { backgroundColor: "#7d37a7" },
+                    textTransform: "none",
+                    fontWeight: "bold",
+                    fontSize: { xs: "12px", sm: "14px" },
+                    padding: "6px 10px",
+                    width: "calc(100% - 16px)",
+                  }}
+                  onClick={() => onClickAction(course)}
+                >
+                  {actionButtonLabel}
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    );
+  };
+
+  return (
+    <Box
+      sx={{
+        minHeight: "calc(100vh - 64px)",
+        backgroundColor: "#F5F5FA",
+        pt: { xs: 8, sm: 10 },
+        pb: { xs: 1, sm: 2 },
+        px: { xs: 1, sm: 2 },
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Topbar onSearch={handleSearch} />
+      <Box sx={{ height: { xs: "16px", sm: "24px" } }} />
+
+      <Paper
+        sx={{
+          p: { xs: 1, sm: 2 },
+          backgroundColor: "#ffffff",
+          borderRadius: "16px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+          width: "100%",
+          maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
+        }}
+      >
+        <Tabs
+          value={selectedTab}
+          onChange={handleTabChange}
+          textColor="inherit"
+          centered
+          variant={{ xs: "scrollable", sm: "standard" }}
+          scrollButtons={{ xs: "auto", sm: false }}
+          sx={{
+            mb: { xs: 2, sm: 4 },
+            "& .MuiTab-root": {
+              fontWeight: "bold",
+              color: "#666",
+              "&.Mui-selected": { color: "#9041c1" },
+              fontSize: { xs: "0.7rem", sm: "1rem" },
+              padding: { xs: "8px 8px", sm: "12px 16px" },
+              minWidth: { xs: "90px", sm: "auto" },
+              whiteSpace: { xs: "normal", sm: "nowrap" },
+              wordBreak: { xs: "break-word", sm: "normal" },
+              textAlign: "center",
+            },
+            "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+          }}
+        >
+          <Tab label="Disponíveis" />
+          <Tab label="Em Andamento" />
+          <Tab label="Concluídos" />
+        </Tabs>
+
+        {selectedTab === 0 && (
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredAvailableCourses, "Começar", handleStartCourse)}
+          </Box>
+        )}
+        {selectedTab === 1 && (
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredInProgressCourses, "Continuar", handleContinueCourse)}
+          </Box>
+        )}
+        {selectedTab === 2 && (
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            {renderCourses(filteredCompletedCourses, "Ver Curso", handleViewCourse)}
+          </Box>
+        )}
+      </Paper>
+    </Box>
+  );
 };
 
 export default MyCourses;

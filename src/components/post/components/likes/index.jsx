@@ -6,12 +6,17 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import { useAuth } from "../../../../context/AuthContext";
 import { database } from "../../../../service/firebase";
 import * as S from "./styles";
+import MyAlert from '../alert/Alert';
+import { abrirAlert } from '../../utils';
 import { colorConstants } from '../../../../constants/constantStyles';
 
 const Likes = React.memo(({ post, onLikeUpdate }) => {
     const [likedPosts, setLikedPosts] = useState({});
     const [dislikedPosts, setDislikedPosts] = useState({});
     const [isUpdating, setIsUpdating] = useState(false);
+    const [alertOpen, setAlertOpen] = useState(false);
+    const [alertMessage, setAlertMessage] = useState('');
+    const [alertSeverity, setAlertSeverity] = useState('success');
     const { currentUser } = useAuth();
 
     useEffect(() => {
@@ -20,6 +25,12 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     }, [post.id]);
     
     const computarLike = async () => {
+
+        if (!currentUser) {
+            abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Você precisa estar logado para dar like em um post.", "error");
+            return;
+        }
+
         if (isUpdating) return; 
         setIsUpdating(true);
 
@@ -70,6 +81,12 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     };
 
     const computarDislike = async () => {
+
+        if (!currentUser) {
+            abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Você precisa estar logado para dar dislike em um post.", "error");
+            return;
+        }
+
         if (isUpdating) return; 
         setIsUpdating(true);
 
@@ -149,6 +166,7 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     };
 
     return (
+        <>
         <S.Wrapper>
             <S.ButtonWrapper>
                 <Button 
@@ -197,6 +215,14 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
                 </Button>
             </S.ButtonWrapper>
         </S.Wrapper>
+
+        <MyAlert
+                open={alertOpen}
+                onClose={() => setAlertOpen(false)}
+                message={alertMessage}
+                severity={alertSeverity}
+        />
+        </>
     );
 });
 export default Likes;

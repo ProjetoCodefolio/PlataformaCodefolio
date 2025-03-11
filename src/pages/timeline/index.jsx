@@ -1,4 +1,4 @@
-import { cn } from "../utils";
+import { cn } from "../../utils/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";

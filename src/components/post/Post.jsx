@@ -3,7 +3,6 @@ import { MyCards } from './components/myCard';
 import MyAlert from './components/alert/Alert';
 import * as S from './styles';
 import MyConfirm from './components/confirm/Confirm';
-// import PostCard from './PostCard';
 import Pagination from './components/pagination/Pagination';
 import Topbar from '../topbar/Topbar';
 import CreatePostModal from './components/createPost/CreatePost';
@@ -45,7 +44,7 @@ export default function Post({ member }) {
       onValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-          setUserRole(data.categoria);
+          setUserRole(data.role);
         }
       });
     }
@@ -155,7 +154,7 @@ export default function Post({ member }) {
 
           <S.MainContent>
             <S.CardWrapper>
-              <MyCards userPhoto={currentUser.photoURL} setIsPostCreated={setIsPostCreated} />
+              {userRole === "admin" && <MyCards userPhoto={currentUser ? currentUser.photoURL : ""} setIsPostCreated={setIsPostCreated} />}
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
                   <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
