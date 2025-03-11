@@ -53,29 +53,35 @@ const Classes = () => {
         setLoadingVideos(true);
         try {
             if (!courseId) return;
-
+    
             const courseRef = ref(database, `courses/${courseId}`);
             const courseSnapshot = await get(courseRef);
             const courseData = courseSnapshot.val();
             setCourseTitle(courseData?.title || "Curso sem título");
-
+    
             const courseVideosRef = ref(database, "courseVideos");
             const snapshot = await get(courseVideosRef);
             const videosData = snapshot.val();
-
+    
             let progressData = {};
             let quizzesData = {};
-
+    
             if (userDetails?.userId) {
                 const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
                 const progressSnapshot = await get(progressRef);
                 progressData = progressSnapshot.val() || {};
+            } else {
+                // Carregar do localStorage
+                const storedProgress = localStorage.getItem('videoProgress');
+                if (storedProgress) {
+                    progressData = JSON.parse(storedProgress);
+                }
             }
-
+    
             const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
             const quizzesSnapshot = await get(quizzesRef);
             quizzesData = quizzesSnapshot.val() || {};
-
+    
             if (videosData) {
                 const filteredVideos = await Promise.all(
                     Object.entries(videosData)
@@ -103,7 +109,7 @@ const Classes = () => {
                             return videoObj;
                         })
                 );
-
+    
                 const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
                 setVideos(sortedVideos);
                 if (sortedVideos.length > 0 && !currentVideoId) {
@@ -119,6 +125,31 @@ const Classes = () => {
             setLoadingVideos(false);
         }
     };
+
+        useEffect(() => {
+        const transferLocalStorageToFirebase = async () => {
+            if (userDetails?.userId) {
+                const storedProgress = localStorage.getItem('videoProgress');
+                if (storedProgress) {
+                    const progressData = JSON.parse(storedProgress);
+                    for (const video of progressData) {
+                        const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${video.id}`);
+                        await set(progressRef, {
+                            watchedTimeInSeconds: video.watchedTime,
+                            percentageWatched: video.progress,
+                            watched: video.watched,
+                            quizPassed: video.quizPassed || false,
+                            lastUpdated: new Date().toISOString(),
+                        });
+                    }
+                    localStorage.removeItem('videoProgress');
+                    fetchVideosData(); // Recarregar dados do Firebase
+                }
+            }
+        };
+    
+        transferLocalStorageToFirebase();
+    }, [userDetails, courseId]);
 
     useEffect(() => {
         fetchVideosData();
@@ -152,7 +183,7 @@ const Classes = () => {
 
     const saveVideoProgress = async (currentTime, duration) => {
         const percentage = Math.floor((currentTime / duration) * 100);
-
+    
         if (!userDetails?.userId) {
             const updatedVideos = videos.map((v) =>
                 v.id === currentVideo.id
@@ -161,11 +192,14 @@ const Classes = () => {
             );
             setVideos(updatedVideos);
             console.log("Videos atualizados (não logado):", updatedVideos);
+    
+            // Salvar no localStorage
+            localStorage.setItem('videoProgress', JSON.stringify(updatedVideos));
             return;
         }
-
+    
         const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`);
-
+    
         try {
             const wasWatched = currentVideo.watched;
             await set(progressRef, {
@@ -175,12 +209,12 @@ const Classes = () => {
                 quizPassed: currentVideo.quizPassed || false,
                 lastUpdated: new Date().toISOString(),
             });
-
+    
             const updatedVideos = videos.map((v) =>
                 v.id === currentVideo.id ? { ...v, watched: percentage >= 90, progress: percentage } : v
             );
             setVideos(updatedVideos);
-
+    
             if (!wasWatched && percentage >= 90) {
                 await updateCourseProgress(updatedVideos);
             }
@@ -270,6 +304,7 @@ const Classes = () => {
                         v.id === currentVideoId ? { ...v, quizPassed: true } : v
                     );
                     setVideos(updatedVideos);
+                    localStorage.setItem('videoProgress', JSON.stringify(updatedVideos));
                     toast.success("Quiz concluído com sucesso! ✅");
                 } else {
                     toast.warn(`Pontuação insuficiente: ${scorePercentage.toFixed(2)}%. Tente novamente!`);
@@ -320,7 +355,7 @@ const Classes = () => {
                     flexDirection: { xs: "column", md: "row" },
                     backgroundColor: "#F5F5FA",
                     color: "#333",
-                    pt: !userDetails?.userId ? 2 : 10,
+                    pt: 10,
                     pb: { xs: 1, sm: 2 },
                     px: { xs: 1, sm: 2 },
                     gap: 2,
