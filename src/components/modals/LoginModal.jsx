@@ -1,50 +1,17 @@
 import React from 'react';
 import { Box, Typography, Modal, Button } from "@mui/material";
-import { signInWithPopup, GoogleAuthProvider, signOut } from "firebase/auth";
-import { auth } from "../../service/firebase";
-import { ref, get, set } from "firebase/database";
-import { database } from "../../service/firebase";
+import { handleGoogleSignIn } from "../../utils/authUtils";
 
 const LoginModal = ({ open, onClose, modalRef }) => {
-  
-    const checkIfEmailExists = async (email) => {
-      const usersRef = ref(database, "users");
-      const emailQuery = query(usersRef, orderByChild("email"), equalTo(email));
-      const snapshot = await get(emailQuery);
-      return snapshot.exists();
-    };
-  
-    const saveUserToDatabase = async (user) => {
-      const userRef = ref(database, `users/${user.uid}`);
-      await set(userRef, {
-        firstName: user.displayName?.split(" ")[0] || "",
-        lastName: user.displayName?.split(" ").slice(1).join(" ") || "",
-        email: user.email,
-        photoURL: user.photoURL || "",
-        gitURL: "",
-        linkedinURL: "",
-        instagramURL: "",
-        facebookURL: "",
-        youtubeURL: "",
-      });
-    };
-  
-    const handleGoogleSignIn = async () => {
-      const provider = new GoogleAuthProvider();
-      try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        const emailExists = await checkIfEmailExists(user.email);
-        if (!emailExists) {
-          await saveUserToDatabase(user);
-        }
-        navigate("/dashboard");
-        handleClose();
-        handleMobileMenuClose();
-      } catch (error) {
-        console.log(error);
-      }
-    };
+
+  const handleLogin = async () => {
+    try {
+      await handleGoogleSignIn(null);
+      onClose();
+    } catch (error) {
+      console.error("Erro no login:", error);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -82,7 +49,7 @@ const LoginModal = ({ open, onClose, modalRef }) => {
         <Box sx={{ display: "flex", gap: 3, justifyContent: "center", flexWrap: "wrap" }}>
           <Button
             variant="contained"
-            onClick={handleGoogleSignIn}
+            onClick={handleLogin}
             sx={{
               backgroundColor: "#fff",
               color: "#9041c1",

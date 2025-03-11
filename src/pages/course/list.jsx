@@ -30,52 +30,66 @@ const MyCourses = () => {
 
   useEffect(() => {
     const loadCourses = async () => {
-      if (!userDetails?.userId) {
-        console.log("Usuário não autenticado. Aguardando userId...");
-        return;
-      }
-
+      
       try {
-        const coursesRef = ref(database, "courses");
-        const snapshot = await get(coursesRef);
-        if (snapshot.exists()) {
-          const coursesData = snapshot.val();
-          const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
-            courseId,
-            title: course.title,
-            description: course.description,
-          }));
+        if (userDetails) {
+          const coursesRef = ref(database, "courses");
+          const snapshot = await get(coursesRef);
+          if (snapshot.exists()) {
+            const coursesData = snapshot.val();
+            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
+              courseId,
+              title: course.title,
+              description: course.description,
+            }));
 
-          const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
-          const studentSnapshot = await get(studentCoursesRef);
-          const studentCourses = studentSnapshot.val() || {};
+            const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
+            const studentSnapshot = await get(studentCoursesRef);
+            const studentCourses = studentSnapshot.val() || {};
 
-          console.log("StudentCourses carregado:", studentCourses);
+            console.log("StudentCourses carregado:", studentCourses);
 
-          const enrichedCourses = coursesArray.map((course) => {
-            const studentCourse = studentCourses[course.courseId] || {};
-            return {
-              ...course,
-              progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
-              accessed: studentCourse.progress !== undefined,
-            };
-          });
+            const enrichedCourses = coursesArray.map((course) => {
+              const studentCourse = studentCourses[course.courseId] || {};
+              return {
+                ...course,
+                progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
+                accessed: studentCourse.progress !== undefined,
+              };
+            });
 
-          console.log("Cursos enriquecidos:", enrichedCourses);
+            console.log("Cursos enriquecidos:", enrichedCourses);
 
-          const available = enrichedCourses.filter((course) => !course.accessed);
-          const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
-          const completed = enrichedCourses.filter((course) => course.progress === 100);
+            const available = enrichedCourses.filter((course) => !course.accessed);
+            const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
+            const completed = enrichedCourses.filter((course) => course.progress === 100);
 
-          setAvailableCourses(available);
-          setInProgressCourses(inProgress);
-          setCompletedCourses(completed);
-          setFilteredAvailableCourses(available); // Inicializa os filtrados
-          setFilteredInProgressCourses(inProgress);
-          setFilteredCompletedCourses(completed);
+            setAvailableCourses(available);
+            setInProgressCourses(inProgress);
+            setCompletedCourses(completed);
+            setFilteredAvailableCourses(available); // Inicializa os filtrados
+            setFilteredInProgressCourses(inProgress);
+            setFilteredCompletedCourses(completed);
+          } else {
+            console.log("Nenhum curso encontrado.");
+          }
         } else {
-          console.log("Nenhum curso encontrado.");
+
+          const coursesRef = ref(database, "courses");
+          const snapshot = await get(coursesRef);
+          if (snapshot.exists()) {
+            const coursesData = snapshot.val();
+            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
+              courseId,
+              title: course.title,
+              description: course.description,
+            }));
+
+            setAvailableCourses(coursesArray);
+            setFilteredAvailableCourses(coursesArray);
+          }
         }
+
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
       }
