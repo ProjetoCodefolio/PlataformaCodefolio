@@ -9,8 +9,8 @@ import { toast } from "react-toastify";
 import { debounce } from "lodash";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import LoginModal from "../../components/modals/LoginModal";
 import LockIcon from "@mui/icons-material/Lock";
+import { handleGoogleSignIn } from "../../utils/authUtils";
 
 const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -31,6 +31,14 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
     const [isVideoLocked, setIsVideoLocked] = useState(false);
     const videoRef = useRef(null);
     const hasNotifiedRef = useRef(video?.watched || false);
+
+    const handleLogin = async () => {
+        try {
+          await handleGoogleSignIn(null);
+        } catch (error) {
+          console.error("Erro no login:", error);
+        }
+      };
 
     const onReady = (event) => {
         ref.current = {
@@ -145,7 +153,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                 </Typography>
                 <Button
                     variant="contained"
-                    onClick={() => setShowLoginModal(true)}
+                    onClick={handleLogin}
                     sx={{
                         backgroundColor: "#9041c1",
                         color: "#fff",
@@ -162,7 +170,6 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                 >
                     Fazer Login
                 </Button>
-                <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
             </Box>
         );
     }
