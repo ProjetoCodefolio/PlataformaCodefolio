@@ -97,6 +97,7 @@ export const FilterPost = ({onFilter}) => {
 
     const isMobile = useIsMobileHook(750);
     const customStyle = {
+        fontFamily: 'Arial, sans-serif',
         padding: '6px',
         margin: '0 2px',
         border: isMobile ? `1px solid ${colorConstants.purple.purple600}`
