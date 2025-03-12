@@ -23,33 +23,42 @@ export const FilterPost = ({onFilter}) => {
 
     const filtrarPosts = async (selectedCategory) => {
         setLoading(true);
-
-
+    
         if (!Array.isArray(selectedCategory)) {
             selectedCategory = [selectedCategory];
         }
-
+    
         if (selectedCategory.length === 0) {
             abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Selecione ao menos uma tag para filtrar os posts.", "error");
             onFilter(undefined);
             return;
         }
-
+    
         const postsQuery = ref(database, "post");
         const snapshot = await get(postsQuery);
         const postsData = snapshot.val();
+        
         if (postsData) {
             const postsList = Object.keys(postsData).map((key) => ({
                 id: key,
                 ...postsData[key],
             })).reverse();
-
+    
             const filteredPosts = postsList.filter((post) => {
+                // Verifica se o post tem a propriedade tags e se é um array
+                if (!post.tags || !Array.isArray(post.tags)) {
+                    return false;
+                }
+                // Verifica se pelo menos uma das categorias selecionadas está presente nas tags do post
                 return selectedCategory.some(category => post.tags.includes(category));
             });
-
-            setPosts(filteredPosts);
-            onFilter(filteredPosts); 
+    
+            if (filteredPosts.length === 0) {
+                abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, "Nenhum post encontrado com as tags selecionadas.", "info");
+            } else {
+                setPosts(filteredPosts);
+                onFilter(filteredPosts);
+            }
         }
         setLoading(false);
     };
