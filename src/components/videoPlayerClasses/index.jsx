@@ -3,12 +3,14 @@ import PropTypes from "prop-types";
 import { ref, get } from "firebase/database";
 import { database } from "../../service/firebase";
 import { useAuth } from "../../context/AuthContext";
-import { LinearProgress, Box, Typography, IconButton } from "@mui/material";
+import { LinearProgress, Box, Typography, IconButton, Button } from "@mui/material";
 import YouTube from "react-youtube";
 import { toast } from "react-toastify";
 import { debounce } from "lodash";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import LoginModal from "../../components/modals/LoginModal";
+import LockIcon from "@mui/icons-material/Lock";
 
 const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -21,21 +23,14 @@ const styles = `
 `;
 
 const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, ref) => {
-    if (!video || !video.url) {
-        return (
-            <Box sx={{ p: { xs: 2, sm: 4 }, textAlign: "center", backgroundColor: "#F5F5FA" }}>
-                <Typography variant="h6" color="error">
-                    Erro: Nenhum vídeo disponível
-                </Typography>
-            </Box>
-        );
-    }
-
+    const { userDetails } = useAuth();
     const [player, setPlayer] = useState(null);
-    const [percentageWatched, setPercentageWatched] = useState(video.progress || 0);
-    const [watchTime, setWatchTime] = useState(video.watchedTime || 0);
+    const [percentageWatched, setPercentageWatched] = useState(video?.progress || 0);
+    const [watchTime, setWatchTime] = useState(video?.watchedTime || 0);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [isVideoLocked, setIsVideoLocked] = useState(false);
     const videoRef = useRef(null);
-    const hasNotifiedRef = useRef(video.watched || false);
+    const hasNotifiedRef = useRef(video?.watched || false);
 
     const onReady = (event) => {
         ref.current = {
@@ -47,14 +42,27 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
             player: event.target,
         };
         setPlayer(event.target);
-        event.target.seekTo(video.watchedTime || 0);
+        event.target.seekTo(video?.watchedTime || 0);
     };
 
     useEffect(() => {
+        if (!userDetails?.userId && video && videos) {
+            const videoIndex = videos.findIndex((v) => v.id === video.id);
+            if (videoIndex > 1) {
+                setIsVideoLocked(true);
+                toast.warn("Faça login para acessar este conteúdo!");
+                setShowLoginModal(true);
+            } else {
+                setIsVideoLocked(false);
+            }
+        } else {
+            setIsVideoLocked(false);
+        }
+    }, [video, videos, userDetails]);
+
+    useEffect(() => {
         const fetchWatchData = async () => {
-            if (!video?.id || !video?.courseId) return;
-            const { userDetails } = useAuth();
-            if (!userDetails?.userId) return;
+            if (!video?.id || !video?.courseId || !userDetails?.userId) return;
 
             try {
                 const progressRef = ref(database, `videoProgress/${userDetails.userId}/${video.courseId}/${video.id}`);
@@ -74,7 +82,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
         };
 
         fetchWatchData();
-    }, [video]);
+    }, [video, userDetails]);
 
     useEffect(() => {
         const styleSheet = document.createElement("style");
@@ -83,11 +91,87 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
         return () => document.head.removeChild(styleSheet);
     }, []);
 
+    if (!video || !video.url) {
+        return (
+            <Box sx={{ p: { xs: 2, sm: 4 }, textAlign: "center", backgroundColor: "#F5F5FA" }}>
+                <Typography variant="h6" color="error">
+                    Erro: Nenhum vídeo disponível
+                </Typography>
+            </Box>
+        );
+    }
+
+    if (isVideoLocked) {
+        return (
+            <Box
+                sx={{
+                    width: "100%",
+                    maxWidth: { xs: "90%", sm: "780px" }, 
+                    mx: "auto",
+                    p: { xs: 1.5, sm: 4 }, 
+                    textAlign: "center",
+                    backgroundColor: "#F5F5FA",
+                    borderRadius: "12px",
+                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)", 
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: { xs: 1, sm: 2 }, 
+                    minHeight: { xs: "auto", sm: "200px" }, 
+                }}
+            >
+                <LockIcon sx={{ fontSize: { xs: 30, sm: 40 }, color: "#9041c1" }} /> 
+                <Typography
+                    variant="h6"
+                    sx={{
+                        fontWeight: 600,
+                        color: "#555",
+                        fontSize: { xs: "1rem", sm: "1.25rem" }, 
+                        lineHeight: 1.2,
+                    }}
+                >
+                    Conteúdo Bloqueado
+                </Typography>
+                <Typography
+                    variant="body2"
+                    sx={{
+                        color: "#666",
+                        maxWidth: { xs: "100%", sm: "400px" }, 
+                        fontSize: { xs: "0.85rem", sm: "1rem" }, 
+                        lineHeight: 1.4,
+                    }}
+                >
+                    Faça login para acessar este vídeo e continuar seu curso!
+                </Typography>
+                <Button
+                    variant="contained"
+                    onClick={() => setShowLoginModal(true)}
+                    sx={{
+                        backgroundColor: "#9041c1",
+                        color: "#fff",
+                        fontWeight: 600,
+                        px: { xs: 2, sm: 3 }, 
+                        py: { xs: 0.5, sm: 1 }, 
+                        borderRadius: "8px",
+                        "&:hover": {
+                            backgroundColor: "#7a35a3",
+                        },
+                        fontSize: { xs: "0.8rem", sm: "1rem" },
+                        minWidth: { xs: "120px", sm: "auto" }, 
+                    }}
+                >
+                    Fazer Login
+                </Button>
+                <LoginModal open={showLoginModal} onClose={() => setShowLoginModal(false)} />
+            </Box>
+        );
+    }
+
     return (
         <Box
             sx={{
                 width: "100%",
-                maxWidth: { xs: "100%", sm: "840px" }, // 100% em mobile
+                maxWidth: { xs: "100%", sm: "840px" },
                 mx: "auto",
                 display: "flex",
                 flexDirection: "column",
@@ -98,12 +182,12 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
+                    maxWidth: { xs: "100%", sm: "780px" },
                     position: "relative",
                     borderRadius: "12px",
                     overflow: "hidden",
                     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-                    ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                    ml: { xs: 0, sm: 2 },
                     backgroundColor: "#F5F5FA",
                 }}
             >
@@ -111,7 +195,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                     <Box
                         sx={{
                             width: "100%",
-                            paddingTop: "56.25%", // Proporção 16:9 responsiva
+                            paddingTop: "56.25%",
                             position: "relative",
                             backgroundColor: "#F5F5FA",
                             overflow: "hidden",
@@ -121,7 +205,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                             videoId={video.url.match(/(?:youtu\.be\/|youtube\.com\/.*v=)([^#&?]*)/)[1]}
                             opts={{
                                 width: "100%",
-                                height: "100%", // Ajusta à proporção
+                                height: "100%",
                                 playerVars: {
                                     autoplay: 0,
                                     modestbranding: 1,
@@ -178,9 +262,9 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                 <Box
                     sx={{
                         width: "100%",
-                        maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
-                        mt: { xs: 2, sm: 3 }, // Menor margem em mobile
-                        ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                        maxWidth: { xs: "100%", sm: "780px" },
+                        mt: { xs: 2, sm: 3 },
+                        ml: { xs: 0, sm: 2 },
                         backgroundColor: "#F5F5FA",
                     }}
                 >
@@ -322,9 +406,9 @@ function VideoWatcher({
         <Box
             sx={{
                 width: "100%",
-                maxWidth: { xs: "100%", sm: "780px" }, // 100% em mobile
+                maxWidth: { xs: "100%", sm: "780px" },
                 mt: 1,
-                ml: { xs: 0, sm: 2 }, // Sem margem lateral em mobile
+                ml: { xs: 0, sm: 2 },
                 backgroundColor: "#F5F5FA",
             }}
         >
