@@ -320,9 +320,9 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               }}
               disabled={!!editQuiz}
             >
-              {videos.map((video) => (
+              {videos.map((video, index) => (
                 <MenuItem key={video.id} value={video.id}>
-                  {video.title}
+                  {`${index + 1}. ${video.title}`}
                 </MenuItem>
               ))}
             </Select>

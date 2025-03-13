@@ -137,15 +137,15 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     flexDirection: "column",
                     alignItems: "center",
                     minHeight: "70vh",
-                    padding: { xs: 1, sm: 3 }, 
+                    padding: { xs: 1, sm: 3 },
                     backgroundColor: "#F5F5FA",
                 }}
             >
                 <Box
                     sx={{
                         width: "100%",
-                        maxWidth: { xs: "100%", sm: "780px" }, 
-                        p: { xs: 2, sm: 4 }, 
+                        maxWidth: { xs: "100%", sm: "780px" },
+                        p: { xs: 2, sm: 4 },
                         borderRadius: "16px",
                         backgroundColor: "#F5F5FA",
                         boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
@@ -159,7 +159,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             textAlign: "center",
                             color: "#333",
                             fontWeight: 600,
-                            fontSize: { xs: "1.5rem", sm: "2.25rem" }, 
+                            fontSize: { xs: "1.5rem", sm: "2.25rem" },
                         }}
                     >
                         Resultado do Quiz
@@ -170,7 +170,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             mb: { xs: 1, sm: 2 },
                             textAlign: "center",
                             color: "#666",
-                            fontSize: { xs: "1rem", sm: "1.25rem" }, 
+                            fontSize: { xs: "1rem", sm: "1.25rem" },
                         }}
                     >
                         Pontuação: {result.earnedPoints}/{result.totalPoints} ({result.scorePercentage.toFixed(2)}%)
@@ -182,52 +182,56 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             textAlign: "center",
                             color: result.isPassed ? "#4caf50" : "#d32f2f",
                             fontWeight: "bold",
-                            fontSize: { xs: "1.25rem", sm: "1.75rem" }, 
+                            fontSize: { xs: "1.25rem", sm: "1.75rem" },
                         }}
                     >
                         {result.isPassed ? "Parabéns, você passou!" : "Você não atingiu a nota mínima."}
                     </Typography>
                     <Box sx={{ mb: { xs: 2, sm: 4 } }}>
-                        {questions.map((q) => (
-                            <Box
-                                key={q.id}
-                                sx={{
-                                    mb: { xs: 1, sm: 3 },
-                                    p: { xs: 1, sm: 2 },
-                                    border: "1px solid #e0e0e0",
-                                    borderRadius: "8px",
-                                    backgroundColor: "#ffffff",
-                                }}
-                            >
-                                <Typography
-                                    variant="body1"
+                        {questions.map((q) => {
+                            const userAnswer = result.userAnswers[q.id];
+                            const isCorrect = userAnswer === q.correctOption;
+                            return (
+                                <Box
+                                    key={q.id}
                                     sx={{
-                                        mb: 1,
-                                        fontWeight: 500,
-                                        color: "#333",
-                                        fontSize: { xs: "0.9rem", sm: "1rem" }, 
+                                        mb: { xs: 1, sm: 3 },
+                                        p: { xs: 1, sm: 2 },
+                                        border: "1px solid #e0e0e0",
+                                        borderRadius: "8px",
+                                        backgroundColor: isCorrect ? "#e8f5e9" : "#ffebee",
                                     }}
                                 >
-                                    {q.question}
-                                </Typography>
-                                <Typography
-                                    variant="body2"
-                                    sx={{
-                                        color: "#666",
-                                        fontSize: { xs: "0.85rem", sm: "0.875rem" }, 
-                                    }}
-                                >
-                                    Sua resposta: {q.options[result.userAnswers[q.id]] || "Não respondida"}
-                                </Typography>
-                            </Box>
-                        ))}
+                                    <Typography
+                                        variant="body1"
+                                        sx={{
+                                            mb: 1,
+                                            fontWeight: 500,
+                                            color: "#333",
+                                            fontSize: { xs: "0.9rem", sm: "1rem" },
+                                        }}
+                                    >
+                                        {q.question}
+                                    </Typography>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            color: isCorrect ? "#4caf50" : "#d32f2f",
+                                            fontSize: { xs: "0.85rem", sm: "0.875rem" },
+                                        }}
+                                    >
+                                        Sua resposta: {q.options[userAnswer] || "Não respondida"}
+                                    </Typography>
+                                </Box>
+                            );
+                        })}
                     </Box>
                     <Box
                         sx={{
                             display: "flex",
-                            flexDirection: { xs: "column", sm: "row" }, 
+                            flexDirection: { xs: "column", sm: "row" },
                             justifyContent: "center",
-                            gap: { xs: 1, sm: 2 }, 
+                            gap: { xs: 1, sm: 2 },
                         }}
                     >
                         {!result.isPassed && (
@@ -240,10 +244,10 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                                     "&:hover": { backgroundColor: "#7d37a7" },
                                     textTransform: "none",
                                     fontWeight: 500,
-                                    px: { xs: 2, sm: 4 }, 
+                                    px: { xs: 2, sm: 4 },
                                     py: { xs: 0.5, sm: 1.5 },
-                                    fontSize: { xs: "0.8rem", sm: "0.875rem" }, 
-                                    width: { xs: "100%", sm: "auto" }, 
+                                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                                    width: { xs: "100%", sm: "auto" },
                                 }}
                             >
                                 Refazer Quiz
@@ -305,8 +309,8 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: { xs: "100%", sm: "780px" }, 
-                    p: { xs: 2, sm: 4 }, 
+                    maxWidth: { xs: "100%", sm: "780px" },
+                    p: { xs: 2, sm: 4 },
                     borderRadius: "16px",
                     backgroundColor: "#F5F5FA",
                     boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
@@ -320,7 +324,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                         textAlign: "center",
                         color: "#333",
                         fontWeight: 600,
-                        fontSize: { xs: "1.5rem", sm: "2.25rem" }, 
+                        fontSize: { xs: "1.5rem", sm: "2.25rem" },
                     }}
                 >
                     Quiz
@@ -356,7 +360,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                         mb: { xs: 2, sm: 4 },
                         color: "#333",
                         fontWeight: 500,
-                        fontSize: { xs: "1rem", sm: "1.25rem" }, 
+                        fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                 >
                     {currentQuestion?.question || "Pergunta indisponível"}
@@ -375,22 +379,22 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             sx={{
                                 backgroundColor: "#F5F5FA",
                                 borderRadius: "8px",
-                                mb: { xs: 0.5, sm: 1 }, 
-                                p: { xs: 0.5, sm: 1 }, 
+                                mb: { xs: 0.5, sm: 1 },
+                                p: { xs: 0.5, sm: 1 },
                                 "&:hover": { backgroundColor: "#f0f0f0" },
                                 "& .MuiFormControlLabel-label": {
-                                    fontSize: { xs: "0.9rem", sm: "1rem" }, 
+                                    fontSize: { xs: "0.9rem", sm: "1rem" },
                                 },
                             }}
                         />
                     ))}
                 </RadioGroup>
                 <Box
-D                    sx={{
+                    D sx={{
                         display: "flex",
-                        flexDirection: { xs: "column", sm: "row" }, 
+                        flexDirection: { xs: "column", sm: "row" },
                         justifyContent: "space-between",
-                        gap: { xs: 1, sm: 2 }, 
+                        gap: { xs: 1, sm: 2 },
                     }}
                 >
                     <Button
@@ -404,10 +408,10 @@ D                    sx={{
                             "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
                             textTransform: "none",
                             fontWeight: 500,
-                            px: { xs: 2, sm: 4 }, 
+                            px: { xs: 2, sm: 4 },
                             py: { xs: 0.5, sm: 1.5 },
-                            fontSize: { xs: "0.8rem", sm: "0.875rem" }, 
-                            width: { xs: "100%", sm: "auto" }, 
+                            fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                            width: { xs: "100%", sm: "auto" },
                         }}
                     >
                         Voltar

@@ -12,11 +12,13 @@ import {
 } from "@mui/material";
 import LinkIcon from "@mui/icons-material/Link";
 import DescriptionIcon from "@mui/icons-material/Description";
+import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 
 const MaterialExtra = ({ courseId }) => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { userDetails } = useAuth();
 
     useEffect(() => {
         const fetchMaterials = async () => {
@@ -60,6 +62,28 @@ const MaterialExtra = ({ courseId }) => {
                     <CircularProgress sx={{ color: "#9041c1" }} />
                     <Typography variant="body1" sx={{ ml: 2, color: "#666" }}>
                         Carregando materiais...
+                    </Typography>
+                </Box>
+            ) : !userDetails ? (
+                <Box
+                    sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        height: "100%",
+                        color: "#aaa",
+                    }}
+                >
+                    <DescriptionIcon sx={{ fontSize: { xs: 40, sm: 60 }, mb: 2, color: "#bbb" }} />
+                    <Typography
+                        variant="h6"
+                        sx={{ color: "#555", mb: 1, fontWeight: 600, fontSize: { xs: "1rem", sm: "1.25rem" } }}
+                    >
+                        Materiais Extras
+                    </Typography>
+                    <Typography variant="body1" sx={{ textAlign: "center", color: "#666" }}>
+                        Você deve fazer login para ver os materiais extras deste curso
                     </Typography>
                 </Box>
             ) : materials.length > 0 ? (

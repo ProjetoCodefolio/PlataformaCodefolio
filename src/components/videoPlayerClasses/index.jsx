@@ -22,7 +22,7 @@ const styles = `
   }
 `;
 
-const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, ref) => {
+const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setShowQuiz, setCurrentVideoId }, ref) => {
     const { userDetails } = useAuth();
     const [player, setPlayer] = useState(null);
     const [percentageWatched, setPercentageWatched] = useState(video?.progress || 0);
@@ -262,6 +262,8 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange }, re
                     videos={videos}
                     currentVideo={video}
                     onVideoChange={onVideoChange}
+                    setShowQuiz={setShowQuiz}
+                    setCurrentVideoId={setCurrentVideoId}
                 />
             )}
 
@@ -301,6 +303,8 @@ VideoPlayer.propTypes = {
     onProgress: PropTypes.func,
     videos: PropTypes.array.isRequired,
     onVideoChange: PropTypes.func.isRequired,
+    setShowQuiz: PropTypes.func.isRequired,
+    setCurrentVideoId: PropTypes.func.isRequired,
 };
 
 VideoPlayer.displayName = "VideoPlayer";
@@ -318,6 +322,8 @@ function VideoWatcher({
     videos,
     currentVideo,
     onVideoChange,
+    setShowQuiz,
+    setCurrentVideoId,
 }) {
     const { userDetails } = useAuth();
     const progressInterval = useRef(null);
@@ -376,23 +382,43 @@ function VideoWatcher({
 
     const handlePrevious = () => {
         if (hasPrevious) {
-            const previousVideo = videos[currentIndex - 1];
-            if (isVideoLocked(previousVideo)) {
+            const previousItem = videos[currentIndex - 1];
+            if (isVideoLocked(previousItem)) {
                 toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
                 return;
             }
-            onVideoChange(previousVideo);
+            if (previousItem.quizId && !previousItem.quizPassed) {
+                setShowQuiz(true);
+                setCurrentVideoId(previousItem.id);
+            } else {
+                onVideoChange(previousItem);
+            }
         }
     };
 
     const handleNext = () => {
-        if (hasNext) {
-            const nextVideo = videos[currentIndex + 1];
-            if (isVideoLocked(nextVideo)) {
-                toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
+        if(hasNext) {
+            
+            // verifica se há um quiz no vídeo atual, se ele foi passado e se ele não está bloqueado por não ter assistido os 90% do vídeo atual
+            if (currentVideo.quizId && !currentVideo.quizPassed && percentageWatched >= 90) {
+                setShowQuiz(true);
+                setCurrentVideoId(currentVideo.id);
+                return;
+            } else if (currentVideo.quizId && !currentVideo.quizPassed && percentageWatched < 90) {
+                toast.warn("Você precisa assistir pelo menos 90% do vídeo para acessar o quiz!");
                 return;
             }
-            onVideoChange(nextVideo);
+
+            const nextItem = videos[currentIndex + 1];
+            
+            // verifica se o próximo vídeo está bloqueado
+            if (isVideoLocked(nextItem)) {
+                toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
+                return;
+            } else {
+                onVideoChange(nextItem);
+            }
+
         }
     };
 
