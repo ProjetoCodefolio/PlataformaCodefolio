@@ -29,5 +29,8 @@
   "main": "main.js",
   "module": "main.esm.js",
   "unpkg": "main.min.js",
-  "types": "main.d.ts"
+  "types": "main.d.ts",
+  "dependencies": {
+    "@fullcalendar/daygrid": "file:"
+  }
 }

@@ -53,5 +53,8 @@
         "*"
       ]
     }
-  ]
+  ],
+  "dependencies": {
+    "ekko-lightbox": "file:"
+  }
 }

@@ -94,5 +94,8 @@
     "test:lib": "mocha -r esm test/unit/lib",
     "test:unit": "mocha -r esm test/unit"
   },
-  "version": "1.1.4"
+  "version": "1.1.4",
+  "dependencies": {
+    "vanillajs-datepicker": "file:"
+  }
 }
