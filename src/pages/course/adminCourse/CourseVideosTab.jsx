@@ -24,7 +24,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const [videos, setVideos] = useState([]);
     const [videoTitle, setVideoTitle] = useState("");
     const [videoUrl, setVideoUrl] = useState("");
-    const [videoDuration, setVideoDuration] = useState("");
     const [videoDescription, setVideoDescription] = useState("");
     const [requiresPrevious, setRequiresPrevious] = useState(true);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -66,7 +65,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 courseId: courseId || null,
                 title: videoTitle.trim(),
                 url: videoUrl.trim(),
-                duration: videoDuration || '',
                 description: videoDescription || '',
                 order: videos.length,
                 requiresPrevious,
@@ -77,7 +75,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
             setVideos(prev => [...prev, { ...videoData, id: newVideoRef.key }]);
             setVideoTitle("");
             setVideoUrl("");
-            setVideoDuration("");
             setVideoDescription("");
             setRequiresPrevious(true);
             setShowSuccessModal(true);
@@ -133,7 +130,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         courseId: targetCourseId,
                         title: video.title,
                         url: video.url,
-                        duration: video.duration || '',
                         description: video.description || '',
                         order: index,
                         requiresPrevious: video.requiresPrevious,
@@ -205,27 +201,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         }}
                     />
                 </Grid>
-                <Grid item xs={6}>
-                    <TextField
-                        label="Duração (hh:mm:ss)"
-                        fullWidth
-                        value={videoDuration}
-                        onChange={(e) => setVideoDuration(e.target.value)}
-                        variant="outlined"
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: '#666' },
-                                '&:hover fieldset': { borderColor: '#9041c1' },
-                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: '#666',
-                                '&.Mui-focused': { color: '#9041c1' },
-                            },
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={6}>
+                <Grid item xs={12}>
                     <TextField
                         label="Descrição do Vídeo"
                         fullWidth

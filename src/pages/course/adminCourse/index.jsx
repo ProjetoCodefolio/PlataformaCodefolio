@@ -26,7 +26,7 @@ const CourseForm = () => {
   const location = useLocation();
   const { userDetails } = useAuth();
   const params = new URLSearchParams(location.search);
-  const courseId = params.get("courseId");
+  const [courseId, setCourseId] = useState(params.get("courseId"));
 
   const courseVideosRef = useRef();
   const courseMaterialsRef = useRef();
@@ -90,9 +90,11 @@ const CourseForm = () => {
         const newCourseRef = push(courseRef);
         await set(newCourseRef, courseData);
         finalCourseId = newCourseRef.key;
+        setCourseId(finalCourseId);
       } else {
         const courseRef = ref(database, `courses/${courseId}`);
         await update(courseRef, courseData);
+        setCourseId(courseId);
       }
 
       await Promise.all([
@@ -115,13 +117,13 @@ const CourseForm = () => {
     return (
       courseTitle.trim() !== "" &&
       courseDescription.trim() !== "" &&
-      !quizzes.some(quiz => quiz.questions.length === 0) 
+      !quizzes.some(quiz => quiz.questions.length === 0)
     );
   }, [courseTitle, courseDescription]);
 
   return (
     <>
-        <Topbar hideSearch={true} />
+      <Topbar hideSearch={true} />
       <Box
         sx={{
           p: 4,
@@ -270,10 +272,13 @@ const CourseForm = () => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate("/manage-courses")}
+            onClick={() => {
+              setShowSuccessModal(false);
+              navigate(`/adm-cursos?courseId=${courseId}`);
+            }}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
-            Voltar
+            OK!
           </Button>
         </Box>
       </Modal>
@@ -299,13 +304,16 @@ const CourseForm = () => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate("/manage-courses")}
+            onClick={() => {
+              setShowUpdateModal(false);
+              navigate(`/adm-cursos?courseId=${courseId}`);
+            }}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
-            Voltar
+            OK!
           </Button>
         </Box>
-      </Modal>
+      </Modal >
     </>
   );
 };
