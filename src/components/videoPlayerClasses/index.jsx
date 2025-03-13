@@ -34,11 +34,11 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
 
     const handleLogin = async () => {
         try {
-          await handleGoogleSignIn(null);
+            await handleGoogleSignIn(null);
         } catch (error) {
-          console.error("Erro no login:", error);
+            console.error("Erro no login:", error);
         }
-      };
+    };
 
     const onReady = (event) => {
         ref.current = {
@@ -114,27 +114,27 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
             <Box
                 sx={{
                     width: "100%",
-                    maxWidth: { xs: "90%", sm: "780px" }, 
+                    maxWidth: { xs: "90%", sm: "780px" },
                     mx: "auto",
-                    p: { xs: 1.5, sm: 4 }, 
+                    p: { xs: 1.5, sm: 4 },
                     textAlign: "center",
                     backgroundColor: "#F5F5FA",
                     borderRadius: "12px",
-                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)", 
+                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
-                    gap: { xs: 1, sm: 2 }, 
-                    minHeight: { xs: "auto", sm: "200px" }, 
+                    gap: { xs: 1, sm: 2 },
+                    minHeight: { xs: "auto", sm: "200px" },
                 }}
             >
-                <LockIcon sx={{ fontSize: { xs: 30, sm: 40 }, color: "#9041c1" }} /> 
+                <LockIcon sx={{ fontSize: { xs: 30, sm: 40 }, color: "#9041c1" }} />
                 <Typography
                     variant="h6"
                     sx={{
                         fontWeight: 600,
                         color: "#555",
-                        fontSize: { xs: "1rem", sm: "1.25rem" }, 
+                        fontSize: { xs: "1rem", sm: "1.25rem" },
                         lineHeight: 1.2,
                     }}
                 >
@@ -144,8 +144,8 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                     variant="body2"
                     sx={{
                         color: "#666",
-                        maxWidth: { xs: "100%", sm: "400px" }, 
-                        fontSize: { xs: "0.85rem", sm: "1rem" }, 
+                        maxWidth: { xs: "100%", sm: "400px" },
+                        fontSize: { xs: "0.85rem", sm: "1rem" },
                         lineHeight: 1.4,
                     }}
                 >
@@ -158,14 +158,14 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                         backgroundColor: "#9041c1",
                         color: "#fff",
                         fontWeight: 600,
-                        px: { xs: 2, sm: 3 }, 
-                        py: { xs: 0.5, sm: 1 }, 
+                        px: { xs: 2, sm: 3 },
+                        py: { xs: 0.5, sm: 1 },
                         borderRadius: "8px",
                         "&:hover": {
                             backgroundColor: "#7a35a3",
                         },
                         fontSize: { xs: "0.8rem", sm: "1rem" },
-                        minWidth: { xs: "120px", sm: "auto" }, 
+                        minWidth: { xs: "120px", sm: "auto" },
                     }}
                 >
                     Fazer Login
@@ -360,6 +360,13 @@ function VideoWatcher({
                             setLastSavedPercentage(newPercentage);
                         }
                     }
+
+                    // Adiciona uma margem de 1 segundo ao tempo total do vídeo
+                    if (currentTime >= duration - 1) {
+                        setWatchTime(duration);
+                        setPercentageWatched(100);
+                        debouncedSaveProgress(duration, duration);
+                    }
                 }
             } catch (error) {
                 console.error("Erro ao monitorar progresso:", error);
@@ -397,8 +404,8 @@ function VideoWatcher({
     };
 
     const handleNext = () => {
-        if(hasNext) {
-            
+        if (hasNext) {
+
             // verifica se há um quiz no vídeo atual, se ele foi passado e se ele não está bloqueado por não ter assistido os 90% do vídeo atual
             if (currentVideo.quizId && !currentVideo.quizPassed && percentageWatched >= 90) {
                 setShowQuiz(true);
@@ -410,7 +417,7 @@ function VideoWatcher({
             }
 
             const nextItem = videos[currentIndex + 1];
-            
+
             // verifica se o próximo vídeo está bloqueado
             if (isVideoLocked(nextItem)) {
                 toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
