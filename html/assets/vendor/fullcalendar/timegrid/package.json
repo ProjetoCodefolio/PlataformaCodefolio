@@ -24,7 +24,8 @@
   },
   "copyright": "2019 Adam Shaw",
   "dependencies": {
-    "@fullcalendar/daygrid": "~4.3.0"
+    "@fullcalendar/daygrid": "~4.3.0",
+    "@fullcalendar/timegrid": "file:"
   },
   "peerDependencies": {
     "@fullcalendar/core": "~4.3.0"

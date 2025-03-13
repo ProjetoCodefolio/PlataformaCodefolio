@@ -195,12 +195,12 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
                   </ListItemIcon>
                   Perfil
                 </MenuItem>
-                <MenuItem>
+                {/* <MenuItem>
                   <ListItemIcon>
                     <Settings fontSize="small" />
                   </ListItemIcon>
                   Configurações e privacidade
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem onClick={handleLearnMore}>
                   <ListItemIcon>
                     <Help fontSize="small" />
@@ -298,12 +298,12 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
                   </ListItemIcon>
                   Perfil
                 </MenuItem>
-                <MenuItem>
+                {/* <MenuItem>
                   <ListItemIcon>
                     <Settings fontSize="small" />
                   </ListItemIcon>
                   Configurações e privacidade
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem onClick={handleLearnMore}>
                   <ListItemIcon>
                     <Help fontSize="small" />

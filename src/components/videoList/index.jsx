@@ -134,16 +134,19 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                             {/* Layout para telas menores (xs) */}
                             <Box sx={{ display: { xs: "flex", sm: "none" }, gap: 1 }}>
                                 {!isLocked ? (
-                                    <Tooltip title={video.watched ? "Rever Vídeo" : "Assistir"}>
-                                        <IconButton
-                                            onClick={() => setCurrentVideo(video)}
-                                            sx={{
-                                                color: "#9041c1",
-                                                "&:hover": { color: "#7d37a7" },
-                                            }}
-                                        >
-                                            <PlayCircleIcon sx={{ fontSize: { xs: 24 } }} />
-                                        </IconButton>
+                                    <Tooltip title={isCurrent ? "Vídeo atual" : video.watched ? "Rever Vídeo" : "Assistir"}>
+                                        <span>
+                                            <IconButton
+                                                onClick={() => setCurrentVideo(video)}
+                                                disabled={isCurrent} // Desabilitar botão se for o vídeo atual
+                                                sx={{
+                                                    color: isCurrent ? "#cccccc" : "#9041c1",
+                                                    "&:hover": { color: isCurrent ? "#cccccc" : "#7d37a7" },
+                                                }}
+                                            >
+                                                <PlayCircleIcon sx={{ fontSize: { xs: 24 } }} />
+                                            </IconButton>
+                                        </span>
                                     </Tooltip>
                                 ) : (
                                     <Tooltip title="Bloqueado">
@@ -214,11 +217,12 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                     <Button
                                         variant="contained"
                                         onClick={() => setCurrentVideo(video)}
+                                        disabled={isCurrent} // Desabilitar botão se for o vídeo atual
                                         startIcon={<PlayCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                                         sx={{
-                                            backgroundColor: "#9041c1",
+                                            backgroundColor: isCurrent ? "#e0e0e0" : "#9041c1",
                                             borderRadius: "12px",
-                                            "&:hover": { backgroundColor: "#7d37a7" },
+                                            "&:hover": { backgroundColor: isCurrent ? "#e0e0e0" : "#7d37a7" },
                                             textTransform: "none",
                                             fontWeight: 500,
                                             fontSize: "0.875rem",
@@ -226,6 +230,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                             px: 3,
                                             width: "100%",
                                             minHeight: "45px",
+                                            color: isCurrent ? "#666" : "#fff",
                                         }}
                                     >
                                         {video.watched ? "Rever Vídeo" : "Assistir"}
