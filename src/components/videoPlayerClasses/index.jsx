@@ -393,6 +393,13 @@ function VideoWatcher({
                             setLastSavedPercentage(newPercentage);
                         }
                     }
+
+                    // Adiciona uma margem de 1 segundo ao tempo total do vídeo
+                    if (currentTime >= duration - 1) {
+                        setWatchTime(duration);
+                        setPercentageWatched(100);
+                        debouncedSaveProgress(duration, duration);
+                    }
                 }
             } catch (error) {
                 console.error("Erro ao monitorar progresso:", error);
@@ -431,7 +438,8 @@ function VideoWatcher({
 
     const handleNext = () => {
         if (hasNext) {
-            // Verifica se há um quiz no vídeo atual, se ele foi passado e se não está bloqueado por não ter assistido 90%
+
+            // verifica se há um quiz no vídeo atual, se ele foi passado e se ele não está bloqueado por não ter assistido os 90% do vídeo atual
             if (currentVideo.quizId && !currentVideo.quizPassed && percentageWatched >= 90) {
                 setShowQuiz(true);
                 setCurrentVideoId(currentVideo.id);
@@ -442,7 +450,8 @@ function VideoWatcher({
             }
 
             const nextItem = videos[currentIndex + 1];
-            // Verifica se o próximo vídeo está bloqueado
+
+            // verifica se o próximo vídeo está bloqueado
             if (isVideoLocked(nextItem)) {
                 toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
                 return;
