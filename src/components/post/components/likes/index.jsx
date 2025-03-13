@@ -136,23 +136,43 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     };
 
     const verificarLike = (postId) => {
-        if (post.likes) {
-            const userLikeIndex = post.likes.findIndex(like => like.uidUsuario === currentUser.uid);
-            setLikedPosts((prevLikedPosts) => ({
-                ...prevLikedPosts,
-                [postId]: userLikeIndex !== -1,
-            }));
-        } else {
-            setLikedPosts((prevLikedPosts) => ({
-                ...prevLikedPosts,
-                [postId]: false,
-            }));
+        if (!currentUser) {
+          setLikedPosts((prevLikedPosts) => ({
+            ...prevLikedPosts,
+            [postId]: false,
+          }));
+          return;
         }
-    };
-
+    
+        if (post.likes && Array.isArray(post.likes)) {
+          const userLikeIndex = post.likes.findIndex(
+            (like) => like.uidUsuario === currentUser.uid
+          );
+          setLikedPosts((prevLikedPosts) => ({
+            ...prevLikedPosts,
+            [postId]: userLikeIndex !== -1,
+          }));
+        } else {
+          setLikedPosts((prevLikedPosts) => ({
+            ...prevLikedPosts,
+            [postId]: false,
+          }));
+        }
+      };
+    
     const verificarDislike = (postId) => {
-        if (post.dislikes) {
-            const userDislikeIndex = post.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid);
+        if (!currentUser) {
+          setDislikedPosts((prevDislikedPosts) => ({
+            ...prevDislikedPosts,
+            [postId]: false,
+          }));
+          return;
+        }
+    
+        if (post.dislikes && Array.isArray(post.dislikes)) {
+            const userDislikeIndex = post.dislikes.findIndex(
+                (dislike) => dislike.uidUsuario === currentUser.uid
+            );
             setDislikedPosts((prevDislikedPosts) => ({
                 ...prevDislikedPosts,
                 [postId]: userDislikeIndex !== -1,

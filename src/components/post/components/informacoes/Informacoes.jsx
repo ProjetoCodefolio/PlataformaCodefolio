@@ -7,9 +7,10 @@ import axios from 'axios';
 import '../../post.css';
 
 const Informacoes = ({ post = {}, comments = {}, setComments }) => {
-    const quantidadeComentarios = comments[post.id] ? comments[post.id].length : 0;
+    const commentsLength = comments[post.id] ? comments[post.id].length : 0;
     const [likesYouTube, setLikesYouTube] = useState(0);
     const [likes, setLikes] = useState(post.likes ? post.likes.length : 0);
+    const [likesLength, setlikesLength] = useState(0);
     const API_KEY = import.meta.env.VITE_API_KEY;
 
     useEffect(() => {
@@ -60,6 +61,8 @@ const Informacoes = ({ post = {}, comments = {}, setComments }) => {
             }
         });
 
+        setlikesLength(likes + likesYouTube);
+
         // Cleanup subscription on unmount
         return () => unsubscribe();
     }, [post.id, setLikes, setComments]);
@@ -67,8 +70,8 @@ const Informacoes = ({ post = {}, comments = {}, setComments }) => {
     return (
         <>
             <div className="info-container">
-                <div className="info-likes"> {likes + likesYouTube} likes </div>
-                <div className="info-comentarios"> {quantidadeComentarios} comentários </div>
+                <div className="info-likes"> {`${likesLength} ${likesLength === 1 ? "likes" : "likes"}`} </div>
+                <div className="info-comentarios"> {`${commentsLength} ${commentsLength === 1 ? "comentário" : "comentários"}`} </div>
             </div>
         </>
     );

@@ -63,31 +63,6 @@ const Classes = () => {
             const snapshot = await get(courseVideosRef);
             const videosData = snapshot.val();
 
-            // let progressData = {};
-            // let quizzesData = {};
-
-            // if (userDetails?.userId) {
-            //     const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}`);
-            //     const progressSnapshot = await get(progressRef);
-            //     progressData = progressSnapshot.val() || {};
-            // } else {
-            //     // Carregar do sessionStorage
-            //     const storedProgress = sessionStorage.getItem('videoProgress');
-            //     if (storedProgress) {
-            //         // Converter o array do sessionStorage em um objeto indexado por ID
-            //         const progressArray = JSON.parse(storedProgress);
-            //         progressData = progressArray.reduce((acc, video) => ({
-            //             ...acc,
-            //             [video.id]: {
-            //                 watched: video.watched,
-            //                 watchedTimeInSeconds: video.watchedTime,
-            //                 percentageWatched: video.progress,
-            //                 quizPassed: video.quizPassed
-            //             }
-            //         }), {});
-            //     }
-            // }
-
             let progressData = {};
             let quizzesData = {};
 
@@ -178,12 +153,9 @@ const Classes = () => {
                 const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
                 setVideos(sortedVideos);
 
-                // Modificar esta parte para encontrar o próximo vídeo a ser assistido
+                // Encontrar o próximo vídeo a ser assistido
                 if (!currentVideoId) {
                     const nextVideo = sortedVideos.find(video => {
-                        // Um vídeo precisa ser assistido se:
-                        // 1. Não foi assistido OU
-                        // 2. Foi assistido mas tem quiz e o quiz não foi passado
                         return !video.watched || (video.quizId && !video.quizPassed);
                     });
 
@@ -528,6 +500,8 @@ const Classes = () => {
                                 onProgress={saveVideoProgress}
                                 videos={videos}
                                 onVideoChange={handleVideoSelect}
+                                setShowQuiz={setShowQuiz}
+                                setCurrentVideoId={setCurrentVideoId}
                             />
                         </Box>
                     ) : (
