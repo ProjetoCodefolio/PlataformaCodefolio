@@ -12,6 +12,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import { handleGoogleSignIn } from "../../utils/authUtils";
 import { useNavigate } from "react-router-dom";
+import { getYouTubeID } from "../../utils/postUtils";
 
 const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -241,7 +242,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                         }}
                     >
                         <YouTube
-                            videoId={video.url.match(/(?:youtu\.be\/|youtube\.com\/.*v=)([^#&?]*)/)[1]}
+                            videoId={getYouTubeID(video.url)}
                             opts={{
                                 width: "100%",
                                 height: "100%",

@@ -8,7 +8,7 @@ import ShowComments from '../showComments/ShowComments';
 import Likes from '../likes';
 import Informacoes from '../informacoes/Informacoes';
 import MyShare from '../myShare/MyShare';
-import { getYouTubeID } from '../../utils';
+import { getYouTubeID } from '../../../../utils/postUtils';
 import YouTube from 'react-youtube';
 import * as S from './styles';
 
