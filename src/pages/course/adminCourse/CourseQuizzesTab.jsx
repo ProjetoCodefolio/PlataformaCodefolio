@@ -55,18 +55,21 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const courseId = params.get("courseId");
 
   const fetchVideos = async () => {
-    const courseVideosRef = firebaseRef(database, 'courseVideos');
+    const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
     const snapshot = await get(courseVideosRef);
     const courseVideos = snapshot.val();
 
     if (courseVideos) {
-      const filteredVideos = Object.entries(courseVideos)
-        .filter(([_, video]) => video.courseId === courseId)
-        .map(([key, video]) => ({ id: key, title: video.title }));
+      const filteredVideos = Object.entries(courseVideos).map(([key, video]) => ({
+        id: key,
+        title: video.title,
+      }));
       setVideos(filteredVideos);
       if (filteredVideos.length > 0 && !newQuizVideoId) {
         setNewQuizVideoId(filteredVideos[0].id);
       }
+    } else {
+      setVideos([]);
     }
   };
 

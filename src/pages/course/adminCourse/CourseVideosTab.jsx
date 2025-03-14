@@ -35,18 +35,16 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const courseId = params.get("courseId");
 
     async function fetchCourseVideos() {
-        const courseVideosRef = firebaseRef(database, 'courseVideos');
+        const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
         const snapshot = await get(courseVideosRef);
         const courseVideos = snapshot.val();
 
         if (courseVideos) {
-            const filteredVideos = Object.entries(courseVideos)
-                .filter(([_, video]) => video.courseId === courseId)
-                .map(([key, video]) => ({
-                    id: key,
-                    ...video,
-                    requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-                }));
+            const filteredVideos = Object.entries(courseVideos).map(([key, video]) => ({
+                id: key,
+                ...video,
+                requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
+            }));
             setVideos(filteredVideos);
         }
     }
@@ -58,11 +56,10 @@ const CourseVideosTab = forwardRef((props, ref) => {
         }
 
         try {
-            const courseVideosRef = firebaseRef(database, "courseVideos");
+            const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
             const newVideoRef = push(courseVideosRef);
-            
+
             const videoData = {
-                courseId: courseId || null,
                 title: videoTitle.trim(),
                 url: videoUrl.trim(),
                 description: videoDescription || '',
@@ -93,7 +90,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const confirmRemoveVideo = async () => {
         if (videoToDelete && videoToDelete.id) {
             try {
-                const videoRef = firebaseRef(database, `courseVideos/${videoToDelete.id}`);
+                const videoRef = firebaseRef(database, `courseVideos/${courseId}/${videoToDelete.id}`);
                 await remove(videoRef);
                 setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
                 toast.success("Vídeo deletado com sucesso!");
@@ -112,7 +109,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 const targetCourseId = newCourseId || courseId;
                 if (!targetCourseId) throw new Error("ID do curso não disponível");
 
-                const courseVideosRef = firebaseRef(database, "courseVideos");
+                const courseVideosRef = firebaseRef(database, `courseVideos/${targetCourseId}`);
                 const snapshot = await get(courseVideosRef);
                 const existingVideos = snapshot.val() || {};
 
@@ -120,14 +117,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 const currentVideoIds = new Set(videos.map(video => video.id).filter(id => id));
 
                 for (const id of existingVideoIds) {
-                    if (!currentVideoIds.has(id) && existingVideos[id].courseId === targetCourseId) {
-                        await remove(firebaseRef(database, `courseVideos/${id}`));
+                    if (!currentVideoIds.has(id)) {
+                        await remove(firebaseRef(database, `courseVideos/${targetCourseId}/${id}`));
                     }
                 }
 
                 for (const [index, video] of videos.entries()) {
                     const videoData = {
-                        courseId: targetCourseId,
                         title: video.title,
                         url: video.url,
                         description: video.description || '',
@@ -136,7 +132,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                     };
 
                     if (video.id && existingVideoIds.has(video.id)) {
-                        await set(firebaseRef(database, `courseVideos/${video.id}`), videoData);
+                        await set(firebaseRef(database, `courseVideos/${targetCourseId}/${video.id}`), videoData);
                     } else {
                         const newVideoRef = push(courseVideosRef);
                         await set(newVideoRef, videoData);

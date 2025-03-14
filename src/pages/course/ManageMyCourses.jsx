@@ -100,7 +100,7 @@ const ManageMyCourses = () => {
 
       await remove(ref(database, `courses/${courseId}`));
 
-      const videosRef = ref(database, "courseVideos");
+      const videosRef = ref(database, `courseVideos/${courseId}`);
       const videosSnapshot = await get(videosRef);
       if (videosSnapshot.exists()) {
         const videos = Object.entries(videosSnapshot.val());
