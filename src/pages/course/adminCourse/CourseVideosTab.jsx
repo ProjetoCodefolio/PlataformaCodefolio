@@ -1,5 +1,6 @@
 import { ref as firebaseRef, set, push, get, remove } from 'firebase/database';
 import { database } from "../../../service/firebase";
+import { useAuth } from '../../../context/AuthContext';
 import { useLocation } from "react-router-dom";
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import {
@@ -19,6 +20,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
+import { hasVideoQuizzes } from "../../../utils/deleteUtils";
 
 const CourseVideosTab = forwardRef((props, ref) => {
     const [videos, setVideos] = useState([]);
@@ -32,6 +34,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
+    const { currentUser } = useAuth();
     const courseId = params.get("courseId");
 
     async function fetchCourseVideos() {
@@ -92,9 +95,28 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const confirmRemoveVideo = async () => {
         if (videoToDelete && videoToDelete.id) {
             try {
+                // Verificar se o vídeo possui quizzes
+                const courseQuizzes = await hasVideoQuizzes(courseId, videoToDelete.id);
+                console.log(courseQuizzes.length > 0 ? "Tem quiz" : "Não tem quiz");
+
+                if (courseQuizzes.length > 0) {
+                    toast.error("Não é possível deletar o vídeo pois existe um quiz associado a ele.");
+                    setShowDeleteModal(false);
+                    setVideoToDelete(null);
+                    return;
+                }
+
+                // deletar video da tabela de courseVideos
                 const videoRef = firebaseRef(database, `courseVideos/${courseId}/${videoToDelete.id}`);
+                console.log("videoRef:", (await get(videoRef)).val());
                 await remove(videoRef);
                 setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
+
+                // deletar vídeo da tabela de videoProgress
+                const videoProgressRef = firebaseRef(database, `videoProgress/${currentUser.uid}/${courseId}/${videoToDelete.id}`);
+                console.log("videoProgressRef:", (await get(videoProgressRef)).val());
+                await remove(videoProgressRef);
+
                 toast.success("Vídeo deletado com sucesso!");
             } catch (error) {
                 console.error("Erro ao excluir vídeo:", error);

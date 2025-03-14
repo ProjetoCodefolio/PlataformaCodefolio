@@ -18,6 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
+import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/deleteUtils";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -98,18 +99,20 @@ const ManageMyCourses = () => {
 
       console.log("Deletando curso:", courseId);
 
-      await remove(ref(database, `courses/${courseId}`));
+      const [videos, materials, quizzes] = await Promise.all([
+        hasCourseVideos(courseId),
+        hasCourseMaterials(courseId),
+        hasCourseQuizzes(courseId)
+      ]);
 
-      const videosRef = ref(database, `courseVideos/${courseId}`);
-      const videosSnapshot = await get(videosRef);
-      if (videosSnapshot.exists()) {
-        const videos = Object.entries(videosSnapshot.val());
-        for (const [videoId, video] of videos) {
-          if (video.courseId === courseId) {
-            await remove(ref(database, `courseVideos/${videoId}`));
-          }
-        }
+      if (videos.length > 0 || materials.length > 0 || quizzes.length > 0) {
+        toast.error("Não é possível deletar o curso pois existem vídeos, materiais ou quizzes associados a ele.");
+        setDeleteModalOpen(false);
+        setCourseToDelete(null);
+        return;
       }
+
+      await remove(ref(database, `courses/${courseId}`));
 
       setCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
       setFilteredCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
