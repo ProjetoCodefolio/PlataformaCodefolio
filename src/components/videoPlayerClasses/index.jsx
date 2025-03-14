@@ -11,7 +11,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import { handleGoogleSignIn } from "../../utils/authUtils";
-import { useNavigate } from "react-router-dom"; // Importar useNavigate
+import { useNavigate } from "react-router-dom";
 
 const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -32,7 +32,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
     const [isVideoLocked, setIsVideoLocked] = useState(false);
     const videoRef = useRef(null);
     const hasNotifiedRef = useRef(video?.watched || false);
-    const navigate = useNavigate(); // Adicionar useNavigate
+    const navigate = useNavigate();
 
     const handleLogin = async () => {
         try {
@@ -187,22 +187,21 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                 backgroundColor: "#F5F5FA",
             }}
         >
-            {/* Nova seção para a seta de voltar e o título do curso */}
             <Box
                 sx={{
                     width: "100%",
                     maxWidth: { xs: "100%", sm: "780px" },
                     display: "flex",
                     alignItems: "center",
-                    mb: 2, // Espaçamento abaixo da seta e título
+                    mb: 2,
                     ml: { xs: 0, sm: 2 },
                 }}
             >
                 <IconButton
-                    onClick={() => navigate(-1)} // Navega para a página anterior
+                    onClick={() => navigate(-1)}
                     sx={{
                         color: "#9041c1",
-                        mr: 1, // Espaçamento à direita da seta
+                        mr: 1,
                     }}
                 >
                     <ArrowBackIcon />
@@ -215,7 +214,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                         fontSize: { xs: "1rem", sm: "1.25rem" },
                     }}
                 >
-                    {video.title.split(" - ")[0]} {/* Extrai o título do curso (parte antes do " - ") */}
+                    {video.title.split(" - ")[0]}
                 </Typography>
             </Box>
 
@@ -314,7 +313,12 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
                         Descrição:
                     </Typography>
                     <Typography variant="body2" sx={{ color: "#666", lineHeight: 1.6 }}>
-                        {video.description}
+                        {video.description.split("\n").map((line, index) => (
+                            <React.Fragment key={index}>
+                                {line}
+                                {index < video.description.split("\n").length - 1 && <br />}
+                            </React.Fragment>
+                        ))}
                     </Typography>
                 </Box>
             )}
@@ -394,7 +398,6 @@ function VideoWatcher({
                         }
                     }
 
-                    // Adiciona uma margem de 1 segundo ao tempo total do vídeo
                     if (currentTime >= duration - 1) {
                         setWatchTime(duration);
                         setPercentageWatched(100);
@@ -438,8 +441,6 @@ function VideoWatcher({
 
     const handleNext = () => {
         if (hasNext) {
-
-            // verifica se há um quiz no vídeo atual, se ele foi passado e se ele não está bloqueado por não ter assistido os 90% do vídeo atual
             if (currentVideo.quizId && !currentVideo.quizPassed && percentageWatched >= 90) {
                 setShowQuiz(true);
                 setCurrentVideoId(currentVideo.id);
@@ -450,8 +451,6 @@ function VideoWatcher({
             }
 
             const nextItem = videos[currentIndex + 1];
-
-            // verifica se o próximo vídeo está bloqueado
             if (isVideoLocked(nextItem)) {
                 toast.warn("Você precisa completar o vídeo anterior ou o quiz antes de prosseguir!");
                 return;

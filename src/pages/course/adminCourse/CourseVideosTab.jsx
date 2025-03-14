@@ -58,6 +58,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
             return;
         }
 
+        console.log("Descrição antes de enviar:", videoDescription);
+
         try {
             const courseVideosRef = firebaseRef(database, "courseVideos");
             const newVideoRef = push(courseVideosRef);
@@ -67,7 +69,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 title: videoTitle.trim(),
                 url: videoUrl.trim(),
                 duration: videoDuration || '',
-                description: videoDescription || '',
+                description: String(videoDescription || ''),
                 order: videos.length,
                 requiresPrevious,
             };
