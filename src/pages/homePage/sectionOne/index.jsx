@@ -1,11 +1,9 @@
-import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
 import React from "react";
 import astronautaHeader from "../../../assets/img/astronautaheader.svg";
 
 const SectionOne = () => {
     const codefolio = "<Codefólio/>";
-    // const navigate = useNavigate();
 
     const scrollToSectionSeven = () => {
         const SectionSeven = document.getElementById('faq');

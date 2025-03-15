@@ -71,7 +71,7 @@ const Classes = () => {
       const courseData = courseSnapshot.val();
       setCourseTitle(courseData?.title || "Curso sem título");
 
-      const courseVideosRef = ref(database, "courseVideos");
+      const courseVideosRef = ref(database, `courseVideos/${courseId}`);
       const snapshot = await get(courseVideosRef);
       const videosData = snapshot.val();
 
@@ -133,9 +133,9 @@ const Classes = () => {
         for (const [videoId, progress] of Object.entries(progressData)) {
           if (
             progress.percentageWatched >
-              (firebaseProgress[videoId]?.percentageWatched || 0) ||
+            (firebaseProgress[videoId]?.percentageWatched || 0) ||
             progress.watchedTimeInSeconds >
-              (firebaseProgress[videoId]?.watchedTimeInSeconds || 0)
+            (firebaseProgress[videoId]?.watchedTimeInSeconds || 0)
           ) {
             const progressRef = ref(
               database,
@@ -155,36 +155,37 @@ const Classes = () => {
       const quizzesSnapshot = await get(quizzesRef);
       quizzesData = quizzesSnapshot.val() || {};
 
+      console.log("Videos:", videosData);
+      console.log("Progresso:", progressData);
+      console.log("Quizzes:", quizzesData);
+
       if (videosData) {
-        const filteredVideos = await Promise.all(
-          Object.entries(videosData)
-            .filter(([_, video]) => video.courseId === courseId)
-            .map(async ([id, video], index) => {
-              const quizData = quizzesData[id] || null;
-              const userProgress = progressData[id] || {};
-              const videoObj = {
-                id,
-                title: video.title || "Sem título",
-                url: video.url || "",
-                description: video.description || "Sem descrição",
-                duration: video.duration || "",
-                watched: userProgress.watched || false,
-                quizPassed: userProgress.quizPassed || false,
-                order: video.order || 0,
-                courseId: video.courseId,
-                watchedTime: userProgress.watchedTimeInSeconds || 0,
-                progress: userProgress.percentageWatched || 0,
-                quizId: quizData ? `${courseId}/${id}` : null,
-                minPercentage: quizData ? quizData.minPercentage : 0,
-                requiresPrevious:
-                  video.requiresPrevious !== undefined
-                    ? video.requiresPrevious
-                    : true,
-              };
-              console.log(`Video ${video.title} quizId:`, videoObj.quizId);
-              return videoObj;
-            })
-        );
+        const filteredVideos = Object.entries(videosData).map(([id, video]) => {
+          const quizData = quizzesData[id] || null;
+          const userProgress = progressData[id] || {};
+          const videoObj = {
+            id,
+            title: video.title || "Sem título",
+            url: video.url || "",
+            description: video.description || "Sem descrição",
+            watched: userProgress.watched || false,
+            quizPassed: userProgress.quizPassed || false,
+            order: video.order || 0,
+            courseId: video.courseId,
+            watchedTime: userProgress.watchedTimeInSeconds || 0,
+            progress: userProgress.percentageWatched || 0,
+            quizId: quizData ? `${courseId}/${id}` : null,
+            minPercentage: quizData ? quizData.minPercentage : 0,
+            requiresPrevious:
+              video.requiresPrevious !== undefined
+                ? video.requiresPrevious
+                : true,
+          };
+          console.log(`Video ${video.title} quizId:`, videoObj.quizId);
+          return videoObj;
+        });
+
+        console.log("Vídeos carregados:", filteredVideos);
 
         const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
         setVideos(sortedVideos);
@@ -299,11 +300,11 @@ const Classes = () => {
       const updatedVideos = videos.map((v) =>
         v.id === currentVideo.id
           ? {
-              ...v,
-              watched: percentage >= 90,
-              progress: percentage,
-              watchedTime: currentTime,
-            }
+            ...v,
+            watched: percentage >= 90,
+            progress: percentage,
+            watchedTime: currentTime,
+          }
           : v
       );
       setVideos(updatedVideos);
@@ -563,7 +564,7 @@ const Classes = () => {
               gap: { xs: 1, md: 2 },
               backgroundColor: "#F5F5FA",
               width: "100%",
-              marginRight: { md: "16px" }, 
+              marginRight: { md: "16px" },
             }}
           >
             {showQuiz ? (

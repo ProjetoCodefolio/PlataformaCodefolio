@@ -1,5 +1,6 @@
 import { ref as firebaseRef, set, push, get, remove } from 'firebase/database';
 import { database } from "../../../service/firebase";
+import { useAuth } from '../../../context/AuthContext';
 import { useLocation } from "react-router-dom";
 import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import {
@@ -19,12 +20,13 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
+import { hasVideoQuizzes } from "../../../utils/deleteUtils";
+import { updateCourseProgress } from '../../../service/courses';
 
 const CourseVideosTab = forwardRef((props, ref) => {
     const [videos, setVideos] = useState([]);
     const [videoTitle, setVideoTitle] = useState("");
     const [videoUrl, setVideoUrl] = useState("");
-    const [videoDuration, setVideoDuration] = useState("");
     const [videoDescription, setVideoDescription] = useState("");
     const [requiresPrevious, setRequiresPrevious] = useState(true);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -33,21 +35,20 @@ const CourseVideosTab = forwardRef((props, ref) => {
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
+    const { currentUser } = useAuth();
     const courseId = params.get("courseId");
 
     async function fetchCourseVideos() {
-        const courseVideosRef = firebaseRef(database, 'courseVideos');
+        const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
         const snapshot = await get(courseVideosRef);
         const courseVideos = snapshot.val();
 
         if (courseVideos) {
-            const filteredVideos = Object.entries(courseVideos)
-                .filter(([_, video]) => video.courseId === courseId)
-                .map(([key, video]) => ({
-                    id: key,
-                    ...video,
-                    requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-                }));
+            const filteredVideos = Object.entries(courseVideos).map(([key, video]) => ({
+                id: key,
+                ...video,
+                requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
+            }));
             setVideos(filteredVideos);
         }
     }
@@ -61,25 +62,23 @@ const CourseVideosTab = forwardRef((props, ref) => {
         console.log("Descrição antes de enviar:", videoDescription);
 
         try {
-            const courseVideosRef = firebaseRef(database, "courseVideos");
+            const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
             const newVideoRef = push(courseVideosRef);
-            
+
             const videoData = {
-                courseId: courseId || null,
                 title: videoTitle.trim(),
                 url: videoUrl.trim(),
-                duration: videoDuration || '',
                 description: String(videoDescription || ''),
                 order: videos.length,
                 requiresPrevious,
             };
 
             await set(newVideoRef, videoData);
+            await updateCourseProgress(currentUser.uid, courseId, videos, true);
 
             setVideos(prev => [...prev, { ...videoData, id: newVideoRef.key }]);
             setVideoTitle("");
             setVideoUrl("");
-            setVideoDuration("");
             setVideoDescription("");
             setRequiresPrevious(true);
             setShowSuccessModal(true);
@@ -98,9 +97,31 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const confirmRemoveVideo = async () => {
         if (videoToDelete && videoToDelete.id) {
             try {
-                const videoRef = firebaseRef(database, `courseVideos/${videoToDelete.id}`);
+                // Verificar se o vídeo possui quizzes
+                const courseQuizzes = await hasVideoQuizzes(courseId, videoToDelete.id);
+                console.log(courseQuizzes.length > 0 ? "Tem quiz" : "Não tem quiz");
+
+                if (courseQuizzes.length > 0) {
+                    toast.error("Não é possível deletar o vídeo pois existe um quiz associado a ele.");
+                    setShowDeleteModal(false);
+                    setVideoToDelete(null);
+                    return;
+                }
+
+                // deletar video da tabela de courseVideos
+                const videoRef = firebaseRef(database, `courseVideos/${courseId}/${videoToDelete.id}`);
+                console.log("videoRef:", (await get(videoRef)).val());
                 await remove(videoRef);
                 setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
+
+                // deletar vídeo da tabela de videoProgress
+                const videoProgressRef = firebaseRef(database, `videoProgress/${currentUser.uid}/${courseId}/${videoToDelete.id}`);
+                console.log("videoProgressRef:", (await get(videoProgressRef)).val());
+                await remove(videoProgressRef);
+
+                // atualizar progresso do curso
+                await updateCourseProgress(currentUser.uid, courseId, videos, false);
+
                 toast.success("Vídeo deletado com sucesso!");
             } catch (error) {
                 console.error("Erro ao excluir vídeo:", error);
@@ -117,7 +138,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 const targetCourseId = newCourseId || courseId;
                 if (!targetCourseId) throw new Error("ID do curso não disponível");
 
-                const courseVideosRef = firebaseRef(database, "courseVideos");
+                const courseVideosRef = firebaseRef(database, `courseVideos/${targetCourseId}`);
                 const snapshot = await get(courseVideosRef);
                 const existingVideos = snapshot.val() || {};
 
@@ -125,24 +146,22 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 const currentVideoIds = new Set(videos.map(video => video.id).filter(id => id));
 
                 for (const id of existingVideoIds) {
-                    if (!currentVideoIds.has(id) && existingVideos[id].courseId === targetCourseId) {
-                        await remove(firebaseRef(database, `courseVideos/${id}`));
+                    if (!currentVideoIds.has(id)) {
+                        await remove(firebaseRef(database, `courseVideos/${targetCourseId}/${id}`));
                     }
                 }
 
                 for (const [index, video] of videos.entries()) {
                     const videoData = {
-                        courseId: targetCourseId,
                         title: video.title,
                         url: video.url,
-                        duration: video.duration || '',
                         description: video.description || '',
                         order: index,
                         requiresPrevious: video.requiresPrevious,
                     };
 
                     if (video.id && existingVideoIds.has(video.id)) {
-                        await set(firebaseRef(database, `courseVideos/${video.id}`), videoData);
+                        await set(firebaseRef(database, `courseVideos/${targetCourseId}/${video.id}`), videoData);
                     } else {
                         const newVideoRef = push(courseVideosRef);
                         await set(newVideoRef, videoData);
@@ -207,27 +226,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         }}
                     />
                 </Grid>
-                <Grid item xs={6}>
-                    <TextField
-                        label="Duração (hh:mm:ss)"
-                        fullWidth
-                        value={videoDuration}
-                        onChange={(e) => setVideoDuration(e.target.value)}
-                        variant="outlined"
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                '& fieldset': { borderColor: '#666' },
-                                '&:hover fieldset': { borderColor: '#9041c1' },
-                                '&.Mui-focused fieldset': { borderColor: '#9041c1' },
-                            },
-                            '& .MuiInputLabel-root': {
-                                color: '#666',
-                                '&.Mui-focused': { color: '#9041c1' },
-                            },
-                        }}
-                    />
-                </Grid>
-                <Grid item xs={6}>
+                <Grid item xs={12}>
                     <TextField
                         label="Descrição do Vídeo"
                         fullWidth

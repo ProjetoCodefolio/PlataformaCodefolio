@@ -55,18 +55,21 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const courseId = params.get("courseId");
 
   const fetchVideos = async () => {
-    const courseVideosRef = firebaseRef(database, 'courseVideos');
+    const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
     const snapshot = await get(courseVideosRef);
     const courseVideos = snapshot.val();
 
     if (courseVideos) {
-      const filteredVideos = Object.entries(courseVideos)
-        .filter(([_, video]) => video.courseId === courseId)
-        .map(([key, video]) => ({ id: key, title: video.title }));
+      const filteredVideos = Object.entries(courseVideos).map(([key, video]) => ({
+        id: key,
+        title: video.title,
+      }));
       setVideos(filteredVideos);
       if (filteredVideos.length > 0 && !newQuizVideoId) {
         setNewQuizVideoId(filteredVideos[0].id);
       }
+    } else {
+      setVideos([]);
     }
   };
 
@@ -211,20 +214,37 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     setNewQuizMinPercentage(quiz.minPercentage);
   };
 
-  const handleSaveEditQuiz = () => {
+  const handleSaveEditQuiz = async () => {
     if (quizzes.some(quiz => quiz.videoId === newQuizVideoId && quiz.videoId !== editQuiz.videoId)) {
       toast.error("Já existe um quiz associado a este vídeo");
       return;
     }
-    setQuizzes(prev => prev.map(q =>
+
+    const updatedQuizzes = quizzes.map(q =>
       q.videoId === editQuiz.videoId
         ? { ...q, videoId: newQuizVideoId, minPercentage: newQuizMinPercentage }
         : q
-    ));
+    );
+
+    setQuizzes(updatedQuizzes);
     setEditQuiz(null);
     setNewQuizVideoId(videos[0]?.id || "");
     setNewQuizMinPercentage(0);
-    toast.success("Edição do quiz salva localmente! Clique em 'Salvar Curso' para persistir as alterações.");
+
+    try {
+      const quizData = {
+        questions: editQuiz.questions,
+        minPercentage: newQuizMinPercentage,
+        courseId: courseId,
+        videoId: newQuizVideoId,
+      };
+      const courseQuizzesRef = firebaseRef(database, `courseQuizzes/${courseId}/${newQuizVideoId}`);
+      await set(courseQuizzesRef, quizData);
+      toast.success("Edição do quiz salva com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar quiz:", error);
+      toast.error("Erro ao salvar o quiz");
+    }
   };
 
   const handleRemoveQuiz = (quiz) => {

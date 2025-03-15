@@ -1,9 +1,5 @@
 import { ref, get } from 'firebase/database';
-import { database } from '../../service/firebase';
-import iconAulas from "../../assets/img/aula.png";
-import iconReforco from "../../assets/img/reforco.png";
-import iconRevisao from "../../assets/img/revisao.png";
-import iconTutoriais from "../../assets/img/tutorial.png";
+import { database } from '../service/firebase';
 import axios from 'axios';
 
 const API_KEY = import.meta.env.VITE_API_KEY;
@@ -99,28 +95,6 @@ export function getYouTubeID(url) {
     ID = url;
   }
   return ID;
-}
-
-export function getImage(tag) {
-  let image = "";
-  switch (tag) {
-    case "Aulas":
-      image = iconAulas;
-      break;
-    case "Reforço":
-      image = iconReforco;
-      break;
-    case "Revisão":
-      image = iconRevisao;
-      break;
-    case "Tutoriais":
-      image = iconTutoriais;
-      break;
-    default:
-      image = "";
-  }
-
-  return image;
 }
 
 export function abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity) {

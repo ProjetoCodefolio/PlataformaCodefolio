@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { database } from "../../../../service/firebase";
 import { ref, get, onValue } from "firebase/database";
-import { abrirAlert } from "../../utils";
+import { abrirAlert } from "../../../../utils/postUtils";
 import { useIsMobileHook } from "../../../../components/useIsMobileHook";
 import MyAlert from "../alert/Alert";
 import * as S from "./styles";

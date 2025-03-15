@@ -6,7 +6,7 @@ import MyConfirm from './components/confirm/Confirm';
 import Pagination from './components/pagination/Pagination';
 import Topbar from '../topbar/Topbar';
 import CreatePostModal from './components/createPost/CreatePost';
-import { fetchPosts, abrirAlert } from './utils';
+import { fetchPosts, abrirAlert } from '../../utils/postUtils';
 import { database } from '../../service/firebase';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';

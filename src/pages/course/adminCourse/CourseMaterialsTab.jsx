@@ -48,7 +48,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     }
 
     // Adiciona um material com modal de sucesso
-    const handleAddMaterial = () => {
+    const handleAddMaterial = async () => {
         if (!materialName.trim() || !materialUrl.trim()) {
             toast.error("Preencha o nome e a URL do material");
             return;
@@ -59,10 +59,20 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             url: materialUrl,
             courseId: courseId || null, // Será preenchido ao salvar o curso
         };
-        setMaterials((prev) => [...prev, newMaterial]);
-        setMaterialName("");
-        setMaterialUrl("");
-        setShowSuccessModal(true);
+
+        try {
+            const courseMaterialsRef = firebaseRef(database, `courseMaterials/${courseId}`);
+            const newMaterialRef = push(courseMaterialsRef);
+            await set(newMaterialRef, newMaterial);
+
+            setMaterials((prev) => [...prev, { ...newMaterial, id: newMaterialRef.key }]);
+            setMaterialName("");
+            setMaterialUrl("");
+            setShowSuccessModal(true);
+        } catch (error) {
+            console.error("Erro ao adicionar material:", error);
+            toast.error("Erro ao adicionar material");
+        }
     };
 
     // Abre o modal de confirmação para exclusão
@@ -72,7 +82,6 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
         setShowDeleteModal(true);
     };
 
-   
     const confirmRemoveMaterial = async () => {
         if (materialToDelete && materialToDelete.id) {
             try {

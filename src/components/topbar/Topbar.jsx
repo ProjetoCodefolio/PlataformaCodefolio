@@ -59,7 +59,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
   };
 
   const handleLearnMore = async () => {
-    navigate("/home");
+    navigate("/about");
     handleClose();
     handleMobileMenuClose();
   };
@@ -225,7 +225,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
             )}
           </Menu>
 
-          <Tooltip title="Account settings">
+          <Tooltip title="Configurações da Conta">
             <IconButton
               onClick={handleClick}
               size="small"

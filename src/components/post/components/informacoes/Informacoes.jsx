@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { ref, onValue } from "firebase/database";
 import { database } from "../../../../service/firebase";
-import { getYouTubeID } from "../../utils";
+import { getYouTubeID } from "../../../../utils/postUtils";
 import axios from 'axios';
 import '../../post.css';
 

@@ -7,7 +7,7 @@ import { useAuth } from "../../../../context/AuthContext";
 import { database } from "../../../../service/firebase";
 import * as S from "./styles";
 import MyAlert from '../alert/Alert';
-import { abrirAlert } from '../../utils';
+import { abrirAlert } from '../../../../utils/postUtils';
 import { colorConstants } from '../../../../constants/constantStyles';
 
 const Likes = React.memo(({ post, onLikeUpdate }) => {
