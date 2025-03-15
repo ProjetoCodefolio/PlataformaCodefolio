@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import { useAuth } from "../../context/AuthContext";
-import { toast } from "react-toastify";
 
 const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, onNextVideo }) => {
     const [questions, setQuestions] = useState([]);
@@ -30,11 +29,9 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     setQuestions(quizData.questions);
                 } else {
                     setQuestions([]);
-                    toast.error("Nenhuma pergunta encontrada para este quiz.");
                 }
                 setLoading(false);
             } catch (error) {
-                toast.error("Erro ao carregar o quiz.");
                 setQuestions([]);
                 setLoading(false);
             }
@@ -46,7 +43,6 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
 
     const handleNext = () => {
         if (selectedOption === null) {
-            toast.warn("Selecione uma opção antes de avançar.");
             return;
         }
         const updatedAnswers = { ...userAnswers, [currentQuestion.id]: parseInt(selectedOption) };
@@ -92,8 +88,6 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             setQuizCompleted(true);
             onSubmit(answers);
         } catch (error) {
-            console.log("Erro ao validar quiz:", error);
-            toast.error("Erro ao validar o quiz.");
             setQuizCompleted(false);
         }
     };
@@ -110,13 +104,21 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
         onComplete(result?.isPassed || false);
     };
 
+    const handleNextVideoClick = () => {
+        if (result?.isPassed && hasNextVideo()) {
+            onNextVideo();
+        } else {
+            onComplete(result?.isPassed || false);
+        }
+    };
+
     const hasNextVideo = () => {
         const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
         return currentVideoIndex < videos.length - 1;
     };
 
     const getRequiredCorrectAnswers = () => {
-        if (!result) return "";   
+        if (!result) return "";
         const minPercentage = result.minPercentage;
         return `${minPercentage}%`;
     };
@@ -282,7 +284,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                         {result.isPassed && hasNextVideo() && (
                             <Button
                                 variant="contained"
-                                onClick={onNextVideo}
+                                onClick={handleNextVideoClick}
                                 sx={{
                                     backgroundColor: "#4caf50",
                                     borderRadius: "12px",
