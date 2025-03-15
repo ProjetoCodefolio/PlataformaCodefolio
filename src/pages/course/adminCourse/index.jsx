@@ -199,26 +199,30 @@ const CourseForm = () => {
             </Grid>
           </Grid>
 
-          <Tabs
-            value={selectedTab}
-            onChange={handleTabChange}
-            indicatorColor="primary"
-            textColor="primary"
-            centered
-            sx={{
-              mb: 4,
-              "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
-              "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-            }}
-          >
-            <Tab label="Vídeos" />
-            <Tab label="Materiais Extras" />
-            <Tab label="Quiz" />
-          </Tabs>
+          {courseId && (
+            <>
+              <Tabs
+                value={selectedTab}
+                onChange={handleTabChange}
+                indicatorColor="primary"
+                textColor="primary"
+                centered
+                sx={{
+                  mb: 4,
+                  "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+                  "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                }}
+              >
+                <Tab label="Vídeos" />
+                <Tab label="Materiais Extras" />
+                <Tab label="Quiz" />
+              </Tabs>
 
-          {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
-          {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
-          {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+              {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
+              {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
+              {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+            </>
+          )}
         </Paper>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -313,7 +317,7 @@ const CourseForm = () => {
             OK!
           </Button>
         </Box>
-      </Modal >
+      </Modal>
     </>
   );
 };

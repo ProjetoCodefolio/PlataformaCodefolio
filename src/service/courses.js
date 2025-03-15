@@ -291,7 +291,7 @@ export const updateCourseProgress = async (userId, courseId, videos, added) => {
     const studentCoursesSnapshot = await get(studentCoursesRef);
     const studentCourses = studentCoursesSnapshot.val();
 
-    const courseProgress = studentCourses.progress;
+    const courseProgress = studentCourses ? studentCourses.progress : 0;
     console.log("Progresso do curso:", courseProgress);
 
     const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
@@ -302,11 +302,10 @@ export const updateCourseProgress = async (userId, courseId, videos, added) => {
         const watchedVideos = Object.values(videosData).filter((video) => video.watched).length;
         console.log("Total de vídeos:", totalVideos);
         console.log("Vídeos assistidos:", watchedVideos);
-        
+
         newProgress = (watchedVideos / totalVideos) * 100;
         console.log("Novo progresso calculado:", newProgress);
-    
-        await update(studentCoursesRef, { progress: newProgress });
-    }
 
+        await update(studentCoursesRef, { progress: newProgress, status: newProgress === 100 ? "completed" : "in_progress" });
+    }
 };

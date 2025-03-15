@@ -117,6 +117,21 @@ const ManageMyCourses = () => {
       // Deleta o curso da tabela courses
       await remove(ref(database, `courses/${courseId}`));
 
+      // Deleta o curso da tabela studentCourses para todos os usuários
+      const studentCoursesRef = ref(database, `studentCourses`);
+      const studentCoursesSnapshot = await get(studentCoursesRef);
+      const studentCoursesData = studentCoursesSnapshot.val();
+
+      if (studentCoursesData) {
+        const updates = {};
+        Object.keys(studentCoursesData).forEach(userId => {
+          if (studentCoursesData[userId][courseId]) {
+            updates[`studentCourses/${userId}/${courseId}`] = null;
+          }
+        });
+        await update(ref(database), updates);
+      }
+
       // Deleta o curso da tabela videoProgress para todos os usuários
       const videoProgressRef = ref(database, `videoProgress`);
       const videoProgressSnapshot = await get(videoProgressRef);

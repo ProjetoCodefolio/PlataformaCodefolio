@@ -129,7 +129,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 console.log("videoProgressRef:", (await get(videoProgressRef)).val());
                 await remove(videoProgressRef);
 
-                // atualizar progresso do curso
+                // atualizar progresso do curso -> está dando erro
                 const updatedVideos = videos.filter((video) => video.id !== videoToDelete.id);
                 if (updatedVideos.length > 0) {
                     await updateCourseProgress(currentUser.uid, courseId, updatedVideos, false);
