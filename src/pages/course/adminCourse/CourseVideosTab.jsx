@@ -80,9 +80,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
             };
 
             await set(newVideoRef, videoData);
-            await updateCourseProgress(currentUser.uid, courseId, videos, true);
 
-            setVideos(prev => [...prev, { ...videoData, id: newVideoRef.key }]);
+            const updatedVideos = [...videos, { ...videoData, id: newVideoRef.key }];
+            if (updatedVideos.length > 0) {
+                await updateCourseProgress(currentUser.uid, courseId, updatedVideos, true);
+            }
+
+            setVideos(updatedVideos);
             setVideoTitle("");
             setVideoUrl("");
             setVideoDescription("");
@@ -126,7 +130,10 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 await remove(videoProgressRef);
 
                 // atualizar progresso do curso
-                await updateCourseProgress(currentUser.uid, courseId, videos, false);
+                const updatedVideos = videos.filter((video) => video.id !== videoToDelete.id);
+                if (updatedVideos.length > 0) {
+                    await updateCourseProgress(currentUser.uid, courseId, updatedVideos, false);
+                }
 
                 toast.success("Vídeo deletado com sucesso!");
             } catch (error) {

@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
-import { ref, get, remove } from "firebase/database";
+import { ref, get, update, remove } from "firebase/database";
 import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
@@ -114,7 +114,23 @@ const ManageMyCourses = () => {
         return;
       }
 
+      // Deleta o curso da tabela courses
       await remove(ref(database, `courses/${courseId}`));
+
+      // Deleta o curso da tabela videoProgress para todos os usuários
+      const videoProgressRef = ref(database, `videoProgress`);
+      const videoProgressSnapshot = await get(videoProgressRef);
+      const videoProgressData = videoProgressSnapshot.val();
+
+      if (videoProgressData) {
+        const updates = {};
+        Object.keys(videoProgressData).forEach(userId => {
+          if (videoProgressData[userId][courseId]) {
+            updates[`videoProgress/${userId}/${courseId}`] = null;
+          }
+        });
+        await update(ref(database), updates);
+      }
 
       setCourses((prevCourses) =>
         prevCourses.filter((course) => course.courseId !== courseId)
