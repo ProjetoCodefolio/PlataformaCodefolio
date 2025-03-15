@@ -21,6 +21,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
 import { hasVideoQuizzes } from "../../../utils/deleteUtils";
+import { updateCourseProgress } from '../../../service/courses';
 
 const CourseVideosTab = forwardRef((props, ref) => {
     const [videos, setVideos] = useState([]);
@@ -73,6 +74,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
             };
 
             await set(newVideoRef, videoData);
+            await updateCourseProgress(currentUser.uid, courseId, videos, true);
 
             setVideos(prev => [...prev, { ...videoData, id: newVideoRef.key }]);
             setVideoTitle("");
@@ -116,6 +118,9 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 const videoProgressRef = firebaseRef(database, `videoProgress/${currentUser.uid}/${courseId}/${videoToDelete.id}`);
                 console.log("videoProgressRef:", (await get(videoProgressRef)).val());
                 await remove(videoProgressRef);
+
+                // atualizar progresso do curso
+                await updateCourseProgress(currentUser.uid, courseId, videos, false);
 
                 toast.success("Vídeo deletado com sucesso!");
             } catch (error) {

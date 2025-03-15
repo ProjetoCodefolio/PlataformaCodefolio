@@ -283,3 +283,33 @@ export const fetchCourseVideosWithWatchedStatus = async (courseId, userId) => {
     }
 };
 
+export const updateCourseProgress = async (userId, courseId, videos, added) => {
+    let newProgress = 0;
+    const totalVideos = videos.length;
+
+    const studentCoursesRef = ref(database, `studentCourses/${userId}/${courseId}`);
+    const studentCoursesSnapshot = await get(studentCoursesRef);
+    const studentCourses = studentCoursesSnapshot.val();
+
+    const courseProgress = studentCourses.progress;
+    console.log("Progresso do curso:", courseProgress);
+
+    const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
+    const videosSnapshot = await get(videosRef);
+    const videosData = Object.values(videosSnapshot.val());
+
+    const watchedVideos = videosData.filter((video) => video.watched).length;
+    console.log("Total de vídeos:", totalVideos);
+    console.log("Vídeos assistidos:", watchedVideos)
+
+    if(added) {
+        newProgress = (watchedVideos / (totalVideos + 1)) * 100;
+        console.log("Novo progresso calculado:", newProgress);
+    } else {
+        newProgress = (watchedVideos / (totalVideos - 1)) * 100;
+        console.log("Novo progresso calculado:", newProgress);
+    }
+
+    await update(studentCoursesRef, { progress: newProgress });
+
+};
