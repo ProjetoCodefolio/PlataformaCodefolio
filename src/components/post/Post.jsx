@@ -22,7 +22,6 @@ export default function Post({ member }) {
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [userRole, setUserRole] = useState('');
-  const { currentUser } = useAuth();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
@@ -37,7 +36,8 @@ export default function Post({ member }) {
   const [alertSeverity, setAlertSeverity] = useState('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
-  const postsPerPage = 2;
+  const { currentUser } = useAuth();
+  const postsPerPage = 3;
 
   useEffect(() => {
     if (currentUser) {
