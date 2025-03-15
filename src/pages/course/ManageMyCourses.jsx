@@ -18,7 +18,7 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
-import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/deleteUtils";
+import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/courseUtils";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);

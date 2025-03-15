@@ -20,7 +20,7 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
-import { hasVideoQuizzes } from "../../../utils/deleteUtils";
+import { hasCourseVideos, hasVideoQuizzes } from "../../../utils/courseUtils";
 import { updateCourseProgress } from '../../../service/courses';
 
 const CourseVideosTab = forwardRef((props, ref) => {
@@ -44,11 +44,17 @@ const CourseVideosTab = forwardRef((props, ref) => {
         const courseVideos = snapshot.val();
 
         if (courseVideos) {
-            const filteredVideos = Object.entries(courseVideos).map(([key, video]) => ({
-                id: key,
-                ...video,
-                requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-            }));
+            const filteredVideos = await Promise.all(
+                Object.entries(courseVideos).map(async ([key, video]) => {
+                    const hasQuizzes = await hasVideoQuizzes(courseId, key);
+                    return {
+                        id: key,
+                        ...video,
+                        requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
+                        hasQuizzes: hasQuizzes.length > 0,
+                    };
+                })
+            );
             setVideos(filteredVideos);
         }
     }
@@ -314,9 +320,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
                     >
                         <ListItemText
                             primary={video.title}
-                            secondary={`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"}`}
+                            secondary={
+                                <Typography component="span" sx={{ color: '#666' }}>
+                                    {`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"}`} <br />
+                                    {`Existe Quiz: ${video.hasQuizzes ? "Sim" : "Não"}`}
+                                </Typography>
+                            }
                             primaryTypographyProps={{ sx: { fontWeight: 500, color: '#333' } }}
-                            secondaryTypographyProps={{ sx: { color: '#666' } }}
                         />
                     </ListItem>
                 ))}

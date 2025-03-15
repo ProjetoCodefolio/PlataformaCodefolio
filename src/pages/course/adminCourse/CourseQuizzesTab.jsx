@@ -95,7 +95,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     fetchQuizzes();
   }, [courseId]);
 
-  const handleAddQuiz = () => {
+  const handleAddQuiz = async () => {
     if (!newQuizVideoId) {
       toast.error("Selecione um vídeo para o quiz");
       return;
@@ -109,10 +109,19 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       minPercentage: newQuizMinPercentage,
       questions: [],
     };
-    setQuizzes(prev => [...prev, newQuiz]);
-    setNewQuizVideoId(videos[0]?.id || "");
-    setNewQuizMinPercentage(0);
-    setShowAddQuizModal(true);
+
+    try {
+      const courseQuizzesRef = firebaseRef(database, `courseQuizzes/${courseId}/${newQuizVideoId}`);
+      await set(courseQuizzesRef, newQuiz);
+      setQuizzes(prev => [...prev, newQuiz]);
+      setNewQuizVideoId(videos[0]?.id || "");
+      setNewQuizMinPercentage(0);
+      setShowAddQuizModal(true);
+      toast.success("Quiz adicionado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao adicionar quiz:", error);
+      toast.error("Erro ao adicionar o quiz");
+    }
   };
 
   const handleAddQuestion = () => {
