@@ -78,7 +78,7 @@ const Classes = () => {
       let progressData = {};
       let quizzesData = {};
 
-      // Carregar progresso do sessionStorage
+      // Carregar progresso do sessionStorage (para todos)
       let localProgress = {};
       const storedProgress = sessionStorage.getItem("videoProgress");
       if (storedProgress) {
@@ -97,7 +97,7 @@ const Classes = () => {
         );
       }
 
-      // Carregar progresso do Firebase
+      // Carregar progresso do Firebase (somente logados)
       if (userDetails?.userId) {
         const progressRef = ref(
           database,
@@ -106,14 +106,12 @@ const Classes = () => {
         const progressSnapshot = await get(progressRef);
         const firebaseProgress = progressSnapshot.val() || {};
 
-        // Comparar e manter o maior progresso
         progressData = Object.keys({
           ...localProgress,
           ...firebaseProgress,
         }).reduce((acc, videoId) => {
           const local = localProgress[videoId] || {};
           const firebase = firebaseProgress[videoId] || {};
-
           acc[videoId] = {
             watched: local.watched || firebase.watched || false,
             watchedTimeInSeconds: Math.max(
@@ -128,25 +126,6 @@ const Classes = () => {
           };
           return acc;
         }, {});
-
-        // Se houver progresso local maior, atualizar no Firebase
-        for (const [videoId, progress] of Object.entries(progressData)) {
-          if (
-            progress.percentageWatched >
-            (firebaseProgress[videoId]?.percentageWatched || 0) ||
-            progress.watchedTimeInSeconds >
-            (firebaseProgress[videoId]?.watchedTimeInSeconds || 0)
-          ) {
-            const progressRef = ref(
-              database,
-              `videoProgress/${userDetails.userId}/${courseId}/${videoId}`
-            );
-            await set(progressRef, {
-              ...progress,
-              lastUpdated: new Date().toISOString(),
-            });
-          }
-        }
       } else {
         progressData = localProgress;
       }
@@ -154,10 +133,6 @@ const Classes = () => {
       const quizzesRef = ref(database, `courseQuizzes/${courseId}`);
       const quizzesSnapshot = await get(quizzesRef);
       quizzesData = quizzesSnapshot.val() || {};
-
-      console.log("Videos:", videosData);
-      console.log("Progresso:", progressData);
-      console.log("Quizzes:", quizzesData);
 
       if (videosData) {
         const filteredVideos = Object.entries(videosData).map(([id, video]) => {
@@ -171,19 +146,17 @@ const Classes = () => {
             watched: userProgress.watched || false,
             quizPassed: userProgress.quizPassed || false,
             order: video.order || 0,
-            courseId: courseId, // Garantir que courseId seja atribuído
+            courseId: courseId,
             watchedTime: userProgress.watchedTimeInSeconds || 0,
             progress: userProgress.percentageWatched || 0,
             quizId: quizData ? `${courseId}/${id}` : null,
-            minPercentage: quizData ? quizData.minPercentage : 0,
+            minPercentage: quizData ? quizData.minPercentage : 70, // Padrão 70%
             requiresPrevious:
               video.requiresPrevious !== undefined
                 ? video.requiresPrevious
                 : true,
           };
         });
-
-        console.log("Vídeos carregados:", filteredVideos);
 
         const sortedVideos = filteredVideos.sort((a, b) => a.order - b.order);
         setVideos(sortedVideos);
@@ -193,7 +166,7 @@ const Classes = () => {
             return !video.watched || (video.quizId && !video.quizPassed);
           });
           setCurrentVideoId(
-            nextVideo ? nextVideo.id : sortedVideos[sortedVideos.length - 1].id
+            nextVideo ? nextVideo.id : sortedVideos[0].id
           );
         }
 
@@ -221,7 +194,6 @@ const Classes = () => {
           const firebaseProgress = firebaseSnapshot.val() || {};
 
           const progressData = JSON.parse(storedProgress);
-
           for (const video of progressData) {
             const firebaseVideoProgress = firebaseProgress[video.id] || {};
             const progressRef = ref(
@@ -265,49 +237,47 @@ const Classes = () => {
     ).length;
     const progressPercentage = (completedVideos / totalVideos) * 100;
 
-    console.log("Atualizando progresso do curso:", {
-      completedVideos,
-      totalVideos,
-      progressPercentage,
-    });
+    if (userDetails?.userId) {
+      const courseProgressRef = ref(
+        database,
+        `studentCourses/${userDetails.userId}/${courseId}`
+      );
+      try {
+        await set(courseProgressRef, {
+          courseId,
+          progress: progressPercentage,
+          status: progressPercentage === 100 ? "completed" : "in_progress",
+          lastUpdated: new Date().toISOString(),
+        });
 
-    const courseProgressRef = ref(
-      database,
-      `studentCourses/${userDetails.userId}/${courseId}`
-    );
-    try {
-      await set(courseProgressRef, {
-        courseId,
-        progress: progressPercentage,
-        status: progressPercentage === 100 ? "completed" : "in_progress",
-        lastUpdated: new Date().toISOString(),
-      });
-
+        if (progressPercentage === 100) {
+          setShowCompletionModal(true);
+        }
+      } catch (error) {
+        toast.error("Erro ao atualizar progresso do curso.");
+      }
+    } else {
       if (progressPercentage === 100) {
         setShowCompletionModal(true);
       }
-    } catch (error) {
-      toast.error("Erro ao atualizar progresso do curso.");
     }
   };
 
   const saveVideoProgress = async (currentTime, duration) => {
     const percentage = Math.floor((currentTime / duration) * 100);
+    const updatedVideos = videos.map((v) =>
+      v.id === currentVideo.id
+        ? {
+            ...v,
+            watched: percentage >= 90,
+            progress: percentage,
+            watchedTime: currentTime,
+          }
+        : v
+    );
+    setVideos(updatedVideos);
 
     if (!userDetails?.userId) {
-      const updatedVideos = videos.map((v) =>
-        v.id === currentVideo.id
-          ? {
-              ...v,
-              watched: percentage >= 90,
-              progress: percentage,
-              watchedTime: currentTime,
-              courseId: courseId, // Garantir que courseId seja salvo
-            }
-          : v
-      );
-      setVideos(updatedVideos);
-      console.log("sessionStorage atualizado (saveVideoProgress):", updatedVideos);
       sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
       return;
     }
@@ -327,13 +297,6 @@ const Classes = () => {
         lastUpdated: new Date().toISOString(),
       });
 
-      const updatedVideos = videos.map((v) =>
-        v.id === currentVideo.id
-          ? { ...v, watched: percentage >= 90, progress: percentage }
-          : v
-      );
-      setVideos(updatedVideos);
-
       if (!wasWatched && percentage >= 90) {
         await updateCourseProgress(updatedVideos);
       }
@@ -342,49 +305,55 @@ const Classes = () => {
     }
   };
 
-  const handleQuizPassed = async (videoId) => {
-    const progressRef = ref(
-      database,
-      `videoProgress/${userDetails.userId}/${courseId}/${videoId}`
-    );
-    try {
-      const currentVideoData = videos.find((v) => v.id === videoId);
-      await set(progressRef, {
-        watchedTimeInSeconds: currentVideoData.watchedTime,
-        percentageWatched: currentVideoData.progress,
-        watched: currentVideoData.watched,
-        quizPassed: true,
-        lastUpdated: new Date().toISOString(),
-      });
-
+  const handleQuizComplete = async (isPassed) => {
+    if (isPassed) {
       const updatedVideos = videos.map((v) =>
-        v.id === videoId ? { ...v, quizPassed: true } : v
+        v.id === currentVideoId ? { ...v, quizPassed: true } : v
       );
       setVideos(updatedVideos);
-      await updateCourseProgress(updatedVideos);
-      toast.success("Quiz concluído com sucesso! ✅");
-    } catch (error) {
-      toast.error("Erro ao salvar progresso do quiz.");
+
+      if (!userDetails?.userId) {
+        sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
+        toast.success("Quiz concluído com sucesso! ✅");
+        await updateCourseProgress(updatedVideos); // Atualiza progresso local
+      } else {
+        const progressRef = ref(
+          database,
+          `videoProgress/${userDetails.userId}/${courseId}/${currentVideoId}`
+        );
+        await set(progressRef, {
+          watchedTimeInSeconds: currentVideo.watchedTime,
+          percentageWatched: currentVideo.progress,
+          watched: currentVideo.watched,
+          quizPassed: true,
+          lastUpdated: new Date().toISOString(),
+        });
+        await updateCourseProgress(updatedVideos); // Atualiza progresso no Firebase
+      }
+    } else {
+      toast.warn("Você não atingiu a pontuação mínima. Tente novamente!");
     }
+    setShowQuiz(false);
   };
 
   const handleVideoSelect = (video) => {
-    if (!userDetails?.userId) {
-      const videoIndex = videos.findIndex((v) => v.id === video.id);
-      if (videoIndex > 1) {
-        setShowLogInModal(true);
-        return;
-      }
+    const videoIndex = videos.findIndex((v) => v.id === video.id);
 
-      if (videoIndex === 1) {
-        const previousVideo = videos[0];
-        if (
-          !previousVideo.watched ||
-          (previousVideo.quizId && !previousVideo.quizPassed)
-        ) {
-          toast.warn("Complete o vídeo anterior primeiro!");
-          return;
-        }
+    // Restrição para deslogados: bloqueia após o segundo vídeo (índice 1)
+    if (!userDetails?.userId && videoIndex > 1) {
+      setShowLogInModal(true);
+      return;
+    }
+
+    // Verifica requisitos do vídeo anterior
+    if (video.requiresPrevious && videoIndex > 0) {
+      const previousVideo = videos[videoIndex - 1];
+      if (
+        !previousVideo.watched ||
+        (previousVideo.quizId && !previousVideo.quizPassed)
+      ) {
+        toast.warn("Complete o vídeo anterior primeiro!");
+        return;
       }
     }
 
@@ -405,63 +374,21 @@ const Classes = () => {
 
   const handleQuizSubmit = async (userAnswers) => {
     try {
-      if (!userDetails?.userId) {
-        const currentVideoIndex = videos.findIndex(
-          (v) => v.id === currentVideoId
-        );
-        if (currentVideoIndex > 1) {
-          setShowLogInModal(true);
-          return;
-        }
-
-        const quizData = await fetchQuizQuestions(
-          `${courseId}/${currentVideoId}`
-        );
-        let correctAnswersCount = 0;
-
-        Object.entries(userAnswers).forEach(([questionId, userAnswer]) => {
-          const question = quizData.questions[questionId];
-          if (question && userAnswer === question.correctOption) {
-            correctAnswersCount++;
-          }
-        });
-
-        const scorePercentage =
-          (correctAnswersCount / quizData.questions.length) * 100;
-        const isPassed = scorePercentage >= (currentVideo.minPercentage || 70);
-
-        if (isPassed) {
-          const updatedVideos = videos.map((v) =>
-            v.id === currentVideoId ? { ...v, quizPassed: true } : v
-          );
-          setVideos(updatedVideos);
-          console.log("sessionStorage atualizado (handleQuizSubmit):", updatedVideos);
-          sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
-          toast.success("Quiz concluído com sucesso! ✅");
-        } else {
-          toast.warn(
-            `Pontuação insuficiente: ${scorePercentage.toFixed(
-              2
-            )}%. Tente novamente!`
-          );
-        }
-        return;
-      }
-
       const { isPassed, scorePercentage } = await validateQuizAnswers(
         userAnswers,
         `${courseId}/${currentVideoId}`,
-        currentVideo.minPercentage
+        currentVideo?.minPercentage || 70
       );
 
       if (isPassed) {
-        await handleQuizPassed(currentVideoId);
+        await handleQuizComplete(true);
       } else {
         toast.warn(
           `Pontuação insuficiente: ${scorePercentage.toFixed(
             2
           )}%. Tente novamente!`
         );
+        await handleQuizComplete(false);
       }
     } catch (error) {
       console.error("Erro ao validar quiz:", error);
@@ -480,7 +407,6 @@ const Classes = () => {
   };
 
   const handleLogin = () => {
-    console.log("Redirecionando para a página de login...");
     navigate("/login");
   };
 
@@ -488,21 +414,21 @@ const Classes = () => {
     <>
       <style>
         {`
-                    @media (max-width: 600px) {
-                        .Toastify__toast {
-                            width: 90vw !important;
-                            min-height: auto !important;
-                            font-size: 0.9rem !important;
-                            padding: 8px 12px !important;
-                            margin: 8px auto !important;
-                            border-radius: 8px !important;
-                            margin-top: 50px !important;
-                        }
-                        .Toastify__toast-body {
-                            margin: 0 !important;
-                        }
-                    }
-                `}
+          @media (max-width: 600px) {
+            .Toastify__toast {
+              width: 90vw !important;
+              min-height: auto !important;
+              font-size: 0.9rem !important;
+              padding: 8px 12px !important;
+              margin: 8px auto !important;
+              border-radius: 8px !important;
+              margin-top: 50px !important;
+            }
+            .Toastify__toast-body {
+              margin: 0 !important;
+            }
+          }
+        `}
       </style>
       <ToastContainer
         position="top-right"
@@ -521,10 +447,10 @@ const Classes = () => {
       />
       <style>
         {`
-         body {
-             background: #F5F5FA
-                 }
-              `}
+          body {
+            background: #F5F5FA
+          }
+        `}
       </style>
 
       <Box
@@ -570,10 +496,7 @@ const Classes = () => {
                 courseId={courseId}
                 currentVideoId={currentVideoId}
                 videos={videos}
-                onComplete={(isPassed) => {
-                  if (isPassed) handleQuizPassed(currentVideoId);
-                  setShowQuiz(false);
-                }}
+                onComplete={handleQuizComplete}
                 onSubmit={handleQuizSubmit}
                 onNextVideo={handleNextVideo}
               />
