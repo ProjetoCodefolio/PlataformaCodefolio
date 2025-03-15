@@ -87,11 +87,12 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                 userAnswers: answers,
                 isPassed,
                 scorePercentage: calculatedPercentage,
+                minPercentage: minPercentage,
             });
             setQuizCompleted(true);
             onSubmit(answers);
         } catch (error) {
-            console.log("caiu em quiz");
+            console.log("Erro ao validar quiz:", error);
             toast.error("Erro ao validar o quiz.");
             setQuizCompleted(false);
         }
@@ -112,6 +113,12 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
     const hasNextVideo = () => {
         const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
         return currentVideoIndex < videos.length - 1;
+    };
+
+    const getRequiredCorrectAnswers = () => {
+        if (!result) return "";   
+        const minPercentage = result.minPercentage;
+        return `${minPercentage}%`;
     };
 
     if (loading)
@@ -185,7 +192,9 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                             fontSize: { xs: "1.25rem", sm: "1.75rem" },
                         }}
                     >
-                        {result.isPassed ? "Parabéns, você passou!" : "Você não atingiu a nota mínima."}
+                        {result.isPassed 
+                            ? "Parabéns, você passou!" 
+                            : `Você não atingiu a nota mínima de ${getRequiredCorrectAnswers()}`}
                     </Typography>
                     <Box sx={{ mb: { xs: 2, sm: 4 } }}>
                         {questions.map((q) => {
@@ -390,7 +399,7 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
                     ))}
                 </RadioGroup>
                 <Box
-                    D sx={{
+                    sx={{
                         display: "flex",
                         flexDirection: { xs: "column", sm: "row" },
                         justifyContent: "space-between",
