@@ -163,7 +163,7 @@ const Classes = () => {
         const filteredVideos = Object.entries(videosData).map(([id, video]) => {
           const quizData = quizzesData[id] || null;
           const userProgress = progressData[id] || {};
-          const videoObj = {
+          return {
             id,
             title: video.title || "Sem título",
             url: video.url || "",
@@ -171,7 +171,7 @@ const Classes = () => {
             watched: userProgress.watched || false,
             quizPassed: userProgress.quizPassed || false,
             order: video.order || 0,
-            courseId: video.courseId,
+            courseId: courseId, // Garantir que courseId seja atribuído
             watchedTime: userProgress.watchedTimeInSeconds || 0,
             progress: userProgress.percentageWatched || 0,
             quizId: quizData ? `${courseId}/${id}` : null,
@@ -181,8 +181,6 @@ const Classes = () => {
                 ? video.requiresPrevious
                 : true,
           };
-          console.log(`Video ${video.title} quizId:`, videoObj.quizId);
-          return videoObj;
         });
 
         console.log("Vídeos carregados:", filteredVideos);
@@ -300,15 +298,16 @@ const Classes = () => {
       const updatedVideos = videos.map((v) =>
         v.id === currentVideo.id
           ? {
-            ...v,
-            watched: percentage >= 90,
-            progress: percentage,
-            watchedTime: currentTime,
-          }
+              ...v,
+              watched: percentage >= 90,
+              progress: percentage,
+              watchedTime: currentTime,
+              courseId: courseId, // Garantir que courseId seja salvo
+            }
           : v
       );
       setVideos(updatedVideos);
-      console.log("Videos atualizados (não logado):", updatedVideos);
+      console.log("sessionStorage atualizado (saveVideoProgress):", updatedVideos);
       sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
       return;
     }
@@ -436,10 +435,8 @@ const Classes = () => {
             v.id === currentVideoId ? { ...v, quizPassed: true } : v
           );
           setVideos(updatedVideos);
-          sessionStorage.setItem(
-            "videoProgress",
-            JSON.stringify(updatedVideos)
-          );
+          console.log("sessionStorage atualizado (handleQuizSubmit):", updatedVideos);
+          sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
           toast.success("Quiz concluído com sucesso! ✅");
         } else {
           toast.warn(
