@@ -20,8 +20,8 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
-import { hasCourseVideos, hasVideoQuizzes } from "../../../utils/courseUtils";
-import { updateCourseProgress } from '../../../service/courses';
+import { hasVideoQuizzes } from "../../../utils/courseUtils";
+import { updateAllUsersCourseProgress } from '../../../service/courses';
 
 const CourseVideosTab = forwardRef((props, ref) => {
     const [videos, setVideos] = useState([]);
@@ -82,16 +82,15 @@ const CourseVideosTab = forwardRef((props, ref) => {
             await set(newVideoRef, videoData);
 
             const updatedVideos = [...videos, { ...videoData, id: newVideoRef.key }];
-            if (updatedVideos.length > 0) {
-                await updateCourseProgress(currentUser.uid, courseId, updatedVideos, true);
-            }
-
             setVideos(updatedVideos);
             setVideoTitle("");
             setVideoUrl("");
             setVideoDescription("");
             setRequiresPrevious(true);
             setShowSuccessModal(true);
+
+            // Atualizar progresso do curso para todos os usuários
+            await updateAllUsersCourseProgress(courseId, updatedVideos);
         } catch (error) {
             console.error("Erro ao adicionar vídeo:", error);
             toast.error("Erro ao adicionar vídeo");
@@ -129,11 +128,9 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 console.log("videoProgressRef:", (await get(videoProgressRef)).val());
                 await remove(videoProgressRef);
 
-                // atualizar progresso do curso -> está dando erro
+                // atualizar progresso do curso para todos os usuários
                 const updatedVideos = videos.filter((video) => video.id !== videoToDelete.id);
-                if (updatedVideos.length > 0) {
-                    await updateCourseProgress(currentUser.uid, courseId, updatedVideos, false);
-                }
+                await updateAllUsersCourseProgress(courseId, updatedVideos);
 
                 toast.success("Vídeo deletado com sucesso!");
             } catch (error) {
