@@ -56,6 +56,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
 
   const questionFormRef = useRef(null);
   const quizzesListEndRef = useRef(null); // Referência para o final da lista
+  const quizSettingsRef = useRef(null);
 
   const fetchVideos = async () => {
     const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
@@ -121,7 +122,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       setNewQuizMinPercentage(0);
       setShowAddQuizModal(true);
       toast.success("Quiz adicionado com sucesso!");
-      quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); 
+      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error("Erro ao adicionar quiz:", error);
       toast.error("Erro ao adicionar o quiz");
@@ -254,7 +255,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       const courseQuizzesRef = firebaseRef(database, `courseQuizzes/${courseId}/${newQuizVideoId}`);
       await set(courseQuizzesRef, quizData);
       toast.success("Edição do quiz salva com sucesso!");
-      quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); // Scroll até o final
+      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); // Scroll até o final
     } catch (error) {
       console.error("Erro ao salvar quiz:", error);
       toast.error("Erro ao salvar o quiz");
@@ -327,9 +328,9 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   }));
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#fff", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
+    <Box sx={{ p: 3, backgroundColor: "#fff", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }} ref={quizSettingsRef}>
       <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", color: "#333" }}>
-        Criar Novo Quiz
+        {editQuiz ?  "Criar Novo Quiz" : "Editar Quiz"}
       </Typography>
 
       <Grid container spacing={3}>
@@ -525,7 +526,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           <Grid item xs={12}>
             <Button
               variant="contained"
-              onClick={handleSaveEditQuiz}
+              onClick={() => {handleSaveEditQuiz(); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });}}
               sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
             >
               Salvar Edição do Quiz
@@ -561,7 +562,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                   <ExpandMoreIcon />
                 </IconButton>
                 <IconButton
-                  onClick={() => handleEditQuiz(quiz)}
+                  onClick={() => {handleEditQuiz(quiz); quizSettingsRef.current.scrollIntoView({ behavior: "smooth" });}}
                   sx={{ color: "#9041c1" }}
                 >
                   <EditIcon />
@@ -618,7 +619,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                         }}
                       >
                         <IconButton
-                          onClick={() => handleEditQuestion(quiz, question)}
+                          onClick={() => {handleEditQuestion(quiz, question); questionFormRef.current.scrollIntoView({ behavior: "smooth" });}}
                           sx={{ color: "#9041c1" }}
                         >
                           <EditIcon />
@@ -652,7 +653,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         ))}
       </List>
 
-      <Modal open={showAddQuizModal} onClose={() => setShowAddQuizModal(false)}>
+      <Modal open={showAddQuizModal} onClose={() => { setShowAddQuizModal(false); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }}>
         <Box
           sx={{
             position: "absolute",
@@ -673,7 +674,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => setShowAddQuizModal(false)}
+            onClick={() => {setShowAddQuizModal(false); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });}}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
             OK

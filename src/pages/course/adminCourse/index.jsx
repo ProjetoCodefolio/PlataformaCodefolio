@@ -19,7 +19,8 @@ import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
 import CourseQuizzesTab from './CourseQuizzesTab';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const CourseForm = () => {
   const navigate = useNavigate();
@@ -114,12 +115,6 @@ const CourseForm = () => {
     }
   }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
 
-  // useEffect(() => {
-  //   if (showSuccessModal || showUpdateModal) {
-  //     window.scrollTo({ top: 0, behavior: 'smooth' });
-  //   }
-  // }, [showSuccessModal, showUpdateModal]);
-
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
     return (
@@ -131,6 +126,7 @@ const CourseForm = () => {
 
   return (
     <>
+      <ToastContainer />
       <Topbar hideSearch={true} />
       <Box
         sx={{
