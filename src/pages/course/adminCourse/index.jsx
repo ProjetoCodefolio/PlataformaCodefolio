@@ -106,11 +106,19 @@ const CourseForm = () => {
       setShowSuccessModal(!courseId);
       setShowUpdateModal(!!courseId);
       toast.success(`Curso ${courseId ? "atualizado" : "criado"} com sucesso!`);
+
+      // window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
   }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
+
+  // useEffect(() => {
+  //   if (showSuccessModal || showUpdateModal) {
+  //     window.scrollTo({ top: 0, behavior: 'smooth' });
+  //   }
+  // }, [showSuccessModal, showUpdateModal]);
 
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
@@ -279,6 +287,7 @@ const CourseForm = () => {
             onClick={() => {
               setShowSuccessModal(false);
               navigate(`/adm-cursos?courseId=${courseId}`);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >

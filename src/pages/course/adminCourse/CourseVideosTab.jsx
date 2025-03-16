@@ -300,6 +300,10 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 Adicionar Vídeo
             </Button>
 
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}>
+                Vídeos do Curso
+            </Typography>
+
             <List sx={{ mt: 4 }}>
                 {videos.map((video) => (
                     <ListItem

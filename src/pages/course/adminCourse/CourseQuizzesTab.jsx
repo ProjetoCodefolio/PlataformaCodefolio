@@ -1,7 +1,7 @@
 import { ref as firebaseRef, set, get, remove } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation } from "react-router-dom";
-import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
 import {
   Box,
   TextField,
@@ -53,6 +53,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
+
+  const questionFormRef = useRef(null); // Adicione a referência ao formulário de perguntas
 
   const fetchVideos = async () => {
     const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
@@ -380,6 +382,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               "& .MuiInputLabel-root": { color: "#666", "&.Mui-focused": { color: "#9041c1" } },
             }}
             helperText="0 a 100%. Se 0, o quiz não será obrigatório."
+            ref={questionFormRef} // Adicione a referência ao formulário de perguntas
           />
         </Grid>
 
@@ -630,7 +633,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 <CardActions>
                   <Button
                     variant="contained"
-                    onClick={() => handleEditQuiz(quiz)}
+                    onClick={() => {
+                      handleEditQuiz(quiz);
+                      questionFormRef.current.scrollIntoView({ behavior: "smooth" });
+                    }}
                     startIcon={<AddIcon />}
                     sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
                   >

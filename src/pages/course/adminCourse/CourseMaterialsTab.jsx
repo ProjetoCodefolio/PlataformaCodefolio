@@ -207,6 +207,10 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                 </Grid>
             </Grid>
 
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}>
+                Materiais Adicionados
+            </Typography>
+
             <List sx={{ mt: 4 }}>
                 {materials.map((material) => (
                     <ListItem
