@@ -54,7 +54,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
 
-  const questionFormRef = useRef(null); // Adicione a referência ao formulário de perguntas
+  const questionFormRef = useRef(null);
+  const quizzesListEndRef = useRef(null); // Referência para o final da lista
 
   const fetchVideos = async () => {
     const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
@@ -120,6 +121,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       setNewQuizMinPercentage(0);
       setShowAddQuizModal(true);
       toast.success("Quiz adicionado com sucesso!");
+      quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); 
     } catch (error) {
       console.error("Erro ao adicionar quiz:", error);
       toast.error("Erro ao adicionar o quiz");
@@ -252,6 +254,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       const courseQuizzesRef = firebaseRef(database, `courseQuizzes/${courseId}/${newQuizVideoId}`);
       await set(courseQuizzesRef, quizData);
       toast.success("Edição do quiz salva com sucesso!");
+      quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); // Scroll até o final
     } catch (error) {
       console.error("Erro ao salvar quiz:", error);
       toast.error("Erro ao salvar o quiz");
@@ -382,7 +385,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               "& .MuiInputLabel-root": { color: "#666", "&.Mui-focused": { color: "#9041c1" } },
             }}
             helperText="0 a 100%. Se 0, o quiz não será obrigatório."
-            ref={questionFormRef} // Adicione a referência ao formulário de perguntas
+            ref={questionFormRef}
           />
         </Grid>
 
@@ -535,7 +538,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         Quizzes Criados
       </Typography>
 
-      <List>
+      <List ref={quizzesListEndRef}>
         {quizzes.map((quiz) => (
           <Card key={quiz.videoId} sx={{ mb: 2, borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
             <CardContent sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -588,8 +591,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                         primary={question.question}
                         secondary={`Opções: ${question.options.join(", ")} | Correta: ${question.options[question.correctOption]}`}
                         sx={{
-                          pr: 10, // Espaço reservado para os botões
-                          flex: 1, // Faz o texto ocupar o espaço disponível
+                          pr: 10,
+                          flex: 1,
                         }}
                         primaryTypographyProps={{
                           sx: {
