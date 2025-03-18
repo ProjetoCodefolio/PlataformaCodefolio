@@ -13,6 +13,8 @@ import {
   Tab,
   Grid,
   Modal,
+  FormControlLabel,
+  Switch
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Topbar from "../../../components/topbar/Topbar";
@@ -38,6 +40,8 @@ const CourseForm = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [pinRequired, setPinRequired] = useState(false);
+  const [coursePin, setCoursePin] = useState("");
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -49,6 +53,8 @@ const CourseForm = () => {
         if (courseData) {
           setCourseTitle(courseData.title || "");
           setCourseDescription(courseData.description || "");
+          setPinRequired(!!courseData.pin);
+          setCoursePin(courseData.pin || "");
         }
       }
     };
@@ -85,6 +91,11 @@ const CourseForm = () => {
         ...(courseId ? {} : { createdAt: new Date().toISOString() }),
       };
 
+      if (pinRequired) {
+        // caso o pin seja requerido, adicione ele ao objeto courseData
+        courseData.pin = coursePin.trim() ? coursePin : Math.floor(1000000 + Math.random() * 9000000).toString();
+      }
+
       let finalCourseId = courseId;
       if (!courseId) {
         const courseRef = ref(database, "courses");
@@ -113,7 +124,7 @@ const CourseForm = () => {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
-  }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
+  }, [courseTitle, courseDescription, userDetails, courseId, coursePin, pinRequired, navigate]);
 
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
@@ -177,6 +188,7 @@ const CourseForm = () => {
                 }}
               />
             </Grid>
+
             <Grid item xs={12}>
               <TextField
                 label="Descrição do Curso"
@@ -201,6 +213,60 @@ const CourseForm = () => {
                 }}
               />
             </Grid>
+
+            <Grid item xs={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={pinRequired}
+                    onChange={(e) => setPinRequired(e.target.checked)}
+                    disabled={!!courseId}
+                    sx={{
+                      '& .MuiSwitch-switchBase': {
+                        color: '#9041c1', // Cor quando desmarcado
+                        '&.Mui-checked': {
+                          color: '#9041c1', // Cor quando marcado
+                        },
+                        '&.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#9041c1', // Cor da trilha quando marcado
+                        },
+                      },
+                      '& .MuiSwitch-track': {
+                        backgroundColor: '#666', // Cor da trilha quando desmarcado
+                      },
+                    }}
+                  />
+                }
+                label="Criar PIN para acesso ao curso"
+                sx={{ color: '#666' }}
+              />
+            </Grid>
+
+            {(pinRequired || courseId) && (
+              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}> {/* Ajuste o valor de mt para alterar a margem superior */}
+                <TextField
+                  label="PIN de Acesso"
+                  fullWidth
+                  variant="outlined"
+                  value={coursePin}
+                  disabled={!!courseId}
+                  inputProps={{ maxLength: 7 }}
+                  onChange={(e) => setCoursePin(e.target.value)}
+                  helperText="Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": { borderColor: "#666" },
+                      "&:hover fieldset": { borderColor: "#9041c1" },
+                      "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                    },
+                    "& .MuiInputLabel-root": {
+                      color: "#666",
+                      "&.Mui-focused": { color: "#9041c1" },
+                    },
+                  }}
+                />
+              </Grid>
+            )}
           </Grid>
 
           {courseId && (
