@@ -262,11 +262,11 @@ const Classes = () => {
         const updatedVideos = videos.map((v) =>
             v.id === currentVideo.id
                 ? {
-                      ...v,
-                      watched: percentage >= 90,
-                      progress: percentage,
-                      watchedTime: currentTime,
-                  }
+                    ...v,
+                    watched: percentage >= 90,
+                    progress: percentage,
+                    watchedTime: currentTime,
+                }
                 : v
         );
         setVideos(updatedVideos);
@@ -282,14 +282,16 @@ const Classes = () => {
         );
 
         try {
-            const wasWatched = currentVideo.watched;
-            await set(progressRef, {
-                watchedTimeInSeconds: currentTime,
-                percentageWatched: percentage,
-                watched: percentage >= 90,
-                quizPassed: currentVideo.quizPassed || false,
-                lastUpdated: new Date().toISOString(),
-            });
+            if (percentage < 100 && !currentVideo.watched) {
+                const wasWatched = currentVideo.watched;
+                await set(progressRef, {
+                    watchedTimeInSeconds: currentTime,
+                    percentageWatched: percentage,
+                    watched: percentage >= 90,
+                    quizPassed: currentVideo.quizPassed || false,
+                    lastUpdated: new Date().toISOString(),
+                });
+            }
 
             if (!wasWatched && percentage >= 90) {
                 await updateCourseProgress(updatedVideos);
