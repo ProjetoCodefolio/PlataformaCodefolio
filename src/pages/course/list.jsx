@@ -16,6 +16,8 @@ import Topbar from "../../components/topbar/Topbar";
 import { ref, get } from "firebase/database";
 import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
+import LockIcon from "@mui/icons-material/Lock";
+import PinAccessModal from "../../components/modals/PinAccessModal";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0);
@@ -25,6 +27,8 @@ const MyCourses = () => {
   const [filteredAvailableCourses, setFilteredAvailableCourses] = useState([]);
   const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
   const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showPinModal, setShowPinModal] = useState(false);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
@@ -41,8 +45,7 @@ const MyCourses = () => {
         const coursesData = snapshot.val();
         const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
           courseId,
-          title: course.title,
-          description: course.description,
+          ...course,
         }));
 
         if (userDetails) {
@@ -162,6 +165,17 @@ const MyCourses = () => {
   };
 
   const handleStartCourse = (course) => {
+    console.log("Curso selecionado:", course); // Log para verificar o curso
+    if (course.pin) {
+      setSelectedCourse(course);
+      setShowPinModal(true);
+      console.log("Modal aberto para o curso com PIN:", course); // Log para verificar se o modal será aberto
+    } else {
+      navigate(`/classes?courseId=${course.courseId}`);
+    }
+  };
+
+  const handlePinSubmit = (course) => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
@@ -177,7 +191,7 @@ const MyCourses = () => {
     if (!courses || courses.length === 0) {
       return <Typography variant="body1" color="textSecondary">Nenhum curso encontrado.</Typography>;
     }
-
+     
     return (
       <Grid container spacing={2}>
         {courses.map((course) => (
@@ -198,18 +212,35 @@ const MyCourses = () => {
               }}
             >
               <CardContent sx={{ flex: 1 }}>
-                <Typography
-                  variant="subtitle1"
+                <Box
                   sx={{
-                    fontWeight: "bold",
-                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     mb: 1,
-                    color: "#333",
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
                   }}
                 >
-                  {course.title || "Título do Curso"}
-                </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      color: "#333",
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    }}
+                  >
+                    {course.title || "Título do Curso"}
+                  </Typography>
+                  {course.pin && (
+                    <LockIcon
+                      sx={{
+                        color: "#9041c1",
+                        ml: 1,
+                        fontSize: { xs: "1rem", sm: "1.2rem" },
+                      }}
+                    />
+                  )}
+                </Box>
                 <Typography
                   variant="body2"
                   color="textSecondary"
@@ -332,6 +363,14 @@ const MyCourses = () => {
           </Box>
         )}
       </Paper>
+
+      <PinAccessModal
+        open={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        onSubmit={handlePinSubmit}
+        selectedCourse={selectedCourse}
+      />
+
     </Box>
   );
 };

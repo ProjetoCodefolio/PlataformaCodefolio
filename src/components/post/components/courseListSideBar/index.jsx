@@ -1,25 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Card, CardContent, Button, Grid, Modal, TextField } from "@mui/material";
+import { Box, Typography, Card, CardContent, Button, Grid } from "@mui/material";
 import { ref, get } from "firebase/database";
 import { database } from "../../../../service/firebase";
 import { useNavigate } from "react-router-dom";
 import LockIcon from '@mui/icons-material/Lock';
-import { keyframes } from '@emotion/react';
+import { useAuth } from "../../../../context/AuthContext";
+import PinAccessModal from "../../../modals/PinAccessModal";
 
-const shake = keyframes`
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-5px); }
-  100% { transform: translateX(0); }
-`;
 
 const CourseListSidebar = ({ onSelectCourse }) => {
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [pinInput, setPinInput] = useState("");
   const [showPinModal, setShowPinModal] = useState(false);
-  const [pinError, setPinError] = useState(false);
+  const { userDetails } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -43,24 +36,27 @@ const CourseListSidebar = ({ onSelectCourse }) => {
     fetchCourses();
   }, []);
 
-  const handleContinueCourse = (course) => {
-    if (course.pin) {
-      setSelectedCourse(course);
-      setShowPinModal(true);
-    } else {
-      navigate(`/classes?courseId=${course.courseId}`);
-    }
+  const handleContinueCourse = async (course) => {
+    const courseStudentsRef = ref(database, `studentCourses/${userDetails?.userId}/${course.courseId}`);
+    await get(courseStudentsRef)
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          navigate(`/classes?courseId=${course.courseId}`);
+        } else {
+          if (course.pin) {
+            setSelectedCourse(course);
+            setShowPinModal(true);
+          } else {
+            navigate(`/classes?courseId=${course.courseId}`);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Erro ao verificar se o estudante está inscrito no curso:", error);
+      });
   };
-
-  const handlePinSubmit = () => {
-    if (pinInput === selectedCourse.pin) {
-      setShowPinModal(false);
-      navigate(`/classes?courseId=${selectedCourse.courseId}`);
-    } else {
-      console.log("PIN incorreto");
-      setPinError(true);
-      setTimeout(() => setPinError(false), 2000); // Remove o efeito de tremor após 500ms
-    }
+  const handlePinSubmit = (course) => {
+    navigate(`/classes?courseId=${course.courseId}`);
   };
 
   return (
@@ -197,85 +193,15 @@ const CourseListSidebar = ({ onSelectCourse }) => {
         ))}
       </Grid>
 
-      <Modal open={showPinModal} onClose={() => setShowPinModal(false)}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "90%", sm: 500 },
-            bgcolor: "#fff",
-            borderRadius: "20px",
-            boxShadow: "0 12px 40px rgba(0, 0, 0, 0.3)",
-            p: { xs: 3, sm: 4 },
-            textAlign: "center",
-            background: "linear-gradient(135deg, #9041c1 0%, #7d37a7 100%)",
-            color: "#fff",
-            animation: "zoomIn 0.5s ease-in-out",
-            "@keyframes zoomIn": {
-              "0%": { transform: "translate(-50%, -50%) scale(0.5)", opacity: 0 },
-              "100%": { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
-            },
-            overflow: "hidden",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 2,
-          }}
-        >
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            Você está tentando acessar um curso que requer uma chave de acesso
-          </Typography>
-          <TextField
-            label="PIN de Acesso"
-            fullWidth
-            inputProps={{ maxLength: 7 }}
-            variant="outlined"
-            value={pinInput}
-            onChange={(e) => setPinInput(e.target.value)}
-            sx={{
-              mb: 2,
-              animation: pinError ? `${shake} 0.5s` : 'none',
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": { borderColor: "#fff" },
-                "&:hover fieldset": { borderColor: "#fff" },
-                "&.Mui-focused fieldset": { borderColor: "#fff" },
-              },
-              "& .MuiInputLabel-root": {
-                color: "#fff",
-                "&.Mui-focused": { color: "#fff" },
-              },
-              "& .MuiOutlinedInput-input": {
-                color: "#fff",
-              },
-            }}
-          />
-          {pinError && (
-            <Typography variant="body2" sx={{ color: '#ff4d4d', mt: -2, mb: 2 }}>
-              PIN incorreto. Tente novamente.
-            </Typography>
-          )}
-          <Button
-            variant="contained"
-            onClick={handlePinSubmit}
-            sx={{
-              backgroundColor: "#fff",
-              color: "#9041c1",
-              borderRadius: "16px",
-              "&:hover": { backgroundColor: "#f5f5fa", color: "#7d37a7" },
-              textTransform: "none",
-              fontWeight: 600,
-              px: 4,
-              py: 1.5,
-              minWidth: 180,
-            }}
-          >
-            Enviar
-          </Button>
-        </Box>
-      </Modal>
+      <Box>
+        {/* ... */}
+        <PinAccessModal
+          open={showPinModal}
+          onClose={() => setShowPinModal(false)}
+          onSubmit={handlePinSubmit}
+          selectedCourse={selectedCourse}
+        />
+      </Box>
     </Box>
   );
 };
