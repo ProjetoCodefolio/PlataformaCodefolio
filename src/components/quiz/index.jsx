@@ -10,6 +10,8 @@ import {
 } from "@mui/material";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import { useAuth } from "../../context/AuthContext";
+import { ref, set } from "firebase/database";
+import { database } from "../../service/firebase";
 
 const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, onNextVideo }) => {
     const [questions, setQuestions] = useState([]);
@@ -87,6 +89,16 @@ const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, 
             });
             setQuizCompleted(true);
             onSubmit(answers);
+
+            // Save the result to the database
+            if (userDetails?.userId) {
+                const quizResultRef = ref(database, `quizResults/${userDetails.userId}/${quizId}`);
+                await set(quizResultRef, {
+                    scorePercentage: calculatedPercentage,
+                    isPassed,
+                    submittedAt: new Date().toISOString(),
+                });
+            }
         } catch (error) {
             setQuizCompleted(false);
         }

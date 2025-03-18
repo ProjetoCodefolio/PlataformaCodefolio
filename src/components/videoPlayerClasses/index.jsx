@@ -369,6 +369,9 @@ function VideoWatcher({
     const hasNotified90Percent = useRef(false);
 
     const debouncedSaveProgress = debounce((currentTime, duration) => {
+        const percentageWatched = Math.floor((currentTime / duration) * 100);
+        if (percentageWatched === 100) return; // Não salva se a porcentagem for 100%
+
         if (onProgress) {
             onProgress(currentTime, duration);
         }
