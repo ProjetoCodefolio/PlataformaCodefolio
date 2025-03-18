@@ -368,9 +368,24 @@ function VideoWatcher({
     const [lastSavedPercentage, setLastSavedPercentage] = useState(percentageWatched);
     const hasNotified90Percent = useRef(false);
 
-    const debouncedSaveProgress = debounce((currentTime, duration) => {
+    const debouncedSaveProgress = debounce(async (currentTime, duration) => {
         const percentageWatched = Math.floor((currentTime / duration) * 100);
-        if (percentageWatched === 100) return; // Não salva se a porcentagem for 100%
+
+        if (userDetails?.userId && videoId && courseId) {
+            const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${videoId}`);
+            const progressData = {
+                watchedTimeInSeconds: currentTime,
+                percentageWatched,
+                watched: percentageWatched >= 90,
+            };
+
+            try {
+                await set(progressRef, progressData);
+                console.log("Progresso do vídeo salvo com sucesso:", progressData);
+            } catch (error) {
+                console.error("Erro ao salvar progresso do vídeo:", error);
+            }
+        }
 
         if (onProgress) {
             onProgress(currentTime, duration);
