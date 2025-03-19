@@ -289,11 +289,11 @@ const Classes = () => {
         const updatedVideos = videos.map((v) =>
             v.id === currentVideo.id
                 ? {
-                      ...v,
-                      watched: percentage >= 90,
-                      progress: percentage,
-                      watchedTime: currentTime,
-                  }
+                    ...v,
+                    watched: percentage >= 90,
+                    progress: percentage,
+                    watchedTime: currentTime,
+                }
                 : v
         );
         setVideos(updatedVideos);
