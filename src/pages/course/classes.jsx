@@ -222,6 +222,22 @@ const Classes = () => {
         fetchVideosData();
     }, [courseId, userDetails?.userId]);
 
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            if (videoPlayerRef.current) {
+                const currentTime = videoPlayerRef.current.getCurrentTime() || 0;
+                const duration = videoPlayerRef.current.getDuration() || 0;
+                saveVideoProgress(currentTime, duration, true);
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, []);
+
     const currentVideo = videos.find((video) => video.id === currentVideoId);
 
     const updateCourseProgress = async (updatedVideos) => {
@@ -257,8 +273,19 @@ const Classes = () => {
         }
     };
 
-    const saveVideoProgress = async (currentTime, duration) => {
+    const saveVideoProgress = async (currentTime, duration, forceSave = false) => {
         const percentage = Math.floor((currentTime / duration) * 100);
+        const roundedPercentage = Math.floor(percentage / 10) * 10; // Arredonda para o múltiplo de 10 mais próximo
+        console.log(`Salvando progresso: ${percentage}%, arredondado para: ${roundedPercentage}%`);
+
+        // Verificar se o progresso já está em 100% e já foi salvo anteriormente
+        // Você pode usar uma variável de estado para controlar isso
+        const [lastVideoSavedPercentage, setLastVideoSavedPercentage] = useState(0);
+        if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave) {
+            console.log("Vídeo já completado, ignorando atualização");
+            return;
+        }
+
         const updatedVideos = videos.map((v) =>
             v.id === currentVideo.id
                 ? {
@@ -276,26 +303,38 @@ const Classes = () => {
             return;
         }
 
-        const progressRef = ref(
-            database,
-            `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`
-        );
+        // Salvar no banco de dados a cada múltiplo de 10% ou se for um salvamento forçado
+        if (forceSave || percentage % 10 === 0) {
+            const progressRef = ref(
+                database,
+                `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`
+            );
 
-        try {
-            const wasWatched = currentVideo.watched;
-            await set(progressRef, {
-                watchedTimeInSeconds: currentTime,
-                percentageWatched: percentage,
-                watched: percentage >= 90,
-                quizPassed: currentVideo.quizPassed || false,
-                lastUpdated: new Date().toISOString(),
-            });
+            try {
+                const wasWatched = currentVideo.watched;
+                const progressData = {
+                    watchedTimeInSeconds: currentTime,
+                    percentageWatched: roundedPercentage,
+                    watched: percentage >= 90,
+                    quizPassed: currentVideo.quizPassed || false,
+                    lastUpdated: new Date().toISOString(),
+                };
 
-            if (!wasWatched && percentage >= 90) {
-                await updateCourseProgress(updatedVideos);
+                // Adicionar data de conclusão se o vídeo foi completado
+                if (percentage === 100) {
+                    progressData.completedAt = new Date().toISOString();
+                    setLastVideoSavedPercentage(100); // Marcar como completado
+                }
+
+                await set(progressRef, progressData);
+                console.log(`Progresso salvo no banco de dados: ${roundedPercentage}%`);
+
+                if (!wasWatched && percentage >= 90) {
+                    await updateCourseProgress(updatedVideos);
+                }
+            } catch (error) {
+                console.error("Erro ao salvar progresso do vídeo:", error);
             }
-        } catch (error) {
-            // Silêncio em caso de erro
         }
     };
 

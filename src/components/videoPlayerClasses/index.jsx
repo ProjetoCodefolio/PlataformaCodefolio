@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, forwardRef } from "react";
 import PropTypes from "prop-types";
-import { ref, get } from "firebase/database";
+import { ref as databaseRef, get, set } from "firebase/database"; // Renomeie 'ref' para 'databaseRef'
 import { database } from "../../service/firebase";
 import { useAuth } from "../../context/AuthContext";
 import { LinearProgress, Box, Typography, IconButton, Button } from "@mui/material";
@@ -75,7 +75,7 @@ const VideoPlayer = forwardRef(({ video, onProgress, videos, onVideoChange, setS
             if (!video?.id || !video?.courseId || !userDetails?.userId) return;
 
             try {
-                const progressRef = ref(database, `videoProgress/${userDetails.userId}/${video.courseId}/${video.id}`);
+                const progressRef = databaseRef(database, `videoProgress/${userDetails.userId}/${video.courseId}/${video.id}`);
                 const snapshot = await get(progressRef);
                 if (snapshot.exists()) {
                     const data = snapshot.val();
@@ -367,12 +367,13 @@ function VideoWatcher({
     const progressInterval = useRef(null);
     const [lastSavedPercentage, setLastSavedPercentage] = useState(percentageWatched);
     const hasNotified90Percent = useRef(false);
+    const videoCompletedRef = useRef(percentageWatched >= 100);
 
-    const debouncedSaveProgress = debounce(async (currentTime, duration) => {
+    const saveProgress = async (currentTime, duration) => {
         const percentageWatched = Math.floor((currentTime / duration) * 100);
 
         if (userDetails?.userId && videoId && courseId) {
-            const progressRef = ref(database, `videoProgress/${userDetails.userId}/${courseId}/${videoId}`);
+            const progressRef = databaseRef(database, `videoProgress/${userDetails.userId}/${courseId}/${videoId}`);
             const progressData = {
                 watchedTimeInSeconds: currentTime,
                 percentageWatched,
@@ -390,53 +391,135 @@ function VideoWatcher({
         if (onProgress) {
             onProgress(currentTime, duration);
         }
-    }, 1000);
+    };
+
+    const debouncedSaveProgress = debounce(saveProgress, 1000);
 
     useEffect(() => {
-        if (!player) return;
+        // Se já está em 100% ou não tem player, não iniciar monitoramento
+        if (!player || percentageWatched >= 100 || videoCompletedRef.current) {
+            console.log("Monitoramento não iniciado: vídeo já completo ou sem player");
+            videoCompletedRef.current = true;
+            return;
+        }
 
         const monitorProgress = () => {
+            // Verificação extra para garantir que não continuemos se já está em 100%
+            if (percentageWatched >= 100 || videoCompletedRef.current) {
+                console.log("Detectado 100% de progresso, parando monitoramento");
+                clearInterval(progressInterval.current);
+                progressInterval.current = null;
+                debouncedSaveProgress.cancel();
+                return;
+            }
+
             try {
                 const duration = player.getDuration() || 0;
                 const currentTime = player.getCurrentTime() || 0;
 
-                if (duration > 0) {
-                    const newPercentage = Math.floor((currentTime / duration) * 100);
-                    if (currentTime > watchTime) {
-                        setWatchTime(currentTime);
-                        setPercentageWatched(newPercentage);
+                if (duration <= 0) return; // Evita cálculos inválidos
 
-                        if (lastSavedPercentage < 90 && newPercentage >= 90 && !hasNotified90Percent.current) {
-                            toast.success("Progresso do vídeo salvo com sucesso!");
-                            hasNotified90Percent.current = true;
-                        }
+                // Considera como 100% se estiver a menos de 2 segundos do final ou se a % for >= 99.5%
+                const isNearEnd = (duration - currentTime) <= 2 || (currentTime / duration) >= 0.995;
+                
+                // Se estiver no final, força 100%
+                const newPercentage = isNearEnd 
+                    ? 100 
+                    : Math.min(100, Math.floor((currentTime / duration) * 100));
 
-                        if (newPercentage >= lastSavedPercentage) {
-                            debouncedSaveProgress(currentTime, duration);
-                            setLastSavedPercentage(newPercentage);
-                        }
-                    }
-
-                    if (currentTime >= duration - 1) {
+                // Se já atingiu 100% ou está muito próximo do final, parar o monitoramento imediatamente
+                if (newPercentage >= 100 || isNearEnd) {
+                    if (!videoCompletedRef.current) {
                         setWatchTime(duration);
                         setPercentageWatched(100);
-                        debouncedSaveProgress(duration, duration);
+                        saveProgress(duration, duration); // Salva uma única vez
+                        setLastSavedPercentage(100);
+                        toast.success("Vídeo concluído com sucesso!");
+                        videoCompletedRef.current = true;
                     }
+                    console.log("Vídeo atingiu 100%, parando monitoramento permanentemente");
+                    clearInterval(progressInterval.current); // Para o intervalo
+                    progressInterval.current = null;
+                    debouncedSaveProgress.cancel(); // Cancela qualquer salvamento pendente
+                    return;
+                }
+
+                // Atualiza o progresso apenas se ainda não atingiu 100%
+                if (currentTime > watchTime) {
+                    setWatchTime(currentTime);
+                    setPercentageWatched(newPercentage);
+
+                    if (lastSavedPercentage < 90 && newPercentage >= 90 && !hasNotified90Percent.current) {
+                        toast.success("Progresso do vídeo salvo com sucesso!");
+                        hasNotified90Percent.current = true;
+                    }
+
+                    if (newPercentage >= lastSavedPercentage) {
+                        debouncedSaveProgress(currentTime, duration);
+                        setLastSavedPercentage(newPercentage);
+                    }
+
+                    if (newPercentage % 10 === 0) {
+                        saveProgress(currentTime, duration);
+                    }
+                }
+
+                // Verificação adicional para quando estiver muito próximo do fim
+                if ((duration - currentTime) <= 2 && !videoCompletedRef.current) {
+                    setWatchTime(duration);
+                    setPercentageWatched(100);
+                    saveProgress(duration, duration);
+                    setLastSavedPercentage(100);
+                    toast.success("Vídeo concluído com sucesso!");
+                    videoCompletedRef.current = true;
+                    clearInterval(progressInterval.current);
+                    progressInterval.current = null;
                 }
             } catch (error) {
                 console.error("Erro ao monitorar progresso:", error);
             }
         };
 
-        progressInterval.current = setInterval(monitorProgress, 5000);
+        // Executa uma vez imediatamente para verificar o estado inicial
+        monitorProgress();
+
+        // Configura o intervalo com uma verificação adicional para garantir que 
+        // não será executado se o vídeo atingir 100% entre verificações
+        progressInterval.current = setInterval(() => {
+            if (percentageWatched >= 100 || videoCompletedRef.current) {
+                console.log("Verificação preventiva: vídeo já em 100%, parando intervalo");
+                clearInterval(progressInterval.current);
+                progressInterval.current = null;
+                return;
+            }
+            monitorProgress();
+        }, 10000);
 
         return () => {
             if (progressInterval.current) {
                 clearInterval(progressInterval.current);
+                progressInterval.current = null;
             }
+            debouncedSaveProgress.cancel(); // Cancela debounce ao desmontar
             hasNotified90Percent.current = false;
         };
-    }, [player, videoId, watchTime, debouncedSaveProgress, setPercentageWatched, setWatchTime, lastSavedPercentage]);
+    }, [player, videoId]); // Removi percentageWatched das dependências
+
+    useEffect(() => {
+        const handleBeforeUnload = (event) => {
+            if (player && !videoCompletedRef.current) {
+                const currentTime = player.getCurrentTime() || 0;
+                const duration = player.getDuration() || 0;
+                saveProgress(currentTime, duration);
+            }
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [player]);
 
     const currentIndex = videos.findIndex((v) => v.id === currentVideo.id);
     const hasPrevious = currentIndex > 0;
