@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ref, get, set } from "firebase/database";
 import { database } from "../../service/firebase";
-import { VideoPlayer } from "../../components/videoPlayerClasses";
-import VideoList from "../../components/videoList";
-import MaterialExtra from "../../components/MaterialExtra";
-import Quiz from "../../components/quiz";
+import { VideoPlayer } from "../../components/courses/videoPlayerClasses";
+import VideoList from "../../components/courses/videoList";
+import MaterialExtra from "../../components/courses/extraMaterials";
+import Quiz from "../../components/courses/quiz";
 import {
     Box,
     Tabs,

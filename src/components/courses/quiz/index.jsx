@@ -8,10 +8,10 @@ import {
     Radio,
     LinearProgress,
 } from "@mui/material";
-import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
-import { useAuth } from "../../context/AuthContext";
+import { fetchQuizQuestions, validateQuizAnswers } from "../../../service/courses";
+import { useAuth } from "../../../context/AuthContext";
 import { ref, set, get } from "firebase/database";
-import { database } from "../../service/firebase";
+import { database } from "../../../service/firebase";
 
 const Quiz = ({ quizId, courseId, currentVideoId, videos, onComplete, onSubmit, onNextVideo }) => {
     const [questions, setQuestions] = useState([]);

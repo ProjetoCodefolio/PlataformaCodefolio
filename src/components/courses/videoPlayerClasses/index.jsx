@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, forwardRef } from "react";
 import PropTypes from "prop-types";
 import { ref as databaseRef, get, set } from "firebase/database"; // Renomeie 'ref' para 'databaseRef'
-import { database } from "../../service/firebase";
-import { useAuth } from "../../context/AuthContext";
+import { database } from "../../../service/firebase";
+import { useAuth } from "../../../context/AuthContext";
 import { LinearProgress, Box, Typography, IconButton, Button } from "@mui/material";
 import YouTube from "react-youtube";
 import { toast } from "react-toastify";
@@ -10,9 +10,9 @@ import { debounce } from "lodash";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
-import { handleGoogleSignIn } from "../../utils/authUtils";
+import { handleGoogleSignIn } from "../../../utils/authUtils";
 import { useNavigate } from "react-router-dom";
-import { getYouTubeID } from "../../utils/postUtils";
+import { getYouTubeID } from "../../../utils/postUtils";
 
 const styles = `
   .youtube-player .ytp-chrome-bottom,

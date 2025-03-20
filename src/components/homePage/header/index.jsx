@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as S from "./styles";
-import logo2 from "../../assets/img/logo2.gif";
-import hamburgerIcon from "../../assets/img/hamburger-icon.svg";
-import { useAuth } from "../../context/AuthContext";
-import { handleGoogleSignIn, getFirebaseErrorMessage } from "../../utils/authUtils";
+import logo2 from "../../../assets/img/logo2.gif";
+import hamburgerIcon from "../../../assets/img/hamburger-icon.svg";
+import { useAuth } from "../../../context/AuthContext";
+import { handleGoogleSignIn, getFirebaseErrorMessage } from "../../../utils/authUtils";
 
 const Header = () => {
     const [error, setError] = useState("");

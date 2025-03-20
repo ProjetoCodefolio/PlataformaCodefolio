@@ -1,5 +1,5 @@
 import styled from "styled-components";
-import { colorConstants } from "../../constants/constantStyles";
+import { colorConstants } from "../../../constants/constantStyles";
 
 export const HeaderWrapper = styled.header`
     display: flex;
