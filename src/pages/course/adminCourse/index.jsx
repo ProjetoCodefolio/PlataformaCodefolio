@@ -42,6 +42,7 @@ const CourseForm = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pinRequired, setPinRequired] = useState(false);
   const [coursePin, setCoursePin] = useState("");
+  const [randomPin, setRandomPin] = useState(Math.floor(1000000 + Math.random() * 9000000).toString());
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -53,7 +54,7 @@ const CourseForm = () => {
         if (courseData) {
           setCourseTitle(courseData.title || "");
           setCourseDescription(courseData.description || "");
-          setPinRequired(!!courseData.pin);
+          setPinRequired(courseData.pinEnabled);
           setCoursePin(courseData.pin || "");
         }
       }
@@ -88,12 +89,12 @@ const CourseForm = () => {
         description: courseDescription,
         userId: userDetails.userId,
         updatedAt: new Date().toISOString(),
+        pinEnabled: pinRequired,
         ...(courseId ? {} : { createdAt: new Date().toISOString() }),
       };
 
       if (pinRequired) {
-        // caso o pin seja requerido, adicione ele ao objeto courseData
-        courseData.pin = coursePin.trim() ? coursePin : Math.floor(1000000 + Math.random() * 9000000).toString();
+        courseData.pin = coursePin || randomPin; // Salva o PIN gerado ou o existente
       }
 
       let finalCourseId = courseId;
@@ -115,16 +116,18 @@ const CourseForm = () => {
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
       ]);
 
+      if (!courseId) {
+        setCoursePin(courseData.pin); // Exibe o PIN gerado após salvar
+      }
+
       setShowSuccessModal(!courseId);
       setShowUpdateModal(!!courseId);
       toast.success(`Curso ${courseId ? "atualizado" : "criado"} com sucesso!`);
-
-      // window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
-  }, [courseTitle, courseDescription, userDetails, courseId, coursePin, pinRequired, navigate]);
+  }, [courseTitle, courseDescription, userDetails, courseId, coursePin, pinRequired, randomPin, navigate]);
 
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
@@ -219,11 +222,18 @@ const CourseForm = () => {
                 control={
                   <Switch
                     checked={pinRequired}
-                    onChange={(e) => setPinRequired(e.target.checked)}
-                    disabled={!!courseId}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setPinRequired(isChecked);
+
+                      if (!isChecked) {
+                        // Desabilitar o PIN (mantém o valor existente)
+                        setCoursePin((prevPin) => prevPin || "");
+                      }
+                    }}
                     sx={{
                       '& .MuiSwitch-switchBase': {
-                        color: '#9041c1', // Cor quando desmarcado
+                        color: 'grey', // Cor quando desmarcado
                         '&.Mui-checked': {
                           color: '#9041c1', // Cor quando marcado
                         },
@@ -243,16 +253,20 @@ const CourseForm = () => {
             </Grid>
 
             {(pinRequired || courseId) && (
-              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}> {/* Ajuste o valor de mt para alterar a margem superior */}
+              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}>
                 <TextField
                   label="PIN de Acesso"
                   fullWidth
                   variant="outlined"
                   value={coursePin}
-                  disabled={!!courseId}
+                  disabled={!pinRequired} // Desabilita o campo se o curso já existir
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
-                  helperText="Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                  helperText={
+                    courseId
+                      ? "O PIN já foi gerado e salvo para este curso."
+                      : "Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                  }
                   sx={{
                     "& .MuiOutlinedInput-root": {
                       "& fieldset": { borderColor: "#666" },
