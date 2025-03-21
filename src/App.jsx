@@ -17,10 +17,10 @@ import HomePage from "./pages/homePage";
 import Cursos from "./pages/course/adminCourse";
 import ListCursos from "./pages/course/list";
 import Classes from "./pages/course/classes";
+import StudentDashboard from "./pages/course/studentDashboard";
 import ManageMyCourses from "./pages/course/ManageMyCourses";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
 
 function App() {
   return (
@@ -88,6 +88,15 @@ function App() {
             />
 
             <Route
+              path="/studentDashboard"
+              element={
+                <AdminRoute>
+                  <StudentDashboard />
+                </AdminRoute>
+              }
+            />
+
+            <Route
               path="/listcurso"
               element={
                 <PrivateRoute>
@@ -113,7 +122,6 @@ function App() {
                 </PrivateRoute>
               }
             />
-
           </Routes>
         </Router>
       </AuthProvider>
@@ -126,9 +134,9 @@ function PrivateRoute({ children }) {
   const { currentUser } = useAuth();
   const location = useLocation();
 
-  if (!currentUser) {
-    // return <Navigate to="/login" state={{ from: location }} />;
-  }
+  // if (!currentUser) {
+  //   return <Navigate to="/login" state={{ from: location }} />;
+  // }
 
   return children;
 }
