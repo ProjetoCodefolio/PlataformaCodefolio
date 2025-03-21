@@ -1,25 +1,28 @@
 import { useState, useEffect } from "react";
 import { ref, onValue } from "firebase/database";
-import { Typography } from "@mui/material";
 import { database } from "../../../../service/firebase";
-import { getYouTubeID } from "../../utils";
+import { getYouTubeID } from "../../../../utils/postUtils";
 import axios from 'axios';
 import '../../post.css';
 
 const Informacoes = ({ post = {}, comments = {}, setComments }) => {
-    const quantidadeComentarios = comments[post.id] ? comments[post.id].length : 0;
+    const commentsLength = comments[post.id] ? comments[post.id].length : 0;
     const [likesYouTube, setLikesYouTube] = useState(0);
     const [likes, setLikes] = useState(post.likes ? post.likes.length : 0);
+    const [likesLength, setLikesLength] = useState(0);
     const API_KEY = import.meta.env.VITE_API_KEY;
 
     useEffect(() => {
         if (post.link) {
             const videoId = getYouTubeID(post.link);
             if (videoId) {
-                getLikesYouTubeCount(videoId).then(setLikesYouTube);
+                getLikesYouTubeCount(videoId).then((likeCount) => {
+                    setLikesYouTube(likeCount);
+                    setLikesLength(likes + likeCount);
+                });
             }
         }
-    }, [post.link]);
+    }, [post.link, likes]);
 
     const getLikesYouTubeCount = async (videoId) => {
         try {
@@ -47,6 +50,7 @@ const Informacoes = ({ post = {}, comments = {}, setComments }) => {
             } else {
                 setLikes(0);
             }
+
             if (data && data.comentarios) {
                 setComments((prevComments) => ({
                     ...prevComments,
@@ -64,11 +68,15 @@ const Informacoes = ({ post = {}, comments = {}, setComments }) => {
         return () => unsubscribe();
     }, [post.id, setLikes, setComments]);
 
+    useEffect(() => {
+        setLikesLength(likes + likesYouTube);
+    }, [likes, likesYouTube]);
+
     return (
         <>
             <div className="info-container">
-                <div className="info-likes"> {likes + likesYouTube} likes </div>
-                <div className="info-comentarios"> {quantidadeComentarios} comentários </div>
+                <div className="info-likes"> {`${likesLength} ${likesLength === 1 ? "like" : "likes"}`} </div>
+                <div className="info-comentarios"> {`${commentsLength} ${commentsLength === 1 ? "comentário" : "comentários"}`} </div>
             </div>
         </>
     );

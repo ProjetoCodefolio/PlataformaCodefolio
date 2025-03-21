@@ -16,6 +16,8 @@ import Topbar from "../../components/topbar/Topbar";
 import { ref, get } from "firebase/database";
 import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
+import LockIcon from "@mui/icons-material/Lock";
+import PinAccessModal from "../../components/modals/PinAccessModal";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0);
@@ -25,71 +27,106 @@ const MyCourses = () => {
   const [filteredAvailableCourses, setFilteredAvailableCourses] = useState([]);
   const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
   const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showPinModal, setShowPinModal] = useState(false);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const loadCourses = async () => {
-      
       try {
-        if (userDetails) {
-          const coursesRef = ref(database, "courses");
-          const snapshot = await get(coursesRef);
-          if (snapshot.exists()) {
-            const coursesData = snapshot.val();
-            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
-              courseId,
-              title: course.title,
-              description: course.description,
-            }));
-
-            const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
-            const studentSnapshot = await get(studentCoursesRef);
-            const studentCourses = studentSnapshot.val() || {};
-
-            console.log("StudentCourses carregado:", studentCourses);
-
-            const enrichedCourses = coursesArray.map((course) => {
-              const studentCourse = studentCourses[course.courseId] || {};
-              return {
-                ...course,
-                progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
-                accessed: studentCourse.progress !== undefined,
-              };
-            });
-
-            console.log("Cursos enriquecidos:", enrichedCourses);
-
-            const available = enrichedCourses.filter((course) => !course.accessed);
-            const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
-            const completed = enrichedCourses.filter((course) => course.progress === 100);
-
-            setAvailableCourses(available);
-            setInProgressCourses(inProgress);
-            setCompletedCourses(completed);
-            setFilteredAvailableCourses(available); // Inicializa os filtrados
-            setFilteredInProgressCourses(inProgress);
-            setFilteredCompletedCourses(completed);
-          } else {
-            console.log("Nenhum curso encontrado.");
-          }
-        } else {
-
-          const coursesRef = ref(database, "courses");
-          const snapshot = await get(coursesRef);
-          if (snapshot.exists()) {
-            const coursesData = snapshot.val();
-            const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
-              courseId,
-              title: course.title,
-              description: course.description,
-            }));
-
-            setAvailableCourses(coursesArray);
-            setFilteredAvailableCourses(coursesArray);
-          }
+        const coursesRef = ref(database, "courses");
+        const snapshot = await get(coursesRef);
+        if (!snapshot.exists()) {
+          console.log("Nenhum curso encontrado.");
+          return;
         }
 
+        const coursesData = snapshot.val();
+        const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
+          courseId,
+          ...course,
+        }));
+
+        if (userDetails) {
+          const studentCoursesRef = ref(database, `studentCourses/${userDetails.userId}`);
+          const studentSnapshot = await get(studentCoursesRef);
+          const studentCourses = studentSnapshot.val() || {};
+
+          console.log("StudentCourses carregado:", studentCourses);
+
+          const enrichedCourses = coursesArray.map((course) => {
+            const studentCourse = studentCourses[course.courseId] || {};
+            return {
+              ...course,
+              progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
+              accessed: studentCourse.progress !== undefined,
+            };
+          });
+
+          console.log("Cursos enriquecidos (logado):", enrichedCourses);
+
+          const available = enrichedCourses.filter((course) => !course.accessed);
+          const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
+          const completed = enrichedCourses.filter((course) => course.progress === 100);
+
+          setAvailableCourses(available);
+          setInProgressCourses(inProgress);
+          setCompletedCourses(completed);
+          setFilteredAvailableCourses(available);
+          setFilteredInProgressCourses(inProgress);
+          setFilteredCompletedCourses(completed);
+        } else {
+          const storedProgress = sessionStorage.getItem("videoProgress");
+          let localProgress = {};
+
+          if (storedProgress) {
+            const progressArray = JSON.parse(storedProgress);
+            localProgress = progressArray.reduce((acc, video) => {
+              const courseId = video.courseId;
+              if (!acc[courseId]) {
+                acc[courseId] = { totalVideos: 0, completedVideos: 0 };
+              }
+              acc[courseId].totalVideos += 1;
+              if (video.watched && (!video.quizId || video.quizPassed)) {
+                acc[courseId].completedVideos += 1;
+              }
+              return acc;
+            }, {});
+            console.log("localProgress calculado:", localProgress);
+          }
+
+          const enrichedCourses = await Promise.all(
+            coursesArray.map(async (course) => {
+              const courseVideosRef = ref(database, `courseVideos/${course.courseId}`);
+              const videoSnapshot = await get(courseVideosRef);
+              const videosData = videoSnapshot.val() || {};
+              const totalVideos = Object.keys(videosData).length;
+              const progressData = localProgress[course.courseId] || { totalVideos: 0, completedVideos: 0 };
+              const effectiveTotal = Math.max(totalVideos, progressData.totalVideos);
+              const progress = effectiveTotal > 0 ? (progressData.completedVideos / effectiveTotal) * 100 : 0;
+
+              return {
+                ...course,
+                progress,
+                accessed: progressData.totalVideos > 0,
+              };
+            })
+          );
+
+          console.log("Cursos enriquecidos (não logado):", enrichedCourses);
+
+          const available = enrichedCourses.filter((course) => !course.accessed);
+          const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
+          const completed = enrichedCourses.filter((course) => course.progress === 100);
+
+          setAvailableCourses(available);
+          setInProgressCourses(inProgress);
+          setCompletedCourses(completed);
+          setFilteredAvailableCourses(available);
+          setFilteredInProgressCourses(inProgress);
+          setFilteredCompletedCourses(completed);
+        }
       } catch (error) {
         console.error("Erro ao carregar cursos:", error);
       }
@@ -128,6 +165,15 @@ const MyCourses = () => {
   };
 
   const handleStartCourse = (course) => {
+    if (course.pinEnabled) {
+      setSelectedCourse(course);
+      setShowPinModal(true);
+    } else {
+      navigate(`/classes?courseId=${course.courseId}`);
+    }
+  };
+
+  const handlePinSubmit = (course) => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
@@ -143,7 +189,7 @@ const MyCourses = () => {
     if (!courses || courses.length === 0) {
       return <Typography variant="body1" color="textSecondary">Nenhum curso encontrado.</Typography>;
     }
-
+     
     return (
       <Grid container spacing={2}>
         {courses.map((course) => (
@@ -164,18 +210,35 @@ const MyCourses = () => {
               }}
             >
               <CardContent sx={{ flex: 1 }}>
-                <Typography
-                  variant="subtitle1"
+                <Box
                   sx={{
-                    fontWeight: "bold",
-                    textAlign: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                     mb: 1,
-                    color: "#333",
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
                   }}
                 >
-                  {course.title || "Título do Curso"}
-                </Typography>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      color: "#333",
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    }}
+                  >
+                    {course.title || "Título do Curso"}
+                  </Typography>
+                  {course.pinEnabled && (
+                    <LockIcon
+                      sx={{
+                        color: "#9041c1",
+                        ml: 1,
+                        fontSize: { xs: "1rem", sm: "1.2rem" },
+                      }}
+                    />
+                  )}
+                </Box>
                 <Typography
                   variant="body2"
                   color="textSecondary"
@@ -298,6 +361,14 @@ const MyCourses = () => {
           </Box>
         )}
       </Paper>
+
+      <PinAccessModal
+        open={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        onSubmit={handlePinSubmit}
+        selectedCourse={selectedCourse}
+      />
+
     </Box>
   );
 };

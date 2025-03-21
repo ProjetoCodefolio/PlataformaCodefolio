@@ -12,12 +12,13 @@ import {
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
-import { ref, get, remove } from "firebase/database";
+import { ref, get, update, remove } from "firebase/database";
 import { database } from "../../service/firebase.jsx";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
+import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/courseUtils";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -50,7 +51,7 @@ const ManageMyCourses = () => {
 
           console.log("Cursos carregados:", coursesData);
           setCourses(coursesData);
-          setFilteredCourses(coursesData); // Inicializa os filtrados
+          setFilteredCourses(coursesData);
         } else {
           console.log("Nenhum curso encontrado.");
           setCourses([]);
@@ -98,21 +99,60 @@ const ManageMyCourses = () => {
 
       console.log("Deletando curso:", courseId);
 
-      await remove(ref(database, `courses/${courseId}`));
+      const [videos, materials, quizzes] = await Promise.all([
+        hasCourseVideos(courseId),
+        hasCourseMaterials(courseId),
+        hasCourseQuizzes(courseId),
+      ]);
 
-      const videosRef = ref(database, "courseVideos");
-      const videosSnapshot = await get(videosRef);
-      if (videosSnapshot.exists()) {
-        const videos = Object.entries(videosSnapshot.val());
-        for (const [videoId, video] of videos) {
-          if (video.courseId === courseId) {
-            await remove(ref(database, `courseVideos/${videoId}`));
-          }
-        }
+      if (videos.length > 0 || materials.length > 0 || quizzes.length > 0) {
+        toast.error(
+          "Não é possível deletar o curso pois existem vídeos, materiais ou quizzes associados a ele."
+        );
+        setDeleteModalOpen(false);
+        setCourseToDelete(null);
+        return;
       }
 
-      setCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
-      setFilteredCourses((prevCourses) => prevCourses.filter((course) => course.courseId !== courseId));
+      // Deleta o curso da tabela courses
+      await remove(ref(database, `courses/${courseId}`));
+
+      // Deleta o curso da tabela studentCourses para todos os usuários
+      const studentCoursesRef = ref(database, `studentCourses`);
+      const studentCoursesSnapshot = await get(studentCoursesRef);
+      const studentCoursesData = studentCoursesSnapshot.val();
+
+      if (studentCoursesData) {
+        const updates = {};
+        Object.keys(studentCoursesData).forEach(userId => {
+          if (studentCoursesData[userId][courseId]) {
+            updates[`studentCourses/${userId}/${courseId}`] = null;
+          }
+        });
+        await update(ref(database), updates);
+      }
+
+      // Deleta o curso da tabela videoProgress para todos os usuários
+      const videoProgressRef = ref(database, `videoProgress`);
+      const videoProgressSnapshot = await get(videoProgressRef);
+      const videoProgressData = videoProgressSnapshot.val();
+
+      if (videoProgressData) {
+        const updates = {};
+        Object.keys(videoProgressData).forEach(userId => {
+          if (videoProgressData[userId][courseId]) {
+            updates[`videoProgress/${userId}/${courseId}`] = null;
+          }
+        });
+        await update(ref(database), updates);
+      }
+
+      setCourses((prevCourses) =>
+        prevCourses.filter((course) => course.courseId !== courseId)
+      );
+      setFilteredCourses((prevCourses) =>
+        prevCourses.filter((course) => course.courseId !== courseId)
+      );
       setDeleteModalOpen(false);
       setCourseToDelete(null);
       toast.success("Curso deletado com sucesso!");
@@ -124,7 +164,11 @@ const ManageMyCourses = () => {
 
   const renderCourses = (courses, actionButtonLabel, onClickAction) => {
     if (courses.length === 0) {
-      return <Typography variant="body1" color="textSecondary">Nenhum curso encontrado.</Typography>;
+      return (
+        <Typography variant="body1" color="textSecondary">
+          Nenhum curso encontrado.
+        </Typography>
+      );
     }
 
     return (
@@ -177,13 +221,11 @@ const ManageMyCourses = () => {
               </CardContent>
               <CardActions
                 sx={{
-                  p: 2,
+                  p: { xs: 1, sm: 2 },
                   justifyContent: "center",
                   mt: "auto",
-                  gap: 2,
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "center",
+                  gap: { xs: 1, sm: 2 },
+                  flexWrap: "wrap", // Permite que os botões quebrem linha em telas pequenas
                 }}
               >
                 <Button
@@ -195,11 +237,11 @@ const ManageMyCourses = () => {
                     "&:hover": { backgroundColor: "#7d37a7" },
                     textTransform: "none",
                     fontWeight: 500,
-                    fontSize: { xs: "12px", sm: "14px" },
-                    px: 2,
-                    py: 1,
-                    width: "auto",
-                    minWidth: "120px",
+                    fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" }, // Reduz tamanho da fonte em telas menores
+                    px: { xs: 1, sm: 2 }, // Padding horizontal ajustável
+                    py: { xs: 0.5, sm: 1 }, // Padding vertical ajustável
+                    minWidth: { xs: "80px", sm: "100px", md: "120px" }, // Tamanho mínimo ajustável
+                    width: { xs: "45%", sm: "auto" }, // Largura relativa em telas pequenas
                   }}
                   onClick={() => onClickAction(course)}
                 >
@@ -214,11 +256,11 @@ const ManageMyCourses = () => {
                     "&:hover": { backgroundColor: "#c82333" },
                     textTransform: "none",
                     fontWeight: 500,
-                    fontSize: { xs: "12px", sm: "14px" },
-                    px: 2,
-                    py: 1,
-                    width: "auto",
-                    minWidth: "120px",
+                    fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                    px: { xs: 1, sm: 2 },
+                    py: { xs: 0.5, sm: 1 },
+                    minWidth: { xs: "80px", sm: "100px", md: "120px" },
+                    width: { xs: "45%", sm: "auto" },
                   }}
                   onClick={() => handleDeleteCourse(course.courseId)}
                 >
@@ -247,19 +289,27 @@ const ManageMyCourses = () => {
     >
       <Topbar onSearch={handleSearch} />
 
-      <Box sx={{ display: "flex", justifyContent: "center", mt: { xs: 3, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          mt: { xs: 3, sm: 3 },
+          mb: { xs: 2, sm: 3 },
+        }}
+      >
         <Button
           variant="contained"
           sx={{
             px: { xs: 2, sm: 4 },
             py: { xs: 1, sm: 1.5 },
             fontWeight: 500,
-            fontSize: { xs: "12px", sm: "14px" },
+            fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
             backgroundColor: "#9041c1",
             color: "white",
             borderRadius: "12px",
             textTransform: "none",
             "&:hover": { backgroundColor: "#7d37a7" },
+            minWidth: { xs: "120px", sm: "160px" }, // Ajuste mínimo
           }}
           onClick={handleCreateNewCourse}
         >
@@ -301,7 +351,9 @@ const ManageMyCourses = () => {
             textAlign: "center",
           }}
         >
-          <WarningIcon sx={{ fontSize: { xs: 40, sm: 60 }, color: "#dc3545", mb: 2 }} />
+          <WarningIcon
+            sx={{ fontSize: { xs: 40, sm: 60 }, color: "#dc3545", mb: 2 }}
+          />
           <Typography
             variant="h6"
             component="h2"
@@ -313,7 +365,14 @@ const ManageMyCourses = () => {
           >
             Tem certeza que deseja deletar esse curso?
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 2, flexWrap: "wrap" }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              gap: { xs: 1, sm: 2 },
+              flexWrap: "wrap",
+            }}
+          >
             <Button
               variant="outlined"
               onClick={() => setDeleteModalOpen(false)}
@@ -324,10 +383,11 @@ const ManageMyCourses = () => {
                 "&:hover": { borderColor: "#444", backgroundColor: "#f5f5f5" },
                 textTransform: "none",
                 fontWeight: 500,
-                fontSize: { xs: "12px", sm: "14px" },
-                px: 2,
-                py: 1,
-                width: { xs: "100%", sm: "auto" },
+                fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                px: { xs: 1, sm: 2 },
+                py: { xs: 0.5, sm: 1 },
+                width: { xs: "45%", sm: "auto" },
+                minWidth: { xs: "80px", sm: "100px" },
               }}
             >
               Cancelar
@@ -341,10 +401,11 @@ const ManageMyCourses = () => {
                 borderRadius: "12px",
                 textTransform: "none",
                 fontWeight: 500,
-                fontSize: { xs: "12px", sm: "14px" },
-                px: 2,
-                py: 1,
-                width: { xs: "100%", sm: "auto" },
+                fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                px: { xs: 1, sm: 2 },
+                py: { xs: 0.5, sm: 1 },
+                width: { xs: "45%", sm: "auto" },
+                minWidth: { xs: "80px", sm: "100px" },
               }}
             >
               Deletar

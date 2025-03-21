@@ -59,7 +59,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
   };
 
   const handleLearnMore = async () => {
-    navigate("/home");
+    navigate("/about");
     handleClose();
     handleMobileMenuClose();
   };
@@ -195,12 +195,12 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
                   </ListItemIcon>
                   Perfil
                 </MenuItem>
-                <MenuItem>
+                {/* <MenuItem>
                   <ListItemIcon>
                     <Settings fontSize="small" />
                   </ListItemIcon>
                   Configurações e privacidade
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem onClick={handleLearnMore}>
                   <ListItemIcon>
                     <Help fontSize="small" />
@@ -225,7 +225,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
             )}
           </Menu>
 
-          <Tooltip title="Account settings">
+          <Tooltip title="Configurações da Conta">
             <IconButton
               onClick={handleClick}
               size="small"
@@ -298,12 +298,12 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
                   </ListItemIcon>
                   Perfil
                 </MenuItem>
-                <MenuItem>
+                {/* <MenuItem>
                   <ListItemIcon>
                     <Settings fontSize="small" />
                   </ListItemIcon>
                   Configurações e privacidade
-                </MenuItem>
+                </MenuItem> */}
                 <MenuItem onClick={handleLearnMore}>
                   <ListItemIcon>
                     <Help fontSize="small" />

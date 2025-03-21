@@ -1,4 +1,4 @@
-import Header from "../../components/header";
+import Header from "../../components/homePage/header";
 import SectionOne from "./sectionOne";
 import SectionTwo from "./sectionTwo";
 import SectionThree from "./sectionThree";

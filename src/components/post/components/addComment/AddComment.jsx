@@ -7,7 +7,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { useAuth } from "../../../../context/AuthContext";
 import { database } from "../../../../service/firebase";
 import MyAlert from '../alert/Alert';
-import { abrirAlert } from '../../utils';
+import { abrirAlert } from '../../../../utils/postUtils';
 import '../../post.css';
 
 export default function AddComment({ postId, comments, setComments }) {

@@ -13,20 +13,23 @@ import {
   Tab,
   Grid,
   Modal,
+  FormControlLabel,
+  Switch
 } from "@mui/material";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
 import CourseQuizzesTab from './CourseQuizzesTab';
-import { toast } from 'react-toastify';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const CourseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { userDetails } = useAuth();
   const params = new URLSearchParams(location.search);
-  const courseId = params.get("courseId");
+  const [courseId, setCourseId] = useState(params.get("courseId"));
 
   const courseVideosRef = useRef();
   const courseMaterialsRef = useRef();
@@ -37,6 +40,9 @@ const CourseForm = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [pinRequired, setPinRequired] = useState(false);
+  const [coursePin, setCoursePin] = useState("");
+  const [randomPin, setRandomPin] = useState(Math.floor(1000000 + Math.random() * 9000000).toString());
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -48,6 +54,8 @@ const CourseForm = () => {
         if (courseData) {
           setCourseTitle(courseData.title || "");
           setCourseDescription(courseData.description || "");
+          setPinRequired(courseData.pinEnabled);
+          setCoursePin(courseData.pin || "");
         }
       }
     };
@@ -81,8 +89,13 @@ const CourseForm = () => {
         description: courseDescription,
         userId: userDetails.userId,
         updatedAt: new Date().toISOString(),
+        pinEnabled: pinRequired,
         ...(courseId ? {} : { createdAt: new Date().toISOString() }),
       };
+
+      if (pinRequired) {
+        courseData.pin = coursePin || randomPin; // Salva o PIN gerado ou o existente
+      }
 
       let finalCourseId = courseId;
       if (!courseId) {
@@ -90,9 +103,11 @@ const CourseForm = () => {
         const newCourseRef = push(courseRef);
         await set(newCourseRef, courseData);
         finalCourseId = newCourseRef.key;
+        setCourseId(finalCourseId);
       } else {
         const courseRef = ref(database, `courses/${courseId}`);
         await update(courseRef, courseData);
+        setCourseId(courseId);
       }
 
       await Promise.all([
@@ -101,6 +116,10 @@ const CourseForm = () => {
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
       ]);
 
+      if (!courseId) {
+        setCoursePin(courseData.pin); // Exibe o PIN gerado após salvar
+      }
+
       setShowSuccessModal(!courseId);
       setShowUpdateModal(!!courseId);
       toast.success(`Curso ${courseId ? "atualizado" : "criado"} com sucesso!`);
@@ -108,20 +127,21 @@ const CourseForm = () => {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
-  }, [courseTitle, courseDescription, userDetails, courseId, navigate]);
+  }, [courseTitle, courseDescription, userDetails, courseId, coursePin, pinRequired, randomPin, navigate]);
 
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
     return (
       courseTitle.trim() !== "" &&
       courseDescription.trim() !== "" &&
-      !quizzes.some(quiz => quiz.questions.length === 0) 
+      !quizzes.some(quiz => quiz.questions.length === 0)
     );
   }, [courseTitle, courseDescription]);
 
   return (
     <>
-        <Topbar hideSearch={true} />
+      <ToastContainer />
+      <Topbar hideSearch={true} />
       <Box
         sx={{
           p: 4,
@@ -171,6 +191,7 @@ const CourseForm = () => {
                 }}
               />
             </Grid>
+
             <Grid item xs={12}>
               <TextField
                 label="Descrição do Curso"
@@ -195,28 +216,97 @@ const CourseForm = () => {
                 }}
               />
             </Grid>
+
+            <Grid item xs={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={pinRequired}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setPinRequired(isChecked);
+
+                      if (!isChecked) {
+                        // Desabilitar o PIN (mantém o valor existente)
+                        setCoursePin((prevPin) => prevPin || "");
+                      }
+                    }}
+                    sx={{
+                      '& .MuiSwitch-switchBase': {
+                        color: 'grey', // Cor quando desmarcado
+                        '&.Mui-checked': {
+                          color: '#9041c1', // Cor quando marcado
+                        },
+                        '&.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#9041c1', // Cor da trilha quando marcado
+                        },
+                      },
+                      '& .MuiSwitch-track': {
+                        backgroundColor: '#666', // Cor da trilha quando desmarcado
+                      },
+                    }}
+                  />
+                }
+                label="Criar PIN para acesso ao curso"
+                sx={{ color: '#666' }}
+              />
+            </Grid>
+
+            {(pinRequired || courseId) && (
+              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}>
+                <TextField
+                  label="PIN de Acesso"
+                  fullWidth
+                  variant="outlined"
+                  value={coursePin}
+                  disabled={!pinRequired} // Desabilita o campo se o curso já existir
+                  inputProps={{ maxLength: 7 }}
+                  onChange={(e) => setCoursePin(e.target.value)}
+                  helperText={
+                    courseId
+                      ? "O PIN já foi gerado e salvo para este curso."
+                      : "Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                  }
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": { borderColor: "#666" },
+                      "&:hover fieldset": { borderColor: "#9041c1" },
+                      "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                    },
+                    "& .MuiInputLabel-root": {
+                      color: "#666",
+                      "&.Mui-focused": { color: "#9041c1" },
+                    },
+                  }}
+                />
+              </Grid>
+            )}
           </Grid>
 
-          <Tabs
-            value={selectedTab}
-            onChange={handleTabChange}
-            indicatorColor="primary"
-            textColor="primary"
-            centered
-            sx={{
-              mb: 4,
-              "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
-              "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-            }}
-          >
-            <Tab label="Vídeos" />
-            <Tab label="Materiais Extras" />
-            <Tab label="Quiz" />
-          </Tabs>
+          {courseId && (
+            <>
+              <Tabs
+                value={selectedTab}
+                onChange={handleTabChange}
+                indicatorColor="primary"
+                textColor="primary"
+                centered
+                sx={{
+                  mb: 4,
+                  "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+                  "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                }}
+              >
+                <Tab label="Vídeos" />
+                <Tab label="Materiais Extras" />
+                <Tab label="Quiz" />
+              </Tabs>
 
-          {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
-          {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
-          {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+              {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
+              {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
+              {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+            </>
+          )}
         </Paper>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
@@ -270,10 +360,14 @@ const CourseForm = () => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate("/manage-courses")}
+            onClick={() => {
+              setShowSuccessModal(false);
+              navigate(`/adm-cursos?courseId=${courseId}`);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
-            Voltar
+            OK!
           </Button>
         </Box>
       </Modal>
@@ -299,10 +393,13 @@ const CourseForm = () => {
           </Typography>
           <Button
             variant="contained"
-            onClick={() => navigate("/manage-courses")}
+            onClick={() => {
+              setShowUpdateModal(false);
+              navigate(`/adm-cursos?courseId=${courseId}`);
+            }}
             sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
           >
-            Voltar
+            OK!
           </Button>
         </Box>
       </Modal>

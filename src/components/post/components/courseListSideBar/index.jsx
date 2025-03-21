@@ -2,11 +2,18 @@ import React, { useState, useEffect } from "react";
 import { Box, Typography, Card, CardContent, Button, Grid } from "@mui/material";
 import { ref, get } from "firebase/database";
 import { database } from "../../../../service/firebase";
-import { useNavigate } from "react-router-dom"; 
+import { useNavigate } from "react-router-dom";
+import LockIcon from '@mui/icons-material/Lock';
+import { useAuth } from "../../../../context/AuthContext";
+import PinAccessModal from "../../../modals/PinAccessModal";
+
 
 const CourseListSidebar = ({ onSelectCourse }) => {
   const [courses, setCourses] = useState([]);
-  const navigate = useNavigate(); 
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const { userDetails } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -29,7 +36,26 @@ const CourseListSidebar = ({ onSelectCourse }) => {
     fetchCourses();
   }, []);
 
-  const handleContinueCourse = (course) => {
+  const handleContinueCourse = async (course) => {
+    const courseStudentsRef = ref(database, `studentCourses/${userDetails?.userId}/${course.courseId}`);
+    await get(courseStudentsRef)
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          navigate(`/classes?courseId=${course.courseId}`);
+        } else {
+          if (course.pinEnabled) {
+            setSelectedCourse(course);
+            setShowPinModal(true);
+          } else {
+            navigate(`/classes?courseId=${course.courseId}`);
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("Erro ao verificar se o estudante está inscrito no curso:", error);
+      });
+  };
+  const handlePinSubmit = (course) => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
@@ -42,26 +68,26 @@ const CourseListSidebar = ({ onSelectCourse }) => {
         boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
         width: '100%',
         minWidth: '310px',
-        maxWidth: '600px', 
+        maxWidth: '600px',
         boxSizing: 'border-box',
         margin: '0 auto',
       }}
     >
       <Typography
         variant="h6"
-        sx={{ 
+        sx={{
           mb: 2,
-          fontWeight: "bold", 
-          textAlign: "center", 
+          fontWeight: "bold",
+          textAlign: "center",
           color: "#333",
           fontSize: '1.2rem'
         }}
       >
         Cursos Recomendados
       </Typography>
-      <Grid 
-        container 
-        direction="column" 
+      <Grid
+        container
+        direction="column"
         spacing={2}
         sx={{
           width: '100%',
@@ -69,8 +95,8 @@ const CourseListSidebar = ({ onSelectCourse }) => {
         }}
       >
         {courses.map((course) => (
-          <Grid 
-            item 
+          <Grid
+            item
             key={course.courseId}
             sx={{
               width: '100%'
@@ -82,8 +108,8 @@ const CourseListSidebar = ({ onSelectCourse }) => {
                 boxShadow: "0px 1px 2px rgba(0, 0, 0, 0.25)",
                 borderRadius: "16px",
                 width: '100%',
-                minWidth: '280px', 
-                minHeight: '160px', 
+                minWidth: '280px',
+                minHeight: '160px',
                 transition: 'transform 0.2s ease-in-out',
                 '&:hover': {
                   transform: 'scale(1.02)',
@@ -92,7 +118,7 @@ const CourseListSidebar = ({ onSelectCourse }) => {
             >
               <CardContent
                 sx={{
-                  padding: '24px', 
+                  padding: '24px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'flex-start',
@@ -102,24 +128,40 @@ const CourseListSidebar = ({ onSelectCourse }) => {
                   color: '#ffffff'
                 }}
               >
-                <Typography
-                  variant="subtitle1"
-                  sx={{ 
-                    fontWeight: "bold",
-                    textAlign: "left",
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
                     width: '100%',
-                    fontSize: '1.1rem',
-                    color: '#333333'
                   }}
                 >
-                  {course.title || "Título do Curso"}
-                </Typography>
-                <Typography 
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: "bold",
+                      textAlign: "left",
+                      width: '100%',
+                      fontSize: '1.1rem',
+                      color: '#333333'
+                    }}
+                  >
+                    {course.title || "Título do Curso"}
+                  </Typography>
+                  {course.pinEnabled && (
+                    <LockIcon
+                      sx={{
+                        color: '#9041c1',
+                        ml: 1,
+                      }}
+                    />
+                  )}
+                </Box>
+                <Typography
                   variant="body2"
                   sx={{
                     textAlign: 'left',
                     width: '100%',
-                    fontSize: '1rem', 
+                    fontSize: '1rem',
                     color: '#b3b3b3'
                   }}
                 >
@@ -127,16 +169,16 @@ const CourseListSidebar = ({ onSelectCourse }) => {
                 </Typography>
                 <Button
                   variant="contained"
-                  sx={{ 
+                  sx={{
                     mt: 'auto',
-                    padding: '8px 24px', 
+                    padding: '8px 24px',
                     borderRadius: '8px',
                     backgroundColor: '#9041c1',
                     color: 'white',
                     fontWeight: 'bold',
                     textTransform: 'none',
                     width: '100%',
-                    fontSize: '1rem', 
+                    fontSize: '1rem',
                     '&:hover': {
                       backgroundColor: '#7d37a7'
                     }
@@ -150,9 +192,18 @@ const CourseListSidebar = ({ onSelectCourse }) => {
           </Grid>
         ))}
       </Grid>
+
+      <Box>
+        {/* ... */}
+        <PinAccessModal
+          open={showPinModal}
+          onClose={() => setShowPinModal(false)}
+          onSubmit={handlePinSubmit}
+          selectedCourse={selectedCourse}
+        />
+      </Box>
     </Box>
   );
 };
 
 export default CourseListSidebar;
-

@@ -6,7 +6,7 @@ import MyConfirm from './components/confirm/Confirm';
 import Pagination from './components/pagination/Pagination';
 import Topbar from '../topbar/Topbar';
 import CreatePostModal from './components/createPost/CreatePost';
-import { fetchPosts, abrirAlert } from './utils';
+import { fetchPosts, abrirAlert } from '../../utils/postUtils';
 import { database } from '../../service/firebase';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -22,7 +22,7 @@ export default function Post({ member }) {
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [userRole, setUserRole] = useState('');
-  const { currentUser } = useAuth();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
   const [isPostCreated, setIsPostCreated] = useState(false);
@@ -36,7 +36,8 @@ export default function Post({ member }) {
   const [alertSeverity, setAlertSeverity] = useState('success');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
-  const postsPerPage = 2;
+  const { currentUser } = useAuth();
+  const postsPerPage = 3;
 
   useEffect(() => {
     if (currentUser) {
@@ -134,6 +135,8 @@ export default function Post({ member }) {
       <Topbar onSearch={updateSearchTerm} />
       <S.WrapperModal>
         <CreatePostModal
+          open={isCreateModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
           onPostCreated={() => {
             setIsPostCreated(true);
             loadPosts();
@@ -141,6 +144,7 @@ export default function Post({ member }) {
           abrirAlert={(message, severity) => 
             abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)
           }
+          modalTitle="Editar post de mídia"
         />
       </S.WrapperModal>
 

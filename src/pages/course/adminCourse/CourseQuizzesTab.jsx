@@ -1,7 +1,13 @@
-import { ref as firebaseRef, set, get, remove } from 'firebase/database';
+import { ref as firebaseRef, set, get, remove } from "firebase/database";
 import { database } from "../../../service/firebase";
-import { useLocation } from "react-router-dom";
-import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import React, {
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import {
   Box,
   TextField,
@@ -22,13 +28,23 @@ import {
   CardContent,
   CardActions,
   Collapse,
+  Paper,
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import AddIcon from '@mui/icons-material/Add';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import AddIcon from "@mui/icons-material/Add";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import PersonIcon from "@mui/icons-material/Person";
+import SortIcon from "@mui/icons-material/Sort";
 import { toast } from "react-toastify";
 
 const CourseQuizzesTab = forwardRef((props, ref) => {
@@ -54,19 +70,30 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
 
+  const questionFormRef = useRef(null);
+  const quizzesListEndRef = useRef(null); // Referência para o final da lista
+  const quizSettingsRef = useRef(null);
+
+  const navigate = useNavigate();
+
   const fetchVideos = async () => {
-    const courseVideosRef = firebaseRef(database, 'courseVideos');
+    const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
     const snapshot = await get(courseVideosRef);
     const courseVideos = snapshot.val();
 
     if (courseVideos) {
-      const filteredVideos = Object.entries(courseVideos)
-        .filter(([_, video]) => video.courseId === courseId)
-        .map(([key, video]) => ({ id: key, title: video.title }));
+      const filteredVideos = Object.entries(courseVideos).map(
+        ([key, video]) => ({
+          id: key,
+          title: video.title,
+        })
+      );
       setVideos(filteredVideos);
       if (filteredVideos.length > 0 && !newQuizVideoId) {
         setNewQuizVideoId(filteredVideos[0].id);
       }
+    } else {
+      setVideos([]);
     }
   };
 
@@ -77,11 +104,13 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       const quizzesData = snapshot.val();
 
       if (quizzesData) {
-        const quizzesArray = Object.entries(quizzesData).map(([videoId, quiz]) => ({
-          videoId,
-          minPercentage: quiz.minPercentage || 0,
-          questions: quiz.questions || [],
-        }));
+        const quizzesArray = Object.entries(quizzesData).map(
+          ([videoId, quiz]) => ({
+            videoId,
+            minPercentage: quiz.minPercentage || 0,
+            questions: quiz.questions || [],
+          })
+        );
         setQuizzes(quizzesArray);
       }
     }
@@ -92,12 +121,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     fetchQuizzes();
   }, [courseId]);
 
-  const handleAddQuiz = () => {
+  const handleAddQuiz = async () => {
     if (!newQuizVideoId) {
       toast.error("Selecione um vídeo para o quiz");
       return;
     }
-    if (quizzes.some(quiz => quiz.videoId === newQuizVideoId)) {
+    if (quizzes.some((quiz) => quiz.videoId === newQuizVideoId)) {
       toast.error("Já existe um quiz associado a este vídeo");
       return;
     }
@@ -106,14 +135,27 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       minPercentage: newQuizMinPercentage,
       questions: [],
     };
-    setQuizzes(prev => [...prev, newQuiz]);
-    setNewQuizVideoId(videos[0]?.id || "");
-    setNewQuizMinPercentage(0);
-    setShowAddQuizModal(true);
+
+    try {
+      const courseQuizzesRef = firebaseRef(
+        database,
+        `courseQuizzes/${courseId}/${newQuizVideoId}`
+      );
+      await set(courseQuizzesRef, newQuiz);
+      setQuizzes((prev) => [...prev, newQuiz]);
+      setNewQuizVideoId(videos[0]?.id || "");
+      setNewQuizMinPercentage(0);
+      setShowAddQuizModal(true);
+      toast.success("Quiz adicionado com sucesso!");
+      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" });
+    } catch (error) {
+      console.error("Erro ao adicionar quiz:", error);
+      toast.error("Erro ao adicionar o quiz");
+    }
   };
 
   const handleAddQuestion = () => {
-    if (!newQuizQuestion.trim() || newQuizOptions.some(opt => !opt.trim())) {
+    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Preencha a pergunta e todas as opções");
       return;
     }
@@ -126,12 +168,17 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     };
 
     if (editQuiz) {
-      setQuizzes(prev => prev.map(q =>
-        q.videoId === editQuiz.videoId
-          ? { ...q, questions: [...q.questions, newQuestion] }
-          : q
-      ));
-      setEditQuiz(prev => ({ ...prev, questions: [...prev.questions, newQuestion] }));
+      setQuizzes((prev) =>
+        prev.map((q) =>
+          q.videoId === editQuiz.videoId
+            ? { ...q, questions: [...q.questions, newQuestion] }
+            : q
+        )
+      );
+      setEditQuiz((prev) => ({
+        ...prev,
+        questions: [...prev.questions, newQuestion],
+      }));
     }
 
     setNewQuizQuestion("");
@@ -149,7 +196,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   };
 
   const handleSaveEditQuestion = () => {
-    if (!newQuizQuestion.trim() || newQuizOptions.some(opt => !opt.trim())) {
+    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Preencha a pergunta e todas as opções");
       return;
     }
@@ -161,19 +208,21 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       correctOption: newQuizCorrectOption,
     };
 
-    setQuizzes(prev => prev.map(q =>
-      q.videoId === editQuiz.videoId
-        ? {
-          ...q,
-          questions: q.questions.map(qst =>
-            qst.id === updatedQuestion.id ? updatedQuestion : qst
-          ),
-        }
-        : q
-    ));
-    setEditQuiz(prev => ({
+    setQuizzes((prev) =>
+      prev.map((q) =>
+        q.videoId === editQuiz.videoId
+          ? {
+              ...q,
+              questions: q.questions.map((qst) =>
+                qst.id === updatedQuestion.id ? updatedQuestion : qst
+              ),
+            }
+          : q
+      )
+    );
+    setEditQuiz((prev) => ({
       ...prev,
-      questions: prev.questions.map(qst =>
+      questions: prev.questions.map((qst) =>
         qst.id === updatedQuestion.id ? updatedQuestion : qst
       ),
     }));
@@ -191,14 +240,21 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   };
 
   const confirmRemoveQuestion = () => {
-    setQuizzes(prev => prev.map(q =>
-      q.videoId === editQuiz.videoId
-        ? { ...q, questions: q.questions.filter(qst => qst.id !== questionToDelete.id) }
-        : q
-    ));
-    setEditQuiz(prev => ({
+    setQuizzes((prev) =>
+      prev.map((q) =>
+        q.videoId === editQuiz.videoId
+          ? {
+              ...q,
+              questions: q.questions.filter(
+                (qst) => qst.id !== questionToDelete.id
+              ),
+            }
+          : q
+      )
+    );
+    setEditQuiz((prev) => ({
       ...prev,
-      questions: prev.questions.filter(qst => qst.id !== questionToDelete.id),
+      questions: prev.questions.filter((qst) => qst.id !== questionToDelete.id),
     }));
     setShowDeleteQuestionModal(false);
     setQuestionToDelete(null);
@@ -211,20 +267,46 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     setNewQuizMinPercentage(quiz.minPercentage);
   };
 
-  const handleSaveEditQuiz = () => {
-    if (quizzes.some(quiz => quiz.videoId === newQuizVideoId && quiz.videoId !== editQuiz.videoId)) {
+  const handleSaveEditQuiz = async () => {
+    if (
+      quizzes.some(
+        (quiz) =>
+          quiz.videoId === newQuizVideoId && quiz.videoId !== editQuiz.videoId
+      )
+    ) {
       toast.error("Já existe um quiz associado a este vídeo");
       return;
     }
-    setQuizzes(prev => prev.map(q =>
+
+    const updatedQuizzes = quizzes.map((q) =>
       q.videoId === editQuiz.videoId
         ? { ...q, videoId: newQuizVideoId, minPercentage: newQuizMinPercentage }
         : q
-    ));
+    );
+
+    setQuizzes(updatedQuizzes);
     setEditQuiz(null);
     setNewQuizVideoId(videos[0]?.id || "");
     setNewQuizMinPercentage(0);
-    toast.success("Edição do quiz salva localmente! Clique em 'Salvar Curso' para persistir as alterações.");
+
+    try {
+      const quizData = {
+        questions: editQuiz.questions,
+        minPercentage: newQuizMinPercentage,
+        courseId: courseId,
+        videoId: newQuizVideoId,
+      };
+      const courseQuizzesRef = firebaseRef(
+        database,
+        `courseQuizzes/${courseId}/${newQuizVideoId}`
+      );
+      await set(courseQuizzesRef, quizData);
+      toast.success("Edição do quiz salva com sucesso!");
+      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); // Scroll até o final
+    } catch (error) {
+      console.error("Erro ao salvar quiz:", error);
+      toast.error("Erro ao salvar o quiz");
+    }
   };
 
   const handleRemoveQuiz = (quiz) => {
@@ -235,9 +317,14 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const confirmRemoveQuiz = async () => {
     if (quizToDelete) {
       try {
-        const quizRef = firebaseRef(database, `courseQuizzes/${courseId}/${quizToDelete.videoId}`);
+        const quizRef = firebaseRef(
+          database,
+          `courseQuizzes/${courseId}/${quizToDelete.videoId}`
+        );
         await remove(quizRef);
-        setQuizzes(prev => prev.filter(q => q.videoId !== quizToDelete.videoId));
+        setQuizzes((prev) =>
+          prev.filter((q) => q.videoId !== quizToDelete.videoId)
+        );
         toast.success("Quiz deletado com sucesso!");
       } catch (error) {
         console.error("Erro ao excluir quiz:", error);
@@ -250,13 +337,15 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
 
   const handleAddQuizOption = () => {
     if (newQuizOptions.length < 5) {
-      setNewQuizOptions(prev => [...prev, ""]);
+      setNewQuizOptions((prev) => [...prev, ""]);
     }
   };
 
   const handleRemoveQuizOption = (indexToRemove) => {
     if (newQuizOptions.length > 2) {
-      setNewQuizOptions(prev => prev.filter((_, index) => index !== indexToRemove));
+      setNewQuizOptions((prev) =>
+        prev.filter((_, index) => index !== indexToRemove)
+      );
       if (newQuizCorrectOption >= newQuizOptions.length - 1) {
         setNewQuizCorrectOption(newQuizOptions.length - 2);
       }
@@ -272,7 +361,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           courseId: courseIdParam || courseId,
           videoId: quiz.videoId,
         };
-        const courseQuizzesRef = firebaseRef(database, `courseQuizzes/${courseIdParam || courseId}/${quiz.videoId}`);
+        const courseQuizzesRef = firebaseRef(
+          database,
+          `courseQuizzes/${courseIdParam || courseId}/${quiz.videoId}`
+        );
         await set(courseQuizzesRef, quizData);
       }
       console.log("Quizzes salvos com sucesso!");
@@ -287,15 +379,31 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     return quizzes;
   };
 
+  const handleViewStudents = (quizId) => {
+    // Navegamos para o dashboard de estudantes com o ID do quiz
+    navigate(`/studentDashboard?quizId=${quizId}`);
+  };
+
   useImperativeHandle(ref, () => ({
     saveQuizzes,
     getQuizzes,
   }));
 
   return (
-    <Box sx={{ p: 3, backgroundColor: "#fff", borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", color: "#333" }}>
-        Criar Novo Quiz
+    <Box
+      sx={{
+        p: 3,
+        backgroundColor: "#fff",
+        borderRadius: "8px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      }}
+      ref={quizSettingsRef}
+    >
+      <Typography
+        variant="h6"
+        sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+      >
+        {editQuiz ? "Criar Novo Quiz" : "Editar Quiz"}
       </Typography>
 
       <Grid container spacing={3}>
@@ -315,14 +423,18 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               onChange={(e) => setNewQuizVideoId(e.target.value)}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": { borderColor: "#666" },
-                "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#9041c1",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#9041c1",
+                },
               }}
               disabled={!!editQuiz}
             >
-              {videos.map((video) => (
+              {videos.map((video, index) => (
                 <MenuItem key={video.id} value={video.id}>
-                  {video.title}
+                  {`${index + 1}. ${video.title}`}
                 </MenuItem>
               ))}
             </Select>
@@ -337,7 +449,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
             fullWidth
             value={newQuizMinPercentage}
             onChange={(e) => {
-              const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+              const value = Math.max(
+                0,
+                Math.min(100, parseInt(e.target.value) || 0)
+              );
               setNewQuizMinPercentage(value);
             }}
             inputProps={{ min: 0, max: 100 }}
@@ -348,9 +463,13 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 "&:hover fieldset": { borderColor: "#9041c1" },
                 "&.Mui-focused fieldset": { borderColor: "#9041c1" },
               },
-              "& .MuiInputLabel-root": { color: "#666", "&.Mui-focused": { color: "#9041c1" } },
+              "& .MuiInputLabel-root": {
+                color: "#666",
+                "&.Mui-focused": { color: "#9041c1" },
+              },
             }}
             helperText="0 a 100%. Se 0, o quiz não será obrigatório."
+            ref={questionFormRef}
           />
         </Grid>
 
@@ -369,7 +488,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                     "&:hover fieldset": { borderColor: "#9041c1" },
                     "&.Mui-focused fieldset": { borderColor: "#9041c1" },
                   },
-                  "& .MuiInputLabel-root": { color: "#666", "&.Mui-focused": { color: "#9041c1" } },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
                 }}
               />
             </Grid>
@@ -382,7 +504,9 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                     value={option}
                     onChange={(e) =>
                       setNewQuizOptions((prev) =>
-                        prev.map((opt, i) => (i === index ? e.target.value : opt))
+                        prev.map((opt, i) =>
+                          i === index ? e.target.value : opt
+                        )
                       )
                     }
                     variant="outlined"
@@ -392,15 +516,26 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                         "&:hover fieldset": { borderColor: "#9041c1" },
                         "&.Mui-focused fieldset": { borderColor: "#9041c1" },
                       },
-                      "& .MuiInputLabel-root": { color: "#666", "&.Mui-focused": { color: "#9041c1" } },
+                      "& .MuiInputLabel-root": {
+                        color: "#666",
+                        "&.Mui-focused": { color: "#9041c1" },
+                      },
                     }}
                   />
                   <IconButton
                     onClick={() => setNewQuizCorrectOption(index)}
                     sx={{
-                      backgroundColor: newQuizCorrectOption === index ? "#4caf50" : "transparent",
+                      backgroundColor:
+                        newQuizCorrectOption === index
+                          ? "#4caf50"
+                          : "transparent",
                       color: newQuizCorrectOption === index ? "#fff" : "#666",
-                      "&:hover": { backgroundColor: newQuizCorrectOption === index ? "#45a049" : "#e0e0e0" },
+                      "&:hover": {
+                        backgroundColor:
+                          newQuizCorrectOption === index
+                            ? "#45a049"
+                            : "#e0e0e0",
+                      },
                     }}
                   >
                     <CheckCircleIcon />
@@ -449,7 +584,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 sx={{
                   color: "#9041c1",
                   borderColor: "#9041c1",
-                  "&:hover": { borderColor: "#7d37a7", backgroundColor: "rgba(144, 65, 193, 0.04)" },
+                  "&:hover": {
+                    borderColor: "#7d37a7",
+                    backgroundColor: "rgba(144, 65, 193, 0.04)",
+                  },
                 }}
               >
                 Adicionar Opção
@@ -459,9 +597,15 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
             <Grid item xs={12}>
               <Button
                 variant="contained"
-                onClick={editQuestion ? handleSaveEditQuestion : handleAddQuestion}
+                onClick={
+                  editQuestion ? handleSaveEditQuestion : handleAddQuestion
+                }
                 startIcon={<AddIcon />}
-                sx={{ mr: 2, backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+                sx={{
+                  mr: 2,
+                  backgroundColor: "#9041c1",
+                  "&:hover": { backgroundColor: "#7d37a7" },
+                }}
               >
                 {editQuestion ? "Salvar Edição" : "Adicionar Questão"}
               </Button>
@@ -490,8 +634,17 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           <Grid item xs={12}>
             <Button
               variant="contained"
-              onClick={handleSaveEditQuiz}
-              sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+              onClick={() => {
+                handleSaveEditQuiz();
+                window.scrollTo({
+                  top: document.body.scrollHeight,
+                  behavior: "smooth",
+                });
+              }}
+              sx={{
+                backgroundColor: "#9041c1",
+                "&:hover": { backgroundColor: "#7d37a7" },
+              }}
             >
               Salvar Edição do Quiz
             </Button>
@@ -499,17 +652,35 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         )}
       </Grid>
 
-      <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}>
+      <Typography
+        variant="h6"
+        sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}
+      >
         Quizzes Criados
       </Typography>
 
-      <List>
+      <List ref={quizzesListEndRef}>
         {quizzes.map((quiz) => (
-          <Card key={quiz.videoId} sx={{ mb: 2, borderRadius: "8px", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" }}>
-            <CardContent sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <Card
+            key={quiz.videoId}
+            sx={{
+              mb: 2,
+              borderRadius: "8px",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            }}
+          >
+            <CardContent
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
-                  Quiz para: {videos.find(v => v.id === quiz.videoId)?.title || "Vídeo não encontrado"}
+                  Quiz para:{" "}
+                  {videos.find((v) => v.id === quiz.videoId)?.title ||
+                    "Vídeo não encontrado"}
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#666" }}>
                   Nota mínima: {quiz.minPercentage}%
@@ -520,16 +691,32 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               </Box>
               <Box>
                 <IconButton
-                  onClick={() => setExpandedQuiz(expandedQuiz === quiz.videoId ? null : quiz.videoId)}
+                  onClick={() =>
+                    setExpandedQuiz(
+                      expandedQuiz === quiz.videoId ? null : quiz.videoId
+                    )
+                  }
                   sx={{ color: "#9041c1" }}
                 >
                   <ExpandMoreIcon />
                 </IconButton>
                 <IconButton
-                  onClick={() => handleEditQuiz(quiz)}
+                  onClick={() => {
+                    handleEditQuiz(quiz);
+                    quizSettingsRef.current.scrollIntoView({
+                      behavior: "smooth",
+                    });
+                  }}
                   sx={{ color: "#9041c1" }}
                 >
                   <EditIcon />
+                </IconButton>
+                <IconButton
+                  onClick={() => handleViewStudents(quiz.videoId)}
+                  sx={{ color: "#9041c1" }}
+                  title="Ver estudantes"
+                >
+                  <PersonIcon />
                 </IconButton>
                 <IconButton
                   onClick={() => handleRemoveQuiz(quiz)}
@@ -539,7 +726,11 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 </IconButton>
               </Box>
             </CardContent>
-            <Collapse in={expandedQuiz === quiz.videoId} timeout="auto" unmountOnExit>
+            <Collapse
+              in={expandedQuiz === quiz.videoId}
+              timeout="auto"
+              unmountOnExit
+            >
               <CardContent>
                 <List>
                   {quiz.questions.map((question) => (
@@ -554,10 +745,14 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                     >
                       <ListItemText
                         primary={question.question}
-                        secondary={`Opções: ${question.options.join(", ")} | Correta: ${question.options[question.correctOption]}`}
+                        secondary={`Opções: ${question.options.join(
+                          ", "
+                        )} | Correta: ${
+                          question.options[question.correctOption]
+                        }`}
                         sx={{
-                          pr: 10, // Espaço reservado para os botões
-                          flex: 1, // Faz o texto ocupar o espaço disponível
+                          pr: 10,
+                          flex: 1,
                         }}
                         primaryTypographyProps={{
                           sx: {
@@ -583,13 +778,20 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                         }}
                       >
                         <IconButton
-                          onClick={() => handleEditQuestion(quiz, question)}
+                          onClick={() => {
+                            handleEditQuestion(quiz, question);
+                            questionFormRef.current.scrollIntoView({
+                              behavior: "smooth",
+                            });
+                          }}
                           sx={{ color: "#9041c1" }}
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
-                          onClick={() => handleRemoveQuestion(quiz, question.id)}
+                          onClick={() =>
+                            handleRemoveQuestion(quiz, question.id)
+                          }
                           sx={{ color: "#d32f2f" }}
                         >
                           <DeleteIcon />
@@ -601,9 +803,17 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 <CardActions>
                   <Button
                     variant="contained"
-                    onClick={() => handleEditQuiz(quiz)}
+                    onClick={() => {
+                      handleEditQuiz(quiz);
+                      questionFormRef.current.scrollIntoView({
+                        behavior: "smooth",
+                      });
+                    }}
                     startIcon={<AddIcon />}
-                    sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+                    sx={{
+                      backgroundColor: "#9041c1",
+                      "&:hover": { backgroundColor: "#7d37a7" },
+                    }}
                   >
                     Adicionar Questão
                   </Button>
@@ -614,7 +824,16 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         ))}
       </List>
 
-      <Modal open={showAddQuizModal} onClose={() => setShowAddQuizModal(false)}>
+      <Modal
+        open={showAddQuizModal}
+        onClose={() => {
+          setShowAddQuizModal(false);
+          window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth",
+          });
+        }}
+      >
         <Box
           sx={{
             position: "absolute",
@@ -629,21 +848,35 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
             textAlign: "center",
           }}
         >
-          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <CheckCircleOutlineIcon
+            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+          />
           <Typography variant="h6" sx={{ mb: 2 }}>
             Quiz adicionado com sucesso!
           </Typography>
           <Button
             variant="contained"
-            onClick={() => setShowAddQuizModal(false)}
-            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+            onClick={() => {
+              setShowAddQuizModal(false);
+              window.scrollTo({
+                top: document.body.scrollHeight,
+                behavior: "smooth",
+              });
+            }}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+            }}
           >
             OK
           </Button>
         </Box>
       </Modal>
 
-      <Modal open={showDeleteQuizModal} onClose={() => setShowDeleteQuizModal(false)}>
+      <Modal
+        open={showDeleteQuizModal}
+        onClose={() => setShowDeleteQuizModal(false)}
+      >
         <Box
           sx={{
             position: "absolute",
@@ -659,7 +892,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           }}
         >
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Tem certeza que deseja excluir o quiz para "{videos.find(v => v.id === quizToDelete?.videoId)?.title}"?
+            Tem certeza que deseja excluir o quiz para "
+            {videos.find((v) => v.id === quizToDelete?.videoId)?.title}"?
           </Typography>
           <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
             <Button
@@ -679,7 +913,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         </Box>
       </Modal>
 
-      <Modal open={showDeleteQuestionModal} onClose={() => setShowDeleteQuestionModal(false)}>
+      <Modal
+        open={showDeleteQuestionModal}
+        onClose={() => setShowDeleteQuestionModal(false)}
+      >
         <Box
           sx={{
             position: "absolute",
@@ -695,7 +932,13 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
           }}
         >
           <Typography variant="h6" sx={{ mb: 2 }}>
-            Tem certeza que deseja excluir a questão "{questionToDelete?.quiz.questions.find(q => q.id === questionToDelete?.id)?.question}"?
+            Tem certeza que deseja excluir a questão "
+            {
+              questionToDelete?.quiz.questions.find(
+                (q) => q.id === questionToDelete?.id
+              )?.question
+            }
+            "?
           </Typography>
           <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
             <Button

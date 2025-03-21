@@ -8,37 +8,43 @@ import { Card, CardContent, CardActionArea } from '@mui/material';
 
 
 const artigos = [
-    {
-      titulo: "Como começar com React.js em 2024",
-      autor: "João Silva",
-      link: "/artigos/react-iniciantes"
-    },
-    {
-      titulo: "Melhores práticas em TypeScript",
-      autor: "Maria Santos",
-      link: "/artigos/typescript-praticas"
-    },
-    {
-      titulo: "Node.js: Construindo APIs RESTful",
-      autor: "Pedro Oliveira",
-      link: "/artigos/nodejs-apis"
-    },
-    {
-      titulo: "Docker para Desenvolvedores Web",
-      autor: "Ana Costa",
-      link: "/artigos/docker-web"
-    },
-    {
-        titulo: "Como começar com React.js em 2024",
-        autor: "João Silva",
-        link: "/artigos/react-iniciantes"
-      },
-      {
-        titulo: "Como começar com React.js em 2024",
-        autor: "João Silva",
-        link: "/artigos/react-iniciantes"
-      },
-  ];
+  {
+    key: 1,
+    titulo: "Como começar com React.js em 2024",
+    autor: "João Silva",
+    link: "/artigos/react-iniciantes"
+  },
+  {
+    key: 2,
+    titulo: "Melhores práticas em TypeScript",
+    autor: "Maria Santos",
+    link: "/artigos/typescript-praticas"
+  },
+  {
+    key: 3,
+    titulo: "Node.js: Construindo APIs RESTful",
+    autor: "Pedro Oliveira",
+    link: "/artigos/nodejs-apis"
+  },
+  {
+    key: 4,
+    titulo: "Docker para Desenvolvedores Web",
+    autor: "Ana Costa",
+    link: "/artigos/docker-web"
+  },
+  {
+    key: 5,
+    titulo: "Como começar com React.js em 2024",
+    autor: "João Silva",
+    link: "/artigos/react-iniciantes"
+  },
+  {
+    key: 6,
+    titulo: "Como começar com React.js em 2024",
+    autor: "João Silva",
+    link: "/artigos/react-iniciantes"
+  },
+];
 
 
 const Section5 = () => {
@@ -59,7 +65,7 @@ const Section5 = () => {
       // Lógica para exibir um card por vez em telas pequenas
       return artigos.map((artigo) => (
         <Box
-          key={artigo.titulo}
+          key={artigo.key}
           sx={{
             display: 'flex',
             justifyContent: 'center',
@@ -136,7 +142,7 @@ const Section5 = () => {
       >
         {artigos.slice(index * 3, index * 3 + 3).map((artigo) => (
           <Card
-            key={artigo.titulo}
+            key={artigo.key}
             sx={{
               width: 300,
               height: 250,
@@ -198,18 +204,18 @@ const Section5 = () => {
       <Box
         sx={{
           display: 'flex',
-          alignItems: { xs: 'center', md: 'flex-start' }, 
-          justifyContent: { xs: 'flex-start', md: 'center' }, 
+          alignItems: { xs: 'center', md: 'flex-start' },
+          justifyContent: { xs: 'flex-start', md: 'center' },
           flexDirection: { xs: 'column', md: 'row' },
           width: '100%',
           minHeight: { xs: 'auto', md: '50vh' },
           gap: { xs: '20px', md: '40px' },
-          padding: { xs: '0 0 0 0', md: '50px 0 0 0' }, 
+          padding: { xs: '0 0 0 0', md: '50px 0 0 0' },
           boxSizing: 'border-box',
         }}
       >
 
-        <Box    
+        <Box
           sx={{
             marginRight: { xs: '0', md: '2%' },
             marginLeft: { xs: '0', md: '4%' },
@@ -251,14 +257,14 @@ const Section5 = () => {
             <Typography variant="h4" sx={{ fontFamily: 'Arial Unicode MS, Arial, sans-serif', fontWeight: 'bold', color: '#6A0DAD', marginBottom: '1rem' }}>
               ARTIGOS
             </Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
+            <Typography
+              variant="body1"
+              sx={{
                 fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-                color: '#6A0DAD', 
+                color: '#6A0DAD',
                 fontSize: { xs: '1rem', md: '1.2rem' },
-                maxWidth: { xs: '100%', md: '500px' }, 
-                textAlign: { xs: 'justify', md: 'justify' }, 
+                maxWidth: { xs: '100%', md: '500px' },
+                textAlign: { xs: 'justify', md: 'justify' },
               }}
             >
               Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Divider, Avatar, Chip, Box } from '@mui/material';
 import PostMenu from '../menu/Menu';
-import MembroLink from '../../../MembroLink';
 import EditPostModal from '../editPost/EditPost';
 import AddComment from '../addComment/AddComment';
 import ShowComments from '../showComments/ShowComments';
 import Likes from '../likes';
 import Informacoes from '../informacoes/Informacoes';
 import MyShare from '../myShare/MyShare';
-import { getYouTubeID } from '../../utils';
+import { getYouTubeID } from '../../../../utils/postUtils';
 import YouTube from 'react-youtube';
 import * as S from './styles';
 
@@ -86,7 +85,7 @@ export default function PostCards({
                             backgroundColor: 'transparent',
                         }}
                     >
-                        {capitalizeName(post.user)}{/* <MembroLink texto={capitalizeName(post.user)} user={post.uiUser} /> */}
+                        {capitalizeName(post.user)}
                     </Typography>
                 </S.ProfileButton>
                 {userRole === "admin" && <PostMenu post={post} onEdit={Edit} onDelete={Delete} />}
