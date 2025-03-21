@@ -43,7 +43,7 @@ const CourseListSidebar = ({ onSelectCourse }) => {
         if (snapshot.exists()) {
           navigate(`/classes?courseId=${course.courseId}`);
         } else {
-          if (course.pin) {
+          if (course.pinEnabled) {
             setSelectedCourse(course);
             setShowPinModal(true);
           } else {
@@ -147,7 +147,7 @@ const CourseListSidebar = ({ onSelectCourse }) => {
                   >
                     {course.title || "Título do Curso"}
                   </Typography>
-                  {course.pin && (
+                  {course.pinEnabled && (
                     <LockIcon
                       sx={{
                         color: '#9041c1',

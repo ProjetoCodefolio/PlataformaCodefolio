@@ -8,10 +8,10 @@ import {
   Radio,
   LinearProgress,
 } from "@mui/material";
-import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
-import { useAuth } from "../../context/AuthContext";
-import { ref, set, get, update } from "firebase/database";
-import { database } from "../../service/firebase";
+import { fetchQuizQuestions, validateQuizAnswers } from "../../../service/courses";
+import { useAuth } from "../../../context/AuthContext";
+import { ref, set, get } from "firebase/database";
+import { database } from "../../../service/firebase";
 
 const Quiz = ({
   quizId,

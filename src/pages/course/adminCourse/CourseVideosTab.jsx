@@ -266,7 +266,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                                 onChange={(e) => setRequiresPrevious(e.target.checked)}
                                 sx={{
                                     '& .MuiSwitch-switchBase': {
-                                        color: '#9041c1', // Cor quando desmarcado
+                                        color: 'grey', // Cor quando desmarcado
                                         '&.Mui-checked': {
                                             color: '#9041c1', // Cor quando marcado
                                         },

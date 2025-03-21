@@ -1,6 +1,5 @@
 import * as S from "./styles";
-import { BlackBox } from "../../../components/blackBox";
-import Iniciativas from "../../../components/iniciativas";
+import Iniciativas from "../../../components/homePage/initiatives";
 
 export const SectionThree = () => {
 

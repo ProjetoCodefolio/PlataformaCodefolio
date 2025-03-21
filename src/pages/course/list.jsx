@@ -165,11 +165,9 @@ const MyCourses = () => {
   };
 
   const handleStartCourse = (course) => {
-    console.log("Curso selecionado:", course); // Log para verificar o curso
-    if (course.pin) {
+    if (course.pinEnabled) {
       setSelectedCourse(course);
       setShowPinModal(true);
-      console.log("Modal aberto para o curso com PIN:", course); // Log para verificar se o modal será aberto
     } else {
       navigate(`/classes?courseId=${course.courseId}`);
     }
@@ -231,7 +229,7 @@ const MyCourses = () => {
                   >
                     {course.title || "Título do Curso"}
                   </Typography>
-                  {course.pin && (
+                  {course.pinEnabled && (
                     <LockIcon
                       sx={{
                         color: "#9041c1",

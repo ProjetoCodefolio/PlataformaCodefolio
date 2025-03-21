@@ -1,4 +1,3 @@
-import "../home.css";
 import { useEffect, useState } from "react";
 import { database } from "../../service/firebase";
 import { ref, get } from "firebase/database";

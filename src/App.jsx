@@ -6,20 +6,19 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "../context/AuthContext";
-import Login from "../pages/Login";
-import Dashboard from "../pages/dashboard";
-import ProfileHeader from "../pages/profile";
-import MembersPage from "../pages/members";
-import MembroPage from "../pages/membro";
-import Portifolios from "../pages/portifolios";
-import Projetos from "../pages/projetos";
-import HomePage from "../pages/homePage";
-import Cursos from "../pages/course/adminCourse";
-import ListCursos from "../pages/course/list";
-import Classes from "../pages/course/classes";
-import StudentDashboard from "../pages/course/studentDashboard";
-import ManageMyCourses from "../pages/course/ManageMyCourses";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Login from "./pages/Login";
+import Dashboard from "./pages/dashboard";
+import ProfileHeader from "./pages/profile";
+import MembersPage from "./pages/members";
+import Portifolios from "./pages/portifolios";
+import Projetos from "./pages/projetos";
+import HomePage from "./pages/homePage";
+import Cursos from "./pages/course/adminCourse";
+import ListCursos from "./pages/course/list";
+import Classes from "./pages/course/classes";
+import StudentDashboard from "./pages/course/studentDashboard";
+import ManageMyCourses from "./pages/course/ManageMyCourses";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -57,15 +56,6 @@ function App() {
               element={
                 <PrivateRoute>
                   <MembersPage />
-                </PrivateRoute>
-              }
-            />
-
-            <Route
-              path="/membro"
-              element={
-                <PrivateRoute>
-                  <MembroPage />
                 </PrivateRoute>
               }
             />
