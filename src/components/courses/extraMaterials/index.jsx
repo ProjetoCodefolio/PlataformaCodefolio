@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ref, get } from "firebase/database";
-import { database } from "../../service/firebase";
+import { database } from "../../../service/firebase";
 import {
     Box,
     Typography,
@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import LinkIcon from "@mui/icons-material/Link";
 import DescriptionIcon from "@mui/icons-material/Description";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import { toast } from "react-toastify";
 
 const MaterialExtra = ({ courseId }) => {
