@@ -134,9 +134,9 @@ function PrivateRoute({ children }) {
   const { currentUser } = useAuth();
   const location = useLocation();
 
-  if (!currentUser) {
-    return <Navigate to="/login" state={{ from: location }} />;
-  }
+  // if (!currentUser) {
+  //   return <Navigate to="/login" state={{ from: location }} />;
+  // }
 
   return children;
 }
