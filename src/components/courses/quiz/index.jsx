@@ -8,7 +8,10 @@ import {
   Radio,
   LinearProgress,
 } from "@mui/material";
-import { fetchQuizQuestions, validateQuizAnswers } from "../../../service/courses";
+import {
+  fetchQuizQuestions,
+  validateQuizAnswers,
+} from "../../../service/courses";
 import { useAuth } from "../../../context/AuthContext";
 import { ref, set, get, update } from "firebase/database";
 import { database } from "../../../service/firebase";
@@ -84,7 +87,6 @@ const Quiz = ({
 
   const handleSubmit = async (answers) => {
     try {
-
       // const quizMinPercentage =
       //   questions[0]?.minPercentage !== undefined
       //     ? questions[0]?.minPercentage
@@ -97,7 +99,8 @@ const Quiz = ({
         quizMinPercentage
       );
 
-      const calculatedPercentage = (result.earnedPoints / result.totalPoints) * 100;
+      const calculatedPercentage =
+        (result.earnedPoints / result.totalPoints) * 100;
       const isPassed = calculatedPercentage >= quizMinPercentage;
 
       setResult({
@@ -171,7 +174,6 @@ const Quiz = ({
   };
 
   const handleFinish = () => {
-    
     onComplete(result?.isPassed || false, "returnToVideo", currentVideoId);
   };
 
@@ -294,6 +296,10 @@ const Quiz = ({
                       fontWeight: 500,
                       color: "#333",
                       fontSize: { xs: "0.9rem", sm: "1rem" },
+                      wordWrap: "break-word",
+                      overflowWrap: "break-word",
+                      hyphens: "auto",
+                      maxWidth: "100%",
                     }}
                   >
                     {q.question}
@@ -303,10 +309,72 @@ const Quiz = ({
                     sx={{
                       color: isCorrect ? "#4caf50" : "#d32f2f",
                       fontSize: { xs: "0.85rem", sm: "0.875rem" },
+                      display: "flex",
+                      flexDirection: { xs: "column", sm: "row" },
+                      alignItems: { xs: "flex-start", sm: "flex-start" },
+                      gap: { xs: 0.5, sm: 1 },
+                      width: "100%",
                     }}
                   >
-                    Sua resposta: {q.options[userAnswer] || "Não respondida"}
+                    <Box
+                      component="span"
+                      sx={{
+                        fontWeight: "bold",
+                        flexShrink: 0,
+                      }}
+                    >
+                      Sua resposta:
+                    </Box>
+                    <Box
+                      component="span"
+                      sx={{
+                        wordWrap: "break-word",
+                        overflowWrap: "break-word",
+                        whiteSpace: "normal",
+                        width: "86%",
+                        hyphens: "auto",
+                      }}
+                    >
+                      {q.options[userAnswer] || "Não respondida"}
+                    </Box>
                   </Typography>
+                  {!isCorrect && (
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#4caf50",
+                        fontSize: { xs: "0.85rem", sm: "0.875rem" },
+                        mt: 1,
+                        display: "flex",
+                        flexDirection: { xs: "column", sm: "row" },
+                        alignItems: { xs: "flex-start", sm: "flex-start" },
+                        gap: { xs: 0.5, sm: 1 },
+                        width: "100%",
+                      }}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          fontWeight: "bold",
+                          flexShrink: 0,
+                        }}
+                      >
+                        Resposta correta:
+                      </Box>
+                      <Box
+                        component="span"
+                        sx={{
+                          wordWrap: "break-word",
+                          overflowWrap: "break-word",
+                          whiteSpace: "normal",
+                          width: "100%",
+                          hyphens: "auto",
+                        }}
+                      >
+                        {q.options[q.correctOption]}
+                      </Box>
+                    </Typography>
+                  )}
                 </Box>
               );
             })}
@@ -446,6 +514,10 @@ const Quiz = ({
             color: "#333",
             fontWeight: 500,
             fontSize: { xs: "1rem", sm: "1.25rem" },
+            wordWrap: "break-word", // Adiciona quebra de linha baseada em palavras
+            overflowWrap: "break-word", // Suporte adicional para navegadores modernos
+            hyphens: "auto", // Adiciona hifenização automática quando necessário
+            maxWidth: "100%", // Garante que o texto não ultrapasse seu contêiner
           }}
         >
           {currentQuestion?.question || "Pergunta indisponível"}
@@ -468,15 +540,32 @@ const Quiz = ({
                   }}
                 />
               }
-              label={option}
+              label={
+                <Box
+                  sx={{
+                    wordWrap: "break-word",
+                    overflowWrap: "break-word",
+                    whiteSpace: "normal",
+                    width: "93%",
+                  }}
+                >
+                  {option}
+                </Box>
+              }
               sx={{
+                display: "flex",
                 backgroundColor: "#F5F5FA",
                 borderRadius: "8px",
                 mb: { xs: 0.5, sm: 1 },
                 p: { xs: 0.5, sm: 1 },
-                "&:hover": { backgroundColor: "#f0f0f0" },
+                width: "100%",
+                "&:hover": {
+                  backgroundColor: "#f0f0f0",
+                },
                 "& .MuiFormControlLabel-label": {
                   fontSize: { xs: "0.9rem", sm: "1rem" },
+                  width: "100%",
+                  display: "flex",
                 },
               }}
             />

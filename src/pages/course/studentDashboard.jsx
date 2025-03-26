@@ -55,7 +55,6 @@ const StudentDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    
     document.body.style.backgroundColor = "#f9f9f9";
 
     return () => {
@@ -590,7 +589,12 @@ const StudentDashboard = () => {
                           variant="body1"
                           sx={{
                             fontWeight: "medium",
-                            color: quiz.minPercentage === 0 ? "#000" : student.passed ? "#2e7d32" : "#c62828",
+                            color:
+                              quiz.minPercentage === 0
+                                ? "#000"
+                                : student.passed
+                                ? "#2e7d32"
+                                : "#c62828",
                           }}
                           title={`Acertos: ${student.correctAnswers}, Total: ${student.totalQuestions}, Score: ${student.score}%`}
                         >
@@ -606,10 +610,18 @@ const StudentDashboard = () => {
                       <TableCell>
                         <Box
                           sx={{
-                            backgroundColor: quiz.minPercentage === 0 ? "" : (student.passed
-                              ? "#e8f5e9"
-                              : "#ffebee"),
-                            color: quiz.minPercentage === 0 ? "#000" : (student.passed ? "#2e7d32" : "#c62828"),
+                            backgroundColor:
+                              quiz.minPercentage === 0
+                                ? ""
+                                : student.passed
+                                ? "#e8f5e9"
+                                : "#ffebee",
+                            color:
+                              quiz.minPercentage === 0
+                                ? "#000"
+                                : student.passed
+                                ? "#2e7d32"
+                                : "#c62828",
                             borderRadius: 1,
                             px: 1,
                             py: 0.5,
@@ -617,7 +629,11 @@ const StudentDashboard = () => {
                             fontWeight: "bold",
                           }}
                         >
-                          {quiz.minPercentage === 0 ? "N/A" : (student.passed ? "Aprovado" : "Reprovado")}
+                          {quiz.minPercentage === 0
+                            ? "N/A"
+                            : student.passed
+                            ? "Aprovado"
+                            : "Reprovado"}
                         </Box>
                       </TableCell>
                       <TableCell>{student.attemptCount}</TableCell>
