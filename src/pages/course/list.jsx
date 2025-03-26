@@ -37,10 +37,7 @@ const MyCourses = () => {
       try {
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
-        if (!snapshot.exists()) {
-          console.log("Nenhum curso encontrado.");
-          return;
-        }
+        if (!snapshot.exists()) return;
 
         const coursesData = snapshot.val();
         const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
@@ -53,7 +50,6 @@ const MyCourses = () => {
           const studentSnapshot = await get(studentCoursesRef);
           const studentCourses = studentSnapshot.val() || {};
 
-          console.log("StudentCourses carregado:", studentCourses);
 
           const enrichedCourses = coursesArray.map((course) => {
             const studentCourse = studentCourses[course.courseId] || {};
@@ -63,8 +59,6 @@ const MyCourses = () => {
               accessed: studentCourse.progress !== undefined,
             };
           });
-
-          console.log("Cursos enriquecidos (logado):", enrichedCourses);
 
           const available = enrichedCourses.filter((course) => !course.accessed);
           const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
@@ -93,7 +87,6 @@ const MyCourses = () => {
               }
               return acc;
             }, {});
-            console.log("localProgress calculado:", localProgress);
           }
 
           const enrichedCourses = await Promise.all(
@@ -113,8 +106,6 @@ const MyCourses = () => {
               };
             })
           );
-
-          console.log("Cursos enriquecidos (não logado):", enrichedCourses);
 
           const available = enrichedCourses.filter((course) => !course.accessed);
           const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);

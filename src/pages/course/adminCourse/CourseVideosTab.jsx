@@ -65,8 +65,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
             return;
         }
 
-        console.log("Descrição antes de enviar:", videoDescription);
-
         try {
             const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
             const newVideoRef = push(courseVideosRef);
@@ -108,7 +106,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
             try {
                 // Verificar se o vídeo possui quizzes
                 const courseQuizzes = await hasVideoQuizzes(courseId, videoToDelete.id);
-                console.log(courseQuizzes.length > 0 ? "Tem quiz" : "Não tem quiz");
 
                 if (courseQuizzes.length > 0) {
                     toast.error("Não é possível deletar o vídeo pois existe um quiz associado a ele.");
@@ -119,13 +116,11 @@ const CourseVideosTab = forwardRef((props, ref) => {
 
                 // deletar video da tabela de courseVideos
                 const videoRef = firebaseRef(database, `courseVideos/${courseId}/${videoToDelete.id}`);
-                console.log("videoRef:", (await get(videoRef)).val());
                 await remove(videoRef);
                 setVideos((prev) => prev.filter((video) => video.id !== videoToDelete.id));
 
                 // deletar vídeo da tabela de videoProgress
                 const videoProgressRef = firebaseRef(database, `videoProgress/${currentUser.uid}/${courseId}/${videoToDelete.id}`);
-                console.log("videoProgressRef:", (await get(videoProgressRef)).val());
                 await remove(videoProgressRef);
 
                 // atualizar progresso do curso para todos os usuários
@@ -178,7 +173,6 @@ const CourseVideosTab = forwardRef((props, ref) => {
                         video.id = newVideoRef.key;
                     }
                 }
-                console.log("Vídeos salvos com sucesso!");
                 return true;
             } catch (error) {
                 console.error("Erro ao salvar vídeos:", error);

@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../../service/courses";
 import { useAuth } from "../../../context/AuthContext";
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, update } from "firebase/database";
 import { database } from "../../../service/firebase";
 
 const Quiz = ({
@@ -28,6 +28,7 @@ const Quiz = ({
   const [userAnswers, setUserAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [quizCompleted, setQuizCompleted] = useState(false);
+  const [quizMinPercentage, setQuizMinPercentage] = useState(0);
   const [result, setResult] = useState(null);
   const { userDetails } = useAuth();
 
@@ -37,6 +38,7 @@ const Quiz = ({
         const quizData = await fetchQuizQuestions(quizId);
         if (quizData?.questions?.length > 0) {
           setQuestions(quizData.questions);
+          setQuizMinPercentage(quizData.minPercentage || 0);
         } else {
           setQuestions([]);
         }
@@ -82,11 +84,11 @@ const Quiz = ({
 
   const handleSubmit = async (answers) => {
     try {
-      
-      const quizMinPercentage =
-        questions[0]?.minPercentage !== undefined
-          ? questions[0]?.minPercentage
-          : 0;
+
+      // const quizMinPercentage =
+      //   questions[0]?.minPercentage !== undefined
+      //     ? questions[0]?.minPercentage
+      //     : 0;
 
       // Valida as respostas
       const result = await validateQuizAnswers(
@@ -95,9 +97,7 @@ const Quiz = ({
         quizMinPercentage
       );
 
-      const calculatedPercentage =
-        (result.earnedPoints / result.totalPoints) * 100;
-
+      const calculatedPercentage = (result.earnedPoints / result.totalPoints) * 100;
       const isPassed = calculatedPercentage >= quizMinPercentage;
 
       setResult({
@@ -132,9 +132,6 @@ const Quiz = ({
           (existingResult.scorePercentage > calculatedPercentage ||
             existingResult.correctAnswers > result.earnedPoints)
         ) {
-          console.log(
-            "Pontuação anterior é maior, mantendo o resultado existente."
-          );
           // Opcional: Apenas incrementa o contador de tentativas
           await update(quizResultRef, {
             attemptCount: (existingResult.attemptCount || 1) + 1,
@@ -158,12 +155,9 @@ const Quiz = ({
             lastAttempt: new Date().toISOString(),
             attemptCount: attemptCount,
           });
-
-          console.log("Salvou nova pontuação maior:", calculatedPercentage);
         }
       }
     } catch (error) {
-      console.error("Erro ao processar o quiz:", error);
       setQuizCompleted(false);
     }
   };
@@ -177,14 +171,15 @@ const Quiz = ({
   };
 
   const handleFinish = () => {
-    onComplete(result?.isPassed || false);
+    
+    onComplete(result?.isPassed || false, "returnToVideo", currentVideoId);
   };
 
   const handleNextVideoClick = () => {
     if (result?.isPassed && hasNextVideo()) {
       onNextVideo();
     } else {
-      onComplete(result?.isPassed || false);
+      onComplete(result?.isPassed || false, "complete");
     }
   };
 

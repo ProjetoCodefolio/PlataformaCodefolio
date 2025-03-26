@@ -17,8 +17,6 @@ import QuizIcon from "@mui/icons-material/Quiz";
 import { toast } from "react-toastify";
 
 const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => {
-    console.log("Videos no VideoList:", videos);
-
     const handleLockedClick = (video, previousVideo) => {
         if (previousVideo) {
             if (!previousVideo.watched) {
@@ -44,8 +42,6 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                 const isCompleted = video.watched && (!video.quizId || video.quizPassed);
                 const isCurrent = video.id === currentVideoId;
                 const isQuizLocked = !video.watched;
-
-                console.log(`Video ${video.title}:`, { quizId: video.quizId, watched: video.watched, isQuizLocked });
 
                 return (
                     <Card
@@ -176,7 +172,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                     ) : (
                                         <Tooltip title="Fazer Quiz">
                                             <IconButton
-                                                onClick={() => onQuizStart(video.quizId)}
+                                                onClick={() => onQuizStart(video.quizId, video.id)}
                                                 sx={{
                                                     color: "#9041c1",
                                                     "&:hover": { color: "#7d37a7" },
@@ -191,7 +187,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                 {video.quizId && video.quizPassed && !isLocked && (
                                     <Tooltip title="Refazer Quiz">
                                         <IconButton
-                                            onClick={() => onQuizStart(video.quizId)}
+                                            onClick={() => onQuizStart(video.quizId, video.id)}
                                             sx={{
                                                 color: "#9041c1",
                                                 "&:hover": { color: "#7d37a7" },
@@ -281,7 +277,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                     ) : (
                                         <Button
                                             variant="contained"
-                                            onClick={() => onQuizStart(video.quizId)}
+                                            onClick={() => onQuizStart(video.quizId, video.id)}
                                             startIcon={<QuizIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                                             sx={{
                                                 backgroundColor: "#9041c1",
@@ -304,7 +300,7 @@ const VideoList = ({ videos, setCurrentVideo, onQuizStart, currentVideoId }) => 
                                 {video.quizId && video.quizPassed && !isLocked && (
                                     <Button
                                         variant="outlined"
-                                        onClick={() => onQuizStart(video.quizId)}
+                                        onClick={() => onQuizStart(video.quizId, video.id)}
                                         startIcon={<ReplayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                                         sx={{
                                             borderColor: "#9041c1",

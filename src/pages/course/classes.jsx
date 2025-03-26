@@ -278,25 +278,19 @@ const Classes = () => {
   ) => {
     const percentage = Math.floor((currentTime / duration) * 100);
     const roundedPercentage = Math.floor(percentage / 10) * 10; // Arredonda para o múltiplo de 10 mais próximo
-    console.log(
-      `Salvando progresso: ${percentage}%, arredondado para: ${roundedPercentage}%`
-    );
 
     // Verificar se o progresso já está em 100% e já foi salvo anteriormente
     const [lastVideoSavedPercentage, setLastVideoSavedPercentage] = useState(0);
-    if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave) {
-      console.log("Vídeo já completado, ignorando atualização");
-      return;
-    }
+    if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave) return;
 
     const updatedVideos = videos.map((v) =>
       v.id === currentVideo.id
         ? {
-            ...v,
-            watched: percentage >= 90,
-            progress: percentage,
-            watchedTime: currentTime,
-          }
+          ...v,
+          watched: percentage >= 90,
+          progress: percentage,
+          watchedTime: currentTime,
+        }
         : v
     );
     setVideos(updatedVideos);
@@ -330,7 +324,6 @@ const Classes = () => {
         }
 
         await set(progressRef, progressData);
-        console.log(`Progresso salvo no banco de dados: ${roundedPercentage}%`);
 
         if (!wasWatched && percentage >= 90) {
           await updateCourseProgress(updatedVideos);
@@ -397,7 +390,8 @@ const Classes = () => {
     }
   };
 
-  const handleQuizStart = (quizId) => {
+  const handleQuizStart = (quizId, videoId) => {
+    setCurrentVideoId(videoId); // Atualize o ID do vídeo atual para o vídeo do quiz
     setShowQuiz(true);
   };
 

@@ -367,7 +367,6 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         );
         await set(courseQuizzesRef, quizData);
       }
-      console.log("Quizzes salvos com sucesso!");
       return true;
     } catch (error) {
       console.error("Erro ao salvar quizzes:", error);

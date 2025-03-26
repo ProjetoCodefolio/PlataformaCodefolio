@@ -32,11 +32,9 @@ const ManageMyCourses = () => {
     const loadCourses = async () => {
       try {
         if (!userDetails?.userId) {
-          console.log("Usuário não autenticado");
           return;
         }
 
-        console.log("Iniciando carregamento dos cursos...");
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
 
@@ -49,16 +47,13 @@ const ManageMyCourses = () => {
             }))
             .filter((course) => course.userId === userDetails.userId);
 
-          console.log("Cursos carregados:", coursesData);
           setCourses(coursesData);
           setFilteredCourses(coursesData);
         } else {
-          console.log("Nenhum curso encontrado.");
           setCourses([]);
           setFilteredCourses([]);
         }
       } catch (error) {
-        console.error("Erro ao carregar cursos:", error);
         toast.error("Erro ao carregar os cursos");
         setCourses([]);
         setFilteredCourses([]);
@@ -97,7 +92,6 @@ const ManageMyCourses = () => {
       const courseId = courseToDelete;
       if (!courseId) return;
 
-      console.log("Deletando curso:", courseId);
 
       const [videos, materials, quizzes] = await Promise.all([
         hasCourseVideos(courseId),

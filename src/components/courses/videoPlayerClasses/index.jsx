@@ -423,7 +423,6 @@ function VideoWatcher({
 
       try {
         await set(progressRef, progressData);
-        console.log("Progresso do vídeo salvo com sucesso:", progressData);
       } catch (error) {
         console.error("Erro ao salvar progresso do vídeo:", error);
       }
@@ -439,9 +438,6 @@ function VideoWatcher({
   useEffect(() => {
     // Se já está em 100% ou não tem player, não iniciar monitoramento
     if (!player || percentageWatched >= 100 || videoCompletedRef.current) {
-      console.log(
-        "Monitoramento não iniciado: vídeo já completo ou sem player"
-      );
       videoCompletedRef.current = true;
       return;
     }
@@ -449,7 +445,6 @@ function VideoWatcher({
     const monitorProgress = () => {
       // Verificação extra para garantir que não continuemos se já está em 100%
       if (percentageWatched >= 100 || videoCompletedRef.current) {
-        console.log("Detectado 100% de progresso, parando monitoramento");
         clearInterval(progressInterval.current);
         progressInterval.current = null;
         debouncedSaveProgress.cancel();
@@ -486,9 +481,6 @@ function VideoWatcher({
               onVideoProgressUpdate(videoId, 100, true); // true indica que atingiu 90%/100%
             }
           }
-          console.log(
-            "Vídeo atingiu 100%, parando monitoramento permanentemente"
-          );
           clearInterval(progressInterval.current); // Para o intervalo
           progressInterval.current = null;
           debouncedSaveProgress.cancel(); // Cancela qualquer salvamento pendente
@@ -547,15 +539,12 @@ function VideoWatcher({
     // não será executado se o vídeo atingir 100% entre verificações
     progressInterval.current = setInterval(() => {
       if (percentageWatched >= 100 || videoCompletedRef.current) {
-        console.log(
-          "Verificação preventiva: vídeo já em 100%, parando intervalo"
-        );
         clearInterval(progressInterval.current);
         progressInterval.current = null;
         return;
       }
       monitorProgress();
-    }, 10000);
+    }, 1000);
 
     return () => {
       if (progressInterval.current) {

@@ -11,7 +11,6 @@ const fetchCourses = async () => {
         });
         setCourses(courses);
     } catch (error) {
-        console.error("Erro ao buscar cursos: ", error);
     }
 };
 
@@ -46,9 +45,6 @@ export const fetchAllCourses = async () => {
 export const fetchInProgressCourses = async (userId) => {
     try {
 
-        console.log(userId)
-
-
         const coursesRef = ref(database, "studentCourses");
         const inProgressQuery = query(
             coursesRef,
@@ -58,20 +54,15 @@ export const fetchInProgressCourses = async (userId) => {
 
         const snapshot = await get(inProgressQuery);
 
-        console.log("Snapshot recebido para cursos em andamento:", snapshot.val());
 
         if (snapshot.exists()) {
             const inProgressCourses = Object.values(snapshot.val()).filter(
                 (course) => course.status === "in_progress"
             );
-            console.log("Cursos em andamento filtrados:", inProgressCourses);
             return inProgressCourses;
         }
-
-        console.log("Nenhum curso em andamento encontrado.");
         return [];
     } catch (error) {
-        console.error("Erro ao buscar cursos em andamento:", error);
         throw error;
     }
 };
@@ -96,22 +87,17 @@ export const fetchCompletedCourses = async (userId) => {
             equalTo(userId)
         );
 
-        const snapshot = await get(completedQuery);
-
-        console.log("Snapshot recebido para cursos concluídos:", snapshot.val());
+        const snapshot = await get(completedQuery)
 
         if (snapshot.exists()) {
             const completedCourses = Object.values(snapshot.val()).filter(
                 (course) => course.status === "completed"
             );
-            console.log("Cursos concluídos filtrados:", completedCourses);
             return completedCourses;
         }
 
-        console.log("Nenhum curso concluído encontrado.");
         return [];
     } catch (error) {
-        console.error("Erro ao buscar cursos concluídos:", error);
         throw error;
     }
 };
@@ -134,21 +120,17 @@ export const fetchCourseVideos = async (courseId) => {
                 courseId: video.courseId
             }));
 
-            console.log("Vídeos carregados:", videos);
             return videos;
         }
 
-        console.log("Nenhum vídeo encontrado para o curso:", courseId);
         return [];
     } catch (error) {
-        console.error("Erro ao buscar vídeos do curso:", error);
         throw error;
     }
 };
 
 
 export const fetchQuizQuestions = async (quizId) => {
-    console.log("QuizId recebido:", quizId);
     const [courseId, videoId] = quizId.split('/');
     const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
 
@@ -156,7 +138,6 @@ export const fetchQuizQuestions = async (quizId) => {
         const snapshot = await get(quizRef);
         if (snapshot.exists()) {
             const data = snapshot.val();
-            console.log("Dados do quiz recebidos:", data);
             return {
                 questions: data.questions.map((question, index) => ({
                     id: index, // Usar índice como ID
@@ -168,7 +149,6 @@ export const fetchQuizQuestions = async (quizId) => {
                 minPercentage: data.minPercentage || 0,
             };
         } else {
-            console.log("Quiz não encontrado para o quizId:", quizId);
             throw new Error("Quiz não encontrado!");
         }
     } catch (error) {
@@ -178,9 +158,6 @@ export const fetchQuizQuestions = async (quizId) => {
 };
 
 export const validateQuizAnswers = async (userAnswers, quizId, /*userId, courseId,*/ minPercentage) => {
-    console.log("Iniciando validação do quiz...");
-    console.log("QuizId recebido:", quizId);
-    console.log("UserAnswers recebidas:", userAnswers);
 
     try {
         const quizData = await fetchQuizQuestions(quizId);
@@ -195,21 +172,12 @@ export const validateQuizAnswers = async (userAnswers, quizId, /*userId, courseI
 
             if (userAnswer === question.correctOption) {
                 earnedPoints += question.points;
-                console.log(`Resposta correta para a questão ${question.id}.`);
             } else {
-                console.log(`Resposta incorreta para a questão ${question.id}.`);
             }
         });
 
         const scorePercentage = (earnedPoints / totalPoints) * 100;
         const isPassed = scorePercentage >= (minPercentage || 0);
-
-        console.log("Validação concluída:", {
-            isPassed,
-            scorePercentage,
-            earnedPoints,
-            totalPoints,
-        });
 
         return { isPassed, scorePercentage, earnedPoints, totalPoints };
     } catch (error) {
@@ -247,12 +215,10 @@ export const fetchCourseVideosWithWatchedStatus = async (courseId, userId) => {
         ]);
 
         if (!videosSnapshot.exists()) {
-            console.log("Nenhum vídeo encontrado para o curso.");
             return [];
         }
 
         if (!studentCourseSnapshot.exists()) {
-            console.log("Nenhum progresso encontrado para o estudante.");
             return [];
         }
 
@@ -274,41 +240,12 @@ export const fetchCourseVideosWithWatchedStatus = async (courseId, userId) => {
                 (!watchedVideos[videos[index - 1].id] || !quizPassed[videos[index - 1].quizId]),
         }));
 
-        console.log("Vídeos processados:", processedVideos);
 
         return processedVideos;
     } catch (error) {
-        console.error("Erro ao buscar vídeos do curso com progresso:", error);
         throw error;
     }
 };
-
-// export const updateCourseProgress = async (userId, courseId, videos, added) => {
-//     let newProgress = 0;
-//     const totalVideos = videos.length;
-
-//     const studentCoursesRef = ref(database, `studentCourses/${userId}/${courseId}`);
-//     const studentCoursesSnapshot = await get(studentCoursesRef);
-//     const studentCourses = studentCoursesSnapshot.val();
-
-//     const courseProgress = studentCourses ? studentCourses.progress : 0;
-//     console.log("Progresso do curso:", courseProgress);
-
-//     const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
-//     const videosSnapshot = await get(videosRef);
-//     const videosData = videosSnapshot.val();
-
-//     if (videosData) {
-//         const watchedVideos = Object.values(videosData).filter((video) => video.watched).length;
-//         console.log("Total de vídeos:", totalVideos);
-//         console.log("Vídeos assistidos:", watchedVideos);
-
-//         newProgress = (watchedVideos / totalVideos) * 100;
-//         console.log("Novo progresso calculado:", newProgress);
-
-//         await update(studentCoursesRef, { progress: newProgress, status: newProgress === 100 ? "completed" : "in_progress" });
-//     }
-// };
 
 export const updateCourseProgress = async (userId, courseId, videos) => {
     let newProgress = 0;
@@ -319,18 +256,14 @@ export const updateCourseProgress = async (userId, courseId, videos) => {
     const studentCourses = studentCoursesSnapshot.val();
 
     const courseProgress = studentCourses ? studentCourses.progress : 0;
-    console.log("Progresso do curso:", courseProgress);
 
     const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
     const videosSnapshot = await get(videosRef);
     const videosData = videosSnapshot.val();
 
     const watchedVideos = videosData ? Object.values(videosData).filter((video) => video.watched).length : 0;
-    console.log("Total de vídeos:", totalVideos);
-    console.log("Vídeos assistidos:", watchedVideos);
 
     newProgress = (watchedVideos / totalVideos) * 100;
-    console.log("Novo progresso calculado:", newProgress);
 
     await update(studentCoursesRef, { progress: newProgress, status: newProgress === 100 ? "completed" : "in_progress" });
 };
