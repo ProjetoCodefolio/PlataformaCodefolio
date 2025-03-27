@@ -506,7 +506,7 @@ function VideoWatcher({
                         borderRadius: 10,
                     }}
                 >
-                    {percentageWatched}% {percentageWatched >= 90 ? "✓" : ""}
+                    {videoCompletedRef.current ? 100 : percentageWatched}% {percentageWatched >= 90 ? "✓" : ""}
                 </Typography>
             </Box>
         </Box>
