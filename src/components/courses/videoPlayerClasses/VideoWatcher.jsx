@@ -179,9 +179,9 @@ function VideoWatcher({
                 lastSaved10PercentageRef.current = newPercentage;
                 setLastSavedPercentage(newPercentage);
 
-                console.log(`Progresso salvo em marco de 10%: ${newPercentage}%`);
+              
             } catch (error) {
-                console.error("Erro ao salvar progresso do vídeo:", error);
+             
             }
         }
 

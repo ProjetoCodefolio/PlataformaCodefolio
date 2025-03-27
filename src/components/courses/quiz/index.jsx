@@ -174,13 +174,35 @@ const Quiz = ({
   };
 
   const handleFinish = () => {
-    onComplete(result?.isPassed || false, "returnToVideo", currentVideoId);
+    try {
+      // Abordagem simplificada: chamar onComplete com ação específica
+      if (typeof onComplete === "function") {
+        // Passamos explicitamente a ação "returnToVideo" como segundo parâmetro
+        onComplete(result?.isPassed || false, "returnToVideo", currentVideoId);
+      }
+
+      // Chamar diretamente onSubmit com flag de retorno
+      if (typeof onSubmit === "function") {
+        onSubmit({ ...userAnswers, __action: "returnToVideo" });
+      }
+
+      // Usar o evento customizado como backup
+      window.dispatchEvent(
+        new CustomEvent("returnToVideo", {
+          detail: { videoId: currentVideoId },
+        })
+      );
+
+    } catch (error) {
+    
+    }
   };
 
   const handleNextVideoClick = () => {
     if (result?.isPassed && hasNextVideo()) {
       onNextVideo();
     } else {
+      // Se não houver próximo vídeo, considera o curso como completo
       onComplete(result?.isPassed || false, "complete");
     }
   };

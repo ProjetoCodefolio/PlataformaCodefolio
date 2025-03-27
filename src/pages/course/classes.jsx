@@ -167,7 +167,6 @@ const Classes = () => {
         }
       }
     } catch (error) {
-
     } finally {
       setLoadingVideos(false);
     }
@@ -236,6 +235,22 @@ const Classes = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // Adicionar listener para o evento personalizado como backup
+    const handleReturnToVideo = (event) => {
+      setShowQuiz(false);
+      if (event.detail && event.detail.videoId) {
+        setCurrentVideoId(event.detail.videoId);
+      }
+    };
+
+    window.addEventListener("returnToVideo", handleReturnToVideo);
+
+    return () => {
+      window.removeEventListener("returnToVideo", handleReturnToVideo);
+    };
+  }, []);
+
   const currentVideo = videos.find((video) => video.id === currentVideoId);
 
   const updateCourseProgress = async (updatedVideos) => {
@@ -261,9 +276,7 @@ const Classes = () => {
         if (progressPercentage === 100) {
           setShowCompletionModal(true);
         }
-      } catch (error) {
-
-      }
+      } catch (error) {}
     } else {
       if (progressPercentage === 100) {
         setShowCompletionModal(true);
@@ -281,16 +294,17 @@ const Classes = () => {
 
     // Verificar se o progresso já está em 100% e já foi salvo anteriormente
     const [lastVideoSavedPercentage, setLastVideoSavedPercentage] = useState(0);
-    if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave) return;
+    if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave)
+      return;
 
     const updatedVideos = videos.map((v) =>
       v.id === currentVideo.id
         ? {
-          ...v,
-          watched: percentage >= 90,
-          progress: percentage,
-          watchedTime: currentTime,
-        }
+            ...v,
+            watched: percentage >= 90,
+            progress: percentage,
+            watchedTime: currentTime,
+          }
         : v
     );
     setVideos(updatedVideos);
@@ -334,7 +348,17 @@ const Classes = () => {
     }
   };
 
-  const handleQuizComplete = async (isPassed) => {
+  const handleQuizComplete = async (isPassed, action, videoId) => {
+    // Verifica se a ação é returnToVideo
+    if (action === "returnToVideo") {
+      setShowQuiz(false); // Isso vai mostrar o vídeo novamente
+      if (videoId) {
+        setCurrentVideoId(videoId);
+      }
+      return; // Retorna mais cedo para não executar o resto da função
+    }
+
+    // O código existente para quando o quiz é aprovado
     if (isPassed) {
       const updatedVideos = videos.map((v) =>
         v.id === currentVideoId ? { ...v, quizPassed: true } : v
@@ -408,8 +432,7 @@ const Classes = () => {
       } else {
         await handleQuizComplete(false);
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   const handleNextVideo = () => {
@@ -426,7 +449,11 @@ const Classes = () => {
   };
 
   // Adicione a função handleVideoProgressUpdate
-  const handleVideoProgressUpdate = (videoId, percentage, hasReached90Percent) => {
+  const handleVideoProgressUpdate = (
+    videoId,
+    percentage,
+    hasReached90Percent
+  ) => {
     if (hasReached90Percent) {
       // Atualiza o estado local imediatamente para marcar o vídeo como assistido
       const updatedVideos = videos.map((v) =>
@@ -437,7 +464,6 @@ const Classes = () => {
       // Se o vídeo tiver um quiz e ele não estiver passado, mostrar o quiz automaticamente
       const currentVideo = videos.find((v) => v.id === videoId);
       if (currentVideo && currentVideo.quizId && !currentVideo.quizPassed) {
-
         // Atualize o curso no banco também
         updateCourseProgress(updatedVideos);
       }
