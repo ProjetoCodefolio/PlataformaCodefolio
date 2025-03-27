@@ -426,11 +426,7 @@ const Classes = () => {
   };
 
   // Adicione a função handleVideoProgressUpdate
-  const handleVideoProgressUpdate = (
-    videoId,
-    percentage,
-    hasReached90Percent
-  ) => {
+  const handleVideoProgressUpdate = (videoId, percentage, hasReached90Percent) => {
     if (hasReached90Percent) {
       // Atualiza o estado local imediatamente para marcar o vídeo como assistido
       const updatedVideos = videos.map((v) =>
