@@ -257,7 +257,7 @@ const StudentDashboard = () => {
               correctAnswers,
               totalQuestions: totalQuestionsInQuiz,
               passed: isPassed,
-              attemptCount: "#", // o dev ficou com preguiça de implementar o numero de tentativas
+              attemptCount: quizResult.attemptCount || "#",
               lastAttemptDate: lastAttemptDate,
             });
           }

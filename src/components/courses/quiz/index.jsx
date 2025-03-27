@@ -338,43 +338,6 @@ const Quiz = ({
                       {q.options[userAnswer] || "Não respondida"}
                     </Box>
                   </Typography>
-                  {!isCorrect && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "#4caf50",
-                        fontSize: { xs: "0.85rem", sm: "0.875rem" },
-                        mt: 1,
-                        display: "flex",
-                        flexDirection: { xs: "column", sm: "row" },
-                        alignItems: { xs: "flex-start", sm: "flex-start" },
-                        gap: { xs: 0.5, sm: 1 },
-                        width: "100%",
-                      }}
-                    >
-                      <Box
-                        component="span"
-                        sx={{
-                          fontWeight: "bold",
-                          flexShrink: 0,
-                        }}
-                      >
-                        Resposta correta:
-                      </Box>
-                      <Box
-                        component="span"
-                        sx={{
-                          wordWrap: "break-word",
-                          overflowWrap: "break-word",
-                          whiteSpace: "normal",
-                          width: "100%",
-                          hyphens: "auto",
-                        }}
-                      >
-                        {q.options[q.correctOption]}
-                      </Box>
-                    </Typography>
-                  )}
                 </Box>
               );
             })}

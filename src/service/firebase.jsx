@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database";
-import { getFirestore } from "firebase/firestore"; // Importação do Firestore
+import { getDatabase, connectDatabaseEmulator } from "firebase/database";
+import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"; // Importação do Firestore
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -17,4 +17,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 export const database = getDatabase(app);
 export const db = getFirestore(app); // Exportação do Firestore
+
+// ⚡️ Conectar ao emulador apenas em ambiente local
+if (import.meta.env.VITE_MODE === "development") {
+  console.log("🔥 Conectando ao Firebase Emulator...");
+  connectDatabaseEmulator(database, "localhost", 9000);
+  connectFirestoreEmulator(db, "localhost", 8080);
+}
+
 export { auth };
