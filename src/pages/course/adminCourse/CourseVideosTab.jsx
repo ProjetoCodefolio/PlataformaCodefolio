@@ -1,8 +1,8 @@
-import { ref as firebaseRef, set, push, get, remove } from 'firebase/database';
+import { ref as firebaseRef, set, push, get, remove, update } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useAuth } from '../../../context/AuthContext';
 import { useLocation } from "react-router-dom";
-import React, { useEffect, useState, forwardRef, useImperativeHandle } from "react";
+import React, { useEffect, useState, forwardRef, useImperativeHandle, useRef } from "react";
 import {
     Box,
     TextField,
@@ -17,6 +17,7 @@ import {
     FormControlLabel,
     Switch,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
@@ -32,11 +33,17 @@ const CourseVideosTab = forwardRef((props, ref) => {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [videoToDelete, setVideoToDelete] = useState(null);
+    const [videoToEdit, setVideoToEdit] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [lastAction, setLastAction] = useState(null); // Add this new state
+
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
     const { currentUser } = useAuth();
     const courseId = params.get("courseId");
+
+    const videosTabRef = useRef(null);
 
     async function fetchCourseVideos() {
         const courseVideosRef = firebaseRef(database, `courseVideos/${courseId}`);
@@ -86,6 +93,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
             setVideoDescription("");
             setRequiresPrevious(true);
             setShowSuccessModal(true);
+            setLastAction('add');
 
             // Atualizar progresso do curso para todos os usuários
             await updateAllUsersCourseProgress(courseId, updatedVideos);
@@ -94,6 +102,62 @@ const CourseVideosTab = forwardRef((props, ref) => {
             toast.error("Erro ao adicionar vídeo");
         }
     };
+
+    const handleEditVideo = (video) => {
+        setIsEditing(true);
+        setVideoToEdit(video.id);
+        setVideoTitle(video.title);
+        setVideoUrl(video.url);
+        setVideoDescription(video.description || '');
+        setRequiresPrevious(video.requiresPrevious);
+    }
+
+    const handleEditVideoSubmit = async () => {
+        if (!videoTitle.trim() || !videoUrl.trim()) {
+            toast.error("Título e URL são obrigatórios");
+            return;
+        }
+
+        try {
+            const videoData = {
+                title: videoTitle.trim(),
+                url: videoUrl.trim(),
+                description: String(videoDescription || ''),
+                requiresPrevious,
+            };
+
+            const videoRef = firebaseRef(database, `courseVideos/${courseId}/${videoToEdit}`);
+            await update(videoRef, {
+                title: videoTitle.trim(),
+                url: videoUrl.trim(),
+                description: String(videoDescription || ''),
+                requiresPrevious,
+            })
+
+            const updatedVideos = videos.map((video) => (video.id === videoToEdit ? { ...video, ...videoData } : video));
+            setVideos(updatedVideos);
+            setVideoTitle("");
+            setVideoUrl("");
+            setVideoDescription("");
+            setRequiresPrevious(true);
+            setIsEditing(false);
+            setShowSuccessModal(true);
+            setLastAction('edit');
+        }
+        catch (error) {
+            console.error("Erro ao editar vídeo:", error);
+            toast.error("Erro ao editar vídeo");
+        }
+    };
+
+    const handleVideo = () => {
+        if (isEditing) {
+            handleEditVideoSubmit();
+        }
+        else {
+            handleAddVideo();
+        }
+    }
 
     const handleRemoveVideo = (id) => {
         const video = videos.find((v) => v.id === id);
@@ -188,7 +252,14 @@ const CourseVideosTab = forwardRef((props, ref) => {
     }, [courseId]);
 
     return (
-        <Box sx={{ mt: 4 }}>
+        <Box sx={{ mt: 4 }} ref={videosTabRef}>
+
+            <Typography
+                variant="h6"
+                sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+            >
+                {isEditing ? "Editar Vídeo" : "Adicionar Vídeo"}
+            </Typography>
             <Grid container spacing={2}>
                 <Grid item xs={6}>
                     <TextField
@@ -282,7 +353,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
 
             <Button
                 variant="contained"
-                onClick={handleAddVideo}
+                onClick={handleVideo}
                 sx={{
                     mt: 3,
                     p: 1.5,
@@ -291,8 +362,30 @@ const CourseVideosTab = forwardRef((props, ref) => {
                     '&:hover': { backgroundColor: "#7d37a7" }
                 }}
             >
-                Adicionar Vídeo
+                {isEditing ? "Editar Vídeo" : "Adicionar Vídeo"}
             </Button>
+
+            {isEditing && <Button
+                variant="outlined"
+                onClick={() => {
+                    setVideoTitle("");
+                    setVideoUrl("");
+                    setVideoDescription("");
+                    setRequiresPrevious(true);
+                    setIsEditing(false);
+                }}
+                sx={{
+                    mt: 3,
+                    ml: 2,
+                    p: 1.5,
+                    fontWeight: "bold",
+                    color: "#9041c1",
+                    borderColor: "#9041c1",
+                    '&:hover': { backgroundColor: "rgba(144, 65, 193, 0.04)" }
+                }}
+            >
+                Cancelar
+            </Button>}
 
             <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}>
                 Vídeos do Curso
@@ -311,13 +404,36 @@ const CourseVideosTab = forwardRef((props, ref) => {
                             '&:hover': { backgroundColor: "rgba(144, 65, 193, 0.04)" }
                         }}
                         secondaryAction={
-                            <IconButton
-                                edge="end"
-                                onClick={() => handleRemoveVideo(video.id)}
-                                sx={{ color: '#666', '&:hover': { color: '#d32f2f' } }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
+                            <>
+                                <IconButton
+                                    onClick={() => {
+                                        handleEditVideo(video);
+                                        // Scroll to form area with a better approach
+                                        const headerOffset = 150; // Estimated header height + some margin
+                                        const formElement = videosTabRef.current;
+                                        
+                                        if (formElement) {
+                                            const formPosition = formElement.getBoundingClientRect().top;
+                                            const offsetPosition = formPosition + window.pageYOffset - headerOffset;
+                                            
+                                            window.scrollTo({
+                                                top: offsetPosition,
+                                                behavior: 'smooth'
+                                            });
+                                        }
+                                    }}
+                                    sx={{ color: "#9041c1" }}
+                                >
+                                    <EditIcon />
+                                </IconButton>
+                                <IconButton
+                                    edge="end"
+                                    onClick={() => handleRemoveVideo(video.id)}
+                                    sx={{ color: '#d32f2f' }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </>
                         }
                     >
                         <ListItemText
@@ -353,7 +469,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 }}>
                     <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
                     <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
-                        Vídeo adicionado com sucesso!
+                        {`Vídeo ${lastAction === 'edit' ? "editado" : "adicionado"} com sucesso!`}
                     </Typography>
                     <Button
                         variant="contained"

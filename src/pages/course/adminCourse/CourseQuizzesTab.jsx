@@ -554,7 +554,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         variant="h6"
         sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
       >
-        {editQuiz ? "Criar Novo Quiz" : "Editar Quiz"}
+        {editQuiz ? "Editar Quiz" : "Criar Novo Quiz"}
       </Typography>
 
       <Grid container spacing={3}>
