@@ -121,6 +121,14 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     fetchQuizzes();
   }, [courseId]);
 
+  useEffect(() => {
+    if (editQuiz && questionRef.current) {
+      setTimeout(() => {
+        questionRef.current.focus();
+      }, 100);
+    }
+  }, [editQuiz]);
+
   const handleAddQuiz = async () => {
     if (!newQuizVideoId) {
       toast.error("Selecione um vídeo para o quiz");
@@ -147,14 +155,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       setNewQuizMinPercentage(0);
       setShowAddQuizModal(true);
       toast.success("Quiz adicionado com sucesso!");
-      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" });
     } catch (error) {
       console.error("Erro ao adicionar quiz:", error);
       toast.error("Erro ao adicionar o quiz");
     }
   };
 
-  // Função para salvar um quiz específico no banco de dados
   const saveQuizToDatabase = async (quiz) => {
     try {
       const quizData = {
@@ -367,11 +373,9 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
 
     let currentQuestionId;
 
-    // Se estamos editando uma questão existente
     if (editQuestion) {
       currentQuestionId = editQuestion.id;
 
-      // Apenas atualiza o estado local, não salva no banco
       const updatedQuestion = {
         ...editQuestion,
         question: newQuizQuestion,
@@ -386,25 +390,15 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         ),
       };
 
-      // Atualiza apenas o estado local do quiz em edição
       setEditQuiz(updatedQuiz);
-    }
-    // Se estamos criando uma nova questão
-    else {
-      // Se ainda não temos um ID de rascunho, criamos um
+    } else {
       if (!draftQuestionId) {
-        // UUID garante que não teremos colisões de ID
         currentQuestionId = generateUUID();
         setDraftQuestionId(currentQuestionId);
-
-        // Log para debug
-        console.log("Novo rascunho criado com ID:", currentQuestionId);
       }
-      // O rascunho só existe no estado local, não afeta o banco nem o estado global
     }
   };
 
-  // Função única para adicionar questão
   const handleAddQuestion = async () => {
     if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Preencha a pergunta e todas as opções");
@@ -426,17 +420,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       correctOption: newQuizCorrectOption,
     };
 
-    // Verificamos se já existe uma questão com este ID
     const existingQuestionIndex = editQuiz.questions.findIndex(
       (q) => q.id === questionId
     );
 
     let updatedQuiz;
     if (existingQuestionIndex >= 0) {
-      // Substituir questão existente
-      console.log(
-        `Atualizando questão existente no índice: ${existingQuestionIndex}`
-      );
       updatedQuiz = {
         ...editQuiz,
         questions: editQuiz.questions.map((q) =>
@@ -445,24 +434,20 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       };
     } else {
       // Adicionar nova questão
-      console.log("Adicionando nova questão");
       updatedQuiz = {
         ...editQuiz,
         questions: [...editQuiz.questions, newQuestion],
       };
     }
 
-    // Atualiza estado local primeiro
     setQuizzes((prev) =>
       prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
     );
     setEditQuiz(updatedQuiz);
 
-    // Depois salva no banco
     const saved = await saveQuizToDatabase(updatedQuiz);
     if (saved) {
       toast.success("Questão adicionada com sucesso!");
-      // Limpa os campos e o ID do rascunho
       setDraftQuestionId(null);
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
@@ -470,7 +455,6 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     }
   };
 
-  // Função única para editar questão
   const handleSaveEditQuestion = async () => {
     if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Preencha a pergunta e todas as opções");
@@ -493,13 +477,11 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       ),
     };
 
-    // Atualiza estado local primeiro
     setQuizzes((prev) =>
       prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
     );
     setEditQuiz(updatedQuiz);
 
-    // Salva no banco
     const saved = await saveQuizToDatabase(updatedQuiz);
     if (saved) {
       toast.success("Questão editada com sucesso!");
@@ -539,6 +521,40 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       }
     }
   };
+
+  // Adicione essa função logo após as funções existentes
+  const handleKeyDown = (e, nextFieldRef, action) => {
+    // Tecla Enter pressionada
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      // Se temos uma ação específica para executar
+      if (action) {
+        action();
+        return;
+      }
+
+      // Se temos uma referência para o próximo campo
+      if (nextFieldRef && nextFieldRef.current) {
+        nextFieldRef.current.focus();
+      }
+    }
+  };
+
+  // Adicione essas refs para os campos de formulário
+  const questionRef = useRef(null);
+  const optionsRefs = useRef([]);
+  const addOptionButtonRef = useRef(null);
+  const saveButtonRef = useRef(null);
+  const cancelButtonRef = useRef(null);
+
+  // No início do componente, ajuste o tamanho do array de refs para as opções
+  useEffect(() => {
+    // Garantir que temos refs suficientes para todas as opções
+    optionsRefs.current = newQuizOptions.map(
+      (_, i) => optionsRefs.current[i] || React.createRef()
+    );
+  }, [newQuizOptions.length]);
 
   return (
     <Box
@@ -606,7 +622,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               );
               setNewQuizMinPercentage(value);
             }}
-            onBlur={handleBlurSaveMinPercentage} 
+            onBlur={handleBlurSaveMinPercentage}
             inputProps={{ min: 0, max: 100 }}
             variant="outlined"
             sx={{
@@ -634,6 +650,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 value={newQuizQuestion}
                 onChange={(e) => setNewQuizQuestion(e.target.value)}
                 onBlur={handleBlurSave}
+                onKeyDown={(e) => handleKeyDown(e, optionsRefs.current[0])}
+                inputRef={questionRef}
                 variant="outlined"
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -663,6 +681,15 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                       )
                     }
                     onBlur={handleBlurSave}
+                    onKeyDown={(e) =>
+                      handleKeyDown(
+                        e,
+                        index === newQuizOptions.length - 1
+                          ? addOptionButtonRef
+                          : optionsRefs.current[index + 1]
+                      )
+                    }
+                    inputRef={optionsRefs.current[index]}
                     variant="outlined"
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -678,6 +705,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                   />
                   <IconButton
                     onClick={() => setNewQuizCorrectOption(index)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        setNewQuizCorrectOption(index);
+                      }
+                    }}
                     sx={{
                       backgroundColor:
                         newQuizCorrectOption === index
@@ -698,6 +731,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                     <IconButton
                       onClick={() => handleRemoveQuizOption(index)}
                       color="error"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleRemoveQuizOption(index);
+                        }
+                      }}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -735,6 +774,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 variant="outlined"
                 onClick={handleAddQuizOption}
                 disabled={newQuizOptions.length >= 5}
+                ref={addOptionButtonRef}
+                onKeyDown={(e) => handleKeyDown(e, saveButtonRef)}
                 sx={{
                   color: "#9041c1",
                   borderColor: "#9041c1",
@@ -754,6 +795,8 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 onClick={
                   editQuestion ? handleSaveEditQuestion : handleAddQuestion
                 }
+                ref={saveButtonRef}
+                onKeyDown={(e) => handleKeyDown(e, cancelButtonRef)}
                 startIcon={<AddIcon />}
                 sx={{
                   mr: 2,
@@ -771,6 +814,17 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                   setNewQuizQuestion("");
                   setNewQuizOptions(["", ""]);
                   setNewQuizCorrectOption(0);
+                }}
+                ref={cancelButtonRef}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setEditQuiz(null);
+                    setEditQuestion(null);
+                    setNewQuizQuestion("");
+                    setNewQuizOptions(["", ""]);
+                    setNewQuizCorrectOption(0);
+                  }
                 }}
                 sx={{
                   color: "#9041c1",
