@@ -154,37 +154,26 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     }
   };
 
-  const handleAddQuestion = () => {
-    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
-      toast.error("Preencha a pergunta e todas as opções");
-      return;
-    }
-
-    const newQuestion = {
-      id: Date.now(),
-      question: newQuizQuestion,
-      options: [...newQuizOptions],
-      correctOption: newQuizCorrectOption,
-    };
-
-    if (editQuiz) {
-      setQuizzes((prev) =>
-        prev.map((q) =>
-          q.videoId === editQuiz.videoId
-            ? { ...q, questions: [...q.questions, newQuestion] }
-            : q
-        )
+  // Função para salvar um quiz específico no banco de dados
+  const saveQuizToDatabase = async (quiz) => {
+    try {
+      const quizData = {
+        questions: quiz.questions,
+        minPercentage: quiz.minPercentage,
+        courseId: courseId,
+        videoId: quiz.videoId,
+      };
+      const courseQuizzesRef = firebaseRef(
+        database,
+        `courseQuizzes/${courseId}/${quiz.videoId}`
       );
-      setEditQuiz((prev) => ({
-        ...prev,
-        questions: [...prev.questions, newQuestion],
-      }));
+      await set(courseQuizzesRef, quizData);
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar quiz:", error);
+      toast.error("Erro ao salvar alterações no banco de dados");
+      return false;
     }
-
-    setNewQuizQuestion("");
-    setNewQuizOptions(["", ""]);
-    setNewQuizCorrectOption(0);
-    toast.success("Questão adicionada com sucesso!");
   };
 
   const handleEditQuestion = (quiz, question) => {
@@ -195,70 +184,42 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     setNewQuizCorrectOption(question.correctOption);
   };
 
-  const handleSaveEditQuestion = () => {
-    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
-      toast.error("Preencha a pergunta e todas as opções");
-      return;
-    }
-
-    const updatedQuestion = {
-      ...editQuestion,
-      question: newQuizQuestion,
-      options: [...newQuizOptions],
-      correctOption: newQuizCorrectOption,
-    };
-
-    setQuizzes((prev) =>
-      prev.map((q) =>
-        q.videoId === editQuiz.videoId
-          ? {
-              ...q,
-              questions: q.questions.map((qst) =>
-                qst.id === updatedQuestion.id ? updatedQuestion : qst
-              ),
-            }
-          : q
-      )
-    );
-    setEditQuiz((prev) => ({
-      ...prev,
-      questions: prev.questions.map((qst) =>
-        qst.id === updatedQuestion.id ? updatedQuestion : qst
-      ),
-    }));
-    setEditQuestion(null);
-    setNewQuizQuestion("");
-    setNewQuizOptions(["", ""]);
-    setNewQuizCorrectOption(0);
-    toast.success("Questão editada com sucesso!");
-  };
-
   const handleRemoveQuestion = (quiz, questionId) => {
     setEditQuiz(quiz);
     setQuestionToDelete({ quiz, id: questionId });
     setShowDeleteQuestionModal(true);
   };
 
-  const confirmRemoveQuestion = () => {
+  // Modificar a função confirmRemoveQuestion para salvar alterações no banco de dados
+  const confirmRemoveQuestion = async () => {
+    // Primeiro atualizamos o estado local
+    const updatedQuiz = {
+      ...editQuiz,
+      questions: editQuiz.questions.filter(
+        (qst) => qst.id !== questionToDelete.id
+      ),
+    };
+
+    // Atualizamos o estado global
     setQuizzes((prev) =>
-      prev.map((q) =>
-        q.videoId === editQuiz.videoId
-          ? {
-              ...q,
-              questions: q.questions.filter(
-                (qst) => qst.id !== questionToDelete.id
-              ),
-            }
-          : q
-      )
+      prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
     );
-    setEditQuiz((prev) => ({
-      ...prev,
-      questions: prev.questions.filter((qst) => qst.id !== questionToDelete.id),
-    }));
+
+    // Atualizamos o estado do quiz em edição
+    setEditQuiz(updatedQuiz);
+
+    // Salvamos as alterações no banco de dados
+    const saved = await saveQuizToDatabase(updatedQuiz);
+
+    if (saved) {
+      toast.success("Questão deletada com sucesso!");
+    } else {
+      toast.error("Erro ao deletar questão no banco de dados");
+    }
+
+    // Fechamos o modal e limpamos o estado de questão a ser deletada
     setShowDeleteQuestionModal(false);
     setQuestionToDelete(null);
-    toast.success("Questão deletada com sucesso!");
   };
 
   const handleEditQuiz = (quiz) => {
@@ -267,6 +228,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     setNewQuizMinPercentage(quiz.minPercentage);
   };
 
+  // Modificar a função handleSaveEditQuiz
   const handleSaveEditQuiz = async () => {
     if (
       quizzes.some(
@@ -278,34 +240,27 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       return;
     }
 
-    const updatedQuizzes = quizzes.map((q) =>
-      q.videoId === editQuiz.videoId
-        ? { ...q, videoId: newQuizVideoId, minPercentage: newQuizMinPercentage }
-        : q
+    const updatedQuiz = {
+      ...editQuiz,
+      videoId: newQuizVideoId,
+      minPercentage: newQuizMinPercentage,
+    };
+
+    setQuizzes((prev) =>
+      prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
     );
 
-    setQuizzes(updatedQuizzes);
-    setEditQuiz(null);
-    setNewQuizVideoId(videos[0]?.id || "");
-    setNewQuizMinPercentage(0);
-
-    try {
-      const quizData = {
-        questions: editQuiz.questions,
-        minPercentage: newQuizMinPercentage,
-        courseId: courseId,
-        videoId: newQuizVideoId,
-      };
-      const courseQuizzesRef = firebaseRef(
-        database,
-        `courseQuizzes/${courseId}/${newQuizVideoId}`
-      );
-      await set(courseQuizzesRef, quizData);
-      toast.success("Edição do quiz salva com sucesso!");
-      // quizzesListEndRef.current.scrollIntoView({ behavior: "smooth" }); // Scroll até o final
-    } catch (error) {
-      console.error("Erro ao salvar quiz:", error);
-      toast.error("Erro ao salvar o quiz");
+    // Salvar no banco de dados
+    const saved = await saveQuizToDatabase(updatedQuiz);
+    if (saved) {
+      toast.success("Edição do quiz salva no banco com sucesso!");
+      setEditQuiz(null);
+      setNewQuizVideoId(videos[0]?.id || "");
+      setNewQuizMinPercentage(0);
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: "smooth",
+      });
     }
   };
 
@@ -388,6 +343,203 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     getQuizzes,
   }));
 
+  // Propriedade para controlar se estamos com uma questão em processo de edição
+  const [draftQuestionId, setDraftQuestionId] = useState(null);
+
+  // Função para gerar UUID única
+  const generateUUID = () => {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+      /[xy]/g,
+      function (c) {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      }
+    );
+  };
+
+  // Função única para salvar ao perder foco dos campos
+  const handleBlurSave = () => {
+    // Se não estamos editando um quiz ou a pergunta está vazia, não fazemos nada
+    if (!editQuiz || !newQuizQuestion.trim()) {
+      return;
+    }
+
+    let currentQuestionId;
+
+    // Se estamos editando uma questão existente
+    if (editQuestion) {
+      currentQuestionId = editQuestion.id;
+
+      // Apenas atualiza o estado local, não salva no banco
+      const updatedQuestion = {
+        ...editQuestion,
+        question: newQuizQuestion,
+        options: [...newQuizOptions],
+        correctOption: newQuizCorrectOption,
+      };
+
+      const updatedQuiz = {
+        ...editQuiz,
+        questions: editQuiz.questions.map((q) =>
+          q.id === updatedQuestion.id ? updatedQuestion : q
+        ),
+      };
+
+      // Atualiza apenas o estado local do quiz em edição
+      setEditQuiz(updatedQuiz);
+    }
+    // Se estamos criando uma nova questão
+    else {
+      // Se ainda não temos um ID de rascunho, criamos um
+      if (!draftQuestionId) {
+        // UUID garante que não teremos colisões de ID
+        currentQuestionId = generateUUID();
+        setDraftQuestionId(currentQuestionId);
+
+        // Log para debug
+        console.log("Novo rascunho criado com ID:", currentQuestionId);
+      }
+      // O rascunho só existe no estado local, não afeta o banco nem o estado global
+    }
+  };
+
+  // Função única para adicionar questão
+  const handleAddQuestion = async () => {
+    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
+      toast.error("Preencha a pergunta e todas as opções");
+      return;
+    }
+
+    if (!editQuiz) return;
+
+    // Definir ID da questão (usar UUID para garantir unicidade)
+    const questionId = draftQuestionId || generateUUID();
+    console.log(
+      `Usando questionId: ${questionId} (draft: ${draftQuestionId !== null})`
+    );
+
+    const newQuestion = {
+      id: questionId,
+      question: newQuizQuestion,
+      options: [...newQuizOptions],
+      correctOption: newQuizCorrectOption,
+    };
+
+    // Verificamos se já existe uma questão com este ID
+    const existingQuestionIndex = editQuiz.questions.findIndex(
+      (q) => q.id === questionId
+    );
+
+    let updatedQuiz;
+    if (existingQuestionIndex >= 0) {
+      // Substituir questão existente
+      console.log(
+        `Atualizando questão existente no índice: ${existingQuestionIndex}`
+      );
+      updatedQuiz = {
+        ...editQuiz,
+        questions: editQuiz.questions.map((q) =>
+          q.id === questionId ? newQuestion : q
+        ),
+      };
+    } else {
+      // Adicionar nova questão
+      console.log("Adicionando nova questão");
+      updatedQuiz = {
+        ...editQuiz,
+        questions: [...editQuiz.questions, newQuestion],
+      };
+    }
+
+    // Atualiza estado local primeiro
+    setQuizzes((prev) =>
+      prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+    );
+    setEditQuiz(updatedQuiz);
+
+    // Depois salva no banco
+    const saved = await saveQuizToDatabase(updatedQuiz);
+    if (saved) {
+      toast.success("Questão adicionada com sucesso!");
+      // Limpa os campos e o ID do rascunho
+      setDraftQuestionId(null);
+      setNewQuizQuestion("");
+      setNewQuizOptions(["", ""]);
+      setNewQuizCorrectOption(0);
+    }
+  };
+
+  // Função única para editar questão
+  const handleSaveEditQuestion = async () => {
+    if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
+      toast.error("Preencha a pergunta e todas as opções");
+      return;
+    }
+
+    if (!editQuestion || !editQuiz) return;
+
+    const updatedQuestion = {
+      ...editQuestion,
+      question: newQuizQuestion,
+      options: [...newQuizOptions],
+      correctOption: newQuizCorrectOption,
+    };
+
+    const updatedQuiz = {
+      ...editQuiz,
+      questions: editQuiz.questions.map((qst) =>
+        qst.id === updatedQuestion.id ? updatedQuestion : qst
+      ),
+    };
+
+    // Atualiza estado local primeiro
+    setQuizzes((prev) =>
+      prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+    );
+    setEditQuiz(updatedQuiz);
+
+    // Salva no banco
+    const saved = await saveQuizToDatabase(updatedQuiz);
+    if (saved) {
+      toast.success("Questão editada com sucesso!");
+      setEditQuestion(null);
+      setDraftQuestionId(null);
+      setNewQuizQuestion("");
+      setNewQuizOptions(["", ""]);
+      setNewQuizCorrectOption(0);
+    }
+  };
+
+  // Adicione uma função para salvar automaticamente a nota mínima
+  const handleBlurSaveMinPercentage = async () => {
+    // Somente executar se estivermos editando um quiz
+    if (!editQuiz) return;
+
+    // Verificar se houve alteração na nota mínima
+    if (editQuiz.minPercentage !== newQuizMinPercentage) {
+      const updatedQuiz = {
+        ...editQuiz,
+        minPercentage: newQuizMinPercentage,
+      };
+
+      // Atualizar o estado local
+      setEditQuiz(updatedQuiz);
+      setQuizzes((prev) =>
+        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+      );
+
+      // Salvar no banco de dados
+      const saved = await saveQuizToDatabase(updatedQuiz);
+      if (saved) {
+        toast.success("Nota mínima atualizada com sucesso!", {
+          autoClose: 2000,
+          position: "bottom-right",
+        });
+      }
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -454,6 +606,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               );
               setNewQuizMinPercentage(value);
             }}
+            onBlur={handleBlurSaveMinPercentage} 
             inputProps={{ min: 0, max: 100 }}
             variant="outlined"
             sx={{
@@ -480,6 +633,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                 fullWidth
                 value={newQuizQuestion}
                 onChange={(e) => setNewQuizQuestion(e.target.value)}
+                onBlur={handleBlurSave}
                 variant="outlined"
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -508,6 +662,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                         )
                       )
                     }
+                    onBlur={handleBlurSave}
                     variant="outlined"
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -606,7 +761,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
                   "&:hover": { backgroundColor: "#7d37a7" },
                 }}
               >
-                {editQuestion ? "Salvar Edição" : "Adicionar Questão"}
+                {editQuestion ? "Salvar Edição" : "Salvar Questão"}
               </Button>
               <Button
                 variant="outlined"
@@ -627,27 +782,6 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
               </Button>
             </Grid>
           </>
-        )}
-
-        {editQuiz && (
-          <Grid item xs={12}>
-            <Button
-              variant="contained"
-              onClick={() => {
-                handleSaveEditQuiz();
-                window.scrollTo({
-                  top: document.body.scrollHeight,
-                  behavior: "smooth",
-                });
-              }}
-              sx={{
-                backgroundColor: "#9041c1",
-                "&:hover": { backgroundColor: "#7d37a7" },
-              }}
-            >
-              Salvar Edição do Quiz
-            </Button>
-          </Grid>
         )}
       </Grid>
 
