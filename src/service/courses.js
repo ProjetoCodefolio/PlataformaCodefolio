@@ -255,17 +255,23 @@ export const updateCourseProgress = async (userId, courseId, videos) => {
     const studentCoursesSnapshot = await get(studentCoursesRef);
     const studentCourses = studentCoursesSnapshot.val();
 
-    const courseProgress = studentCourses ? studentCourses.progress : 0;
+    // Se não há vídeos, definimos o progresso como 100% (curso completado)
+    // ou poderíamos definir como 0% dependendo da lógica desejada
+    if (totalVideos === 0) {
+        newProgress = 0 // Ou 0, dependendo da sua preferência
+    } else {
+        const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
+        const videosSnapshot = await get(videosRef);
+        const videosData = videosSnapshot.val();
 
-    const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
-    const videosSnapshot = await get(videosRef);
-    const videosData = videosSnapshot.val();
+        const watchedVideos = videosData ? Object.values(videosData).filter((video) => video.watched).length : 0;
+        newProgress = (watchedVideos / totalVideos) * 100;
+    }
 
-    const watchedVideos = videosData ? Object.values(videosData).filter((video) => video.watched).length : 0;
-
-    newProgress = (watchedVideos / totalVideos) * 100;
-
-    await update(studentCoursesRef, { progress: newProgress, status: newProgress === 100 ? "completed" : "in_progress" });
+    await update(studentCoursesRef, { 
+        progress: newProgress, 
+        status: newProgress === 100 ? "completed" : "in_progress" 
+    });
 };
 
 export const updateAllUsersCourseProgress = async (courseId, videos) => {

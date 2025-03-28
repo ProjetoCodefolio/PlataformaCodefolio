@@ -48,3 +48,35 @@ export const hasVideoQuizzes = async (courseId, videoId) => {
         return null;
     }
 }
+
+// Adicione estas funções ao arquivo existente
+export const saveQuizToDatabase = async (quiz, courseId, database, firebaseRef) => {
+  try {
+    const quizData = {
+      questions: quiz.questions,
+      minPercentage: quiz.minPercentage,
+      courseId: courseId,
+      videoId: quiz.videoId,
+    };
+    const courseQuizzesRef = firebaseRef(
+      database,
+      `courseQuizzes/${courseId}/${quiz.videoId}`
+    );
+    await set(courseQuizzesRef, quizData);
+    return true;
+  } catch (error) {
+    console.error("Erro ao salvar quiz:", error);
+    return false;
+  }
+};
+
+export const generateUUID = () => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    /[xy]/g,
+    function (c) {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    }
+  );
+};

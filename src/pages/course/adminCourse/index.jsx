@@ -20,7 +20,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
-import CourseQuizzesTab from './CourseQuizzesTab';
+import CourseQuizzesTab from './courseQuizzesTab/';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
