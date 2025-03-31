@@ -25,6 +25,9 @@ import {
   Stack,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { Collapse } from "@mui/material";
 import SortIcon from "@mui/icons-material/Sort";
 import { database } from "../../service/firebase";
 import { ref, get } from "firebase/database";
@@ -53,6 +56,7 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [sortType, setSortType] = useState("name");
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedRows, setExpandedRows] = useState({});
 
   useEffect(() => {
     document.body.style.backgroundColor = "#f9f9f9";
@@ -202,8 +206,8 @@ const StudentDashboard = () => {
               quizResult.passed !== undefined
                 ? quizResult.passed
                 : quizResult.isPassed !== undefined
-                ? quizResult.isPassed
-                : scorePercentage >= minPercentage;
+                  ? quizResult.isPassed
+                  : scorePercentage >= minPercentage;
 
             // Formatar a data da última tentativa
             let lastAttemptDate = "Data não disponível";
@@ -259,6 +263,7 @@ const StudentDashboard = () => {
               passed: isPassed,
               attemptCount: quizResult.attemptCount || "#",
               lastAttemptDate: lastAttemptDate,
+              detailedAnswers: quizResult.detailedAnswers || [],
             });
           }
         }
@@ -346,6 +351,13 @@ const StudentDashboard = () => {
 
   const handleSearch = (searchTerm) => {
     setSearchTerm(searchTerm);
+  };
+
+  const toggleRowExpansion = (userId) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
   };
 
   if (loading) {
@@ -549,96 +561,136 @@ const StudentDashboard = () => {
                 </TableHead>
                 <TableBody>
                   {getSortedResults().map((student) => (
-                    <TableRow key={student.userId} hover>
-                      <TableCell>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 2 }}
-                        >
-                          <Avatar
-                            src={student.photoURL}
-                            alt={student.name}
+                    <React.Fragment key={student.userId}>
+                      <TableRow hover>
+                        <TableCell>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <IconButton onClick={() => toggleRowExpansion(student.userId)}>
+                              {expandedRows[student.userId] ? <ExpandMoreIcon /> : <ChevronRightIcon />}
+                            </IconButton>
+                            <Avatar
+                              src={student.photoURL}
+                              alt={student.name}
+                              sx={{
+                                width: 40,
+                                height: 40,
+                                backgroundColor: "#9041c1",
+                                color: "white",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {student.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Typography variant="body1">
+                              {capitalizeWords(student.name)}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{student.email}</TableCell>
+                        <TableCell>
+                          <Typography variant="body1" sx={{ fontWeight: "medium" }}>
+                            {typeof student.score === "number" ? student.score.toFixed(2) : "0.00"}%
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography
+                            variant="body1"
                             sx={{
-                              width: 40,
-                              height: 40,
-                              backgroundColor: "#9041c1",
-                              color: "white",
+                              fontWeight: "medium",
+                              color:
+                                quiz.minPercentage === 0
+                                  ? "#000"
+                                  : student.passed
+                                    ? "#2e7d32"
+                                    : "#c62828",
+                            }}
+                            title={`Acertos: ${student.correctAnswers}, Total: ${student.totalQuestions}, Score: ${student.score}%`}
+                          >
+                            {student.correctAnswers !== null &&
+                              student.correctAnswers !== undefined
+                              ? student.correctAnswers
+                              : 0}
+                            /
+                            {student.totalQuestions ||
+                              (quiz.questions ? quiz.questions.length : 0)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Box
+                            sx={{
+                              backgroundColor:
+                                quiz.minPercentage === 0
+                                  ? ""
+                                  : student.passed
+                                    ? "#e8f5e9"
+                                    : "#ffebee",
+                              color:
+                                quiz.minPercentage === 0
+                                  ? "#000"
+                                  : student.passed
+                                    ? "#2e7d32"
+                                    : "#c62828",
+                              borderRadius: 1,
+                              px: 1,
+                              py: 0.5,
+                              display: "inline-block",
                               fontWeight: "bold",
                             }}
                           >
-                            {student.name.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Typography variant="body1">
-                            {capitalizeWords(student.name)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body1"
-                          sx={{ fontWeight: "medium" }}
-                        >
-                          {typeof student.score === "number"
-                            ? student.score.toFixed(2)
-                            : "0.00"}
-                          %
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontWeight: "medium",
-                            color:
-                              quiz.minPercentage === 0
-                                ? "#000"
-                                : student.passed
-                                ? "#2e7d32"
-                                : "#c62828",
-                          }}
-                          title={`Acertos: ${student.correctAnswers}, Total: ${student.totalQuestions}, Score: ${student.score}%`}
-                        >
-                          {student.correctAnswers !== null &&
-                          student.correctAnswers !== undefined
-                            ? student.correctAnswers
-                            : 0}
-                          /
-                          {student.totalQuestions ||
-                            (quiz.questions ? quiz.questions.length : 0)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            backgroundColor:
-                              quiz.minPercentage === 0
-                                ? ""
-                                : student.passed
-                                ? "#e8f5e9"
-                                : "#ffebee",
-                            color:
-                              quiz.minPercentage === 0
-                                ? "#000"
-                                : student.passed
-                                ? "#2e7d32"
-                                : "#c62828",
-                            borderRadius: 1,
-                            px: 1,
-                            py: 0.5,
-                            display: "inline-block",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {quiz.minPercentage === 0
-                            ? "N/A"
-                            : student.passed
-                            ? "Aprovado"
-                            : "Reprovado"}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{student.attemptCount}</TableCell>
-                      <TableCell>{student.lastAttemptDate}</TableCell>
-                    </TableRow>
+                            {quiz.minPercentage === 0
+                              ? "N/A"
+                              : student.passed
+                                ? "Aprovado"
+                                : "Reprovado"}
+                          </Box>
+                        </TableCell>
+                        <TableCell>{student.attemptCount}</TableCell>
+                        <TableCell>{student.lastAttemptDate}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                          <Collapse in={expandedRows[student.userId]} timeout="auto" unmountOnExit>
+                            <Box sx={{ margin: 2 }}>
+                              <Typography variant="h6" gutterBottom component="div" sx={{ color: "#9041c1" }}>
+                                Respostas Detalhadas
+                              </Typography>
+
+                              {student.detailedAnswers && student.detailedAnswers.length > 0 ? (
+                                <Box sx={{ mt: 2 }}>
+                                  {student.detailedAnswers.map((answer, index) => (
+                                    <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: answer.isCorrect ? "#e8f5e9" : "#ffebee" }}>
+                                      <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                                        Questão {index + 1}: {answer.question || "Questão não disponível"}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mt: 1 }}>
+                                        <strong>Resposta do aluno:</strong> {answer.userAnswerText || "Não respondeu"}
+                                      </Typography>
+                                      <Typography variant="body2" sx={{ mt: 1 }}>
+                                        <strong>Resposta correta:</strong> {answer.correctOptionText || "Não disponível"}
+                                      </Typography>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          mt: 1,
+                                          color: answer.isCorrect ? "#2e7d32" : "#c62828",
+                                          fontWeight: "medium"
+                                        }}
+                                      >
+                                        {answer.isCorrect ? "✓ Correto" : "✗ Incorreto"}
+                                      </Typography>
+                                    </Paper>
+                                  ))}
+                                </Box>
+                              ) : (
+                                <Typography variant="body1" color="textSecondary">
+                                  Detalhes das respostas não disponíveis para este estudante.
+                                </Typography>
+                              )}
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    </React.Fragment>
                   ))}
                 </TableBody>
               </Table>

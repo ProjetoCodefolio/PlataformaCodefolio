@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getAnalytics, logEvent } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore"; // Importação do Firestore
@@ -17,6 +18,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 export const database = getDatabase(app);
 export const db = getFirestore(app); // Exportação do Firestore
+
+const analytics = getAnalytics();
+logEvent(analytics, 'notification_received');
 
 // ⚡ Conectar ao emulador apenas em ambiente local
 if (import.meta.env.VITE_MODE === "development") {
