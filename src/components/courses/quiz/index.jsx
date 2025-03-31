@@ -85,13 +85,13 @@ const Quiz = ({
     }
   };
 
+  const hasPassedChanged = (previousPassed, newPassed) => {
+    // Se passou antes e agora reprovou → isPending = true
+    // Em todos os outros casos → isPending = false
+    return previousPassed === true && newPassed === false;
+  };
   const handleSubmit = async (answers) => {
     try {
-      // const quizMinPercentage =
-      //   questions[0]?.minPercentage !== undefined
-      //     ? questions[0]?.minPercentage
-      //     : 0;
-
       // Valida as respostas
       const result = await validateQuizAnswers(
         answers,
@@ -102,6 +102,22 @@ const Quiz = ({
       const calculatedPercentage =
         (result.earnedPoints / result.totalPoints) * 100;
       const isPassed = calculatedPercentage >= quizMinPercentage;
+
+      // Criar o objeto detailedAnswers para armazenar informações de cada pergunta
+      const detailedAnswers = {};
+      questions.forEach((q) => {
+        const userAnswer = answers[q.id];
+        const isCorrect = userAnswer === q.correctOption;
+
+        detailedAnswers[q.id] = {
+          question: q.question,
+          userAnswer: userAnswer,
+          correctOption: q.correctOption,
+          userAnswerText: q.options[userAnswer] || "Não respondida",
+          correctOptionText: q.options[q.correctOption],
+          isCorrect: isCorrect
+        };
+      });
 
       setResult({
         ...result,
@@ -129,38 +145,55 @@ const Quiz = ({
           ? existingResultSnapshot.val()
           : null;
 
-        // Se já existe um resultado anterior, verificar se a pontuação atual é maior
-        if (
-          existingResult &&
-          (existingResult.scorePercentage > calculatedPercentage ||
-            existingResult.correctAnswers > result.earnedPoints)
-        ) {
-          // Opcional: Apenas incrementa o contador de tentativas
-          await update(quizResultRef, {
-            attemptCount: (existingResult.attemptCount || 1) + 1,
-            lastAttempt: new Date().toISOString(),
-          });
-        } else {
-          // Se não existe resultado anterior ou a pontuação atual é maior, salvar o novo resultado
-          const attemptCount = existingResult
-            ? (existingResult.attemptCount || 1) + 1
-            : 1;
+        // verifica se o usuário já havia passado no quiz antes, mas não atingiu a pontuação mínima
+        const previousPassed = existingResult?.isPassed;
+        const newPassed = isPassed;
 
-          await set(quizResultRef, {
-            name: `${userDetails.firstName} ${userDetails.lastName}`,
-            email: user.email,
-            scorePercentage: calculatedPercentage,
-            correctAnswers: result.earnedPoints,
-            totalQuestions: result.totalPoints,
-            isPassed,
-            minPercentage: quizMinPercentage,
-            submittedAt: new Date().toISOString(),
-            lastAttempt: new Date().toISOString(),
-            attemptCount: attemptCount,
-          });
-        }
+        console.log("objeto que carrega isPassed", existingResult);
+        console.log("passou antes: ", previousPassed);
+        console.log("caba passou no quiz: ", newPassed);
+
+        const isPending = hasPassedChanged(previousPassed, newPassed);
+
+        console.log("pendente: ", isPending);
+
+        // Se já existe um resultado anterior, verificar se a pontuação atual é maior
+        // if (
+        //   existingResult &&
+        //   (existingResult.scorePercentage > calculatedPercentage ||
+        //     existingResult.correctAnswers > result.earnedPoints)
+        // ) {
+        //   // Apenas incrementa o contador de tentativas e salva as respostas atuais
+        //   await update(quizResultRef, {
+        //     attemptCount: (existingResult.attemptCount || 1) + 1,
+        //     lastAttempt: new Date().toISOString(),
+        //     // Adiciona as respostas detalhadas da última tentativa mesmo se não for a melhor pontuação
+        //     detailedAnswers: detailedAnswers
+        //   });
+        // } else {
+        //   // Se não existe resultado anterior ou a pontuação atual é maior, salvar o novo resultado
+        const attemptCount = existingResult
+          ? (existingResult.attemptCount || 1) + 1
+          : 1;
+
+        await set(quizResultRef, {
+          name: `${userDetails.firstName} ${userDetails.lastName}`,
+          email: user.email,
+          scorePercentage: calculatedPercentage,
+          correctAnswers: result.earnedPoints,
+          totalQuestions: result.totalPoints,
+          isPassed,
+          pending: isPending,
+          minPercentage: quizMinPercentage,
+          submittedAt: new Date().toISOString(),
+          lastAttempt: new Date().toISOString(),
+          attemptCount: attemptCount,
+          detailedAnswers: detailedAnswers,
+        });
+        // }
       }
     } catch (error) {
+      console.error("Erro ao processar quiz:", error);
       setQuizCompleted(false);
     }
   };
@@ -194,7 +227,7 @@ const Quiz = ({
       );
 
     } catch (error) {
-    
+
     }
   };
 
