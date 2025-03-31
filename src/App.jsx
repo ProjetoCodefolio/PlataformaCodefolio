@@ -97,7 +97,7 @@ function App() {
             />
 
             <Route
-              path="/listcurso"
+              path="/cursos"
               element={
                 <PrivateRoute>
                   <ListCursos />
