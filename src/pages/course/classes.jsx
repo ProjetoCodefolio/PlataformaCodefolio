@@ -32,6 +32,7 @@ const Classes = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
+  const [courseOwnerUid, setCourseOwnerUid] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showLogInModal, setShowLogInModal] = useState(false);
   const { userDetails } = useAuth();
@@ -70,6 +71,7 @@ const Classes = () => {
       const courseSnapshot = await get(courseRef);
       const courseData = courseSnapshot.val();
       setCourseTitle(courseData?.title || "Curso sem título");
+      setCourseOwnerUid(courseData?.userId || null);
 
       const courseVideosRef = ref(database, `courseVideos/${courseId}`);
       const snapshot = await get(courseVideosRef);
@@ -612,7 +614,7 @@ const Classes = () => {
                   position: "relative",
                 }}
               >
-                {userDetails?.role === "admin" && (
+                {userDetails?.userId === courseOwnerUid && (
                   <Box
                     sx={{
                       position: "absolute",
