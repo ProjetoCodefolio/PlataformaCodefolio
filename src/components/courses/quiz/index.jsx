@@ -82,6 +82,9 @@ const Quiz = ({
       setSelectedOption(
         userAnswers[questions[currentQuestionIndex - 1]?.id]?.toString() || null
       );
+    } else {
+      // Se estamos na primeira questão, voltar ao vídeo
+      handleFinish();
     }
   };
 
@@ -115,7 +118,7 @@ const Quiz = ({
           correctOption: q.correctOption,
           userAnswerText: q.options[userAnswer] || "Não respondida",
           correctOptionText: q.options[q.correctOption],
-          isCorrect: isCorrect
+          isCorrect: isCorrect,
         };
       });
 
@@ -225,10 +228,7 @@ const Quiz = ({
           detail: { videoId: currentVideoId },
         })
       );
-
-    } catch (error) {
-
-    }
+    } catch (error) {}
   };
 
   const handleNextVideoClick = () => {

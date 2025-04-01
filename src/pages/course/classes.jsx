@@ -23,6 +23,8 @@ import "react-toastify/dist/ReactToastify.css";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import LoginModal from "../../components/modals/LoginModal";
 import CompletionModal from "../../components/modals/CompletionModal";
+import SchoolIcon from "@mui/icons-material/School"; // Importe o ícone de professor
+import QuizGigi from "../../components/courses/quizGigi";
 
 const Classes = () => {
   const [videos, setVideos] = useState([]);
@@ -44,6 +46,8 @@ const Classes = () => {
     width: 0,
     height: 0,
   });
+  const [showQuizGigi, setShowQuizGigi] = useState(false);
+  const [quizData, setQuizData] = useState(null);
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -470,6 +474,30 @@ const Classes = () => {
     }
   };
 
+  const handleOpenQuizGigi = async () => {
+    if (currentVideo?.quizId) {
+      console.log("Abrindo Quiz Gigi para o quiz ID:", currentVideo.quizId);
+
+      // Pausar o vídeo antes de abrir o quiz
+      if (
+        videoPlayerRef.current &&
+        typeof videoPlayerRef.current.pause === "function"
+      ) {
+        videoPlayerRef.current.pause();
+      }
+
+      try {
+        const quiz = await fetchQuizQuestions(currentVideo.quizId);
+        setQuizData(quiz);
+        setShowQuizGigi(true);
+      } catch (error) {
+        console.error("Erro ao carregar o quiz:", error);
+      }
+    } else {
+      console.log("Nenhum quiz associado ao vídeo atual.");
+    }
+  };
+
   return (
     <>
       <style>
@@ -577,7 +605,34 @@ const Classes = () => {
                 </Typography>
               </Box>
             ) : currentVideo ? (
-              <Box sx={{ backgroundColor: "#F5F5FA", width: "100%" }}>
+              <Box
+                sx={{
+                  backgroundColor: "#F5F5FA",
+                  width: "100%",
+                  position: "relative",
+                }}
+              >
+                {userDetails?.role === "admin" && (
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "8px",
+                      right: "75px",
+                      zIndex: 10,
+                      display: { xs: "none", md: "flex" }, // Oculta em telas pequenas
+                      alignItems: "center",
+                      bgcolor: "#9041c1",
+                      color: "white",
+                      p: 1,
+                      borderRadius: 5,
+                      cursor: "pointer",
+                    }}
+                    onClick={handleOpenQuizGigi}
+                  >
+                    <SchoolIcon sx={{ fontSize: "18px" }} />{" "}
+                    {/* Diminui o tamanho do ícone */}
+                  </Box>
+                )}
                 <VideoPlayer
                   ref={videoPlayerRef}
                   video={{
@@ -685,6 +740,13 @@ const Classes = () => {
         userName={userDetails?.firstName}
         courseTitle={courseTitle}
       />
+      {showQuizGigi && (
+        <QuizGigi
+          onClose={() => setShowQuizGigi(false)}
+          quizData={quizData}
+          courseId={courseId} // Adicionando o courseId
+        />
+      )}
     </>
   );
 };

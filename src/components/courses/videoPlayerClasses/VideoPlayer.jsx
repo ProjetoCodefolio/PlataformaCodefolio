@@ -197,6 +197,47 @@ const VideoPlayer = forwardRef(
       );
     }
 
+    // Função auxiliar para pausar vídeo
+    const pauseVideo = () => {
+      try {
+        // Tentativa 1: Pausar vídeo HTML5
+        if (videoRef.current && typeof videoRef.current.pause === "function") {
+          videoRef.current.pause();
+          console.log("Vídeo HTML5 pausado com sucesso");
+          return true;
+        }
+
+        // Tentativa 2: Pausar YouTube player
+        if (player && typeof player.pauseVideo === "function") {
+          player.pauseVideo();
+          console.log("YouTube player pausado com sucesso");
+          return true;
+        }
+
+        console.warn("Nenhum método de pausa disponível");
+        return false;
+      } catch (error) {
+        console.error("Erro ao pausar vídeo:", error);
+        return false;
+      }
+    };
+
+    // Expor métodos via ref
+    useEffect(() => {
+      if (ref) {
+        ref.current = {
+          pause: pauseVideo,
+          // Outros métodos que você já tenha...
+          seekTo: (time) => {
+            if (player && player.seekTo) {
+              player.seekTo(time);
+            }
+          },
+          // ... outros métodos
+        };
+      }
+    }, [player, ref]);
+
     return (
       <Box
         sx={{
@@ -253,7 +294,7 @@ const VideoPlayer = forwardRef(
           }}
         >
           {video.url.includes("youtube.com") ||
-            video.url.includes("youtu.be") ? (
+          video.url.includes("youtu.be") ? (
             <Box
               sx={{
                 width: "100%",
