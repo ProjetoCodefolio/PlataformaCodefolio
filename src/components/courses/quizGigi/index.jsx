@@ -22,6 +22,8 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import SearchIcon from "@mui/icons-material/Search";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
+import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import logo from "../../../assets/img/codefolio.png";
 import {
   ref,
@@ -354,7 +356,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       const sortedStudents = students.sort((a, b) =>
         a.name.localeCompare(b.name)
       );
-      setEnrolledStudents(sortedStudents);
+      setEnrolledStudents(sortedStudents.filter((student) => !student.email.includes("codefolio")));
     } catch (error) {
       setEnrolledStudents([]);
     } finally {
@@ -500,8 +502,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
   const filteredStudents = searchTerm
     ? enrolledStudents.filter((student) =>
-        student.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+      student.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
     : enrolledStudents;
 
   const currentQuestion = quizData?.questions?.[currentQuestionIndex];
@@ -530,14 +532,22 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       handleCloseMenu();
     }
 
-    if (enrolledStudents.length > 0) {
+    // Filtrar apenas os alunos que não estão desabilitados
+    const enabledStudents = enrolledStudents.filter(student => !student.disabled);
+
+    // Verificar se existem alunos habilitados
+    if (enabledStudents.length > 0) {
       if (selectedStudent && selectedAnswer !== null) {
         setSelectedAnswer(null);
         setShowFeedback(false);
       }
 
-      const randomIndex = Math.floor(Math.random() * enrolledStudents.length);
-      setSelectedStudent(enrolledStudents[randomIndex]);
+      // Sortear apenas entre os alunos habilitados
+      const randomIndex = Math.floor(Math.random() * enabledStudents.length);
+      setSelectedStudent(enabledStudents[randomIndex]);
+    } else {
+      // Mostrar mensagem se não houver alunos habilitados
+      alert("Não há alunos habilitados para sorteio. Por favor, habilite pelo menos um aluno.");
     }
   };
 
@@ -693,9 +703,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             fontSize: "0.75rem",
           }}
         >
-          {`${courseTitle || "Curso"} • ${quizTitle || "Quiz"} • Questão ${
-            currentQuestionIndex + 1
-          }`}
+          {`${courseTitle || "Curso"} • ${quizTitle || "Quiz"} • Questão ${currentQuestionIndex + 1
+            }`}
         </Typography>
 
         {hasCorrect && (
@@ -890,6 +899,20 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       </Box>
     );
   };
+
+  const handleAbleStudent = async (student) => {
+    if (!student) return;
+
+    console.log("Desabilitando aluno:", student.name);
+
+    setEnrolledStudents((prev) =>
+      prev.map((s) =>
+        s.userId === student.userId
+          ? { ...s, disabled: !s.disabled }
+          : s
+      )
+    );
+  }
 
   return (
     <ErrorBoundary
@@ -1442,7 +1465,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               zIndex: 1500,
               pointerEvents: "auto", // Mudado para "auto" para capturar cliques fora
             }}
-            onClick={handleCloseMenu} 
+            onClick={handleCloseMenu}
           >
             <div
               className="quizgigi-menu-container"
@@ -1457,7 +1480,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 zIndex: 1501,
                 pointerEvents: "auto",
               }}
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
             >
               <Paper
                 sx={{
@@ -1519,58 +1542,74 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   >
                     {filteredStudents.length > 0 ? (
                       filteredStudents.map((student) => (
-                        <Button
+                        <Box
                           key={student.userId}
-                          fullWidth
                           sx={{
-                            py: 1.5,
-                            px: 2,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "flex-start",
-                            textAlign: "left",
-                            color: "text.primary",
+                            display: 'flex',
+                            alignItems: 'center',
                             borderBottom: "1px solid rgba(0,0,0,0.05)",
-                            borderRadius: 0,
-                            "&:hover": {
-                              backgroundColor: "rgba(144, 65, 193, 0.1)",
-                            },
                             "&:last-child": {
                               borderBottom: "none",
                             },
                           }}
-                          onClick={() => handleSelectStudent(student)}
                         >
-                          <Avatar
-                            src={student.photoURL}
+                          <Button
                             sx={{
-                              mr: 2,
-                              bgcolor: "#9041c1",
-                              width: 35,
-                              height: 35,
-                              fontSize: 14,
-                            }}
-                          >
-                            {student.initials}
-                          </Avatar>
-                          <Typography
-                            sx={{
+                              py: 1.5,
+                              px: 2,
                               flex: 1,
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-start",
+                              textAlign: "left",
+                              color: "text.primary",
+                              borderRadius: 0,
+                              "&:hover": {
+                                backgroundColor: "rgba(144, 65, 193, 0.1)",
+                              },
                             }}
+                            onClick={() => handleSelectStudent(student)}
+                            disabled={student.disabled}
                           >
-                            {student.name}
-                          </Typography>
-                        </Button>
+                            <Avatar
+                              src={student.photoURL}
+                              sx={{
+                                mr: 2,
+                                bgcolor: "#9041c1",
+                                width: 35,
+                                height: 35,
+                                fontSize: 14,
+                              }}
+                            >
+                              {student.initials}
+                            </Avatar>
+                            <Typography
+                              sx={{
+                                flex: 1,
+                                whiteSpace: "normal",
+                                wordBreak: "break-word",
+                              }}
+                            >
+                              {student.name}
+                            </Typography>
+                          </Button>
+                          <IconButton
+                            sx={{ mr: 1 }}
+                            onClick={() => handleAbleStudent(student)}
+                          >
+                            {student.disabled
+                              ? <AddCircleOutlineIcon fontSize="small" sx={{ color: "green" }} />
+                              : <RemoveCircleOutlineIcon fontSize="small" sx={{ color: "red" }} />}
+                          </IconButton>
+                        </Box>
                       ))
                     ) : (
                       <Box sx={{ py: 2, px: 2, color: "text.secondary" }}>
                         {searchTerm
                           ? "Nenhum aluno encontrado"
                           : loading
-                          ? "Carregando alunos..."
-                          : "Nenhum aluno disponível"}
+                            ? "Carregando alunos..."
+                            : "Nenhum aluno disponível"}
                       </Box>
                     )}
                   </Box>
