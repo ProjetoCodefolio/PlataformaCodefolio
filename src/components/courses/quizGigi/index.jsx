@@ -22,8 +22,8 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import SearchIcon from "@mui/icons-material/Search";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
-import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import logo from "../../../assets/img/codefolio.png";
 import {
   ref,
@@ -74,6 +74,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const [quizTitle, setQuizTitle] = useState("");
   const [showSummary, setShowSummary] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Adicione esta variável de estado
+  const [studentsLoaded, setStudentsLoaded] = useState(false);
 
   const chooseButtonRef = useRef(null);
   const contentContainerRef = useRef(null);
@@ -297,6 +299,20 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     };
   }, []);
 
+  // Adicione um novo useEffect para sortear aluno automaticamente
+  useEffect(() => {
+    // Verificar se os alunos foram carregados e não estamos em loading
+    // Também verifica se não existe um aluno já selecionado
+    if (
+      studentsLoaded &&
+      !loading &&
+      !selectedStudent &&
+      enrolledStudents.length > 0
+    ) {
+      sortStudent();
+    }
+  }, [studentsLoaded, loading, enrolledStudents]);
+
   const fetchEnrolledStudents = async () => {
     try {
       setLoading(true);
@@ -356,9 +372,15 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       const sortedStudents = students.sort((a, b) =>
         a.name.localeCompare(b.name)
       );
-      setEnrolledStudents(sortedStudents.filter((student) => !student.email.includes("codefolio")));
+      setEnrolledStudents(
+        sortedStudents.filter((student) => !student.email.includes("codefolio"))
+      );
+      // Marcar que os estudantes foram carregados
+      setStudentsLoaded(true);
     } catch (error) {
       setEnrolledStudents([]);
+      // Mesmo com erro, marcamos como carregado para tentar sortear
+      setStudentsLoaded(true);
     } finally {
       setLoading(false);
     }
@@ -502,27 +524,43 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
   const filteredStudents = searchTerm
     ? enrolledStudents.filter((student) =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+        student.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     : enrolledStudents;
 
   const currentQuestion = quizData?.questions?.[currentQuestionIndex];
 
+  // Modificar a função handleNextQuestion para resetar o aluno e chamar sortStudent ao mudar de questão
   const handleNextQuestion = () => {
     if (currentQuestionIndex < quizData?.questions?.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedStudent(null);
       setSelectedAnswer(null);
       setShowFeedback(false);
+
+      // Aguarda um momento para o estado ser atualizado antes de sortear
+      setTimeout(() => {
+        if (enrolledStudents.length > 0) {
+          sortStudent();
+        }
+      }, 100);
     }
   };
 
+  // Também modificar a função handlePreviousQuestion da mesma forma
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1);
       setSelectedStudent(null);
       setSelectedAnswer(null);
       setShowFeedback(false);
+
+      // Aguarda um momento para o estado ser atualizado antes de sortear
+      setTimeout(() => {
+        if (enrolledStudents.length > 0) {
+          sortStudent();
+        }
+      }, 100);
     }
   };
 
@@ -533,7 +571,9 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     }
 
     // Filtrar apenas os alunos que não estão desabilitados
-    const enabledStudents = enrolledStudents.filter(student => !student.disabled);
+    const enabledStudents = enrolledStudents.filter(
+      (student) => !student.disabled
+    );
 
     // Verificar se existem alunos habilitados
     if (enabledStudents.length > 0) {
@@ -547,7 +587,9 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       setSelectedStudent(enabledStudents[randomIndex]);
     } else {
       // Mostrar mensagem se não houver alunos habilitados
-      alert("Não há alunos habilitados para sorteio. Por favor, habilite pelo menos um aluno.");
+      alert(
+        "Não há alunos habilitados para sorteio. Por favor, habilite pelo menos um aluno."
+      );
     }
   };
 
@@ -661,7 +703,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         }, 2000);
       }
     } catch (error) {
-      // Silenciar erro
     }
   };
 
@@ -703,8 +744,9 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             fontSize: "0.75rem",
           }}
         >
-          {`${courseTitle || "Curso"} • ${quizTitle || "Quiz"} • Questão ${currentQuestionIndex + 1
-            }`}
+          {`${courseTitle || "Curso"} • ${quizTitle || "Quiz"} • Questão ${
+            currentQuestionIndex + 1
+          }`}
         </Typography>
 
         {hasCorrect && (
@@ -757,7 +799,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     setShowSummary(true);
   };
 
-  // Modificar o componente QuizSummary
 
   const QuizSummary = () => {
     return (
@@ -907,12 +948,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
     setEnrolledStudents((prev) =>
       prev.map((s) =>
-        s.userId === student.userId
-          ? { ...s, disabled: !s.disabled }
-          : s
+        s.userId === student.userId ? { ...s, disabled: !s.disabled } : s
       )
     );
-  }
+  };
 
   return (
     <ErrorBoundary
@@ -990,6 +1029,104 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
         </Box>
 
+        {currentQuestion && !showSummary && (
+          <>
+            <IconButton
+              onClick={handlePreviousQuestion}
+              disabled={currentQuestionIndex === 0}
+              sx={{
+                position: "fixed",
+                left: {
+                  xs: "3px",
+                  sm: "3px",
+                  md: "calc(50% - 615px)",
+                },
+                top: "calc(50% + 30px)",
+                transform: "translateY(-50%)",
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.3)",
+                },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  color: "rgba(255, 255, 255, 0.3)",
+                },
+                // Aumentando o tamanho do botão
+                width: { xs: 40, sm: 44, md: 48 },
+                height: { xs: 40, sm: 44, md: 48 },
+                visibility: currentQuestionIndex === 0 ? "hidden" : "visible",
+                zIndex: 1410,
+                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+              }}
+            >
+              <ArrowBackIosIcon
+                sx={{
+                  fontSize: { xs: "1.1rem", sm: "1.2rem", md: "1.3rem" },
+                  ml: 1,
+                }}
+              />
+            </IconButton>
+
+            <IconButton
+              onClick={
+                currentQuestionIndex === quizData?.questions?.length - 1
+                  ? handleShowSummary
+                  : handleNextQuestion
+              }
+              disabled={
+                !quizData ||
+                (currentQuestionIndex === quizData.questions?.length - 1 &&
+                  !currentQuestionIndex === quizData?.questions?.length - 1)
+              }
+              sx={{
+                position: "fixed",
+                right: {
+                  xs: "3px",
+                  sm: "3px",
+                  md: "calc(50% - 650px)",
+                },
+
+                top: "calc(50% + 30px)",
+                transform: "translateY(-50%)",
+                backgroundColor:
+                  currentQuestionIndex === quizData?.questions?.length - 1
+                    ? "rgba(76, 175, 80, 0.7)"
+                    : "rgba(255, 255, 255, 0.2)",
+                color: "#fff",
+                "&:hover": {
+                  backgroundColor:
+                    currentQuestionIndex === quizData?.questions?.length - 1
+                      ? "rgba(76, 175, 80, 0.9)"
+                      : "rgba(255, 255, 255, 0.3)",
+                },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  color: "rgba(255, 255, 255, 0.3)",
+                },
+                width: { xs: 40, sm: 44, md: 48 },
+                height: { xs: 40, sm: 44, md: 48 },
+                zIndex: 1410,
+                boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+              }}
+            >
+              {currentQuestionIndex === quizData?.questions?.length - 1 ? (
+                <CheckCircleOutlineIcon
+                  sx={{
+                    fontSize: { xs: "1.2rem", sm: "1.3rem", md: "1.4rem" },
+                  }}
+                />
+              ) : (
+                <ArrowForwardIosIcon
+                  sx={{
+                    fontSize: { xs: "1.1rem", sm: "1.2rem", md: "1.3rem" },
+                  }}
+                />
+              )}
+            </IconButton>
+          </>
+        )}
+
         <Box
           sx={{
             width: "100%",
@@ -1001,6 +1138,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             alignItems: "center",
             mt: 7,
             px: { xs: 2, sm: 3 },
+            pl: { xs: 4, sm: 5 },
+            pr: { xs: 4, sm: 5 },
             overflowY: "auto",
             overflowX: "hidden",
             position: "relative",
@@ -1055,6 +1194,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 display: "flex",
                 flexDirection: "column",
                 pr: { xs: 0, sm: 1 },
+                position: "relative", 
               }}
             >
               <Typography
@@ -1171,6 +1311,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                     </Box>
                   </Paper>
                 ) : (
+                 
                   <Box
                     sx={{
                       display: "flex",
@@ -1178,25 +1319,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       justifyContent: "center",
                     }}
                   >
-                    <Button
-                      onClick={sortStudent}
-                      variant="contained"
-                      disabled={enrolledStudents.length === 0}
-                      sx={{
-                        backgroundColor: "rgba(255, 255, 255, 0.15)",
-                        color: "#fff",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                        "&:hover": {
-                          backgroundColor: "rgba(255, 255, 255, 0.25)",
-                        },
-                        py: 1,
-                        px: 2,
-                        fontSize: "0.9rem",
-                      }}
-                      startIcon={<RefreshIcon />}
-                    >
-                      Sortear
-                    </Button>
                     <Button
                       ref={chooseButtonRef}
                       onClick={handleOpenMenu}
@@ -1215,10 +1337,27 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       }}
                       endIcon={<ArrowDropDownIcon />}
                     >
-                      Escolher
+                      Escolher aluno
                     </Button>
                   </Box>
                 )}
+              </Box>
+
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  mt: 2,
+                  mb: 2,
+                  color: "rgba(255, 255, 255, 0.8)",
+                }}
+              >
+                <Typography variant="body2">
+                  {`${currentQuestionIndex + 1} / ${
+                    quizData?.questions?.length || 0
+                  }`}
+                </Typography>
               </Box>
 
               <Box
@@ -1295,6 +1434,12 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                           mr: 2,
                           flexShrink: 0,
                           mt: 0.3,
+                          fontWeight: "bold", 
+                          fontSize: {
+                            xs: "0.95rem",
+                            sm: "1rem",
+                            md: "1.05rem",
+                          }, 
                         }}
                       >
                         {String.fromCharCode(65 + index)}
@@ -1306,9 +1451,19 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                           wordBreak: "break-word",
                           overflowWrap: "break-word",
                           whiteSpace: "normal",
-                          lineHeight: 1.4,
+                          lineHeight: 1.5, 
                           maxWidth: "calc(100% - 50px)",
                           hyphens: "auto",
+                          fontWeight: 500, 
+                          letterSpacing: "0.2px", 
+                          fontSize: {
+                            xs: "1rem",
+                            sm: "1.15rem",
+                            md: "1.25rem",
+                          }, 
+                          fontFamily:
+                            "'Poppins', 'Roboto', 'Helvetica', 'Arial', sans-serif", 
+                          textShadow: "0px 1px 1px rgba(0,0,0,0.1)", 
                         }}
                       >
                         {option}
@@ -1342,112 +1497,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   </Button>
                 ))}
               </Box>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  width: "100%",
-                  mt: 3,
-                  mb: 3,
-                  px: { xs: 0.5, sm: 1 },
-                  flexWrap: "wrap",
-                  gap: 1,
-                }}
-              >
-                <Button
-                  onClick={handlePreviousQuestion}
-                  disabled={currentQuestionIndex === 0}
-                  startIcon={<ArrowBackIosIcon sx={{ fontSize: "0.8rem" }} />}
-                  sx={{
-                    color: "#fff",
-                    borderColor: "rgba(255, 255, 255, 0.5)",
-                    border: "1px solid",
-                    "&:hover": {
-                      backgroundColor: "rgba(255, 255, 255, 0.1)",
-                      borderColor: "#fff",
-                    },
-                    py: 0.6,
-                    px: { xs: 1.5, sm: 2 },
-                    fontSize: { xs: "0.75rem", sm: "0.9rem" },
-                    borderRadius: 2,
-                    opacity: 0.9,
-                    minWidth: { xs: "80px", sm: "100px" },
-                    height: "36px",
-                    marginRight: 1,
-                    mx: { xs: 0.5, sm: 0 },
-                  }}
-                >
-                  Anterior
-                </Button>
-
-                <Box
-                  sx={{
-                    display: { xs: "none", sm: "flex" },
-                    alignItems: "center",
-                    color: "rgba(255, 255, 255, 0.8)",
-                    flexGrow: 1,
-                    justifyContent: "center",
-                  }}
-                >
-                  {currentQuestionIndex + 1} /{" "}
-                  {quizData?.questions?.length || 0}
-                </Box>
-
-                {currentQuestionIndex === quizData?.questions?.length - 1 ? (
-                  <Button
-                    onClick={handleShowSummary}
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "rgba(76, 175, 80, 0.7)",
-                      color: "#fff",
-                      "&:hover": {
-                        backgroundColor: "rgba(76, 175, 80, 0.9)",
-                      },
-                      py: 0.6,
-                      px: { xs: 1.5, sm: 2 },
-                      fontSize: { xs: "0.75rem", sm: "0.9rem" },
-                      borderRadius: 2,
-                      fontWeight: 500,
-                      minWidth: { xs: "80px", sm: "140px" },
-                      height: "36px",
-                    }}
-                  >
-                    Ver Resumo
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleNextQuestion}
-                    disabled={
-                      !quizData ||
-                      currentQuestionIndex === quizData.questions?.length - 1
-                    }
-                    endIcon={
-                      <ArrowForwardIosIcon sx={{ fontSize: "0.8rem" }} />
-                    }
-                    sx={{
-                      color: "#fff",
-                      borderColor: "rgba(255, 255, 255, 0.5)",
-                      border: "1px solid",
-                      "&:hover": {
-                        backgroundColor: "rgba(255, 255, 255, 0.1)",
-                        borderColor: "#fff",
-                      },
-                      py: 0.6,
-                      px: { xs: 1.5, sm: 2 },
-                      fontSize: { xs: "0.75rem", sm: "0.9rem" },
-                      borderRadius: 2,
-                      opacity: 0.9,
-                      minWidth: { xs: "80px", sm: "100px" },
-                      height: "36px",
-                      marginLeft: 1,
-                      mx: { xs: 0.5, sm: 0 },
-                    }}
-                  >
-                    Próxima
-                  </Button>
-                )}
-              </Box>
             </Box>
           )}
 
@@ -1463,7 +1512,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               width: "100%",
               height: "100%",
               zIndex: 1500,
-              pointerEvents: "auto", // Mudado para "auto" para capturar cliques fora
+              pointerEvents: "auto", 
             }}
             onClick={handleCloseMenu}
           >
@@ -1545,8 +1594,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                         <Box
                           key={student.userId}
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
+                            display: "flex",
+                            alignItems: "center",
                             borderBottom: "1px solid rgba(0,0,0,0.05)",
                             "&:last-child": {
                               borderBottom: "none",
@@ -1597,9 +1646,17 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                             sx={{ mr: 1 }}
                             onClick={() => handleAbleStudent(student)}
                           >
-                            {student.disabled
-                              ? <AddCircleOutlineIcon fontSize="small" sx={{ color: "green" }} />
-                              : <RemoveCircleOutlineIcon fontSize="small" sx={{ color: "red" }} />}
+                            {student.disabled ? (
+                              <AddCircleOutlineIcon
+                                fontSize="small"
+                                sx={{ color: "green" }}
+                              />
+                            ) : (
+                              <RemoveCircleOutlineIcon
+                                fontSize="small"
+                                sx={{ color: "red" }}
+                              />
+                            )}
                           </IconButton>
                         </Box>
                       ))
@@ -1608,8 +1665,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                         {searchTerm
                           ? "Nenhum aluno encontrado"
                           : loading
-                            ? "Carregando alunos..."
-                            : "Nenhum aluno disponível"}
+                          ? "Carregando alunos..."
+                          : "Nenhum aluno disponível"}
                       </Box>
                     )}
                   </Box>
