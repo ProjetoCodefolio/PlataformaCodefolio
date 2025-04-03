@@ -1440,7 +1440,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               width: "100%",
               height: "100%",
               zIndex: 1500,
-              pointerEvents: "auto",
+              pointerEvents: "auto", // Mudado para "auto" para capturar cliques fora
             }}
             onClick={handleCloseMenu} 
           >

@@ -502,7 +502,7 @@ const Classes = () => {
     <>
       <style>
         {`
-                    @media (max-width: 600px) {
+                    @media (max-width: 600px) { 
                         .Toastify__toast {
                             width: 90vw !important;
                             min-height: auto !important;
@@ -612,27 +612,6 @@ const Classes = () => {
                   position: "relative",
                 }}
               >
-                {userDetails?.role === "admin" && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "75px",
-                      zIndex: 10,
-                      display: { xs: "none", md: "flex" }, // Oculta em telas pequenas
-                      alignItems: "center",
-                      bgcolor: "#9041c1",
-                      color: "white",
-                      p: 1,
-                      borderRadius: 5,
-                      cursor: "pointer",
-                    }}
-                    onClick={handleOpenQuizGigi}
-                  >
-                    <SchoolIcon sx={{ fontSize: "18px" }} />{" "}
-                    {/* Diminui o tamanho do ícone */}
-                  </Box>
-                )}
                 <VideoPlayer
                   ref={videoPlayerRef}
                   video={{
@@ -645,6 +624,7 @@ const Classes = () => {
                   setShowQuiz={setShowQuiz}
                   setCurrentVideoId={setCurrentVideoId}
                   onVideoProgressUpdate={handleVideoProgressUpdate}
+                  onOpenQuizGigi={handleOpenQuizGigi}
                 />
               </Box>
             ) : (
