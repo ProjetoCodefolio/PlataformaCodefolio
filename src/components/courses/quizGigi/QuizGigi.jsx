@@ -1,18 +1,28 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, IconButton } from "@mui/material";
+import { Box, IconButton, Tooltip, Typography, Grid, Chip, Avatar } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
 import logo from "../../../assets/img/codefolio.png";
+import { ref, get, set, serverTimestamp } from "firebase/database"; // Adicione estas importações
+import { database } from "../../../service/firebase"; // Adicione esta importação
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import QuestionDisplay from "./components/QuestionDisplay";
 import NavigationButtons from "./components/NavigationButtons";
 import QuizSummary from "./components/QuizSummary";
+import StudentSelector from "./components/StudentSelector"; // Adicione esta importação
+import CustomQuestion from "./components/CustomQuestion";
 import { useQuizData } from "./hooks/useQuizData";
 import { useStudentData } from "./hooks/useStudentData";
+import { useCustomQuestion } from "./hooks/useCustomQuestion"; // Novo hook
 
 const QuizGigi = ({ onClose, quizData, courseId }) => {
   const contentContainerRef = useRef(null);
   const [waitingForNextStudent, setWaitingForNextStudent] = useState(false);
+  const [showCustomQuestion, setShowCustomQuestion] = useState(false);
 
   // Hooks para gerenciar dados
   const {
@@ -36,6 +46,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
   const {
     quizResults,
+    customQuestionResults, // Adicionar resultados de perguntas personalizadas
     courseTitle,
     quizTitle,
     selectedAnswer,
@@ -51,6 +62,16 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleNextQuestion,
     handlePreviousQuestion,
   } = useQuizData(courseId, quizData, selectedStudent);
+
+  const {
+    customResults,
+    correctFeedback,
+    incorrectFeedback,
+    buttonsDisabled,
+    handleCustomCorrectAnswer,
+    handleCustomIncorrectAnswer,
+    processCustomResults
+  } = useCustomQuestion(courseId, quizData?.id, selectedStudent);
 
   // Efeito para sortear aluno automaticamente
   useEffect(() => {
@@ -198,6 +219,36 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     }
   };
 
+  const handleCustomQuestionClick = () => {
+    setShowCustomQuestion(true);
+  };
+
+  const handleBackToNormalMode = () => {
+    setShowCustomQuestion(false);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+  };
+
+  const handleCustomCorrect = () => {
+    handleCustomCorrectAnswer(() => {
+      if (enrolledStudents.length > 0) {
+        sortStudent();
+      } else {
+        setSelectedStudent(null);
+      }
+    });
+  };
+
+  const handleCustomIncorrect = () => {
+    handleCustomIncorrectAnswer(() => {
+      if (enrolledStudents.length > 0) {
+        sortStudent();
+      } else {
+        setSelectedStudent(null);
+      }
+    });
+  };
+
   return (
     <ErrorBoundary onClose={onClose}>
       <Box
@@ -233,6 +284,29 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <CloseIcon fontSize="large" />
         </IconButton>
 
+        <Tooltip 
+          title={showCustomQuestion ? "Voltar ao modo normal" : "Pergunta Personalizada"} 
+          placement="left"
+        >
+          <IconButton
+            onClick={showCustomQuestion ? handleBackToNormalMode : handleCustomQuestionClick}
+            sx={{
+              position: "absolute",
+              top: 20,
+              right: { xs: 35, sm: 45, md: 55 },
+              color: "#fff",
+              zIndex: 1500,
+              padding: { xs: "8px", sm: "10px", md: "12px" },
+            }}
+          >
+            {showCustomQuestion ? (
+              <QuestionMarkIcon fontSize="large" />
+            ) : (
+              <AddCircleIcon fontSize="large" />
+            )}
+          </IconButton>
+        </Tooltip>
+
         <Box
           sx={{
             position: "absolute",
@@ -245,8 +319,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
         </Box>
 
-        {/* Botões de navegação */}
-        {currentQuestion && !showSummary && (
+        {currentQuestion && !showSummary && !showCustomQuestion && (
           <NavigationButtons
             currentQuestionIndex={currentQuestionIndex}
             totalQuestions={quizData?.questions?.length || 0}
@@ -315,7 +388,214 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           id="quiz-content-container"
           ref={contentContainerRef}
         >
-          {currentQuestion && !showSummary && (
+          {showCustomQuestion && !showSummary && (
+            <Box
+              sx={{
+                width: "100%",
+                mb: 3,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                position: "relative",
+              }}
+            >
+              {/* Sorteador de alunos - Agora vem PRIMEIRO */}
+              <StudentSelector
+                loading={loading}
+                selectedStudent={selectedStudent}
+                onSortStudent={sortStudent}
+                onOpenMenu={handleOpenMenu}
+                menuOpen={menuOpen}
+                anchorEl={anchorEl}
+                onCloseMenu={handleCloseMenu}
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                filteredStudents={filteredStudents}
+                onSelectStudent={handleSelectStudent}
+                onAbleStudent={handleAbleStudent}
+                enrolledStudents={enrolledStudents}
+                waitingForNextStudent={waitingForNextStudent}
+              />
+
+              {/* Título da pergunta personalizada */}
+              <Typography
+                variant="h5"
+                component="h2"
+                sx={{
+                  fontWeight: 600,
+                  textAlign: "center",
+                  my: 3,
+                  color: "white",
+                  textShadow: "0px 2px 4px rgba(0,0,0,0.3)",
+                }}
+              >
+                Pergunta personalizada para {selectedStudent?.name || "..."}
+              </Typography>
+
+              {/* Botões de acerto e erro */}
+              <Grid
+                container
+                spacing={4}
+                justifyContent="center"
+                alignItems="center"
+                sx={{ mb: 4 }} /* Adicionei margem abaixo dos botões */
+              >
+                <Grid item xs={6} sm={5} md={5} lg={4}>
+                  <Box
+                    onClick={!buttonsDisabled ? handleCustomCorrect : undefined}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      backgroundColor: correctFeedback 
+                        ? "rgba(76, 175, 80, 0.5)" 
+                        : "rgba(255, 255, 255, 0.15)",
+                      borderRadius: "16px",
+                      p: 3,
+                      cursor: buttonsDisabled ? "default" : "pointer",
+                      pointerEvents: buttonsDisabled ? "none" : "auto",
+                      transition: "all 0.2s ease",
+                      transform: correctFeedback ? "translateY(-10px) scale(1.05)" : "translateY(0) scale(1)",
+                      "&:hover": buttonsDisabled 
+                        ? {} 
+                        : {
+                            backgroundColor: correctFeedback 
+                              ? "rgba(76, 175, 80, 0.6)"
+                              : "rgba(255, 255, 255, 0.25)",
+                            transform: correctFeedback 
+                              ? "translateY(-10px) scale(1.05)"
+                              : "translateY(-5px) scale(1.02)",
+                          },
+                      boxShadow: correctFeedback 
+                        ? "0 8px 16px rgba(76, 175, 80, 0.4)"
+                        : "0 4px 8px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    <CheckCircleIcon
+                      sx={{
+                        fontSize: { xs: 60, sm: 80, md: 100 },
+                        color: correctFeedback ? "#ffffff" : "#4caf50",
+                        filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.3))",
+                        transition: "all 0.2s ease",
+                      }}
+                    />
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        mt: 2,
+                        fontWeight: 600,
+                        color: "white",
+                      }}
+                    >
+                      {correctFeedback ? "ACERTOU!" : "Correto"}
+                    </Typography>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={6} sm={5} md={5} lg={4}>
+                  <Box
+                    onClick={!buttonsDisabled ? handleCustomIncorrect : undefined}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      backgroundColor: incorrectFeedback 
+                        ? "rgba(244, 67, 54, 0.5)" 
+                        : "rgba(255, 255, 255, 0.15)",
+                      borderRadius: "16px",
+                      p: 3,
+                      cursor: buttonsDisabled ? "default" : "pointer",
+                      pointerEvents: buttonsDisabled ? "none" : "auto",
+                      transition: "all 0.2s ease",
+                      transform: incorrectFeedback ? "translateY(-10px) scale(1.05)" : "translateY(0) scale(1)",
+                      "&:hover": buttonsDisabled
+                        ? {}
+                        : {
+                            backgroundColor: incorrectFeedback 
+                              ? "rgba(244, 67, 54, 0.6)"
+                              : "rgba(255, 255, 255, 0.25)",
+                            transform: incorrectFeedback 
+                              ? "translateY(-10px) scale(1.05)"
+                              : "translateY(-5px) scale(1.02)",
+                          },
+                      boxShadow: incorrectFeedback 
+                        ? "0 8px 16px rgba(244, 67, 54, 0.4)"
+                        : "0 4px 8px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    <CancelIcon
+                      sx={{
+                        fontSize: { xs: 60, sm: 80, md: 100 },
+                        color: incorrectFeedback ? "#ffffff" : "#f44336",
+                        filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.3))",
+                        transition: "all 0.2s ease",
+                      }}
+                    />
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        mt: 2,
+                        fontWeight: 600,
+                        color: "white",
+                      }}
+                    >
+                      {incorrectFeedback ? "ERROU!" : "Incorreto"}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+              
+              {/* Lista de alunos que acertaram perguntas personalizadas - AGORA VEM POR ÚLTIMO */}
+              <Box 
+                sx={{ 
+                  width: "100%", 
+                  maxWidth: "600px", 
+                  mt: 3, // Mudei para margin-top
+                  px: 2,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Só exibir o título e os chips se houver alunos com acertos */}
+                {Object.keys(customResults?.correctAnswers || {}).length > 0 && (
+                  <>
+                    <Box sx={{ 
+                      display: "flex", 
+                      flexWrap: "wrap", 
+                      gap: 0.8, 
+                      justifyContent: "center",
+                      mb: 2,
+                    }}>
+                      {processCustomResults(customResults.correctAnswers).map((student, idx) => (
+                        <Chip
+                          key={idx}
+                          size="large"
+                          label={`${student.studentName} ${student.count > 1 ? student.count + 'x' : ''}`}
+                          avatar={
+                            <Avatar src={student.photoURL}>
+                              {(student.studentName || "?").charAt(0)}
+                            </Avatar>
+                          }
+                          sx={{
+                            backgroundColor: "rgba(76, 175, 80, 0.3)",
+                            color: "#fff",
+                            fontSize: "1.1rem",
+                            mb: 1,
+                            "& .MuiChip-label": {
+                              fontWeight: student.count > 1 ? 600 : 400
+                            }
+                          }}
+                        />
+                      ))}
+                    </Box>
+                  </>
+                )}
+              </Box>
+            </Box>
+          )}
+
+          {currentQuestion && !showSummary && !showCustomQuestion && (
             <QuestionDisplay
               currentQuestion={currentQuestion}
               currentQuestionIndex={currentQuestionIndex}
@@ -348,6 +628,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             <QuizSummary
               quizData={quizData}
               quizResults={quizResults}
+              customQuestionResults={customResults} // Passar os resultados de perguntas personalizadas
               onClose={() => setShowSummary(false)}
             />
           )}

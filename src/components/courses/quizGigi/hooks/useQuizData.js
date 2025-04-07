@@ -10,6 +10,10 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
+  const [customQuestionResults, setCustomQuestionResults] = useState({
+    correctAnswers: {},
+    wrongAnswers: {}
+  });
 
   useEffect(() => {
     if (courseId) {
@@ -124,52 +128,78 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   };
 
-  const registerStudentAnswer = async (isCorrect, selectedOptionIndex) => {
+  const registerStudentAnswer = async (isCorrect, selectedOptionIndex, isCustomQuestion = false) => {
     const currentQuestion = quizData?.questions?.[currentQuestionIndex];
-    if (!selectedStudent || !currentQuestion) {
+    if (!selectedStudent || (!currentQuestion && !isCustomQuestion)) {
       return false;
     }
 
     try {
-      const questionId =
-        currentQuestion.id || `question_${currentQuestionIndex}`;
+      const questionId = isCustomQuestion 
+        ? "custom_question" 
+        : (currentQuestion.id || `question_${currentQuestionIndex}`);
+      
       const resultType = isCorrect ? "correctAnswers" : "wrongAnswers";
 
-      const path = `quizGigi/courses/${courseId}/quizzes/${quizData.id}/results/${questionId}/${resultType}/${selectedStudent.userId}`;
+      const path = isCustomQuestion
+        ? `quizGigi/courses/${courseId}/quizzes/${quizData.id}/customResults/${resultType}/${selectedStudent.userId}`
+        : `quizGigi/courses/${courseId}/quizzes/${quizData.id}/results/${questionId}/${resultType}/${selectedStudent.userId}`;
+      
       const answerRef = ref(database, path);
 
       const answerData = {
         timestamp: serverTimestamp(),
         selectedOption: selectedOptionIndex,
-        selectedOptionLetter: String.fromCharCode(65 + selectedOptionIndex),
+        selectedOptionLetter: typeof selectedOptionIndex === 'number' && selectedOptionIndex >= 0 
+          ? String.fromCharCode(65 + selectedOptionIndex) 
+          : "Personalizada",
         studentName: selectedStudent.name,
         photoURL: selectedStudent.photoURL || null,
         userId: selectedStudent.userId,
         isCorrect: isCorrect,
+        isCustomQuestion: isCustomQuestion
       };
 
       await set(answerRef, answerData);
 
-      setQuizResults((prev) => {
-        const updatedResults = { ...prev };
-        if (!updatedResults[questionId]) {
-          updatedResults[questionId] = {
-            correctAnswers: {},
-            wrongAnswers: {},
+      if (isCustomQuestion) {
+        setCustomQuestionResults(prev => {
+          const updatedResults = { ...prev };
+          
+          if (!updatedResults[resultType]) {
+            updatedResults[resultType] = {};
+          }
+          
+          updatedResults[resultType][selectedStudent.userId] = {
+            ...answerData,
+            timestamp: Date.now(),
           };
-        }
+          
+          return updatedResults;
+        });
+      } else {
+        setQuizResults((prev) => {
+          const updatedResults = { ...prev };
+          
+          if (!updatedResults[questionId]) {
+            updatedResults[questionId] = {
+              correctAnswers: {},
+              wrongAnswers: {},
+            };
+          }
 
-        if (!updatedResults[questionId][resultType]) {
-          updatedResults[questionId][resultType] = {};
-        }
+          if (!updatedResults[questionId][resultType]) {
+            updatedResults[questionId][resultType] = {};
+          }
 
-        updatedResults[questionId][resultType][selectedStudent.userId] = {
-          ...answerData,
-          timestamp: Date.now(),
-        };
+          updatedResults[questionId][resultType][selectedStudent.userId] = {
+            ...answerData,
+            timestamp: Date.now(),
+          };
 
-        return updatedResults;
-      });
+          return updatedResults;
+        });
+      }
 
       return true;
     } catch (error) {
@@ -178,7 +208,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   };
 
-  const handleAnswerSelect = async (index) => {
+  const handleAnswerSelect = async (index, isCustomQuestion = false) => {
     if (!selectedStudent) {
       alert("Por favor, selecione ou sorteie um aluno primeiro!");
       return;
@@ -187,18 +217,23 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     setSelectedAnswer(index);
     setShowFeedback(true);
 
-    const isCorrect = isCorrectAnswer(index);
+    let isCorrect;
+    
+    if (isCustomQuestion) {
+      isCorrect = index === 0;
+    } else {
+      isCorrect = isCorrectAnswer(index);
+    }
 
     try {
-      await registerStudentAnswer(isCorrect, index);
+      await registerStudentAnswer(isCorrect, index, isCustomQuestion);
 
       if (!isCorrect) {
-        // Retornar informação com resetStudent e autoSelectNext
         setTimeout(() => {
-          setSelectedAnswer(null); // Reset do estado após mostrar feedback
-          setShowFeedback(false); // Reset do feedback
-        }, 2000);
-
+          setSelectedAnswer(null);
+          setShowFeedback(false);
+        }, 1900);
+        
         return { resetStudent: true, autoSelectNext: true };
       }
     } catch (error) {
@@ -233,6 +268,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
   return {
     quizResults,
+    customQuestionResults,
     courseTitle,
     quizTitle,
     selectedAnswer,
