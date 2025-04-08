@@ -476,7 +476,6 @@ const Classes = () => {
 
   const handleOpenQuizGigi = async () => {
     if (currentVideo?.quizId) {
-      console.log("Abrindo Quiz Gigi para o quiz ID:", currentVideo.quizId);
 
       // Pausar o vídeo antes de abrir o quiz
       if (
@@ -491,12 +490,15 @@ const Classes = () => {
         setQuizData(quiz);
         setShowQuizGigi(true);
       } catch (error) {
-        console.error("Erro ao carregar o quiz:", error);
       }
     } else {
-      console.log("Nenhum quiz associado ao vídeo atual.");
     }
   };
+
+  // Adicione uma propriedade id ao quizData
+  if (quizData) {
+    quizData.id = currentVideo?.quizId.split("/")[1] || null;
+  }
 
   return (
     <>

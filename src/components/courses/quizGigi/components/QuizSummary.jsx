@@ -3,9 +3,27 @@ import { Box, Typography, Button, Chip, Avatar } from "@mui/material";
 
 const ResultSection = ({ title, results, answerLabel }) => {
   const hasResults = results && Object.keys(results).length > 0;
-  
+
   if (!hasResults) return null;
-  
+
+  // Agrupar resultados por aluno e contar ocorrências
+  const studentCounts = {};
+
+  Object.values(results).forEach((answer) => {
+    const studentName = answer.student?.name || answer.studentName;
+    const studentId = answer.student?.uid || answer.studentId || studentName;
+
+    if (!studentCounts[studentId]) {
+      studentCounts[studentId] = {
+        name: studentName,
+        photoURL: answer.student?.photoURL || answer.photoURL,
+        count: 0,
+      };
+    }
+
+    studentCounts[studentId].count += 1;
+  });
+
   return (
     <Box
       sx={{
@@ -46,14 +64,16 @@ const ResultSection = ({ title, results, answerLabel }) => {
       </Box>
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
-        {Object.values(results).map((answer, idx) => (
+        {Object.values(studentCounts).map((student, idx) => (
           <Chip
             key={idx}
             size="small"
-            label={answer.student?.name || answer.studentName}
+            label={`${student.name} ${
+              student.count > 1 ? `${student.count}x` : ""
+            }`}
             avatar={
-              <Avatar src={answer.student?.photoURL || answer.photoURL}>
-                {(answer.student?.name || answer.studentName || "?").charAt(0)}
+              <Avatar src={student.photoURL}>
+                {(student.name || "?").charAt(0)}
               </Avatar>
             }
             sx={{
@@ -73,6 +93,24 @@ const QuestionSummary = ({ question, index, results }) => {
   const questionResults = results[questionId] || {};
   const correctAnswers = questionResults?.correctAnswers || {};
   const correctCount = Object.keys(correctAnswers).length;
+
+  // Agrupar alunos por ID/nome e contar ocorrências
+  const studentCounts = {};
+
+  Object.values(correctAnswers).forEach((answer) => {
+    const studentName = answer.student?.name || answer.studentName;
+    const studentId = answer.student?.uid || answer.studentId || studentName;
+
+    if (!studentCounts[studentId]) {
+      studentCounts[studentId] = {
+        name: studentName,
+        photoURL: answer.student?.photoURL || answer.photoURL,
+        count: 0,
+      };
+    }
+
+    studentCounts[studentId].count += 1;
+  });
 
   return (
     <Box
@@ -121,14 +159,16 @@ const QuestionSummary = ({ question, index, results }) => {
 
       {correctCount > 0 ? (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
-          {Object.values(correctAnswers).map((answer, idx) => (
+          {Object.values(studentCounts).map((student, idx) => (
             <Chip
               key={idx}
               size="small"
-              label={answer.student?.name || answer.studentName}
+              label={`${student.name} ${
+                student.count > 1 ? `${student.count}x` : ""
+              }`}
               avatar={
-                <Avatar src={answer.student?.photoURL || answer.photoURL}>
-                  {(answer.student?.name || answer.studentName || "?").charAt(0)}
+                <Avatar src={student.photoURL}>
+                  {(student.name || "?").charAt(0)}
                 </Avatar>
               }
               sx={{
@@ -151,28 +191,39 @@ const QuestionSummary = ({ question, index, results }) => {
   );
 };
 
-const QuizSummary = ({ quizData, quizResults, customQuestionResults, onClose }) => {
+const QuizSummary = ({
+  quizData,
+  quizResults,
+  customQuestionResults,
+  onClose,
+}) => {
   // Processamento de resultados de perguntas personalizadas
   const processCustomResults = (correctAnswers) => {
     if (!correctAnswers) return {};
-    
+
     // Se tiver estrutura aninhada, processar
-    if (Object.values(correctAnswers).some(value => typeof value === "object" && !Array.isArray(value))) {
+    if (
+      Object.values(correctAnswers).some(
+        (value) => typeof value === "object" && !Array.isArray(value)
+      )
+    ) {
       const processedResults = {};
-      
+
       Object.entries(correctAnswers).forEach(([userId, answers]) => {
         Object.entries(answers).forEach(([answerId, answer]) => {
           processedResults[`${userId}-${answerId}`] = answer;
         });
       });
-      
+
       return processedResults;
     }
-    
+
     return correctAnswers;
   };
 
-  const processedCustomCorrect = processCustomResults(customQuestionResults?.correctAnswers);
+  const processedCustomCorrect = processCustomResults(
+    customQuestionResults?.correctAnswers
+  );
   const hasCustomCorrect = Object.keys(processedCustomCorrect).length > 0;
 
   return (
@@ -215,8 +266,7 @@ const QuizSummary = ({ quizData, quizResults, customQuestionResults, onClose }) 
       </Box>
 
       {/* Mostrar primeiro os resultados de perguntas personalizadas */}
-      <ResultSection 
-        title="Perguntas Personalizadas"
+      <ResultSection
         results={processedCustomCorrect}
         answerLabel="Alunos com acertos em perguntas personalizadas"
       />

@@ -14,26 +14,25 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     correctAnswers: {},
     wrongAnswers: {}
   });
+  const [courseInfoLoaded, setCourseInfoLoaded] = useState(false);
 
+  // Primeiro, buscar as informações do curso
   useEffect(() => {
     if (courseId) {
       fetchCourseInfo();
     }
   }, [courseId]);
 
+  // Depois de carregar as informações do curso, buscar resultados do quiz
   useEffect(() => {
-    if (courseId && quizData?.id) {
+    if (courseId && quizData?.id && courseInfoLoaded) {
       if (quizData.title) {
         setQuizTitle(quizData.title);
       }
 
-      const timer = setTimeout(() => {
-        fetchQuizResults();
-      }, 500);
-
-      return () => clearTimeout(timer);
+      fetchQuizResults();
     }
-  }, [courseId, quizData?.id]);
+  }, [courseId, quizData?.id, courseInfoLoaded]);
 
   // Adicione este efeito para resetar o feedback quando o estudante muda
   useEffect(() => {
@@ -52,8 +51,12 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         const courseData = courseSnapshot.val();
         setCourseTitle(courseData.title || "Curso sem título");
       }
+      
+      // Marca que as informações do curso foram carregadas
+      setCourseInfoLoaded(true);
     } catch (error) {
       console.error("Erro ao buscar informações do curso:", error);
+      setCourseInfoLoaded(true); // Mesmo com erro, marca como carregado
     }
   };
 
@@ -63,7 +66,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         return;
       }
 
-      setQuizTitle(quizData.title || "Quiz sem título");
+      setQuizTitle(quizData.question || "Quiz sem título");
       await initializeQuizData();
 
       const path = `quizGigi/courses/${courseId}/quizzes/${quizData.id}/results`;
@@ -87,6 +90,22 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         return false;
       }
 
+      // Se courseTitle ainda estiver vazio, tente buscar diretamente
+      let finalCourseTitle = courseTitle;
+      if (!finalCourseTitle) {
+        try {
+          const courseRef = ref(database, `courses/${courseId}`);
+          const courseSnapshot = await get(courseRef);
+          if (courseSnapshot.exists()) {
+            const courseData = courseSnapshot.val();
+            finalCourseTitle = courseData.title || "Curso sem título";
+            setCourseTitle(finalCourseTitle);
+          }
+        } catch (e) {
+          console.error("Erro ao buscar título do curso novamente:", e);
+        }
+      }
+
       const quizRef = ref(
         database,
         `quizGigi/courses/${courseId}/quizzes/${quizData.id}`
@@ -94,9 +113,8 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
       const quizMetadata = {
         id: quizData.id,
-        title: quizData.title || "Quiz sem título",
         courseId: courseId,
-        courseName: courseTitle || "Curso sem título",
+        courseName: finalCourseTitle || "Curso sem título",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -116,8 +134,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
       } else {
         await update(quizRef, {
           updatedAt: serverTimestamp(),
-          courseName: courseTitle || quizMetadata.courseName,
-          title: quizData.title || quizMetadata.title,
+          courseName: finalCourseTitle || quizMetadata.courseName,
         });
       }
 
@@ -127,6 +144,8 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
       return false;
     }
   };
+
+  // ...resto do código permanece o mesmo
 
   const registerStudentAnswer = async (isCorrect, selectedOptionIndex, isCustomQuestion = false) => {
     const currentQuestion = quizData?.questions?.[currentQuestionIndex];

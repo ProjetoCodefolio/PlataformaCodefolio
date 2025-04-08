@@ -152,13 +152,8 @@ const Quiz = ({
         const previousPassed = existingResult?.isPassed;
         const newPassed = isPassed;
 
-        console.log("objeto que carrega isPassed", existingResult);
-        console.log("passou antes: ", previousPassed);
-        console.log("caba passou no quiz: ", newPassed);
-
         const isPending = hasPassedChanged(previousPassed, newPassed);
 
-        console.log("pendente: ", isPending);
 
         // Se já existe um resultado anterior, verificar se a pontuação atual é maior
         // if (

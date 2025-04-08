@@ -205,14 +205,12 @@ const VideoPlayer = forwardRef(
         // Tentativa 1: Pausar vídeo HTML5
         if (videoRef.current && typeof videoRef.current.pause === "function") {
           videoRef.current.pause();
-          console.log("Vídeo HTML5 pausado com sucesso");
           return true;
         }
 
         // Tentativa 2: Pausar YouTube player
         if (player && typeof player.pauseVideo === "function") {
           player.pauseVideo();
-          console.log("YouTube player pausado com sucesso");
           return true;
         }
 
