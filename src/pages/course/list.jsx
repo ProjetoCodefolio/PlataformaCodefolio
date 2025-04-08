@@ -57,12 +57,13 @@ const MyCourses = () => {
               ...course,
               progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
               accessed: studentCourse.progress !== undefined,
+              status: studentCourse.status || "available",
             };
           });
 
           const available = enrichedCourses.filter((course) => !course.accessed);
-          const inProgress = enrichedCourses.filter((course) => course.accessed && course.progress < 100);
-          const completed = enrichedCourses.filter((course) => course.progress === 100);
+          const inProgress = enrichedCourses.filter((course) => course.accessed && course.status === "in_progress");
+          const completed = enrichedCourses.filter((course) => course.status === "completed");
 
           setAvailableCourses(available);
           setInProgressCourses(inProgress);
