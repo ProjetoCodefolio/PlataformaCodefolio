@@ -478,7 +478,6 @@ const Classes = () => {
 
   const handleOpenQuizGigi = async () => {
     if (currentVideo?.quizId) {
-      console.log("Abrindo Quiz Gigi para o quiz ID:", currentVideo.quizId);
 
       // Pausar o vídeo antes de abrir o quiz
       if (
@@ -493,18 +492,21 @@ const Classes = () => {
         setQuizData(quiz);
         setShowQuizGigi(true);
       } catch (error) {
-        console.error("Erro ao carregar o quiz:", error);
       }
     } else {
-      console.log("Nenhum quiz associado ao vídeo atual.");
     }
   };
+
+  // Adicione uma propriedade id ao quizData
+  if (quizData) {
+    quizData.id = currentVideo?.quizId.split("/")[1] || null;
+  }
 
   return (
     <>
       <style>
         {`
-                    @media (max-width: 600px) {
+                    @media (max-width: 600px) { 
                         .Toastify__toast {
                             width: 90vw !important;
                             min-height: auto !important;
@@ -631,7 +633,7 @@ const Classes = () => {
                     }}
                     onClick={handleOpenQuizGigi}
                   >
-                    <SchoolIcon sx={{ fontSize: "18px" }} />{" "}
+                    {/* <SchoolIcon sx={{ fontSize: "18px" }} />{" "} */}
                     {/* Diminui o tamanho do ícone */}
                   </Box>
                 )}
@@ -647,6 +649,7 @@ const Classes = () => {
                   setShowQuiz={setShowQuiz}
                   setCurrentVideoId={setCurrentVideoId}
                   onVideoProgressUpdate={handleVideoProgressUpdate}
+                  onOpenQuizGigi={handleOpenQuizGigi}
                 />
               </Box>
             ) : (

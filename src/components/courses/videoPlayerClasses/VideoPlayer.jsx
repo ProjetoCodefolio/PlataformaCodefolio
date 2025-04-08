@@ -7,6 +7,7 @@ import { Box, Typography, IconButton, Button } from "@mui/material";
 import YouTube from "react-youtube";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
+import SchoolIcon from "@mui/icons-material/School";
 import { handleGoogleSignIn } from "../../../utils/authUtils";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
@@ -32,6 +33,7 @@ const VideoPlayer = forwardRef(
       setShowQuiz,
       setCurrentVideoId,
       onVideoProgressUpdate,
+      onOpenQuizGigi,
     },
     ref
   ) => {
@@ -203,14 +205,12 @@ const VideoPlayer = forwardRef(
         // Tentativa 1: Pausar vídeo HTML5
         if (videoRef.current && typeof videoRef.current.pause === "function") {
           videoRef.current.pause();
-          console.log("Vídeo HTML5 pausado com sucesso");
           return true;
         }
 
         // Tentativa 2: Pausar YouTube player
         if (player && typeof player.pauseVideo === "function") {
           player.pauseVideo();
-          console.log("YouTube player pausado com sucesso");
           return true;
         }
 
@@ -279,6 +279,24 @@ const VideoPlayer = forwardRef(
           >
             {video.title.split(" - ")[0]}
           </Typography>
+
+          {userDetails?.role === "admin" && onOpenQuizGigi && (
+            <IconButton
+              onClick={onOpenQuizGigi}
+              sx={{
+                color: "#fff",
+                bgcolor: "#9041c1",
+                ml: "auto",
+                mr: 1,
+                p: 0.8,
+                "&:hover": {
+                  bgcolor: "#7a35a3",
+                },
+              }}
+            >
+              <SchoolIcon sx={{ fontSize: "18px" }} />
+            </IconButton>
+          )}
         </Box>
 
         <Box
@@ -412,6 +430,7 @@ VideoPlayer.propTypes = {
   setShowQuiz: PropTypes.func.isRequired,
   setCurrentVideoId: PropTypes.func.isRequired,
   onVideoProgressUpdate: PropTypes.func,
+  onOpenQuizGigi: PropTypes.func,
 };
 
 VideoPlayer.displayName = "VideoPlayer";
