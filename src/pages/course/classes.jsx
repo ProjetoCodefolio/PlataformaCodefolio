@@ -633,7 +633,7 @@ const Classes = () => {
                     }}
                     onClick={handleOpenQuizGigi}
                   >
-                    <SchoolIcon sx={{ fontSize: "18px" }} />{" "}
+                    {/* <SchoolIcon sx={{ fontSize: "18px" }} />{" "} */}
                     {/* Diminui o tamanho do ícone */}
                   </Box>
                 )}
