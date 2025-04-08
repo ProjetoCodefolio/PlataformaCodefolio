@@ -250,23 +250,24 @@ export const fetchCourseVideosWithWatchedStatus = async (courseId, userId) => {
 export const updateCourseProgress = async (userId, courseId, videos) => {
     let newProgress = 0;
     const totalVideos = videos.length;
-
     const studentCoursesRef = ref(database, `studentCourses/${userId}/${courseId}`);
     const studentCoursesSnapshot = await get(studentCoursesRef);
-    const studentCourses = studentCoursesSnapshot.val();
 
-    // Se não há vídeos, definimos o progresso como 100% (curso completado)
-    // ou poderíamos definir como 0% dependendo da lógica desejada
     if (totalVideos === 0) {
-        newProgress = 0 // Ou 0, dependendo da sua preferência
+        newProgress = 0;
     } else {
         const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
         const videosSnapshot = await get(videosRef);
-        const videosData = videosSnapshot.val();
-
-        const watchedVideos = videosData ? Object.values(videosData).filter((video) => video.watched).length : 0;
+        const videosData = videosSnapshot.val() || {};
+        
+        // Apenas contar vídeos assistidos que ainda existem no curso atual
+        const currentVideoIds = new Set(videos.map(video => video.id));
+        const watchedVideos = Object.entries(videosData)
+            .filter(([videoId, data]) => currentVideoIds.has(videoId) && data.watched)
+            .length;
         newProgress = (watchedVideos / totalVideos) * 100;
     }
+
 
     await update(studentCoursesRef, { 
         progress: newProgress, 
