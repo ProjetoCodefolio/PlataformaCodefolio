@@ -34,6 +34,7 @@ const VideoPlayer = forwardRef(
       setCurrentVideoId,
       onVideoProgressUpdate,
       onOpenQuizGigi,
+      courseOwnerUid,
     },
     ref
   ) => {
@@ -280,7 +281,7 @@ const VideoPlayer = forwardRef(
             {video.title.split(" - ")[0]}
           </Typography>
 
-          {userDetails?.role === "admin" && onOpenQuizGigi && (
+          {userDetails?.userId === courseOwnerUid && onOpenQuizGigi && (
             <IconButton
               onClick={onOpenQuizGigi}
               sx={{
@@ -312,7 +313,7 @@ const VideoPlayer = forwardRef(
           }}
         >
           {video.url.includes("youtube.com") ||
-          video.url.includes("youtu.be") ? (
+            video.url.includes("youtu.be") ? (
             <Box
               sx={{
                 width: "100%",

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { IconButton } from "@mui/material";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
@@ -11,6 +11,23 @@ const NavigationButtons = ({
   onNext,
   onSummary,
 }) => {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "ArrowLeft" && currentQuestionIndex > 0) {
+        onPrevious();
+      } else if (event.key === "ArrowRight" && currentQuestionIndex < totalQuestions - 1) {
+        onNext();
+      } else if (event.key === "ArrowRight" && currentQuestionIndex === totalQuestions - 1) {
+        onSummary();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [currentQuestionIndex, totalQuestions, onPrevious, onNext, onSummary]);
+
   return (
     <>
       {/* Botão Anterior - Lado Esquerdo */}

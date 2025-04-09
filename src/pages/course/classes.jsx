@@ -23,7 +23,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import LoginModal from "../../components/modals/LoginModal";
 import CompletionModal from "../../components/modals/CompletionModal";
-import SchoolIcon from "@mui/icons-material/School"; // Importe o ícone de professor
 import QuizGigi from "../../components/courses/quizGigi";
 
 const Classes = () => {
@@ -627,6 +626,7 @@ const Classes = () => {
                   setCurrentVideoId={setCurrentVideoId}
                   onVideoProgressUpdate={handleVideoProgressUpdate}
                   onOpenQuizGigi={handleOpenQuizGigi}
+                  courseOwnerUid={courseOwnerUid}
                 />
               </Box>
             ) : (
