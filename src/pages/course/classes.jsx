@@ -47,6 +47,7 @@ const Classes = () => {
   });
   const [showQuizGigi, setShowQuizGigi] = useState(false);
   const [quizData, setQuizData] = useState(null);
+  const [courseOwnerUid, setCourseOwnerUid] = useState("");
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -69,6 +70,7 @@ const Classes = () => {
       const courseSnapshot = await get(courseRef);
       const courseData = courseSnapshot.val();
       setCourseTitle(courseData?.title || "Curso sem título");
+      setCourseOwnerUid(courseData?.userId || "");
 
       const courseVideosRef = ref(database, `courseVideos/${courseId}`);
       const snapshot = await get(courseVideosRef);

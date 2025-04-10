@@ -10,6 +10,8 @@ const NavigationButtons = ({
   onPrevious,
   onNext,
   onSummary,
+  isCurrentAnswerCorrect,
+  showFeedback
 }) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -27,6 +29,8 @@ const NavigationButtons = ({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [currentQuestionIndex, totalQuestions, onPrevious, onNext, onSummary]);
+
+  const showCelebrationStyle = showFeedback && isCurrentAnswerCorrect && currentQuestionIndex < totalQuestions - 1;
 
   return (
     <>
@@ -81,17 +85,21 @@ const NavigationButtons = ({
             md: "calc(50% - 650px)",
           },
           top: "calc(50% + 30px)",
-          transform: "translateY(-50%)",
+          transform: `translateY(-50%) ${showCelebrationStyle ? "scale(1.15)" : "scale(1)"}`,
           backgroundColor:
             currentQuestionIndex === totalQuestions - 1
               ? "rgba(76, 175, 80, 0.7)"
-              : "rgba(255, 255, 255, 0.2)",
+              : showCelebrationStyle
+                ? "rgba(76, 175, 80, 0.75)" // Verde quando acertar
+                : "rgba(255, 255, 255, 0.2)",
           color: "#fff",
           "&:hover": {
             backgroundColor:
               currentQuestionIndex === totalQuestions - 1
                 ? "rgba(76, 175, 80, 0.9)"
-                : "rgba(255, 255, 255, 0.3)",
+                : showCelebrationStyle
+                  ? "rgba(76, 175, 80, 0.9)" // Verde mais forte ao passar o mouse
+                  : "rgba(255, 255, 255, 0.3)",
           },
           "&.Mui-disabled": {
             backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -100,7 +108,11 @@ const NavigationButtons = ({
           width: { xs: 40, sm: 44, md: 48 },
           height: { xs: 40, sm: 44, md: 48 },
           zIndex: 1410,
-          boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+          boxShadow: showCelebrationStyle 
+            ? "0 0 15px rgba(76, 175, 80, 0.6)"
+            : "0 2px 5px rgba(0,0,0,0.2)",
+          transition: "all 0.3s ease-in-out",
+          border: showCelebrationStyle ? "2px solid white" : "none",
         }}
       >
         {currentQuestionIndex === totalQuestions - 1 ? (
