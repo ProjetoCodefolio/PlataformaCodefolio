@@ -34,6 +34,7 @@ const StudentSelector = ({
   waitingForNextStudent,
 }) => {
   const chooseButtonRef = useRef(null);
+  const popperRef = useRef(null); // Novo ref para o Popper
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -53,6 +54,25 @@ const StudentSelector = ({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [onSortStudent, enrolledStudents]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        menuOpen &&
+        popperRef.current &&
+        !popperRef.current.contains(event.target) &&
+        chooseButtonRef.current &&
+        !chooseButtonRef.current.contains(event.target)
+      ) {
+        onCloseMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen, onCloseMenu]);
 
   return (
     <Box
@@ -192,6 +212,7 @@ const StudentSelector = ({
         ]}
       >
         <Paper
+          ref={popperRef} // Adicionando a ref ao Paper dentro do Popper
           sx={{
             width: "300px",
             maxHeight: "400px",
@@ -215,7 +236,6 @@ const StudentSelector = ({
               }}
             >
               <TextField
-                autoFocus
                 placeholder="Buscar aluno..."
                 fullWidth
                 variant="outlined"
@@ -325,8 +345,8 @@ const StudentSelector = ({
                   {searchTerm
                     ? "Nenhum aluno encontrado"
                     : loading
-                      ? "Carregando alunos..."
-                      : "Nenhum aluno disponível"}
+                    ? "Carregando alunos..."
+                    : "Nenhum aluno disponível"}
                 </Box>
               )}
             </Box>
