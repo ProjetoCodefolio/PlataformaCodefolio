@@ -38,7 +38,8 @@ const StudentSelector = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === " ") {
+      if (menuOpen) return;
+      if (event.key === " " ) {
         if (document.activeElement) {
           document.activeElement.blur();
         }

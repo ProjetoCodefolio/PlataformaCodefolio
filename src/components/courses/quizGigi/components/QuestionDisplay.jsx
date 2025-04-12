@@ -94,7 +94,7 @@ const QuestionDisplay = ({
         onSelectStudent={onSelectStudent}
         onAbleStudent={onAbleStudent}
         enrolledStudents={enrolledStudents}
-        waitingForNextStudent={waitingForNextStudent} // Passa a nova prop
+        waitingForNextStudent={waitingForNextStudent}
       />
 
       <Box
@@ -118,6 +118,7 @@ const QuestionDisplay = ({
         showFeedback={showFeedback}
         onAnswerSelect={onAnswerSelect}
         isCorrectAnswer={isCorrectAnswer}
+        menuOpen={menuOpen}
       />
     </Box>
   );

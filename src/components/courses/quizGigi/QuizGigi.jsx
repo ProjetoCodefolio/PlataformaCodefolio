@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, IconButton, Tooltip, Typography, Grid, Chip, Avatar } from "@mui/material";
+import {
+  Box,
+  IconButton,
+  Tooltip,
+  Typography,
+  Grid,
+  Chip,
+  Avatar,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
@@ -70,7 +78,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     buttonsDisabled,
     handleCustomCorrectAnswer,
     handleCustomIncorrectAnswer,
-    processCustomResults
+    processCustomResults,
   } = useCustomQuestion(courseId, quizData?.id, selectedStudent);
 
   // Efeito para sortear aluno automaticamente
@@ -166,6 +174,20 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       setTimeout(cleanupOrphanElements, 100);
     };
   }, [setMenuOpen]); // Adicione setMenuOpen como dependência
+
+  // Adicionar evento de teclado para fechar o custom question com ESC
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape" && showCustomQuestion) {
+        handleBackToNormalMode();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showCustomQuestion]); // Dependência para o efeito
 
   // Handler para navegação de questões
   const handleNextWithStudentReset = () => {
@@ -285,11 +307,19 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         </IconButton>
 
         <Tooltip
-          title={showCustomQuestion ? "Voltar ao modo normal" : "Pergunta Personalizada"}
+          title={
+            showCustomQuestion
+              ? "Voltar ao modo normal"
+              : "Pergunta Personalizada"
+          }
           placement="left"
         >
           <IconButton
-            onClick={showCustomQuestion ? handleBackToNormalMode : handleCustomQuestionClick}
+            onClick={
+              showCustomQuestion
+                ? handleBackToNormalMode
+                : handleCustomQuestionClick
+            }
             sx={{
               position: "absolute",
               top: 20,
@@ -326,7 +356,9 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             onPrevious={handlePreviousWithStudentReset}
             onNext={handleNextWithStudentReset}
             onSummary={() => setShowSummary(true)}
-            isCurrentAnswerCorrect={selectedAnswer !== null && isCorrectAnswer(selectedAnswer)}
+            isCurrentAnswerCorrect={
+              selectedAnswer !== null && isCorrectAnswer(selectedAnswer)
+            }
             showFeedback={showFeedback}
           />
         )}
@@ -457,17 +489,19 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       cursor: buttonsDisabled ? "default" : "pointer",
                       pointerEvents: buttonsDisabled ? "none" : "auto",
                       transition: "all 0.2s ease",
-                      transform: correctFeedback ? "translateY(-10px) scale(1.05)" : "translateY(0) scale(1)",
+                      transform: correctFeedback
+                        ? "translateY(-10px) scale(1.05)"
+                        : "translateY(0) scale(1)",
                       "&:hover": buttonsDisabled
                         ? {}
                         : {
-                          backgroundColor: correctFeedback
-                            ? "rgba(76, 175, 80, 0.6)"
-                            : "rgba(255, 255, 255, 0.25)",
-                          transform: correctFeedback
-                            ? "translateY(-10px) scale(1.05)"
-                            : "translateY(-5px) scale(1.02)",
-                        },
+                            backgroundColor: correctFeedback
+                              ? "rgba(76, 175, 80, 0.6)"
+                              : "rgba(255, 255, 255, 0.25)",
+                            transform: correctFeedback
+                              ? "translateY(-10px) scale(1.05)"
+                              : "translateY(-5px) scale(1.02)",
+                          },
                       boxShadow: correctFeedback
                         ? "0 8px 16px rgba(76, 175, 80, 0.4)"
                         : "0 4px 8px rgba(0,0,0,0.15)",
@@ -496,7 +530,9 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
                 <Grid item xs={6} sm={5} md={5} lg={4}>
                   <Box
-                    onClick={!buttonsDisabled ? handleCustomIncorrect : undefined}
+                    onClick={
+                      !buttonsDisabled ? handleCustomIncorrect : undefined
+                    }
                     sx={{
                       display: "flex",
                       flexDirection: "column",
@@ -509,17 +545,19 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       cursor: buttonsDisabled ? "default" : "pointer",
                       pointerEvents: buttonsDisabled ? "none" : "auto",
                       transition: "all 0.2s ease",
-                      transform: incorrectFeedback ? "translateY(-10px) scale(1.05)" : "translateY(0) scale(1)",
+                      transform: incorrectFeedback
+                        ? "translateY(-10px) scale(1.05)"
+                        : "translateY(0) scale(1)",
                       "&:hover": buttonsDisabled
                         ? {}
                         : {
-                          backgroundColor: incorrectFeedback
-                            ? "rgba(244, 67, 54, 0.6)"
-                            : "rgba(255, 255, 255, 0.25)",
-                          transform: incorrectFeedback
-                            ? "translateY(-10px) scale(1.05)"
-                            : "translateY(-5px) scale(1.02)",
-                        },
+                            backgroundColor: incorrectFeedback
+                              ? "rgba(244, 67, 54, 0.6)"
+                              : "rgba(255, 255, 255, 0.25)",
+                            transform: incorrectFeedback
+                              ? "translateY(-10px) scale(1.05)"
+                              : "translateY(-5px) scale(1.02)",
+                          },
                       boxShadow: incorrectFeedback
                         ? "0 8px 16px rgba(244, 67, 54, 0.4)"
                         : "0 4px 8px rgba(0,0,0,0.15)",
@@ -554,42 +592,49 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   maxWidth: "600px",
                   mt: 3, // Mudei para margin-top
                   px: 2,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
                 }}
               >
                 {/* Só exibir o título e os chips se houver alunos com acertos */}
-                {Object.keys(customResults?.correctAnswers || {}).length > 0 && (
+                {Object.keys(customResults?.correctAnswers || {}).length >
+                  0 && (
                   <>
-                    <Box sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 0.8,
-                      justifyContent: "center",
-                      mb: 2,
-                    }}>
-                      {processCustomResults(customResults.correctAnswers).map((student, idx) => (
-                        <Chip
-                          key={idx}
-                          size="large"
-                          label={`${student.studentName} ${student.count > 1 ? student.count + 'x' : ''}`}
-                          avatar={
-                            <Avatar src={student.photoURL}>
-                              {(student.studentName || "?").charAt(0)}
-                            </Avatar>
-                          }
-                          sx={{
-                            backgroundColor: "rgba(76, 175, 80, 0.3)",
-                            color: "#fff",
-                            fontSize: "1.1rem",
-                            mb: 1,
-                            "& .MuiChip-label": {
-                              fontWeight: student.count > 1 ? 600 : 400
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 0.8,
+                        justifyContent: "center",
+                        mb: 2,
+                      }}
+                    >
+                      {processCustomResults(customResults.correctAnswers).map(
+                        (student, idx) => (
+                          <Chip
+                            key={idx}
+                            size="large"
+                            label={`${student.studentName} ${
+                              student.count > 1 ? student.count + "x" : ""
+                            }`}
+                            avatar={
+                              <Avatar src={student.photoURL}>
+                                {(student.studentName || "?").charAt(0)}
+                              </Avatar>
                             }
-                          }}
-                        />
-                      ))}
+                            sx={{
+                              backgroundColor: "rgba(76, 175, 80, 0.3)",
+                              color: "#fff",
+                              fontSize: "1.1rem",
+                              mb: 1,
+                              "& .MuiChip-label": {
+                                fontWeight: student.count > 1 ? 600 : 400,
+                              },
+                            }}
+                          />
+                        )
+                      )}
                     </Box>
                   </>
                 )}

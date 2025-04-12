@@ -10,6 +10,7 @@ const AnswerOptions = ({
   onAnswerSelect,
   isCorrectAnswer,
   onSubmitAnswer,
+  menuOpen = false,
 }) => {
   const [lastKeyPressed, setLastKeyPressed] = useState(null);
   const [highlightedOption, setHighlightedOption] = useState(null); // Para pré-seleção
@@ -17,7 +18,7 @@ const AnswerOptions = ({
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (showFeedback) return;
+      if (showFeedback || menuOpen) return;
 
       const key = event.key.toLowerCase();
 
