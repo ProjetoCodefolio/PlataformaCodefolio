@@ -21,6 +21,7 @@ import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
 import CourseQuizzesTab from './courseQuizzesTab/';
+import CourseStudentsTab from './CourseStudentsTab';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -34,6 +35,7 @@ const CourseForm = () => {
   const courseVideosRef = useRef();
   const courseMaterialsRef = useRef();
   const courseQuizzesRef = useRef();
+  const courseStudentsRef = useRef();
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
@@ -114,6 +116,7 @@ const CourseForm = () => {
         courseVideosRef.current?.saveVideos(finalCourseId),
         courseMaterialsRef.current?.saveMaterials(finalCourseId),
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
+        // courseStudentsRef.current?.saveStudents(finalCourseId),
       ]);
 
       if (!courseId) {
@@ -165,7 +168,7 @@ const CourseForm = () => {
             variant="h5"
             sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
           >
-            {courseId ? "Editar Curso" : "Criar Novo Curso"}
+            {courseId ? "Gerenciar Curso" : "Criar Novo Curso"}
           </Typography>
 
           <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -300,11 +303,13 @@ const CourseForm = () => {
                 <Tab label="Vídeos" />
                 <Tab label="Materiais Extras" />
                 <Tab label="Quiz" />
+                <Tab label="Alunos" />
               </Tabs>
 
               {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
               {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
               {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+              {selectedTab === 3 && <CourseStudentsTab ref={courseStudentsRef} />}
             </>
           )}
         </Paper>
