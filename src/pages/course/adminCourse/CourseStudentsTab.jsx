@@ -1,4 +1,4 @@
-import { ref as firebaseRef, set, push, get } from 'firebase/database';
+import { ref as firebaseRef, set, push, get, update } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation } from "react-router-dom";
 import React, { useEffect, useState, forwardRef } from "react";
@@ -56,6 +56,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const [progressFilter, setProgressFilter] = useState("all");
     const [roleFilter, setRoleFilter] = useState("all");
     const [activeFilters, setActiveFilters] = useState(0);
+    const [updatingRole, setUpdatingRole] = useState(null);
+
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
@@ -174,6 +176,11 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                     displayName = userData.email.split("@")[0];
                                 }
 
+                                // Verificar se o usuário é professor deste curso específico
+                                // Verificamos se existe uma entrada para este curso na coleção coursesTeacher do usuário
+                                const isTeacher = userData.coursesTeacher &&
+                                    userData.coursesTeacher[courseId] === true;
+
                                 // Combinar os dados do curso com os dados do usuário
                                 return {
                                     id: userId,
@@ -181,6 +188,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                     name: displayName.trim() || "Usuário " + userId.substring(0, 6),
                                     ...courses[courseId],  // Dados específicos do curso
                                     ...userData,          // Dados do perfil do usuário (nome, email, etc)
+                                    role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
                                 };
                             }
                             return null;
@@ -228,6 +236,38 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             fetchStudentsCourse();
         }
     }, [courseId]);
+
+    // Nova função para alterar role do estudante
+    const handleRoleChange = async (userId, studentName, newRole) => {
+        try {
+            setUpdatingRole(userId);
+
+            // Atualizar role no banco de dados
+            const userRef = firebaseRef(database, `users/${userId}/coursesTeacher/${courseId}`);
+
+            if (newRole === "teacher") {
+                // Marcar como professor - adicionar courseId ao coursesTeacher
+                await set(userRef, true);
+            } else {
+                // Remover marcação de professor - remover courseId do coursesTeacher
+                await set(userRef, null);
+            }
+
+            // Atualizar o estado local
+            setStudents(prevStudents => prevStudents.map(student =>
+                student.userId === userId
+                    ? { ...student, role: newRole }
+                    : student
+            ));
+
+            toast.success(`${capitalizeWords(studentName)} ${newRole === "teacher" ? "promovido a professor" : "definido como estudante"} com sucesso!`);
+        } catch (error) {
+            console.error("Erro ao atualizar role:", error);
+            toast.error("Não foi possível alterar a função do usuário");
+        } finally {
+            setUpdatingRole(null);
+        }
+    };
 
     return (
         <Box sx={{ padding: 2 }}>
@@ -444,15 +484,57 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     </Box>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Chip
-                                                        label={student.role ? capitalizeWords(student.role) : "Estudante"}
+                                                    <FormControl
+                                                        fullWidth
                                                         size="small"
-                                                        sx={{
-                                                            bgcolor: student.role === "teacher" ? "#bbdefb" :
-                                                                student.role === "admin" ? "#ffccbc" : "#e0e0e0",
-                                                            fontWeight: "medium"
-                                                        }}
-                                                    />
+                                                        disabled={updatingRole === student.userId}
+                                                    >
+                                                        <Select
+                                                            value={student.role || "student"}
+                                                            onChange={(e) => handleRoleChange(student.userId, student.name, e.target.value)}
+                                                            variant="outlined"
+                                                            sx={{
+                                                                borderRadius: 1,
+                                                                backgroundColor:
+                                                                    student.role === "teacher" ? "#bbdefb" :
+                                                                        student.role === "admin" ? "#ffccbc" : "#e0e0e0",
+                                                                "& .MuiOutlinedInput-notchedOutline": {
+                                                                    borderColor: "transparent"
+                                                                },
+                                                                "&:hover .MuiOutlinedInput-notchedOutline": {
+                                                                    borderColor: "#9041c1"
+                                                                },
+                                                                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                                                                    borderColor: "#9041c1"
+                                                                },
+                                                                "& .MuiSelect-select": {
+                                                                    fontWeight: "medium",
+                                                                    py: 0.5,
+                                                                    fontSize: "0.875rem"
+                                                                }
+                                                            }}
+                                                            MenuProps={{
+                                                                PaperProps: {
+                                                                    sx: {
+                                                                        maxHeight: 200,
+                                                                        mt: 0.5
+                                                                    }
+                                                                }
+                                                            }}
+                                                        >
+                                                            <MenuItem value="student">Estudante</MenuItem>
+                                                            <MenuItem value="teacher">Professor</MenuItem>
+                                                            {/* Opção Admin mantida apenas para visualização de admins existentes
+                                                            {student.role === "admin" && (
+                                                                <MenuItem value="admin">Admin</MenuItem>
+                                                            )} */}
+                                                        </Select>
+                                                    </FormControl>
+                                                    {updatingRole === student.userId && (
+                                                        <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
+                                                            <CircularProgress size={20} sx={{ color: "#9041c1" }} />
+                                                        </Box>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <IconButton
