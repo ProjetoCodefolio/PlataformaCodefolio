@@ -1,6 +1,7 @@
 import { ref, get, query, orderByChild, equalTo, update } from "firebase/database";
 import { collection, getDocs } from "firebase/firestore";
 import { database } from "./firebase";
+import { use } from "react";
 
 const fetchCourses = async () => {
     try {
@@ -265,6 +266,11 @@ export const updateCourseProgress = async (userId, courseId, videos) => {
         const watchedVideos = Object.entries(videosData)
             .filter(([videoId, data]) => currentVideoIds.has(videoId) && data.watched)
             .length;
+        
+        if(userId === "QHFiD8hycmSmay1cwzj7mhgUFw23"){
+            console.log("watchedVideos", watchedVideos);
+            console.log("totalVideos", totalVideos);
+        }
         newProgress = (watchedVideos / totalVideos) * 100;
     }
 

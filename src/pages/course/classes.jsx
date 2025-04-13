@@ -23,7 +23,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import LoginModal from "../../components/modals/LoginModal";
 import CompletionModal from "../../components/modals/CompletionModal";
-import SchoolIcon from "@mui/icons-material/School"; // Importe o ícone de professor
 import QuizGigi from "../../components/courses/quizGigi";
 
 const Classes = () => {
@@ -49,6 +48,7 @@ const Classes = () => {
   });
   const [showQuizGigi, setShowQuizGigi] = useState(false);
   const [quizData, setQuizData] = useState(null);
+  const [courseOwnerUid, setCourseOwnerUid] = useState("");
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -71,7 +71,7 @@ const Classes = () => {
       const courseSnapshot = await get(courseRef);
       const courseData = courseSnapshot.val();
       setCourseTitle(courseData?.title || "Curso sem título");
-      setCourseOwnerUid(courseData?.userId || null);
+      setCourseOwnerUid(courseData?.userId || "");
 
       const courseVideosRef = ref(database, `courseVideos/${courseId}`);
       const snapshot = await get(courseVideosRef);
@@ -650,6 +650,7 @@ const Classes = () => {
                   setCurrentVideoId={setCurrentVideoId}
                   onVideoProgressUpdate={handleVideoProgressUpdate}
                   onOpenQuizGigi={handleOpenQuizGigi}
+                  courseOwnerUid={courseOwnerUid}
                 />
               </Box>
             ) : (

@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import {
   Box,
   Button,
@@ -34,6 +34,25 @@ const StudentSelector = ({
   waitingForNextStudent,
 }) => {
   const chooseButtonRef = useRef(null);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === " ") {
+        if (document.activeElement) {
+          document.activeElement.blur();
+        }
+        document.body.focus();
+        if (enrolledStudents && enrolledStudents.length > 0) {
+          onSortStudent();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onSortStudent, enrolledStudents]);
 
   return (
     <Box
@@ -306,8 +325,8 @@ const StudentSelector = ({
                   {searchTerm
                     ? "Nenhum aluno encontrado"
                     : loading
-                    ? "Carregando alunos..."
-                    : "Nenhum aluno disponível"}
+                      ? "Carregando alunos..."
+                      : "Nenhum aluno disponível"}
                 </Box>
               )}
             </Box>
