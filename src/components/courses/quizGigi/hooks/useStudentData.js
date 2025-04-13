@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { ref, get } from "firebase/database";
+import { ref, get, set } from "firebase/database";
 import { database } from "../../../../service/firebase";
 
-export const useStudentData = (courseId) => {
+export const useStudentData = (courseId, quizId) => {
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -91,7 +91,7 @@ export const useStudentData = (courseId) => {
     }
   };
 
-  const sortStudent = () => {
+  const sortStudent = (isCustomMode = false) => {
     if (menuOpen) {
       handleCloseMenu();
     }
@@ -102,11 +102,59 @@ export const useStudentData = (courseId) => {
 
     if (enabledStudents.length > 0) {
       const randomIndex = Math.floor(Math.random() * enabledStudents.length);
-      setSelectedStudent(enabledStudents[randomIndex]);
+      const selectedStudent = enabledStudents[randomIndex];
+      setSelectedStudent(selectedStudent);
+
+      // Passa quizId explicitamente para a função
+      updateStudentDrawCount(selectedStudent.userId, isCustomMode);
     } else {
       alert(
         "Não há alunos habilitados para sorteio. Por favor, habilite pelo menos um aluno."
       );
+    }
+  };
+
+  const updateStudentDrawCount = async (userId, isCustomMode = false) => {
+    try {
+      // Use quizData?.id do contexto do componente QuizGigi
+      if (!courseId || !quizId || !userId) {
+        console.error("updateStudentDrawCount: dados faltando", {
+          courseId,
+          quizId,
+          userId,
+        });
+        return;
+      }
+
+      console.log(
+        `Registrando sorteio para ${userId} em modo ${
+          isCustomMode ? "custom" : "normal"
+        }`
+      );
+
+      const basePath = isCustomMode ? "customQuizResults" : "liveQuizResults";
+      const countRef = ref(
+        database,
+        `${basePath}/${courseId}/${quizId}/${userId}`
+      );
+
+      // Buscar dados atuais
+      const snapshot = await get(countRef);
+      const currentData = snapshot.exists() ? snapshot.val() : {};
+
+      // Incrementar a contagem de sorteios
+      const updatedData = {
+        ...currentData,
+        timesDraw: (currentData.timesDraw || 0) + 1,
+      };
+
+      // Salvar no Firebase
+      await set(countRef, updatedData);
+      console.log(
+        `Contagem atualizada: ${updatedData.timesDraw} para ${userId} em ${basePath}`
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar contagem de sorteios:", error);
     }
   };
 
@@ -171,9 +219,13 @@ export const useStudentData = (courseId) => {
     }, 100);
   };
 
-  const handleSelectStudent = (student) => {
+  // Modificar para aceitar isCustomMode como parâmetro
+  const handleSelectStudent = (student, isCustomMode = false) => {
     setSelectedStudent(student);
     handleCloseMenu();
+
+    // Agora isCustomMode está disponível como parâmetro
+    updateStudentDrawCount(student.userId, isCustomMode);
   };
 
   const handleSearchChange = (event) => {

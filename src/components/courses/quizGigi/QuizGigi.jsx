@@ -35,6 +35,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const [showCustomQuestion, setShowCustomQuestion] = useState(false);
   const [showQuizRanking, setShowQuizRanking] = useState(false);
   const [eyeOpen, setEyeOpen] = useState(true);
+  const [isCustomMode, setIsCustomMode] = useState(false); // Adicionar estado para rastrear o modo
 
   const handleEyeToggle = (isOpen) => {
     setEyeOpen(isOpen);
@@ -57,7 +58,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleSearchChange,
     handleAbleStudent,
     setMenuOpen,
-  } = useStudentData(courseId);
+  } = useStudentData(courseId, quizData?.id); // Passar quizData.id aqui
 
   const {
     quizResults,
@@ -163,8 +164,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       orphanElements.forEach((elem) => {
         try {
           elem.parentNode?.removeChild(elem);
-        } catch (e) {
-        }
+        } catch (e) {}
       });
     };
 
@@ -253,6 +253,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const handleCustomQuestionClick = () => {
     setShowCustomQuestion(true);
     setShowQuizRanking(false);
+    setIsCustomMode(true); // Definir como modo custom
   };
 
   const handleBackToNormalMode = () => {
@@ -260,6 +261,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     setShowQuizRanking(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
+    setIsCustomMode(false); // Definir como modo normal
   };
 
   const handleRankingClick = () => {
@@ -515,6 +517,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 enrolledStudents={enrolledStudents}
                 waitingForNextStudent={waitingForNextStudent}
                 onEyeToggle={handleEyeToggle}
+                eyeOpen={eyeOpen}
+                isCustomMode={isCustomMode} // Passar o modo atual
               />
 
               <Typography
@@ -707,7 +711,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           {showQuizRanking && !showSummary && !showCustomQuestion && (
             <CustomQuizRanking
               onBack={handleBackToCustomQuestion}
-              customResults={customResults} 
+              customResults={customResults}
             />
           )}
 

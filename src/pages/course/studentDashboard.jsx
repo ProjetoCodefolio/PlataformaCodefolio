@@ -23,6 +23,10 @@ import {
   Select,
   MenuItem,
   Stack,
+  TextField,
+  Tabs,
+  Tab,
+  Chip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SortIcon from "@mui/icons-material/Sort";
@@ -53,6 +57,9 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [sortType, setSortType] = useState("name");
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState(0); // Novo estado para controlar as tabs
+  const [liveQuizResults, setLiveQuizResults] = useState({});
+  const [customQuizResults, setCustomQuizResults] = useState({});
 
   useEffect(() => {
     document.body.style.backgroundColor = "#f9f9f9";
@@ -129,9 +136,42 @@ const StudentDashboard = () => {
           setQuiz(foundQuiz);
           setCourseData(foundCourse);
           setVideoData(foundVideo);
-
-          await fetchStudentResults(foundCourse.courseId, quizId, foundQuiz);
         }
+
+        // Buscar resultados de Live Quiz e Custom Quiz
+        const liveQuizResultsRef = ref(
+          database,
+          `liveQuizResults/${foundCourse.courseId}/${quizId}`
+        );
+        const liveQuizResultsSnapshot = await get(liveQuizResultsRef);
+
+        const customQuizResultsRef = ref(
+          database,
+          `customQuizResults/${foundCourse.courseId}/${quizId}`
+        );
+        const customQuizResultsSnapshot = await get(customQuizResultsRef);
+
+        const liveQuizData = liveQuizResultsSnapshot.exists()
+          ? liveQuizResultsSnapshot.val()
+          : {};
+        const customQuizData = customQuizResultsSnapshot.exists()
+          ? customQuizResultsSnapshot.val()
+          : {};
+
+        console.log("Live Quiz Data:", liveQuizData);
+        console.log("Custom Quiz Data:", customQuizData);
+
+        setLiveQuizResults(liveQuizData);
+        setCustomQuizResults(customQuizData);
+
+        // Depois de buscar os dados do quiz normal, combinar com os alunos do Live Quiz e Custom Quiz
+        await fetchAllStudentResults(
+          foundCourse.courseId,
+          quizId,
+          foundQuiz,
+          liveQuizData,
+          customQuizData
+        );
 
         setLoading(false);
       } catch (error) {
@@ -140,20 +180,112 @@ const StudentDashboard = () => {
       }
     };
 
+    // Nova função para buscar e combinar todos os resultados de estudantes
+    const fetchAllStudentResults = async (
+      courseId,
+      videoId,
+      quizObj,
+      liveQuizData,
+      customQuizData
+    ) => {
+      try {
+        // Buscar resultados normais do quiz (código existente)
+        const results = await fetchStudentResults(courseId, videoId, quizObj);
+
+        // Buscar informações dos usuários
+        const usersRef = ref(database, "users");
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
+
+        // Combinar com alunos do Live Quiz que não estão nos resultados normais
+        const allStudentIds = new Set(results.map((student) => student.userId));
+
+        // Adicionar alunos do Live Quiz
+        for (const userId in liveQuizData) {
+          if (!allStudentIds.has(userId)) {
+            const userData = usersData[userId] || {};
+
+            let userName = "Usuário Desconhecido";
+            if (userData.displayName) {
+              userName = userData.displayName;
+            } else if (userData.firstName) {
+              userName = `${userData.firstName} ${userData.lastName || ""}`;
+            } else if (userData.name) {
+              userName = userData.name;
+            } else if (userData.email) {
+              userName = userData.email.split("@")[0];
+            }
+
+            results.push({
+              userId,
+              name: userName.trim() || "Usuário " + userId.substring(0, 6),
+              email: userData.email || "Email não disponível",
+              photoURL: userData.photoURL || "",
+              score: 0,
+              correctAnswers: 0,
+              totalQuestions: quizObj.questions?.length || 0,
+              passed: false,
+              attemptCount: 0,
+              lastAttemptDate: "Não realizou o quiz",
+              onlyLiveQuiz: true,
+            });
+
+            allStudentIds.add(userId);
+          }
+        }
+
+        // Adicionar alunos do Custom Quiz
+        for (const userId in customQuizData) {
+          if (!allStudentIds.has(userId)) {
+            const userData = usersData[userId] || {};
+
+            let userName = "Usuário Desconhecido";
+            if (userData.displayName) {
+              userName = userData.displayName;
+            } else if (userData.firstName) {
+              userName = `${userData.firstName} ${userData.lastName || ""}`;
+            } else if (userData.name) {
+              userName = userData.name;
+            } else if (userData.email) {
+              userName = userData.email.split("@")[0];
+            }
+
+            results.push({
+              userId,
+              name: userName.trim() || "Usuário " + userId.substring(0, 6),
+              email: userData.email || "Email não disponível",
+              photoURL: userData.photoURL || "",
+              score: 0,
+              correctAnswers: 0,
+              totalQuestions: quizObj.questions?.length || 0,
+              passed: false,
+              attemptCount: 0,
+              lastAttemptDate: "Não realizou o quiz",
+              onlyCustomQuiz: true,
+            });
+          }
+        }
+
+        setStudentResults(results);
+      } catch (error) {
+        console.error("Erro ao buscar todos os resultados:", error);
+        setStudentResults([]);
+      }
+    };
+
+    // Modificar a função existente para retornar os resultados em vez de definir o estado
     const fetchStudentResults = async (courseId, videoId, quizObj) => {
       try {
         if (!quizObj) {
           console.error("Objeto quiz não definido");
-          setStudentResults([]);
-          return;
+          return [];
         }
 
         const quizResultsRef = ref(database, "quizResults");
         const quizResultsSnapshot = await get(quizResultsRef);
 
         if (!quizResultsSnapshot.exists()) {
-          setStudentResults([]);
-          return;
+          return [];
         }
 
         const usersRef = ref(database, "users");
@@ -263,17 +395,10 @@ const StudentDashboard = () => {
           }
         }
 
-        // Ordenar os resultados - aprovados primeiro, depois por nota mais alta
-        results.sort((a, b) => {
-          if (a.passed && !b.passed) return -1;
-          if (!a.passed && b.passed) return 1;
-          return b.score - a.score;
-        });
-
-        setStudentResults(results);
+        return results;
       } catch (error) {
         console.error("Erro ao buscar resultados de estudantes:", error);
-        setStudentResults([]);
+        return [];
       }
     };
 
@@ -348,10 +473,15 @@ const StudentDashboard = () => {
     setSearchTerm(searchTerm);
   };
 
+  // Função para lidar com a mudança de tab
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
   if (loading) {
     return (
       <>
-        <Topbar onSearch={handleSearch} />
+        <Topbar hideSearch={true} />
         <Box
           sx={{
             display: "flex",
@@ -373,7 +503,7 @@ const StudentDashboard = () => {
   if (!quiz || !courseData) {
     return (
       <>
-        <Topbar onSearch={handleSearch} />
+        <Topbar hideSearch={true} />
         <Box
           sx={{
             p: 3,
@@ -411,7 +541,7 @@ const StudentDashboard = () => {
 
   return (
     <>
-      <Topbar onSearch={handleSearch} />
+      <Topbar hideSearch={true} />
       <Box
         sx={{
           p: { xs: 2, sm: 3 },
@@ -480,175 +610,611 @@ const StudentDashboard = () => {
         </Paper>
 
         <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+          {/* Tabs centralizada acima de Resultados dos Estudantes */}
           <Box
             sx={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
               mb: 3,
             }}
           >
-            <Typography variant="h5" sx={{ fontWeight: "bold", color: "#333" }}>
-              Resultados dos Estudantes
-            </Typography>
-
-            <Stack direction="row" spacing={2} alignItems="center">
-              <SortIcon sx={{ color: "#9041c1" }} />
-              <FormControl
-                variant="outlined"
-                size="small"
-                sx={{ minWidth: 200 }}
-              >
-                <InputLabel id="sort-select-label">Ordenar por</InputLabel>
-                <Select
-                  labelId="sort-select-label"
-                  id="sort-select"
-                  value={sortType}
-                  onChange={handleSortChange}
-                  label="Ordenar por"
-                  sx={{
-                    borderRadius: 2,
-                    "& .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#9041c1",
-                    },
-                    "&:hover .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#7d37a7",
-                    },
-                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                      borderColor: "#9041c1",
-                    },
-                  }}
-                >
-                  <MenuItem value="name">Nome (A-Z)</MenuItem>
-                  <MenuItem value="score-high">Nota (Maior-Menor)</MenuItem>
-                  <MenuItem value="score-low">Nota (Menor-Maior)</MenuItem>
-                  <MenuItem value="date-recent">Data (Recente-Antiga)</MenuItem>
-                  <MenuItem value="date-old">Data (Antiga-Recente)</MenuItem>
-                </Select>
-              </FormControl>
-            </Stack>
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              indicatorColor="secondary"
+              textColor="secondary"
+              sx={{
+                ".MuiTabs-indicator": {
+                  backgroundColor: "#9041c1",
+                },
+                ".MuiTab-root.Mui-selected": {
+                  color: "#9041c1",
+                  fontWeight: "bold",
+                },
+              }}
+            >
+              <Tab label="Quiz" />
+              <Tab label="Live Quiz" />
+              <Tab label="Custom Quiz" />
+            </Tabs>
           </Box>
 
-          {studentResults.length > 0 ? (
-            <TableContainer>
-              <Table sx={{ minWidth: 650 }}>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell sx={{ fontWeight: "bold" }}>Estudante</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Nota</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Acertos</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Tentativas
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>
-                      Última Tentativa
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {getSortedResults().map((student) => (
-                    <TableRow key={student.userId} hover>
-                      <TableCell>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 2 }}
-                        >
-                          <Avatar
-                            src={student.photoURL}
-                            alt={student.name}
-                            sx={{
-                              width: 40,
-                              height: 40,
-                              backgroundColor: "#9041c1",
-                              color: "white",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            {student.name.charAt(0).toUpperCase()}
-                          </Avatar>
-                          <Typography variant="body1">
-                            {capitalizeWords(student.name)}
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>{student.email}</TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body1"
-                          sx={{ fontWeight: "medium" }}
-                        >
-                          {typeof student.score === "number"
-                            ? student.score.toFixed(2)
-                            : "0.00"}
-                          %
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body1"
-                          sx={{
-                            fontWeight: "medium",
-                            color:
-                              quiz.minPercentage === 0
-                                ? "#000"
-                                : student.passed
-                                ? "#2e7d32"
-                                : "#c62828",
-                          }}
-                          title={`Acertos: ${student.correctAnswers}, Total: ${student.totalQuestions}, Score: ${student.score}%`}
-                        >
-                          {student.correctAnswers !== null &&
-                          student.correctAnswers !== undefined
-                            ? student.correctAnswers
-                            : 0}
-                          /
-                          {student.totalQuestions ||
-                            (quiz.questions ? quiz.questions.length : 0)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            backgroundColor:
-                              quiz.minPercentage === 0
-                                ? ""
-                                : student.passed
-                                ? "#e8f5e9"
-                                : "#ffebee",
-                            color:
-                              quiz.minPercentage === 0
-                                ? "#000"
-                                : student.passed
-                                ? "#2e7d32"
-                                : "#c62828",
-                            borderRadius: 1,
-                            px: 1,
-                            py: 0.5,
-                            display: "inline-block",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {quiz.minPercentage === 0
-                            ? "N/A"
-                            : student.passed
-                            ? "Aprovado"
-                            : "Reprovado"}
-                        </Box>
-                      </TableCell>
-                      <TableCell>{student.attemptCount}</TableCell>
-                      <TableCell>{student.lastAttemptDate}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <Typography variant="h6" color="textSecondary">
-                Nenhum estudante realizou este quiz ainda
+          {/* Seção do título e ordenação - Adicionar barra de busca abaixo do título */}
+          <Box
+            sx={{
+              mb: 3,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: "bold", color: "#333" }}
+              >
+                Resultados dos Estudantes
               </Typography>
+
+              <Stack direction="row" spacing={2} alignItems="center">
+                <SortIcon sx={{ color: "#9041c1" }} />
+                <FormControl
+                  variant="outlined"
+                  size="small"
+                  sx={{ minWidth: 200 }}
+                >
+                  <InputLabel id="sort-select-label">Ordenar por</InputLabel>
+                  <Select
+                    labelId="sort-select-label"
+                    id="sort-select"
+                    value={sortType}
+                    onChange={handleSortChange}
+                    label="Ordenar por"
+                    sx={{
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#9041c1",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#7d37a7",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#9041c1",
+                      },
+                    }}
+                  >
+                    <MenuItem value="name">Nome (A-Z)</MenuItem>
+                    <MenuItem value="score-high">Nota (Maior-Menor)</MenuItem>
+                    <MenuItem value="score-low">Nota (Menor-Maior)</MenuItem>
+                    <MenuItem value="date-recent">
+                      Data (Recente-Antiga)
+                    </MenuItem>
+                    <MenuItem value="date-old">Data (Antiga-Recente)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
             </Box>
+
+            {/* Barra de busca movida para cá */}
+            <TextField
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder="Buscar estudante por nome ou email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{
+                mb: 2,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  "& fieldset": { borderColor: "#9041c1" },
+                  "&:hover fieldset": { borderColor: "#7d37a7" },
+                  "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                },
+              }}
+            />
+          </Box>
+
+          {/* Conteúdo das tabs */}
+          {activeTab === 0 && (
+            // Conteúdo da tab "Quiz" (conteúdo atual)
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Nota</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Status
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Tentativas
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Última Tentativa
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Geral)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => (
+                        <TableRow key={student.userId} hover>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 2,
+                              }}
+                            >
+                              <Avatar
+                                src={student.photoURL}
+                                alt={student.name}
+                                sx={{
+                                  width: 40,
+                                  height: 40,
+                                  backgroundColor: "#9041c1",
+                                  color: "white",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Typography variant="body1">
+                                {capitalizeWords(student.name)}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+                          <TableCell>{student.email}</TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontWeight: "medium" }}
+                            >
+                              {typeof student.score === "number"
+                                ? student.score.toFixed(2)
+                                : "0.00"}
+                              %
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body1"
+                              sx={{
+                                fontWeight: "medium",
+                                color:
+                                  quiz.minPercentage === 0
+                                    ? "#000"
+                                    : student.passed
+                                    ? "#2e7d32"
+                                    : "#c62828",
+                              }}
+                              title={`Acertos: ${student.correctAnswers}, Total: ${student.totalQuestions}, Score: ${student.score}%`}
+                            >
+                              {student.correctAnswers !== null &&
+                              student.correctAnswers !== undefined
+                                ? student.correctAnswers
+                                : 0}
+                              /
+                              {student.totalQuestions ||
+                                (quiz.questions ? quiz.questions.length : 0)}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Box
+                              sx={{
+                                backgroundColor:
+                                  quiz.minPercentage === 0
+                                    ? ""
+                                    : student.onlyLiveQuiz ||
+                                      student.onlyCustomQuiz ||
+                                      student.lastAttemptDate ===
+                                        "Não realizou o quiz"
+                                    ? "#fff8e1" // Amarelo claro para pendente
+                                    : student.passed
+                                    ? "#e8f5e9" // Verde claro para aprovado
+                                    : "#ffebee", // Vermelho claro para reprovado
+                                color:
+                                  quiz.minPercentage === 0
+                                    ? "#000"
+                                    : student.onlyLiveQuiz ||
+                                      student.onlyCustomQuiz ||
+                                      student.lastAttemptDate ===
+                                        "Não realizou o quiz"
+                                    ? "#ff9800" // Laranja para pendente
+                                    : student.passed
+                                    ? "#2e7d32" // Verde para aprovado
+                                    : "#c62828", // Vermelho para reprovado
+                                borderRadius: 1,
+                                px: 1,
+                                py: 0.5,
+                                display: "inline-block",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {quiz.minPercentage === 0
+                                ? "N/A"
+                                : student.onlyLiveQuiz ||
+                                  student.onlyCustomQuiz ||
+                                  student.lastAttemptDate ===
+                                    "Não realizou o quiz"
+                                ? "Pendente"
+                                : student.passed
+                                ? "Aprovado"
+                                : "Reprovado"}
+                            </Box>
+                          </TableCell>
+                          <TableCell>{student.attemptCount}</TableCell>
+                          <TableCell>{student.lastAttemptDate}</TableCell>
+                          <TableCell>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontWeight: "bold", color: "#9041c1" }}
+                            >
+                              {(student.correctAnswers || 0) +
+                                (liveQuizResults[student.userId]
+                                  ?.correctAnswers || 0) +
+                                (customQuizResults[student.userId]
+                                  ?.correctAnswers || 0)}
+                            </Typography>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante realizou este quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+
+          {activeTab === 1 && (
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Vezes Sorteado
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Taxa de Acerto
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Live + Custom)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => {
+                        // Obtenha dados reais do Live Quiz para este estudante
+                        const studentLiveData =
+                          liveQuizResults[student.userId] || {};
+
+                        // Calcular métricas de desempenho
+                        const correctAnswers =
+                          studentLiveData.correctAnswers || 0;
+                        const wrongAnswers = studentLiveData.wrongAnswers || 0;
+                        const totalAnswered = correctAnswers + wrongAnswers;
+                        const successRate =
+                          totalAnswered > 0
+                            ? Math.round((correctAnswers / totalAnswered) * 100)
+                            : 0;
+
+                        // Total de acertos combinando apenas Live Quiz
+                        const totalCorrectAnswers =
+                          (liveQuizResults[student.userId]?.correctAnswers ||
+                            0) +
+                          (customQuizResults[student.userId]?.correctAnswers ||
+                            0);
+
+                        return (
+                          <TableRow key={student.userId} hover>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
+                                }}
+                              >
+                                <Avatar
+                                  src={student.photoURL}
+                                  alt={student.name}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    backgroundColor: "#9041c1",
+                                    color: "white",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {student.name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{student.email}</TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#2e7d32", // Verde
+                                }}
+                              >
+                                {correctAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#c62828", // Vermelho
+                                }}
+                              >
+                                {wrongAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">
+                                {studentLiveData.timesDraw || 0}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <Typography variant="body1">
+                                  {successRate}%
+                                </Typography>
+                                <Box
+                                  sx={{
+                                    width: 60,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: "#f0f0f0",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      height: "100%",
+                                      width: `${successRate}%`,
+                                      backgroundColor:
+                                        successRate >= 80
+                                          ? "#2e7d32"
+                                          : successRate >= 50
+                                          ? "#ff9800"
+                                          : "#c62828",
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                              >
+                                {totalCorrectAnswers}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante participou de Live Quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+
+          {activeTab === 2 && (
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Vezes Sorteado
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Taxa de Acerto
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Live + Custom)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => {
+                        // Obtenha dados do Custom Quiz para este estudante
+                        const studentCustomData =
+                          customQuizResults[student.userId] || {};
+
+                        // Calcular métricas de desempenho
+                        const correctAnswers =
+                          studentCustomData.correctAnswers || 0;
+                        const wrongAnswers =
+                          studentCustomData.wrongAnswers || 0;
+                        const totalAnswered = correctAnswers + wrongAnswers;
+                        const successRate =
+                          totalAnswered > 0
+                            ? Math.round((correctAnswers / totalAnswered) * 100)
+                            : 0;
+
+                        // Total de acertos combinando apenas Custom Quiz
+                        const totalCorrectAnswers =
+                          (liveQuizResults[student.userId]?.correctAnswers ||
+                            0) +
+                          (customQuizResults[student.userId]?.correctAnswers ||
+                            0);
+
+                        return (
+                          <TableRow key={student.userId} hover>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
+                                }}
+                              >
+                                <Avatar
+                                  src={student.photoURL}
+                                  alt={student.name}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    backgroundColor: "#9041c1",
+                                    color: "white",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {student.name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{student.email}</TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#2e7d32", // Verde
+                                }}
+                              >
+                                {correctAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#c62828", // Vermelho
+                                }}
+                              >
+                                {wrongAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography variant="body1">
+                                {studentCustomData.timesDraw || 0}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <Typography variant="body1">
+                                  {successRate}%
+                                </Typography>
+                                <Box
+                                  sx={{
+                                    width: 60,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: "#f0f0f0",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      height: "100%",
+                                      width: `${successRate}%`,
+                                      backgroundColor:
+                                        successRate >= 80
+                                          ? "#2e7d32"
+                                          : successRate >= 50
+                                          ? "#ff9800"
+                                          : "#c62828",
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                              >
+                                {totalCorrectAnswers}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante participou de Custom Quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
           )}
         </Paper>
       </Box>

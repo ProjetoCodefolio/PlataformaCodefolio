@@ -12,7 +12,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   const [showSummary, setShowSummary] = useState(false);
   const [customQuestionResults, setCustomQuestionResults] = useState({
     correctAnswers: {},
-    wrongAnswers: {}
+    wrongAnswers: {},
   });
   const [courseInfoLoaded, setCourseInfoLoaded] = useState(false);
 
@@ -51,7 +51,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         const courseData = courseSnapshot.val();
         setCourseTitle(courseData.title || "Curso sem título");
       }
-      
+
       // Marca que as informações do curso foram carregadas
       setCourseInfoLoaded(true);
     } catch (error) {
@@ -145,61 +145,64 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   };
 
-  // ...resto do código permanece o mesmo
-
-  const registerStudentAnswer = async (isCorrect, selectedOptionIndex, isCustomQuestion = false) => {
+  const registerStudentAnswer = async (
+    isCorrect,
+    selectedOptionIndex,
+    isCustomQuestion = false
+  ) => {
     const currentQuestion = quizData?.questions?.[currentQuestionIndex];
     if (!selectedStudent || (!currentQuestion && !isCustomQuestion)) {
       return false;
     }
 
     try {
-      const questionId = isCustomQuestion 
-        ? "custom_question" 
-        : (currentQuestion.id || `question_${currentQuestionIndex}`);
-      
+      const questionId = isCustomQuestion
+        ? "custom_question"
+        : currentQuestion.id || `question_${currentQuestionIndex}`;
+
       const resultType = isCorrect ? "correctAnswers" : "wrongAnswers";
 
       const path = isCustomQuestion
         ? `quizGigi/courses/${courseId}/quizzes/${quizData.id}/customResults/${resultType}/${selectedStudent.userId}`
         : `quizGigi/courses/${courseId}/quizzes/${quizData.id}/results/${questionId}/${resultType}/${selectedStudent.userId}`;
-      
+
       const answerRef = ref(database, path);
 
       const answerData = {
         timestamp: serverTimestamp(),
         selectedOption: selectedOptionIndex,
-        selectedOptionLetter: typeof selectedOptionIndex === 'number' && selectedOptionIndex >= 0 
-          ? String.fromCharCode(65 + selectedOptionIndex) 
-          : "Personalizada",
+        selectedOptionLetter:
+          typeof selectedOptionIndex === "number" && selectedOptionIndex >= 0
+            ? String.fromCharCode(65 + selectedOptionIndex)
+            : "Personalizada",
         studentName: selectedStudent.name,
         photoURL: selectedStudent.photoURL || null,
         userId: selectedStudent.userId,
         isCorrect: isCorrect,
-        isCustomQuestion: isCustomQuestion
+        isCustomQuestion: isCustomQuestion,
       };
 
       await set(answerRef, answerData);
 
       if (isCustomQuestion) {
-        setCustomQuestionResults(prev => {
+        setCustomQuestionResults((prev) => {
           const updatedResults = { ...prev };
-          
+
           if (!updatedResults[resultType]) {
             updatedResults[resultType] = {};
           }
-          
+
           updatedResults[resultType][selectedStudent.userId] = {
             ...answerData,
             timestamp: Date.now(),
           };
-          
+
           return updatedResults;
         });
       } else {
         setQuizResults((prev) => {
           const updatedResults = { ...prev };
-          
+
           if (!updatedResults[questionId]) {
             updatedResults[questionId] = {
               correctAnswers: {},
@@ -227,6 +230,42 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   };
 
+  const updateStudentCorrectAnswer = async (correct = true) => {
+    if (!selectedStudent || !courseId || !quizData?.id) return;
+
+    try {
+      // Caminho para os resultados do quiz ao vivo
+      const resultRef = ref(
+        database,
+        `liveQuizResults/${courseId}/${quizData.id}/${selectedStudent.userId}`
+      );
+
+      // Buscar dados atuais
+      const snapshot = await get(resultRef);
+      const currentData = snapshot.exists() ? snapshot.val() : {};
+
+      // Preparar dados atualizados
+      const updatedData = {
+        ...currentData,
+        correctAnswers: correct
+          ? (currentData.correctAnswers || 0) + 1
+          : currentData.correctAnswers || 0,
+        wrongAnswers: !correct
+          ? (currentData.wrongAnswers || 0) + 1
+          : currentData.wrongAnswers || 0,
+        lastAnswerDate: new Date().toISOString(),
+      };
+
+      // Salvar no Firebase
+      await set(resultRef, updatedData);
+      console.log(
+        `Acerto registrado para ${selectedStudent.name} em Live Quiz`
+      );
+    } catch (error) {
+      console.error("Erro ao registrar acerto:", error);
+    }
+  };
+
   const handleAnswerSelect = async (index, isCustomQuestion = false) => {
     if (!selectedStudent) {
       alert("Por favor, selecione ou sorteie um aluno primeiro!");
@@ -237,7 +276,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     setShowFeedback(true);
 
     let isCorrect;
-    
+
     if (isCustomQuestion) {
       isCorrect = index === 0;
     } else {
@@ -246,13 +285,14 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
     try {
       await registerStudentAnswer(isCorrect, index, isCustomQuestion);
+      updateStudentCorrectAnswer(isCorrect);
 
       if (!isCorrect) {
         setTimeout(() => {
           setSelectedAnswer(null);
           setShowFeedback(false);
         }, 1900);
-        
+
         return { resetStudent: true, autoSelectNext: true };
       }
     } catch (error) {

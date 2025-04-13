@@ -34,18 +34,17 @@ const StudentSelector = ({
   onAbleStudent,
   enrolledStudents,
   waitingForNextStudent,
-  onEyeToggle, 
+  onEyeToggle,
+  eyeOpen,
+  isCustomMode = false, // Garantir que o parâmetro tenha um valor padrão
 }) => {
-  const [eyeOpen, setEyeOpen] = useState(true);
   const chooseButtonRef = useRef(null);
   const popperRef = useRef(null);
 
-  const toggleEye = () => {
-    const newState = !eyeOpen;
-    setEyeOpen(newState);
-    if (onEyeToggle) {
-      onEyeToggle(newState);
-    }
+  // Garantir que ao clicar em "Sortear aluno" o modo correto seja passado
+  const handleSortStudent = () => {
+    console.log("Sorteando aluno no modo:", isCustomMode ? "custom" : "normal");
+    onSortStudent(isCustomMode);
   };
 
   useEffect(() => {
@@ -57,7 +56,7 @@ const StudentSelector = ({
         }
         document.body.focus();
         if (enrolledStudents && enrolledStudents.length > 0) {
-          onSortStudent();
+          handleSortStudent();
         }
       }
     };
@@ -66,7 +65,7 @@ const StudentSelector = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onSortStudent, enrolledStudents]);
+  }, [handleSortStudent, enrolledStudents]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -174,7 +173,7 @@ const StudentSelector = ({
               </Box>
               <Box>
                 <IconButton
-                  onClick={onSortStudent}
+                  onClick={handleSortStudent}
                   sx={{ color: "#fff" }}
                   title="Sortear outro aluno"
                   size="small"
@@ -182,7 +181,7 @@ const StudentSelector = ({
                   <RefreshIcon fontSize="small" />
                 </IconButton>
                 <IconButton
-                  onClick={toggleEye}
+                  onClick={() => onEyeToggle(!eyeOpen)}
                   sx={{ color: "#fff" }}
                   title={eyeOpen ? "Ocultar respostas" : "Mostrar respostas"}
                   size="small"
@@ -227,7 +226,7 @@ const StudentSelector = ({
           >
             <Button
               ref={chooseButtonRef}
-              onClick={onOpenMenu}
+              onClick={handleSortStudent} // Usar a função que passa o isCustomMode
               variant="outlined"
               disabled={enrolledStudents.length === 0}
               sx={{
@@ -247,7 +246,7 @@ const StudentSelector = ({
             </Button>
 
             <IconButton
-              onClick={toggleEye}
+              onClick={() => onEyeToggle(!eyeOpen)}
               sx={{
                 color: "#fff",
                 "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
@@ -360,7 +359,7 @@ const StudentSelector = ({
                           backgroundColor: "rgba(144, 65, 193, 0.1)",
                         },
                       }}
-                      onClick={() => onSelectStudent(student)}
+                      onClick={() => onSelectStudent(student, isCustomMode)} // Passar isCustomMode aqui
                       disabled={student.disabled}
                     >
                       <Avatar
