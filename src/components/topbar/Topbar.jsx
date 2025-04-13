@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./topbar.css";
 import Box from "@mui/material/Box";
 import { Search, Home, Menu as MenuIcon, SmartDisplay } from "@mui/icons-material";
@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import logo from "../../assets/img/codefolio.png";
 import { handleGoogleSignIn, handleSignOut } from "../../utils/authUtils";
+import { getDatabase, ref, get } from "firebase/database";
 
 export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada prop hideSearch com valor padrão false
   const [anchorEl, setAnchorEl] = useState(null);
@@ -29,6 +30,28 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
   const mobileMenuOpen = Boolean(mobileMenuAnchorEl);
   const navigate = useNavigate();
   const { userDetails } = useAuth();
+
+  useEffect(() => {
+    const fetchCoursesTeacher = async () => {
+      if (userDetails.userId) {
+        const db = getDatabase();
+        const coursesTeacherRef = ref(db, `users/${userDetails.userId}/coursesTeacher`);
+        try {
+          const snapshot = await get(coursesTeacherRef);
+          if (snapshot.exists()) {
+            userDetails.coursesTeacher = snapshot.val();
+          } else {
+            userDetails.coursesTeacher = null;
+          }
+        } catch (error) {
+          console.error("Error fetching coursesTeacher:", error);
+          userDetails.coursesTeacher = null;
+        }
+      }
+    };
+
+    fetchCoursesTeacher();
+  }, [userDetails]);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -178,7 +201,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
               </ListItemIcon>
               Cursos
             </MenuItem>
-            {userDetails?.role === "admin" && (
+            {(userDetails?.role === "admin" || userDetails?.coursesTeacher) && (
               <MenuItem onClick={handleAdmCursoClick}>
                 <ListItemIcon>
                   <VideoSettingsIcon fontSize="small" />
@@ -284,7 +307,7 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
                   {userDetails?.firstName} {userDetails?.lastName}
                 </MenuItem>
                 <Divider />
-                {userDetails?.role === "admin" && (
+                {(userDetails?.role === "admin" || userDetails?.coursesTeacher) && (
                   <MenuItem onClick={handleAdmCursoClick}>
                     <ListItemIcon>
                       <VideoSettingsIcon fontSize="small" />

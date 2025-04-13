@@ -322,7 +322,7 @@ const ManageMyCourses = () => {
         }}
       >
         <Box sx={{ p: { xs: 1, sm: 2 } }}>
-          {renderCourses(filteredCourses, "Editar Curso", handleEditCourse)}
+          {renderCourses(filteredCourses, "Gerenciar Curso", handleEditCourse)}
         </Box>
       </Paper>
 
