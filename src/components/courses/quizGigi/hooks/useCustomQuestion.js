@@ -11,7 +11,6 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
   const [incorrectFeedback, setIncorrectFeedback] = useState(false);
   const [buttonsDisabled, setButtonsDisabled] = useState(false);
 
-  // Carregar resultados de perguntas personalizadas ao iniciar
   useEffect(() => {
     if (courseId && quizId) {
       const customResultsRef = ref(
@@ -29,9 +28,7 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
             });
           }
         })
-        .catch((error) => {
-          console.error("Erro ao carregar resultados personalizados:", error);
-        });
+        .catch((error) => {});
     }
   }, [courseId, quizId]);
 
@@ -39,17 +36,14 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
     if (!selectedStudent || !courseId || !quizId) return;
 
     try {
-      // Caminho para os resultados do custom quiz
       const resultRef = ref(
         database,
         `customQuizResults/${courseId}/${quizId}/${selectedStudent.userId}`
       );
 
-      // Buscar dados atuais
       const snapshot = await get(resultRef);
       const currentData = snapshot.exists() ? snapshot.val() : {};
 
-      // Preparar dados atualizados
       const updatedData = {
         ...currentData,
         correctAnswers: isCorrect
@@ -59,18 +53,12 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
           ? (currentData.wrongAnswers || 0) + 1
           : currentData.wrongAnswers || 0,
         lastAnswerDate: new Date().toISOString(),
+        studentName: selectedStudent.name,
+        photoURL: selectedStudent.photoURL || null,
       };
 
-      // Salvar no Firebase
       await set(resultRef, updatedData);
-      console.log(
-        `Resultado registrado para ${selectedStudent.name} em Custom Quiz: ${
-          isCorrect ? "Correto" : "Incorreto"
-        }`
-      );
-    } catch (error) {
-      console.error("Erro ao registrar resultado:", error);
-    }
+    } catch (error) {}
   };
 
   const handleCustomCorrectAnswer = async (onSuccess) => {
@@ -125,7 +113,6 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
     } catch (error) {
       setCorrectFeedback(false);
       setButtonsDisabled(false);
-      console.error("Erro ao registrar resposta personalizada:", error);
     }
   };
 
@@ -171,7 +158,6 @@ export const useCustomQuestion = (courseId, quizId, selectedStudent) => {
     } catch (error) {
       setIncorrectFeedback(false);
       setButtonsDisabled(false);
-      console.error("Erro ao registrar resposta personalizada:", error);
     }
   };
 

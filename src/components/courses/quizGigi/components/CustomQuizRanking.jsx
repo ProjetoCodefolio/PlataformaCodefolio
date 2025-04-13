@@ -37,158 +37,62 @@ const shimmer = keyframes`
 `;
 
 const CustomQuizRanking = ({ onBack, customResults }) => {
-
   const [showSecondPlace, setShowSecondPlace] = useState(false);
   const [showFirstPlace, setShowFirstPlace] = useState(false);
   const [showThirdPlace, setShowThirdPlace] = useState(false);
   const [showList, setShowList] = useState(false);
 
   const processarResultados = () => {
-    console.log("CustomResults recebido:", customResults);
-
     if (!customResults) {
-      console.log("customResults é null ou undefined");
       return [];
     }
 
     const participantes = [];
     const contadorAlunos = {};
 
-    // Verificar a estrutura exata do objeto customResults
-    if (customResults.results) {
-      console.log("Usando customResults.results");
-      // Formato: { results: { ... } }
-      processarDados(customResults.results);
-    } else if (customResults.correctAnswers) {
-      console.log("Usando customResults.correctAnswers");
-      // Formato: { correctAnswers: { ... } }
-      processarDados(customResults.correctAnswers);
-    } else if (customResults.answers) {
-      console.log("Usando customResults.answers");
-      // Formato: { answers: { ... } }
-      processarDados(customResults.answers);
-    } else {
-      console.log("Tentando usar customResults diretamente");
-      // Talvez o próprio customResults seja o objeto de respostas
-      processarDados(customResults);
-    }
+    if (customResults.correctAnswers) {
+      Object.entries(customResults.correctAnswers).forEach(
+        ([userId, answers]) => {
+          if (typeof answers === "object" && !Array.isArray(answers)) {
+            let acertos = 0;
+            let nome = null;
+            let photoURL = null;
 
-    // Função para processar dados em qualquer formato
-    function processarDados(dados) {
-      console.log("Processando dados:", dados);
-      try {
-        // Iterar sobre cada entrada (aluno ou resposta)
-        Object.entries(dados).forEach(([chave, valor]) => {
-          if (typeof valor === "object" && valor !== null) {
-            // Pode ser um aluno com várias respostas
-            if (
-              Object.values(valor).some(
-                (item) => item && typeof item === "object"
-              )
-            ) {
-              let acertos = 0;
-              let nome = "Aluno";
-              let photoURL = null;
-
-              Object.values(valor).forEach((resposta) => {
-                if (resposta) {
-                  acertos++;
-                  nome = resposta.studentName || resposta.student?.name || nome;
-                  photoURL =
-                    resposta.photoURL || resposta.student?.photoURL || photoURL;
-                }
-              });
-
-              if (acertos > 0) {
-                contadorAlunos[chave] = {
-                  id: chave,
-                  nome: nome,
-                  photoURL: photoURL,
-                  avatar: nome.charAt(0),
-                  acertos: acertos,
-                };
+            Object.values(answers).forEach((answer) => {
+              acertos++;
+              if (!nome && answer.studentName) {
+                nome = answer.studentName;
               }
-            } else {
-              const resposta = valor;
-              const idAluno =
-                resposta.studentId || resposta.student?.uid || chave;
-              const nomeAluno =
-                resposta.studentName || resposta.student?.name || "Aluno";
-              const fotoAluno = resposta.photoURL || resposta.student?.photoURL;
-
-              if (!contadorAlunos[idAluno]) {
-                contadorAlunos[idAluno] = {
-                  id: idAluno,
-                  nome: nomeAluno,
-                  photoURL: fotoAluno,
-                  avatar: nomeAluno.charAt(0),
-                  acertos: 0,
-                };
+              if (!photoURL && answer.photoURL) {
+                photoURL = answer.photoURL;
               }
-              contadorAlunos[idAluno].acertos += 1;
+            });
+
+            if (nome && acertos > 0) {
+              contadorAlunos[userId] = {
+                id: userId,
+                nome: nome,
+                photoURL: photoURL,
+                avatar: nome.charAt(0),
+                acertos: acertos,
+              };
             }
           }
-        });
-      } catch (error) {
-        console.error("Erro ao processar dados:", error);
-      }
+        }
+      );
     }
 
-    // Verificação adicional para customQuestionResults
-    if (customResults.customQuestionResults) {
-      console.log("Processando customQuestionResults");
-      processarDados(customResults.customQuestionResults);
-    }
-
-    // Debug: mostrar estrutura final dos alunos
-    console.log("Contador de alunos final:", contadorAlunos);
-
-    // Converter objeto para array e ordenar
     Object.values(contadorAlunos).forEach((aluno) => {
       participantes.push(aluno);
     });
-
-    // Demonstrativo para debug
-    if (participantes.length === 0) {
-      // Dados de exemplo para debug
-      console.warn("USANDO DADOS DE EXEMPLO PARA DEBUG");
-      return [
-        {
-          id: "example1",
-          nome: "Exemplo 1",
-          acertos: 5,
-          avatar: "E",
-          photoURL: null,
-        },
-        {
-          id: "example2",
-          nome: "Exemplo 2",
-          acertos: 3,
-          avatar: "E",
-          photoURL: null,
-        },
-        {
-          id: "example3",
-          nome: "Exemplo 3",
-          acertos: 2,
-          avatar: "E",
-          photoURL: null,
-        },
-      ];
-    }
 
     return participantes.sort((a, b) => b.acertos - a.acertos);
   };
 
   const participantesOrdenados = processarResultados();
-
-  // Os três primeiros colocados
   const podio = participantesOrdenados.slice(0, 3);
-
-  // Demais participantes
   const demaisParticipantes = participantesOrdenados.slice(3);
 
-  // Efeito para disparar as animações em sequência
   useEffect(() => {
     if (podio.length > 1) setTimeout(() => setShowSecondPlace(true), 1000);
     if (podio.length > 2) setTimeout(() => setShowThirdPlace(true), 2000);
@@ -196,7 +100,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
     setTimeout(() => setShowList(true), 4500);
   }, [podio.length]);
 
-  // Controle para tecla ESC fechar o ranking
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -284,7 +187,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
           </Typography>
         </Box>
 
-        {/* Mensagem quando não há participantes */}
         {participantesOrdenados.length === 0 ? (
           <Typography variant="body1" sx={{ color: "#fff", my: 5 }}>
             Nenhum aluno acertou perguntas ainda. O ranking será atualizado
@@ -301,7 +203,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
               minHeight: "220px",
             }}
           >
-            {/* 2º Lugar */}
             {podio.length > 1 && (
               <Box
                 sx={{
@@ -357,7 +258,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
               </Box>
             )}
 
-            {/* 1º Lugar */}
             {podio.length > 0 && (
               <Box
                 sx={{
@@ -418,7 +318,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
               </Box>
             )}
 
-            {/* 3º Lugar */}
             {podio.length > 2 && (
               <Box
                 sx={{
@@ -474,7 +373,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
           </Box>
         )}
 
-        {/* Lista de todos os participantes */}
         {participantesOrdenados.length > 0 && (
           <>
             <Divider

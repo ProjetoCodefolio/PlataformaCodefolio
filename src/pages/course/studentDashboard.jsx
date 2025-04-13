@@ -57,7 +57,7 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [sortType, setSortType] = useState("name");
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState(0); // Novo estado para controlar as tabs
+  const [activeTab, setActiveTab] = useState(0);
   const [liveQuizResults, setLiveQuizResults] = useState({});
   const [customQuizResults, setCustomQuizResults] = useState({});
 
@@ -94,7 +94,6 @@ const StudentDashboard = () => {
         const quizzesPromises = [];
         const courseIds = [];
 
-        // Para cada curso, verificar se contém o quiz específico
         coursesSnapshot.forEach((courseSnapshot) => {
           const courseId = courseSnapshot.key;
           const quizRef = ref(database, `courseQuizzes/${courseId}/${quizId}`);
@@ -138,7 +137,6 @@ const StudentDashboard = () => {
           setVideoData(foundVideo);
         }
 
-        // Buscar resultados de Live Quiz e Custom Quiz
         const liveQuizResultsRef = ref(
           database,
           `liveQuizResults/${foundCourse.courseId}/${quizId}`
@@ -158,13 +156,9 @@ const StudentDashboard = () => {
           ? customQuizResultsSnapshot.val()
           : {};
 
-        console.log("Live Quiz Data:", liveQuizData);
-        console.log("Custom Quiz Data:", customQuizData);
-
         setLiveQuizResults(liveQuizData);
         setCustomQuizResults(customQuizData);
 
-        // Depois de buscar os dados do quiz normal, combinar com os alunos do Live Quiz e Custom Quiz
         await fetchAllStudentResults(
           foundCourse.courseId,
           quizId,
@@ -180,7 +174,6 @@ const StudentDashboard = () => {
       }
     };
 
-    // Nova função para buscar e combinar todos os resultados de estudantes
     const fetchAllStudentResults = async (
       courseId,
       videoId,
@@ -189,18 +182,14 @@ const StudentDashboard = () => {
       customQuizData
     ) => {
       try {
-        // Buscar resultados normais do quiz (código existente)
         const results = await fetchStudentResults(courseId, videoId, quizObj);
 
-        // Buscar informações dos usuários
         const usersRef = ref(database, "users");
         const usersSnapshot = await get(usersRef);
         const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
 
-        // Combinar com alunos do Live Quiz que não estão nos resultados normais
         const allStudentIds = new Set(results.map((student) => student.userId));
 
-        // Adicionar alunos do Live Quiz
         for (const userId in liveQuizData) {
           if (!allStudentIds.has(userId)) {
             const userData = usersData[userId] || {};
@@ -234,7 +223,6 @@ const StudentDashboard = () => {
           }
         }
 
-        // Adicionar alunos do Custom Quiz
         for (const userId in customQuizData) {
           if (!allStudentIds.has(userId)) {
             const userData = usersData[userId] || {};
@@ -273,11 +261,9 @@ const StudentDashboard = () => {
       }
     };
 
-    // Modificar a função existente para retornar os resultados em vez de definir o estado
     const fetchStudentResults = async (courseId, videoId, quizObj) => {
       try {
         if (!quizObj) {
-          console.error("Objeto quiz não definido");
           return [];
         }
 
@@ -337,16 +323,13 @@ const StudentDashboard = () => {
                 ? quizResult.isPassed
                 : scorePercentage >= minPercentage;
 
-            // Formatar a data da última tentativa
             let lastAttemptDate = "Data não disponível";
             if (quizResult.submittedAt) {
               try {
                 lastAttemptDate = new Date(
                   quizResult.submittedAt
                 ).toLocaleDateString("pt-BR");
-              } catch (e) {
-                console.error("Erro ao formatar data submittedAt:", e);
-              }
+              } catch (e) {}
             } else if (quizResult.timestamp) {
               lastAttemptDate = new Date(
                 quizResult.timestamp
@@ -361,7 +344,6 @@ const StudentDashboard = () => {
               ).toLocaleDateString("pt-BR");
             }
 
-            // Formatação para hora
             let lastAttemptTime = "";
             try {
               if (quizResult.submittedAt) {
@@ -371,11 +353,8 @@ const StudentDashboard = () => {
                   minute: "2-digit",
                 });
               }
-            } catch (e) {
-              console.error("Erro ao formatar hora submittedAt:", e);
-            }
+            } catch (e) {}
 
-            // Combina data e hora se ambas estiverem disponíveis
             if (lastAttemptDate !== "Data não disponível" && lastAttemptTime) {
               lastAttemptDate = `${lastAttemptDate} às ${lastAttemptTime}`;
             }
@@ -409,7 +388,6 @@ const StudentDashboard = () => {
     navigate(-1);
   };
 
-  // Função para ordenar resultados com base no tipo de ordenação selecionado
   const getSortedResults = () => {
     if (!studentResults.length) return [];
 
@@ -464,7 +442,6 @@ const StudentDashboard = () => {
     }
   };
 
-  // Função para lidar com a mudança do tipo de ordenação
   const handleSortChange = (event) => {
     setSortType(event.target.value);
   };
@@ -473,7 +450,6 @@ const StudentDashboard = () => {
     setSearchTerm(searchTerm);
   };
 
-  // Função para lidar com a mudança de tab
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
   };
@@ -610,7 +586,6 @@ const StudentDashboard = () => {
         </Paper>
 
         <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
-          {/* Tabs centralizada acima de Resultados dos Estudantes */}
           <Box
             sx={{
               display: "flex",
@@ -640,7 +615,6 @@ const StudentDashboard = () => {
             </Tabs>
           </Box>
 
-          {/* Seção do título e ordenação - Adicionar barra de busca abaixo do título */}
           <Box
             sx={{
               mb: 3,
@@ -700,7 +674,6 @@ const StudentDashboard = () => {
               </Stack>
             </Box>
 
-            {/* Barra de busca movida para cá */}
             <TextField
               fullWidth
               variant="outlined"
@@ -720,9 +693,7 @@ const StudentDashboard = () => {
             />
           </Box>
 
-          {/* Conteúdo das tabs */}
           {activeTab === 0 && (
-            // Conteúdo da tab "Quiz" (conteúdo atual)
             <>
               {studentResults.length > 0 ? (
                 <TableContainer>
@@ -825,10 +796,10 @@ const StudentDashboard = () => {
                                       student.onlyCustomQuiz ||
                                       student.lastAttemptDate ===
                                         "Não realizou o quiz"
-                                    ? "#fff8e1" // Amarelo claro para pendente
+                                    ? "#fff8e1"
                                     : student.passed
-                                    ? "#e8f5e9" // Verde claro para aprovado
-                                    : "#ffebee", // Vermelho claro para reprovado
+                                    ? "#e8f5e9"
+                                    : "#ffebee",
                                 color:
                                   quiz.minPercentage === 0
                                     ? "#000"
@@ -836,10 +807,10 @@ const StudentDashboard = () => {
                                       student.onlyCustomQuiz ||
                                       student.lastAttemptDate ===
                                         "Não realizou o quiz"
-                                    ? "#ff9800" // Laranja para pendente
+                                    ? "#ff9800"
                                     : student.passed
-                                    ? "#2e7d32" // Verde para aprovado
-                                    : "#c62828", // Vermelho para reprovado
+                                    ? "#2e7d32"
+                                    : "#c62828",
                                 borderRadius: 1,
                                 px: 1,
                                 py: 0.5,
@@ -916,11 +887,9 @@ const StudentDashboard = () => {
                     </TableHead>
                     <TableBody>
                       {getSortedResults().map((student) => {
-                        // Obtenha dados reais do Live Quiz para este estudante
                         const studentLiveData =
                           liveQuizResults[student.userId] || {};
 
-                        // Calcular métricas de desempenho
                         const correctAnswers =
                           studentLiveData.correctAnswers || 0;
                         const wrongAnswers = studentLiveData.wrongAnswers || 0;
@@ -930,7 +899,6 @@ const StudentDashboard = () => {
                             ? Math.round((correctAnswers / totalAnswered) * 100)
                             : 0;
 
-                        // Total de acertos combinando apenas Live Quiz
                         const totalCorrectAnswers =
                           (liveQuizResults[student.userId]?.correctAnswers ||
                             0) +
@@ -969,10 +937,7 @@ const StudentDashboard = () => {
                             <TableCell>
                               <Typography
                                 variant="body1"
-                                sx={{
-                                  fontWeight: "medium",
-                                  color: "#2e7d32", // Verde
-                                }}
+                                sx={{ fontWeight: "medium" }}
                               >
                                 {correctAnswers}
                               </Typography>
@@ -980,16 +945,22 @@ const StudentDashboard = () => {
                             <TableCell>
                               <Typography
                                 variant="body1"
-                                sx={{
-                                  fontWeight: "medium",
-                                  color: "#c62828", // Vermelho
-                                }}
+                                sx={{ fontWeight: "medium" }}
                               >
                                 {wrongAnswers}
                               </Typography>
                             </TableCell>
                             <TableCell>
-                              <Typography variant="body1">
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "bold",
+                                  color:
+                                    studentLiveData.timesDraw > 0
+                                      ? "#ff9800"
+                                      : "inherit",
+                                }}
+                              >
                                 {studentLiveData.timesDraw || 0}
                               </Typography>
                             </TableCell>
@@ -998,30 +969,39 @@ const StudentDashboard = () => {
                                 sx={{
                                   display: "flex",
                                   alignItems: "center",
-                                  gap: 1,
                                 }}
                               >
-                                <Typography variant="body1">
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: "medium",
+                                    color:
+                                      successRate > 50 ? "#2e7d32" : "#c62828",
+                                  }}
+                                >
                                   {successRate}%
                                 </Typography>
                                 <Box
                                   sx={{
-                                    width: 60,
-                                    height: 8,
-                                    borderRadius: 4,
-                                    backgroundColor: "#f0f0f0",
+                                    ml: 1,
+                                    width: 50,
+                                    backgroundColor: "rgba(0,0,0,0.1)",
+                                    height: 6,
+                                    borderRadius: 3,
+                                    position: "relative",
                                     overflow: "hidden",
                                   }}
                                 >
                                   <Box
                                     sx={{
+                                      position: "absolute",
+                                      top: 0,
+                                      left: 0,
                                       height: "100%",
                                       width: `${successRate}%`,
                                       backgroundColor:
-                                        successRate >= 80
+                                        successRate > 50
                                           ? "#2e7d32"
-                                          : successRate >= 50
-                                          ? "#ff9800"
                                           : "#c62828",
                                     }}
                                   />
@@ -1080,11 +1060,9 @@ const StudentDashboard = () => {
                     </TableHead>
                     <TableBody>
                       {getSortedResults().map((student) => {
-                        // Obtenha dados do Custom Quiz para este estudante
                         const studentCustomData =
                           customQuizResults[student.userId] || {};
 
-                        // Calcular métricas de desempenho
                         const correctAnswers =
                           studentCustomData.correctAnswers || 0;
                         const wrongAnswers =
@@ -1095,7 +1073,6 @@ const StudentDashboard = () => {
                             ? Math.round((correctAnswers / totalAnswered) * 100)
                             : 0;
 
-                        // Total de acertos combinando apenas Custom Quiz
                         const totalCorrectAnswers =
                           (liveQuizResults[student.userId]?.correctAnswers ||
                             0) +
@@ -1136,7 +1113,7 @@ const StudentDashboard = () => {
                                 variant="body1"
                                 sx={{
                                   fontWeight: "medium",
-                                  color: "#2e7d32", // Verde
+                                  color: "#2e7d32",
                                 }}
                               >
                                 {correctAnswers}
@@ -1147,14 +1124,23 @@ const StudentDashboard = () => {
                                 variant="body1"
                                 sx={{
                                   fontWeight: "medium",
-                                  color: "#c62828", // Vermelho
+                                  color: "#c62828",
                                 }}
                               >
                                 {wrongAnswers}
                               </Typography>
                             </TableCell>
                             <TableCell>
-                              <Typography variant="body1">
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "bold",
+                                  color:
+                                    studentCustomData.timesDraw > 0
+                                      ? "#ff9800"
+                                      : "inherit",
+                                }}
+                              >
                                 {studentCustomData.timesDraw || 0}
                               </Typography>
                             </TableCell>

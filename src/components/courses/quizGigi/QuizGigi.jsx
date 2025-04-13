@@ -58,7 +58,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleSearchChange,
     handleAbleStudent,
     setMenuOpen,
-  } = useStudentData(courseId, quizData?.id); // Passar quizData.id aqui
+  } = useStudentData(courseId, quizData?.id); 
 
   const {
     quizResults,
@@ -253,7 +253,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const handleCustomQuestionClick = () => {
     setShowCustomQuestion(true);
     setShowQuizRanking(false);
-    setIsCustomMode(true); // Definir como modo custom
+    setIsCustomMode(true);
   };
 
   const handleBackToNormalMode = () => {
@@ -261,7 +261,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     setShowQuizRanking(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
-    setIsCustomMode(false); // Definir como modo normal
+    setIsCustomMode(false);
   };
 
   const handleRankingClick = () => {
@@ -518,7 +518,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 waitingForNextStudent={waitingForNextStudent}
                 onEyeToggle={handleEyeToggle}
                 eyeOpen={eyeOpen}
-                isCustomMode={isCustomMode} // Passar o modo atual
+                isCustomMode={isCustomMode} // passa o modo atual
               />
 
               <Typography

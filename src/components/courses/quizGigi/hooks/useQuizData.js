@@ -16,14 +16,12 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   });
   const [courseInfoLoaded, setCourseInfoLoaded] = useState(false);
 
-  // Primeiro, buscar as informações do curso
   useEffect(() => {
     if (courseId) {
       fetchCourseInfo();
     }
   }, [courseId]);
 
-  // Depois de carregar as informações do curso, buscar resultados do quiz
   useEffect(() => {
     if (courseId && quizData?.id && courseInfoLoaded) {
       if (quizData.title) {
@@ -34,7 +32,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   }, [courseId, quizData?.id, courseInfoLoaded]);
 
-  // Adicione este efeito para resetar o feedback quando o estudante muda
   useEffect(() => {
     if (selectedStudent) {
       setSelectedAnswer(null);
@@ -52,11 +49,9 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         setCourseTitle(courseData.title || "Curso sem título");
       }
 
-      // Marca que as informações do curso foram carregadas
       setCourseInfoLoaded(true);
     } catch (error) {
-      console.error("Erro ao buscar informações do curso:", error);
-      setCourseInfoLoaded(true); // Mesmo com erro, marca como carregado
+      setCourseInfoLoaded(true);
     }
   };
 
@@ -80,7 +75,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         setQuizResults({});
       }
     } catch (error) {
-      console.error("Erro ao buscar resultados do quiz:", error);
+      // Erro tratado silenciosamente
     }
   };
 
@@ -90,7 +85,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         return false;
       }
 
-      // Se courseTitle ainda estiver vazio, tente buscar diretamente
       let finalCourseTitle = courseTitle;
       if (!finalCourseTitle) {
         try {
@@ -102,7 +96,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
             setCourseTitle(finalCourseTitle);
           }
         } catch (e) {
-          console.error("Erro ao buscar título do curso novamente:", e);
+          // Erro tratado silenciosamente
         }
       }
 
@@ -140,7 +134,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
       return true;
     } catch (error) {
-      console.error("Erro ao inicializar dados do quiz:", error);
       return false;
     }
   };
@@ -151,6 +144,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     isCustomQuestion = false
   ) => {
     const currentQuestion = quizData?.questions?.[currentQuestionIndex];
+
     if (!selectedStudent || (!currentQuestion && !isCustomQuestion)) {
       return false;
     }
@@ -179,7 +173,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         photoURL: selectedStudent.photoURL || null,
         userId: selectedStudent.userId,
         isCorrect: isCorrect,
-        isCustomQuestion: isCustomQuestion,
       };
 
       await set(answerRef, answerData);
@@ -234,17 +227,14 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     if (!selectedStudent || !courseId || !quizData?.id) return;
 
     try {
-      // Caminho para os resultados do quiz ao vivo
       const resultRef = ref(
         database,
         `liveQuizResults/${courseId}/${quizData.id}/${selectedStudent.userId}`
       );
 
-      // Buscar dados atuais
       const snapshot = await get(resultRef);
       const currentData = snapshot.exists() ? snapshot.val() : {};
 
-      // Preparar dados atualizados
       const updatedData = {
         ...currentData,
         correctAnswers: correct
@@ -254,15 +244,18 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
           ? (currentData.wrongAnswers || 0) + 1
           : currentData.wrongAnswers || 0,
         lastAnswerDate: new Date().toISOString(),
+        studentName: selectedStudent.name,
+        photoURL: selectedStudent.photoURL || null,
       };
 
-      // Salvar no Firebase
       await set(resultRef, updatedData);
       console.log(
-        `Acerto registrado para ${selectedStudent.name} em Live Quiz`
+        `${correct ? "Acerto" : "Erro"} registrado para ${
+          selectedStudent.name
+        } em Live Quiz`
       );
     } catch (error) {
-      console.error("Erro ao registrar acerto:", error);
+      console.error("Erro ao registrar resposta:", error);
     }
   };
 

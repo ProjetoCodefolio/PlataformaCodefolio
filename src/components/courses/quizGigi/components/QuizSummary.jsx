@@ -197,7 +197,7 @@ const QuizSummary = ({
   customQuestionResults,
   onClose,
 }) => {
-  // Processamento de resultados de perguntas personalizadas
+
   const processCustomResults = (correctAnswers) => {
     if (!correctAnswers) return {};
 
@@ -210,9 +210,15 @@ const QuizSummary = ({
       const processedResults = {};
 
       Object.entries(correctAnswers).forEach(([userId, answers]) => {
-        Object.entries(answers).forEach(([answerId, answer]) => {
-          processedResults[`${userId}-${answerId}`] = answer;
-        });
+        if (typeof answers === "object" && !Array.isArray(answers)) {
+          // Para cada resposta do usuário, criar uma entrada única
+          Object.entries(answers).forEach(([answerId, answer]) => {
+            processedResults[`${userId}-${answerId}`] = answer;
+          });
+        } else {
+          // Caso seja um formato mais simples, usar diretamente
+          processedResults[userId] = answers;
+        }
       });
 
       return processedResults;
@@ -265,18 +271,15 @@ const QuizSummary = ({
         </Button>
       </Box>
 
-      {/* Mostrar primeiro os resultados de perguntas personalizadas */}
       <ResultSection
         results={processedCustomCorrect}
         answerLabel="Alunos com acertos em perguntas personalizadas"
       />
 
-      {/* Dividir para separar as seções */}
       {hasCustomCorrect && quizData?.questions?.length > 0 && (
         <Box sx={{ my: 3, borderTop: "1px solid rgba(255, 255, 255, 0.2)" }} />
       )}
 
-      {/* Resultados de perguntas normais */}
       {quizData?.questions?.map((question, index) => (
         <QuestionSummary
           key={index}

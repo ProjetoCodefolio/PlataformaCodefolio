@@ -17,10 +17,25 @@ const QuestionResultDisplay = ({
   const correctAnswers = questionResults.correctAnswers || {};
   const hasCorrect = Object.keys(correctAnswers).length > 0;
 
-  // Se não houver acertos OU se o olho estiver fechado, não renderiza nada
   if (!hasCorrect || !eyeOpen) return null;
 
-  // Só renderiza quando há acertos E o olho está aberto
+  //contador para exibir quantas vezes cada aluno acertou a questão
+  const studentCounts = {};
+  Object.values(correctAnswers).forEach((answer) => {
+    const studentId = answer.userId || answer.studentId;
+    if (studentId) {
+      if (!studentCounts[studentId]) {
+        studentCounts[studentId] = {
+          count: 0,
+          studentName: answer.studentName,
+          photoURL: answer.photoURL,
+        };
+      }
+      studentCounts[studentId].count++;
+    }
+  });
+
+  // só renderiza quando há acertos E o olho está aberto
   return (
     <Box
       sx={{
@@ -53,11 +68,13 @@ const QuestionResultDisplay = ({
         </Typography>
 
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
-          {Object.values(correctAnswers).map((student, idx) => (
+          {Object.values(studentCounts).map((student, idx) => (
             <Chip
               key={idx}
               size="small"
-              label={student.studentName}
+              label={`${student.studentName} ${
+                student.count > 1 ? `${student.count}x` : ""
+              }`}
               avatar={
                 <Avatar src={student.photoURL}>
                   {(student.studentName || "?").charAt(0)}

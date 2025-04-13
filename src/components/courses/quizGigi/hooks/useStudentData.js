@@ -126,12 +126,6 @@ export const useStudentData = (courseId, quizId) => {
         return;
       }
 
-      console.log(
-        `Registrando sorteio para ${userId} em modo ${
-          isCustomMode ? "custom" : "normal"
-        }`
-      );
-
       const basePath = isCustomMode ? "customQuizResults" : "liveQuizResults";
       const countRef = ref(
         database,
@@ -150,9 +144,6 @@ export const useStudentData = (courseId, quizId) => {
 
       // Salvar no Firebase
       await set(countRef, updatedData);
-      console.log(
-        `Contagem atualizada: ${updatedData.timesDraw} para ${userId} em ${basePath}`
-      );
     } catch (error) {
       console.error("Erro ao atualizar contagem de sorteios:", error);
     }
@@ -224,7 +215,6 @@ export const useStudentData = (courseId, quizId) => {
     setSelectedStudent(student);
     handleCloseMenu();
 
-    // Agora isCustomMode está disponível como parâmetro
     updateStudentDrawCount(student.userId, isCustomMode);
   };
 

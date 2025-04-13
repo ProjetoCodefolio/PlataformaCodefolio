@@ -36,14 +36,12 @@ const StudentSelector = ({
   waitingForNextStudent,
   onEyeToggle,
   eyeOpen,
-  isCustomMode = false, // Garantir que o parâmetro tenha um valor padrão
+  isCustomMode = false, 
 }) => {
   const chooseButtonRef = useRef(null);
   const popperRef = useRef(null);
 
-  // Garantir que ao clicar em "Sortear aluno" o modo correto seja passado
   const handleSortStudent = () => {
-    console.log("Sorteando aluno no modo:", isCustomMode ? "custom" : "normal");
     onSortStudent(isCustomMode);
   };
 
@@ -226,7 +224,7 @@ const StudentSelector = ({
           >
             <Button
               ref={chooseButtonRef}
-              onClick={handleSortStudent} // Usar a função que passa o isCustomMode
+              onClick={handleSortStudent} 
               variant="outlined"
               disabled={enrolledStudents.length === 0}
               sx={{
@@ -359,7 +357,7 @@ const StudentSelector = ({
                           backgroundColor: "rgba(144, 65, 193, 0.1)",
                         },
                       }}
-                      onClick={() => onSelectStudent(student, isCustomMode)} // Passar isCustomMode aqui
+                      onClick={() => onSelectStudent(student, isCustomMode)} 
                       disabled={student.disabled}
                     >
                       <Avatar
