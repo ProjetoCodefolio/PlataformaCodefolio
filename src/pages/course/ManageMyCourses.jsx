@@ -9,6 +9,9 @@ import {
   Button,
   Grid,
   Modal,
+  Tabs,
+  Tab,
+  Badge
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
@@ -18,61 +21,147 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
+import CreateIcon from "@mui/icons-material/Create";
+import SchoolIcon from "@mui/icons-material/School";
 import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/courseUtils";
 
 const ManageMyCourses = () => {
+  // Estados existentes
   const [courses, setCourses] = useState([]);
+  const [teacherCourses, setTeacherCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
-  const { userDetails } = useAuth();
-  const navigate = useNavigate();
+  const [filteredTeacherCourses, setFilteredTeacherCourses] = useState([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [showTabs, setShowTabs] = useState(false);
+  const [showAdminTab, setShowAdminTab] = useState(false);
+  const [showTeacherTab, setShowTeacherTab] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { userDetails } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const loadCourses = async () => {
+    const loadData = async () => {
       try {
         if (!userDetails?.userId) {
           return;
         }
 
+        // Verificar se o usuário é admin (para mostrar tab "Meus Cursos")
+        const isAdmin = userDetails.role === "admin";
+        setShowAdminTab(isAdmin);
+
+        // Carregar todos os cursos do banco de dados
         const coursesRef = ref(database, "courses");
         const snapshot = await get(coursesRef);
 
         if (snapshot.exists()) {
           const data = snapshot.val();
-          const coursesData = Object.entries(data)
-            .map(([courseId, course]) => ({
-              courseId,
-              ...course,
-            }))
-            .filter((course) => course.userId === userDetails.userId);
 
-          setCourses(coursesData);
-          setFilteredCourses(coursesData);
+          // 1. Filtrar cursos criados pelo usuário (apenas para admins)
+          if (isAdmin) {
+            const ownedCourses = Object.entries(data)
+              .map(([courseId, course]) => ({
+                courseId,
+                ...course,
+                isOwner: true
+              }))
+              .filter((course) => course.userId === userDetails.userId);
+
+            setCourses(ownedCourses);
+            setFilteredCourses(ownedCourses);
+          } else {
+            setCourses([]);
+            setFilteredCourses([]);
+          }
+
+          // 2. Verificar se o usuário tem coursesTeacher
+          const hasTeacherRoles = userDetails.coursesTeacher &&
+            Object.keys(userDetails.coursesTeacher).length > 0;
+          setShowTeacherTab(hasTeacherRoles);
+
+          if (hasTeacherRoles) {
+            // Filtrar cursos onde o usuário é professor
+            const teacherCourseIds = Object.keys(userDetails.coursesTeacher);
+            const teacherCoursesData = Object.entries(data)
+              .map(([courseId, course]) => ({
+                courseId,
+                ...course,
+                isOwner: false,
+                isTeacher: true
+              }))
+              .filter((course) =>
+                teacherCourseIds.includes(course.courseId) &&
+                course.userId !== userDetails.userId
+              );
+
+            setTeacherCourses(teacherCoursesData);
+            setFilteredTeacherCourses(teacherCoursesData);
+          } else {
+            setTeacherCourses([]);
+            setFilteredTeacherCourses([]);
+          }
+
+          // Definir qual tab mostrar inicialmente baseado nas permissões
+          if (isAdmin) {
+            setTabValue(0); // Tab "Meus Cursos" (se disponível)
+          } else if (hasTeacherRoles) {
+            setTabValue(0); // Tab "Cursos que leciono" (será a única tab disponível)
+          }
+
+          // Mostrar o sistema de tabs somente se pelo menos uma tab estiver disponível
+          setShowTabs(isAdmin || hasTeacherRoles);
         } else {
-          setCourses([]);
-          setFilteredCourses([]);
+          // Não há cursos disponíveis
+          resetAllCourseStates();
         }
       } catch (error) {
+        console.error("Erro ao carregar os cursos:", error);
         toast.error("Erro ao carregar os cursos");
-        setCourses([]);
-        setFilteredCourses([]);
+        resetAllCourseStates();
       }
     };
 
-    loadCourses();
+    const resetAllCourseStates = () => {
+      setCourses([]);
+      setFilteredCourses([]);
+      setTeacherCourses([]);
+      setFilteredTeacherCourses([]);
+      setShowTabs(false);
+    };
+
+    loadData();
   }, [userDetails]);
 
   const handleSearch = (searchTerm) => {
+    setSearchTerm(searchTerm);
     const term = searchTerm.toLowerCase();
+
+    // Filtrar cursos do proprietário
     setFilteredCourses(
       courses.filter(
         (course) =>
-          course.title.toLowerCase().includes(term) ||
-          course.description.toLowerCase().includes(term)
+          course.title?.toLowerCase().includes(term) ||
+          course.description?.toLowerCase().includes(term)
+      )
+    );
+
+    // Filtrar cursos onde é professor
+    setFilteredTeacherCourses(
+      teacherCourses.filter(
+        (course) =>
+          course.title?.toLowerCase().includes(term) ||
+          course.description?.toLowerCase().includes(term)
       )
     );
   };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // Funções existentes (handleEditCourse, handleCreateNewCourse, etc.)
 
   const handleEditCourse = (course) => {
     navigate(`/adm-cursos?courseId=${course.courseId}`);
@@ -156,12 +245,14 @@ const ManageMyCourses = () => {
     }
   };
 
-  const renderCourses = (courses, actionButtonLabel, onClickAction) => {
+  const renderCourses = (courses, actionButtonLabel, onClickAction, allowDelete = true) => {
     if (courses.length === 0) {
       return (
-        <Typography variant="body1" color="textSecondary">
-          Nenhum curso encontrado.
-        </Typography>
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography variant="body1" color="textSecondary">
+            Nenhum curso encontrado.
+          </Typography>
+        </Box>
       );
     }
 
@@ -219,7 +310,7 @@ const ManageMyCourses = () => {
                   justifyContent: "center",
                   mt: "auto",
                   gap: { xs: 1, sm: 2 },
-                  flexWrap: "wrap", // Permite que os botões quebrem linha em telas pequenas
+                  flexWrap: "wrap",
                 }}
               >
                 <Button
@@ -231,41 +322,123 @@ const ManageMyCourses = () => {
                     "&:hover": { backgroundColor: "#7d37a7" },
                     textTransform: "none",
                     fontWeight: 500,
-                    fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" }, // Reduz tamanho da fonte em telas menores
-                    px: { xs: 1, sm: 2 }, // Padding horizontal ajustável
-                    py: { xs: 0.5, sm: 1 }, // Padding vertical ajustável
-                    minWidth: { xs: "80px", sm: "100px", md: "120px" }, // Tamanho mínimo ajustável
-                    width: { xs: "45%", sm: "auto" }, // Largura relativa em telas pequenas
-                  }}
-                  onClick={() => onClickAction(course)}
-                >
-                  {actionButtonLabel}
-                </Button>
-                <Button
-                  variant="contained"
-                  sx={{
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    borderRadius: "12px",
-                    "&:hover": { backgroundColor: "#c82333" },
-                    textTransform: "none",
-                    fontWeight: 500,
                     fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
                     px: { xs: 1, sm: 2 },
                     py: { xs: 0.5, sm: 1 },
                     minWidth: { xs: "80px", sm: "100px", md: "120px" },
                     width: { xs: "45%", sm: "auto" },
                   }}
-                  onClick={() => handleDeleteCourse(course.courseId)}
+                  onClick={() => onClickAction(course)}
                 >
-                  Deletar
+                  {actionButtonLabel}
                 </Button>
+                {course.isOwner && allowDelete && (
+                  <Button
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      borderRadius: "12px",
+                      "&:hover": { backgroundColor: "#c82333" },
+                      textTransform: "none",
+                      fontWeight: 500,
+                      fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                      px: { xs: 1, sm: 2 },
+                      py: { xs: 0.5, sm: 1 },
+                      minWidth: { xs: "80px", sm: "100px", md: "120px" },
+                      width: { xs: "45%", sm: "auto" },
+                    }}
+                    onClick={() => handleDeleteCourse(course.courseId)}
+                  >
+                    Deletar
+                  </Button>
+                )}
               </CardActions>
             </Card>
           </Grid>
         ))}
       </Grid>
     );
+  };
+
+  // Renderização condicional das tabs baseada nas permissões
+  const renderTabs = () => {
+    // Se nenhuma tab estiver disponível, não renderizar nada
+    if (!showAdminTab && !showTeacherTab) {
+      return null;
+    }
+
+    return (
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#9041c1',
+            },
+            '& .MuiTab-root.Mui-selected': {
+              color: '#9041c1',
+              fontWeight: 'bold',
+            }
+          }}
+        >
+          {showAdminTab && (
+            <Tab
+              icon={<CreateIcon />}
+              iconPosition="start"
+              label={
+                <Badge badgeContent={courses.length} color="primary" sx={{ '& .MuiBadge-badge': { backgroundColor: '#9041c1' } }}>
+                  <Box sx={{ px: 1 }}>Meus Cursos</Box>
+                </Badge>
+              }
+            />
+          )}
+          {showTeacherTab && (
+            <Tab
+              icon={<SchoolIcon />}
+              iconPosition="start"
+              label={
+                <Badge badgeContent={teacherCourses.length} color="primary" sx={{ '& .MuiBadge-badge': { backgroundColor: '#9041c1' } }}>
+                  <Box sx={{ px: 1 }}>Cursos que Leciono</Box>
+                </Badge>
+              }
+            />
+          )}
+        </Tabs>
+      </Box>
+    );
+  };
+
+  // Renderização condicional do conteúdo baseado na tab ativa
+  const renderTabContent = () => {
+    // Caso em que só há uma tab disponível (admin ou professor)
+    if (showAdminTab && !showTeacherTab) {
+      return renderCourses(filteredCourses, "Gerenciar Curso", handleEditCourse, true);
+    } else if (!showAdminTab && showTeacherTab) {
+      return renderCourses(filteredTeacherCourses, "Gerenciar Curso", handleEditCourse, false);
+    }
+
+    // Caso em que ambas as tabs estão disponíveis
+    else if (showAdminTab && showTeacherTab) {
+      if (tabValue === 0) {
+        return renderCourses(filteredCourses, "Gerenciar Curso", handleEditCourse, true);
+      } else {
+        return renderCourses(filteredTeacherCourses, "Gerenciar Curso", handleEditCourse, false);
+      }
+    }
+
+    // Fallback (não deveria ocorrer porque o componente nem deveria ser renderizado)
+    else {
+      return (
+        <Box sx={{ textAlign: "center", py: 4 }}>
+          <Typography variant="body1" color="textSecondary">
+            Você não possui permissão para gerenciar cursos.
+          </Typography>
+        </Box>
+      );
+    }
   };
 
   return (
@@ -291,24 +464,26 @@ const ManageMyCourses = () => {
           mb: { xs: 2, sm: 3 },
         }}
       >
-        <Button
-          variant="contained"
-          sx={{
-            px: { xs: 2, sm: 4 },
-            py: { xs: 1, sm: 1.5 },
-            fontWeight: 500,
-            fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
-            backgroundColor: "#9041c1",
-            color: "white",
-            borderRadius: "12px",
-            textTransform: "none",
-            "&:hover": { backgroundColor: "#7d37a7" },
-            minWidth: { xs: "120px", sm: "160px" }, // Ajuste mínimo
-          }}
-          onClick={handleCreateNewCourse}
-        >
-          Criar Novo Curso
-        </Button>
+        {showAdminTab && (
+          <Button
+            variant="contained"
+            sx={{
+              px: { xs: 2, sm: 4 },
+              py: { xs: 1, sm: 1.5 },
+              fontWeight: 500,
+              fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+              backgroundColor: "#9041c1",
+              color: "white",
+              borderRadius: "12px",
+              textTransform: "none",
+              "&:hover": { backgroundColor: "#7d37a7" },
+              minWidth: { xs: "120px", sm: "160px" },
+            }}
+            onClick={handleCreateNewCourse}
+          >
+            Criar Novo Curso
+          </Button>
+        )}
       </Box>
 
       <Paper
@@ -321,11 +496,23 @@ const ManageMyCourses = () => {
           maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
         }}
       >
-        <Box sx={{ p: { xs: 1, sm: 2 } }}>
-          {renderCourses(filteredCourses, "Editar Curso", handleEditCourse)}
-        </Box>
+        {showTabs ? (
+          <>
+            {renderTabs()}
+            <Box sx={{ p: { xs: 1, sm: 2 } }}>
+              {renderTabContent()}
+            </Box>
+          </>
+        ) : (
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            <Typography variant="body1" color="textSecondary" align="center">
+              Você não tem permissão para acessar esta página.
+            </Typography>
+          </Box>
+        )}
       </Paper>
 
+      {/* Modal existente para confirmação de exclusão */}
       <Modal
         open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

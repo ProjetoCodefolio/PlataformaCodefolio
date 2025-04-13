@@ -1,4 +1,4 @@
-import { ref, set, push, get, update } from 'firebase/database';
+import { ref, set, push, get, update, onValue, off } from 'firebase/database';
 import { database } from "../../../service/firebase";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from '../../../context/AuthContext';
@@ -11,7 +11,7 @@ import {
   Paper,
   Tabs,
   Tab,
-  Grid,   
+  Grid,
   Modal,
   FormControlLabel,
   Switch
@@ -21,6 +21,7 @@ import Topbar from "../../../components/topbar/Topbar";
 import CourseVideosTab from './CourseVideosTab';
 import CourseMaterialsTab from './CourseMaterialsTab';
 import CourseQuizzesTab from './courseQuizzesTab/';
+import CourseStudentsTab from './CourseStudentsTab';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -34,6 +35,7 @@ const CourseForm = () => {
   const courseVideosRef = useRef();
   const courseMaterialsRef = useRef();
   const courseQuizzesRef = useRef();
+  const courseStudentsRef = useRef();
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
@@ -43,6 +45,7 @@ const CourseForm = () => {
   const [pinRequired, setPinRequired] = useState(false);
   const [coursePin, setCoursePin] = useState("");
   const [randomPin, setRandomPin] = useState(Math.floor(1000000 + Math.random() * 9000000).toString());
+  const [permissionListener, setPermissionListener] = useState(null);
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -61,6 +64,74 @@ const CourseForm = () => {
     };
     loadCourse();
   }, [courseId]);
+
+  // Verificação inicial de acesso
+  useEffect(() => {
+    const checkTeacherAccess = async () => {
+      if (!userDetails?.userId) {
+        toast.error("Usuário não autenticado.");
+        navigate("/listcurso");
+        return;
+      }
+
+      // Caso 1: Usuário é admin - acesso total
+      if (userDetails?.role === "admin") {
+        return;
+      }
+
+      // Caso 2: Não é admin mas tem courseId na URL - verificar se é professor deste curso
+      if (courseId) {
+        try {
+          const teacherRef = ref(database, `users/${userDetails.userId}/coursesTeacher/${courseId}`);
+          const snapshot = await get(teacherRef);
+
+          if (!snapshot.exists() || snapshot.val() !== true) {
+            navigate("/listcurso");
+            toast.error("Você não tem acesso a este curso.");
+          } else {
+            // Configurar listener em tempo real para detectar remoção de permissão
+            setupPermissionListener();
+          }
+        } catch (error) {
+          console.error("Erro ao verificar permissão:", error);
+          toast.error("Erro ao verificar acesso ao curso.");
+          navigate("/listcurso");
+        }
+      } else {
+        // Caso 3: Não é admin e não tem courseId (tentando criar curso) - acesso negado
+        toast.error("Acesso negado.");
+        navigate("/listcurso");
+      }
+    };
+
+    checkTeacherAccess();
+
+    // Limpar listener ao desmontar
+    return () => {
+      if (permissionListener) {
+        off(permissionListener);
+      }
+    };
+  }, [courseId, userDetails, navigate]);
+
+  // Função para configurar o listener de permissões em tempo real
+  const setupPermissionListener = () => {
+    // Pular para admins (eles sempre têm acesso)
+    if (userDetails?.role === "admin" || !courseId || !userDetails?.userId) return;
+
+    // Referência para a entrada de professor do usuário para este curso
+    const teacherRef = ref(database, `users/${userDetails.userId}/coursesTeacher/${courseId}`);
+
+    onValue(teacherRef, (snapshot) => {
+      if (!snapshot.exists() || snapshot.val() !== true) {
+        // Usando sessionStorage para mensagens entre navegações
+        sessionStorage.setItem('courseAccessError', 'Seu acesso a este curso foi revogado pelo administrador.');
+        navigate("/listcurso");
+      }
+    });
+
+    setPermissionListener(teacherRef);
+  };
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -114,6 +185,7 @@ const CourseForm = () => {
         courseVideosRef.current?.saveVideos(finalCourseId),
         courseMaterialsRef.current?.saveMaterials(finalCourseId),
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
+        // courseStudentsRef.current?.saveStudents(finalCourseId),
       ]);
 
       if (!courseId) {
@@ -165,7 +237,7 @@ const CourseForm = () => {
             variant="h5"
             sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
           >
-            {courseId ? "Editar Curso" : "Criar Novo Curso"}
+            {courseId ? "Gerenciar Curso" : "Criar Novo Curso"}
           </Typography>
 
           <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -217,94 +289,131 @@ const CourseForm = () => {
               />
             </Grid>
 
-            <Grid item xs={6}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={pinRequired}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
-                      setPinRequired(isChecked);
+            {/* Seção de PIN redesenhada para ser responsiva */}
+            <Grid item xs={12}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} sm={6} md={4}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={pinRequired}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setPinRequired(isChecked);
 
-                      if (!isChecked) {
-                        // Desabilitar o PIN (mantém o valor existente)
-                        setCoursePin((prevPin) => prevPin || "");
-                      }
-                    }}
-                    sx={{
-                      '& .MuiSwitch-switchBase': {
-                        color: 'grey', // Cor quando desmarcado
-                        '&.Mui-checked': {
-                          color: '#9041c1', // Cor quando marcado
-                        },
-                        '&.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: '#9041c1', // Cor da trilha quando marcado
-                        },
-                      },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: '#666', // Cor da trilha quando desmarcado
-                      },
-                    }}
+                          if (!isChecked) {
+                            setCoursePin((prevPin) => prevPin || "");
+                          }
+                        }}
+                        sx={{
+                          '& .MuiSwitch-switchBase': {
+                            color: 'grey',
+                            '&.Mui-checked': {
+                              color: '#9041c1',
+                            },
+                            '&.Mui-checked + .MuiSwitch-track': {
+                              backgroundColor: '#9041c1',
+                            },
+                          },
+                          '& .MuiSwitch-track': {
+                            backgroundColor: '#666',
+                          },
+                        }}
+                      />
+                    }
+                    label="Criar PIN para acesso ao curso"
+                    sx={{ color: '#666' }}
                   />
-                }
-                label="Criar PIN para acesso ao curso"
-                sx={{ color: '#666' }}
-              />
-            </Grid>
+                </Grid>
 
-            {(pinRequired || courseId) && (
-              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}>
-                <TextField
-                  label="PIN de Acesso"
-                  fullWidth
-                  variant="outlined"
-                  value={coursePin}
-                  disabled={!pinRequired} // Desabilita o campo se o curso já existir
-                  inputProps={{ maxLength: 7 }}
-                  onChange={(e) => setCoursePin(e.target.value)}
-                  helperText={
-                    courseId
-                      ? "O PIN já foi gerado e salvo para este curso."
-                      : "Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
-                  }
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      "& fieldset": { borderColor: "#666" },
-                      "&:hover fieldset": { borderColor: "#9041c1" },
-                      "&.Mui-focused fieldset": { borderColor: "#9041c1" },
-                    },
-                    "& .MuiInputLabel-root": {
-                      color: "#666",
-                      "&.Mui-focused": { color: "#9041c1" },
-                    },
-                  }}
-                />
+                {(pinRequired || courseId) && (
+                  <Grid item xs={12} sm={6} md={4}>
+                    <TextField
+                      label="PIN de Acesso"
+                      fullWidth
+                      variant="outlined"
+                      value={coursePin}
+                      disabled={!pinRequired}
+                      inputProps={{ maxLength: 7 }}
+                      onChange={(e) => setCoursePin(e.target.value)}
+                      helperText={
+                        courseId
+                          ? "O PIN já foi gerado e salvo para este curso."
+                          : "Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                      }
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          "& fieldset": { borderColor: "#666" },
+                          "&:hover fieldset": { borderColor: "#9041c1" },
+                          "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          color: "#666",
+                          "&.Mui-focused": { color: "#9041c1" },
+                        },
+                      }}
+                    />
+                  </Grid>
+                )}
               </Grid>
-            )}
+            </Grid>
           </Grid>
 
           {courseId && (
             <>
-              <Tabs
-                value={selectedTab}
-                onChange={handleTabChange}
-                indicatorColor="primary"
-                textColor="primary"
-                centered
-                sx={{
-                  mb: 4,
-                  "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
-                  "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-                }}
-              >
-                <Tab label="Vídeos" />
-                <Tab label="Materiais Extras" />
-                <Tab label="Quiz" />
-              </Tabs>
+              {/* Versão para telas maiores (centralizadas) */}
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Tabs
+                  value={selectedTab}
+                  onChange={handleTabChange}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  centered
+                  sx={{
+                    mb: 4,
+                    "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
+                    "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                  }}
+                >
+                  <Tab label="Vídeos" />
+                  <Tab label="Materiais Extras" />
+                  <Tab label="Quiz" />
+                  <Tab label="Alunos" />
+                </Tabs>
+              </Box>
+
+              {/* Versão para telas menores (scrolláveis) */}
+              <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Tabs
+                  value={selectedTab}
+                  onChange={handleTabChange}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  allowScrollButtonsMobile
+                  sx={{
+                    mb: 4,
+                    "& .MuiTab-root": {
+                      color: "#666",
+                      "&.Mui-selected": { color: "#9041c1" },
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    },
+                    "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                    "& .MuiTabs-scrollButtons": { color: "#9041c1" },
+                  }}
+                >
+                  <Tab label="Vídeos" />
+                  <Tab label="Materiais Extras" />
+                  <Tab label="Quiz" />
+                  <Tab label="Alunos" />
+                </Tabs>
+              </Box>
 
               {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
               {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
               {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+              {selectedTab === 3 && <CourseStudentsTab ref={courseStudentsRef} />}
             </>
           )}
         </Paper>
