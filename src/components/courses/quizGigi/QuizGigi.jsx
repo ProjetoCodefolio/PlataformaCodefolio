@@ -13,7 +13,7 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import logo from "../../../assets/img/codefolio.png";
 import { ref, get, set, serverTimestamp } from "firebase/database";
 import { database } from "../../../service/firebase";
@@ -327,21 +327,21 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         {!showSummary && (
           <Tooltip
             title={
-              showCustomQuestion 
-                ? "Voltar ao modo normal" 
-                : showQuizRanking 
-                  ? "Pergunta Personalizada" 
-                  : "Pergunta Personalizada"
+              showCustomQuestion
+                ? "Voltar ao modo normal"
+                : showQuizRanking
+                ? "Pergunta Personalizada"
+                : "Pergunta Personalizada"
             }
             placement="left"
           >
             <IconButton
               onClick={
-                showCustomQuestion 
-                  ? handleBackToNormalMode 
-                  : showQuizRanking 
-                    ? handleBackToCustomQuestion 
-                    : handleCustomQuestionClick
+                showCustomQuestion
+                  ? handleBackToNormalMode
+                  : showQuizRanking
+                  ? handleBackToCustomQuestion
+                  : handleCustomQuestionClick
               }
               sx={{
                 position: "absolute",
@@ -362,10 +362,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         )}
 
         {!showCustomQuestion && !showQuizRanking && !showSummary && (
-          <Tooltip
-            title="Resumo do Quiz"
-            placement="left"
-          >
+          <Tooltip title="Resumo do Quiz" placement="left">
             <IconButton
               onClick={() => setShowSummary(true)}
               sx={{
@@ -383,10 +380,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         )}
 
         {showCustomQuestion && !showQuizRanking && (
-          <Tooltip
-            title="Ranking do Quiz"
-            placement="left"
-          >
+          <Tooltip title="Ranking do Quiz" placement="left">
             <IconButton
               onClick={handleRankingClick}
               sx={{
@@ -410,34 +404,39 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             display: "flex",
             justifyContent: "center",
             width: "100%",
+          
           }}
         >
           <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
         </Box>
 
-        {currentQuestion && !showSummary && !showCustomQuestion && !showQuizRanking && (
-          <NavigationButtons
-            currentQuestionIndex={currentQuestionIndex}
-            totalQuestions={quizData?.questions?.length || 0}
-            onPrevious={handlePreviousWithStudentReset}
-            onNext={handleNextWithStudentReset}
-            isCurrentAnswerCorrect={
-              selectedAnswer !== null && isCorrectAnswer(selectedAnswer)
-            }
-            showFeedback={showFeedback}
-          />
-        )}
+        {currentQuestion &&
+          !showSummary &&
+          !showCustomQuestion &&
+          !showQuizRanking && (
+            <NavigationButtons
+              currentQuestionIndex={currentQuestionIndex}
+              totalQuestions={quizData?.questions?.length || 0}
+              onPrevious={handlePreviousWithStudentReset}
+              onNext={handleNextWithStudentReset}
+              isCurrentAnswerCorrect={
+                selectedAnswer !== null && isCorrectAnswer(selectedAnswer)
+              }
+              showFeedback={showFeedback}
+            />
+          )}
 
         <Box
           sx={{
             width: "100%",
             maxWidth: "980px",
             height: "auto",
-            maxHeight: "calc(100% - 120px)",
+            maxHeight: "calc(100% - 40px)",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            mt: 7,
+            mt: 8,
+            mb: 4,
             px: { xs: 2, sm: 3 },
             pl: { xs: 4, sm: 5 },
             pr: { xs: 4, sm: 5 },
@@ -703,39 +702,43 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           )}
 
           {showQuizRanking && !showSummary && !showCustomQuestion && (
-            <CustomQuizRanking 
+            <CustomQuizRanking
               onBack={handleBackToCustomQuestion}
+              customResults={customResults} // Este valor está undefined
             />
           )}
 
-          {currentQuestion && !showSummary && !showCustomQuestion && !showQuizRanking && (
-            <QuestionDisplay
-              currentQuestion={currentQuestion}
-              currentQuestionIndex={currentQuestionIndex}
-              totalQuestions={quizData?.questions?.length || 0}
-              quizResults={quizResults}
-              courseTitle={courseTitle}
-              quizTitle={quizTitle}
-              loading={loading}
-              selectedStudent={selectedStudent}
-              onSortStudent={sortStudent}
-              onOpenMenu={handleOpenMenu}
-              menuOpen={menuOpen}
-              anchorEl={anchorEl}
-              onCloseMenu={handleCloseMenu}
-              searchTerm={searchTerm}
-              onSearchChange={handleSearchChange}
-              filteredStudents={filteredStudents}
-              onSelectStudent={handleSelectStudent}
-              onAbleStudent={handleAbleStudent}
-              enrolledStudents={enrolledStudents}
-              selectedAnswer={selectedAnswer}
-              showFeedback={showFeedback}
-              onAnswerSelect={handleAnswerSelectWithReset}
-              isCorrectAnswer={isCorrectAnswer}
-              waitingForNextStudent={waitingForNextStudent}
-            />
-          )}
+          {currentQuestion &&
+            !showSummary &&
+            !showCustomQuestion &&
+            !showQuizRanking && (
+              <QuestionDisplay
+                currentQuestion={currentQuestion}
+                currentQuestionIndex={currentQuestionIndex}
+                totalQuestions={quizData?.questions?.length || 0}
+                quizResults={quizResults}
+                courseTitle={courseTitle}
+                quizTitle={quizTitle}
+                loading={loading}
+                selectedStudent={selectedStudent}
+                onSortStudent={sortStudent}
+                onOpenMenu={handleOpenMenu}
+                menuOpen={menuOpen}
+                anchorEl={anchorEl}
+                onCloseMenu={handleCloseMenu}
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                filteredStudents={filteredStudents}
+                onSelectStudent={handleSelectStudent}
+                onAbleStudent={handleAbleStudent}
+                enrolledStudents={enrolledStudents}
+                selectedAnswer={selectedAnswer}
+                showFeedback={showFeedback}
+                onAnswerSelect={handleAnswerSelectWithReset}
+                isCorrectAnswer={isCorrectAnswer}
+                waitingForNextStudent={waitingForNextStudent}
+              />
+            )}
 
           {showSummary && (
             <QuizSummary
