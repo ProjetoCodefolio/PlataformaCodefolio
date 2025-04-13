@@ -13,26 +13,28 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import logo from "../../../assets/img/codefolio.png";
-import { ref, get, set, serverTimestamp } from "firebase/database"; // Adicione estas importações
-import { database } from "../../../service/firebase"; // Adicione esta importação
+import { ref, get, set, serverTimestamp } from "firebase/database";
+import { database } from "../../../service/firebase";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import QuestionDisplay from "./components/QuestionDisplay";
 import NavigationButtons from "./components/NavigationButtons";
 import QuizSummary from "./components/QuizSummary";
-import StudentSelector from "./components/StudentSelector"; // Adicione esta importação
+import StudentSelector from "./components/StudentSelector";
 import CustomQuestion from "./components/CustomQuestion";
+import CustomQuizRanking from "./components/CustomQuizRanking";
 import { useQuizData } from "./hooks/useQuizData";
 import { useStudentData } from "./hooks/useStudentData";
-import { useCustomQuestion } from "./hooks/useCustomQuestion"; // Novo hook
+import { useCustomQuestion } from "./hooks/useCustomQuestion";
 
 const QuizGigi = ({ onClose, quizData, courseId }) => {
   const contentContainerRef = useRef(null);
   const [waitingForNextStudent, setWaitingForNextStudent] = useState(false);
   const [showCustomQuestion, setShowCustomQuestion] = useState(false);
+  const [showQuizRanking, setShowQuizRanking] = useState(false);
 
-  // Hooks para gerenciar dados
   const {
     enrolledStudents,
     selectedStudent,
@@ -49,12 +51,12 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleSelectStudent,
     handleSearchChange,
     handleAbleStudent,
-    setMenuOpen, // <-- Adicione esta linha
+    setMenuOpen,
   } = useStudentData(courseId);
 
   const {
     quizResults,
-    customQuestionResults, // Adicionar resultados de perguntas personalizadas
+    customQuestionResults,
     courseTitle,
     quizTitle,
     selectedAnswer,
@@ -81,7 +83,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     processCustomResults,
   } = useCustomQuestion(courseId, quizData?.id, selectedStudent);
 
-  // Efeito para sortear aluno automaticamente
   useEffect(() => {
     if (
       studentsLoaded &&
@@ -93,7 +94,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     }
   }, [studentsLoaded, loading, enrolledStudents, selectedStudent]);
 
-  // Configurações de scroll personalizado
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     const originalPaddingRight = document.body.style.paddingRight;
@@ -150,7 +150,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     };
   }, []);
 
-  // Efeito para limpeza ao desmontar
   useEffect(() => {
     const cleanupOrphanElements = () => {
       const orphanElements = document.querySelectorAll(
@@ -173,13 +172,25 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       setMenuOpen(false);
       setTimeout(cleanupOrphanElements, 100);
     };
-  }, [setMenuOpen]); // Adicione setMenuOpen como dependência
+  }, [setMenuOpen]);
 
-  // Adicionar evento de teclado para fechar o custom question com ESC
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Escape" && showCustomQuestion) {
-        handleBackToNormalMode();
+      if (event.key === "Escape") {
+        // Comportamento diferente dependendo do estado atual
+        if (showSummary) {
+          // No summary, volta para o quiz normal
+          setShowSummary(false);
+        } else if (showQuizRanking) {
+          // No ranking, volta para a pergunta personalizada
+          handleBackToCustomQuestion();
+        } else if (showCustomQuestion) {
+          // Na pergunta personalizada, volta para o quiz normal
+          handleBackToNormalMode();
+        } else {
+          // No quiz normal, fecha o quiz completamente
+          onClose();
+        }
       }
     };
 
@@ -187,15 +198,13 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [showCustomQuestion]); // Dependência para o efeito
+  }, [showCustomQuestion, showQuizRanking, showSummary, onClose]);
 
-  // Handler para navegação de questões
   const handleNextWithStudentReset = () => {
     const result = handleNextQuestion();
     if (result?.resetStudent) {
       setSelectedStudent(null);
 
-      // Aguarda um momento para o estado ser atualizado antes de sortear
       setTimeout(() => {
         if (enrolledStudents.length > 0) {
           sortStudent();
@@ -209,7 +218,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     if (result?.resetStudent) {
       setSelectedStudent(null);
 
-      // Aguarda um momento para o estado ser atualizado antes de sortear
       setTimeout(() => {
         if (enrolledStudents.length > 0) {
           sortStudent();
@@ -223,13 +231,11 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
     if (result?.resetStudent) {
       if (result?.autoSelectNext) {
-        // Definir estado de espera
         setWaitingForNextStudent(true);
 
-        // Esperar o feedback antes de sortear próximo aluno
         setTimeout(() => {
           if (enrolledStudents.length > 0) {
-            sortStudent(); // Sorteia novo estudante
+            sortStudent();
           } else {
             setSelectedStudent(null);
           }
@@ -243,12 +249,24 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
   const handleCustomQuestionClick = () => {
     setShowCustomQuestion(true);
+    setShowQuizRanking(false);
   };
 
   const handleBackToNormalMode = () => {
     setShowCustomQuestion(false);
+    setShowQuizRanking(false);
     setSelectedAnswer(null);
     setShowFeedback(false);
+  };
+
+  const handleRankingClick = () => {
+    setShowQuizRanking(true);
+    setShowCustomQuestion(false);
+  };
+
+  const handleBackToCustomQuestion = () => {
+    setShowQuizRanking(false);
+    setShowCustomQuestion(true);
   };
 
   const handleCustomCorrect = () => {
@@ -306,36 +324,84 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <CloseIcon fontSize="large" />
         </IconButton>
 
-        <Tooltip
-          title={
-            showCustomQuestion
-              ? "Voltar ao modo normal"
-              : "Pergunta Personalizada"
-          }
-          placement="left"
-        >
-          <IconButton
-            onClick={
-              showCustomQuestion
-                ? handleBackToNormalMode
-                : handleCustomQuestionClick
+        {!showSummary && (
+          <Tooltip
+            title={
+              showCustomQuestion 
+                ? "Voltar ao modo normal" 
+                : showQuizRanking 
+                  ? "Pergunta Personalizada" 
+                  : "Pergunta Personalizada"
             }
-            sx={{
-              position: "absolute",
-              top: 20,
-              right: { xs: 35, sm: 45, md: 55 },
-              color: "#fff",
-              zIndex: 1500,
-              padding: { xs: "8px", sm: "10px", md: "12px" },
-            }}
+            placement="left"
           >
-            {showCustomQuestion ? (
-              <QuestionMarkIcon fontSize="large" />
-            ) : (
-              <AddCircleIcon fontSize="large" />
-            )}
-          </IconButton>
-        </Tooltip>
+            <IconButton
+              onClick={
+                showCustomQuestion 
+                  ? handleBackToNormalMode 
+                  : showQuizRanking 
+                    ? handleBackToCustomQuestion 
+                    : handleCustomQuestionClick
+              }
+              sx={{
+                position: "absolute",
+                top: 20,
+                right: { xs: 35, sm: 45, md: 55 },
+                color: "#fff",
+                zIndex: 1500,
+                padding: { xs: "8px", sm: "10px", md: "12px" },
+              }}
+            >
+              {showCustomQuestion ? (
+                <QuestionMarkIcon fontSize="large" />
+              ) : (
+                <AddCircleIcon fontSize="large" />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {!showCustomQuestion && !showQuizRanking && !showSummary && (
+          <Tooltip
+            title="Resumo do Quiz"
+            placement="left"
+          >
+            <IconButton
+              onClick={() => setShowSummary(true)}
+              sx={{
+                position: "absolute",
+                top: 20,
+                right: { xs: 85, sm: 95, md: 105 },
+                color: "#fff",
+                zIndex: 1500,
+                padding: { xs: "8px", sm: "10px", md: "12px" },
+              }}
+            >
+              <EmojiEventsIcon fontSize="large" />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        {showCustomQuestion && !showQuizRanking && (
+          <Tooltip
+            title="Ranking do Quiz"
+            placement="left"
+          >
+            <IconButton
+              onClick={handleRankingClick}
+              sx={{
+                position: "absolute",
+                top: 20,
+                right: { xs: 85, sm: 95, md: 105 },
+                color: "#fff",
+                zIndex: 1500,
+                padding: { xs: "8px", sm: "10px", md: "12px" },
+              }}
+            >
+              <EmojiEventsIcon fontSize="large" />
+            </IconButton>
+          </Tooltip>
+        )}
 
         <Box
           sx={{
@@ -349,13 +415,12 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
         </Box>
 
-        {currentQuestion && !showSummary && !showCustomQuestion && (
+        {currentQuestion && !showSummary && !showCustomQuestion && !showQuizRanking && (
           <NavigationButtons
             currentQuestionIndex={currentQuestionIndex}
             totalQuestions={quizData?.questions?.length || 0}
             onPrevious={handlePreviousWithStudentReset}
             onNext={handleNextWithStudentReset}
-            onSummary={() => setShowSummary(true)}
             isCurrentAnswerCorrect={
               selectedAnswer !== null && isCorrectAnswer(selectedAnswer)
             }
@@ -422,7 +487,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           id="quiz-content-container"
           ref={contentContainerRef}
         >
-          {showCustomQuestion && !showSummary && (
+          {showCustomQuestion && !showSummary && !showQuizRanking && (
             <Box
               sx={{
                 width: "100%",
@@ -433,7 +498,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 position: "relative",
               }}
             >
-              {/* Sorteador de alunos - Agora vem PRIMEIRO */}
               <StudentSelector
                 loading={loading}
                 selectedStudent={selectedStudent}
@@ -451,7 +515,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 waitingForNextStudent={waitingForNextStudent}
               />
 
-              {/* Título da pergunta personalizada */}
               <Typography
                 variant="h5"
                 component="h2"
@@ -466,13 +529,12 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 Pergunta personalizada para {selectedStudent?.name || "..."}
               </Typography>
 
-              {/* Botões de acerto e erro */}
               <Grid
                 container
                 spacing={4}
                 justifyContent="center"
                 alignItems="center"
-                sx={{ mb: 4 }} /* Adicionei margem abaixo dos botões */
+                sx={{ mb: 4 }}
               >
                 <Grid item xs={6} sm={5} md={5} lg={4}>
                   <Box
@@ -585,19 +647,17 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 </Grid>
               </Grid>
 
-              {/* Lista de alunos que acertaram perguntas personalizadas - AGORA VEM POR ÚLTIMO */}
               <Box
                 sx={{
                   width: "100%",
                   maxWidth: "600px",
-                  mt: 3, // Mudei para margin-top
+                  mt: 3,
                   px: 2,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                 }}
               >
-                {/* Só exibir o título e os chips se houver alunos com acertos */}
                 {Object.keys(customResults?.correctAnswers || {}).length >
                   0 && (
                   <>
@@ -642,7 +702,13 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             </Box>
           )}
 
-          {currentQuestion && !showSummary && !showCustomQuestion && (
+          {showQuizRanking && !showSummary && !showCustomQuestion && (
+            <CustomQuizRanking 
+              onBack={handleBackToCustomQuestion}
+            />
+          )}
+
+          {currentQuestion && !showSummary && !showCustomQuestion && !showQuizRanking && (
             <QuestionDisplay
               currentQuestion={currentQuestion}
               currentQuestionIndex={currentQuestionIndex}
@@ -667,7 +733,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               showFeedback={showFeedback}
               onAnswerSelect={handleAnswerSelectWithReset}
               isCorrectAnswer={isCorrectAnswer}
-              waitingForNextStudent={waitingForNextStudent} // Passa a nova prop
+              waitingForNextStudent={waitingForNextStudent}
             />
           )}
 
@@ -675,7 +741,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             <QuizSummary
               quizData={quizData}
               quizResults={quizResults}
-              customQuestionResults={customResults} // Passar os resultados de perguntas personalizadas
+              customQuestionResults={customResults}
               onClose={() => setShowSummary(false)}
             />
           )}
