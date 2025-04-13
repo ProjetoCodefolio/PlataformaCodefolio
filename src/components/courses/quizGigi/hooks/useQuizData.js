@@ -12,18 +12,16 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   const [showSummary, setShowSummary] = useState(false);
   const [customQuestionResults, setCustomQuestionResults] = useState({
     correctAnswers: {},
-    wrongAnswers: {}
+    wrongAnswers: {},
   });
   const [courseInfoLoaded, setCourseInfoLoaded] = useState(false);
 
-  // Primeiro, buscar as informações do curso
   useEffect(() => {
     if (courseId) {
       fetchCourseInfo();
     }
   }, [courseId]);
 
-  // Depois de carregar as informações do curso, buscar resultados do quiz
   useEffect(() => {
     if (courseId && quizData?.id && courseInfoLoaded) {
       if (quizData.title) {
@@ -34,7 +32,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   }, [courseId, quizData?.id, courseInfoLoaded]);
 
-  // Adicione este efeito para resetar o feedback quando o estudante muda
   useEffect(() => {
     if (selectedStudent) {
       setSelectedAnswer(null);
@@ -51,12 +48,10 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         const courseData = courseSnapshot.val();
         setCourseTitle(courseData.title || "Curso sem título");
       }
-      
-      // Marca que as informações do curso foram carregadas
+
       setCourseInfoLoaded(true);
     } catch (error) {
-      console.error("Erro ao buscar informações do curso:", error);
-      setCourseInfoLoaded(true); // Mesmo com erro, marca como carregado
+      setCourseInfoLoaded(true);
     }
   };
 
@@ -80,7 +75,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         setQuizResults({});
       }
     } catch (error) {
-      console.error("Erro ao buscar resultados do quiz:", error);
+      // Erro tratado silenciosamente
     }
   };
 
@@ -90,7 +85,6 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         return false;
       }
 
-      // Se courseTitle ainda estiver vazio, tente buscar diretamente
       let finalCourseTitle = courseTitle;
       if (!finalCourseTitle) {
         try {
@@ -102,7 +96,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
             setCourseTitle(finalCourseTitle);
           }
         } catch (e) {
-          console.error("Erro ao buscar título do curso novamente:", e);
+          // Erro tratado silenciosamente
         }
       }
 
@@ -140,66 +134,68 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
       return true;
     } catch (error) {
-      console.error("Erro ao inicializar dados do quiz:", error);
       return false;
     }
   };
 
-  // ...resto do código permanece o mesmo
-
-  const registerStudentAnswer = async (isCorrect, selectedOptionIndex, isCustomQuestion = false) => {
+  const registerStudentAnswer = async (
+    isCorrect,
+    selectedOptionIndex,
+    isCustomQuestion = false
+  ) => {
     const currentQuestion = quizData?.questions?.[currentQuestionIndex];
+
     if (!selectedStudent || (!currentQuestion && !isCustomQuestion)) {
       return false;
     }
 
     try {
-      const questionId = isCustomQuestion 
-        ? "custom_question" 
-        : (currentQuestion.id || `question_${currentQuestionIndex}`);
-      
+      const questionId = isCustomQuestion
+        ? "custom_question"
+        : currentQuestion.id || `question_${currentQuestionIndex}`;
+
       const resultType = isCorrect ? "correctAnswers" : "wrongAnswers";
 
       const path = isCustomQuestion
         ? `quizGigi/courses/${courseId}/quizzes/${quizData.id}/customResults/${resultType}/${selectedStudent.userId}`
         : `quizGigi/courses/${courseId}/quizzes/${quizData.id}/results/${questionId}/${resultType}/${selectedStudent.userId}`;
-      
+
       const answerRef = ref(database, path);
 
       const answerData = {
         timestamp: serverTimestamp(),
         selectedOption: selectedOptionIndex,
-        selectedOptionLetter: typeof selectedOptionIndex === 'number' && selectedOptionIndex >= 0 
-          ? String.fromCharCode(65 + selectedOptionIndex) 
-          : "Personalizada",
+        selectedOptionLetter:
+          typeof selectedOptionIndex === "number" && selectedOptionIndex >= 0
+            ? String.fromCharCode(65 + selectedOptionIndex)
+            : "Personalizada",
         studentName: selectedStudent.name,
         photoURL: selectedStudent.photoURL || null,
         userId: selectedStudent.userId,
         isCorrect: isCorrect,
-        isCustomQuestion: isCustomQuestion
       };
 
       await set(answerRef, answerData);
 
       if (isCustomQuestion) {
-        setCustomQuestionResults(prev => {
+        setCustomQuestionResults((prev) => {
           const updatedResults = { ...prev };
-          
+
           if (!updatedResults[resultType]) {
             updatedResults[resultType] = {};
           }
-          
+
           updatedResults[resultType][selectedStudent.userId] = {
             ...answerData,
             timestamp: Date.now(),
           };
-          
+
           return updatedResults;
         });
       } else {
         setQuizResults((prev) => {
           const updatedResults = { ...prev };
-          
+
           if (!updatedResults[questionId]) {
             updatedResults[questionId] = {
               correctAnswers: {},
@@ -227,6 +223,42 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     }
   };
 
+  const updateStudentCorrectAnswer = async (correct = true) => {
+    if (!selectedStudent || !courseId || !quizData?.id) return;
+
+    try {
+      const resultRef = ref(
+        database,
+        `liveQuizResults/${courseId}/${quizData.id}/${selectedStudent.userId}`
+      );
+
+      const snapshot = await get(resultRef);
+      const currentData = snapshot.exists() ? snapshot.val() : {};
+
+      const updatedData = {
+        ...currentData,
+        correctAnswers: correct
+          ? (currentData.correctAnswers || 0) + 1
+          : currentData.correctAnswers || 0,
+        wrongAnswers: !correct
+          ? (currentData.wrongAnswers || 0) + 1
+          : currentData.wrongAnswers || 0,
+        lastAnswerDate: new Date().toISOString(),
+        studentName: selectedStudent.name,
+        photoURL: selectedStudent.photoURL || null,
+      };
+
+      await set(resultRef, updatedData);
+      console.log(
+        `${correct ? "Acerto" : "Erro"} registrado para ${
+          selectedStudent.name
+        } em Live Quiz`
+      );
+    } catch (error) {
+      console.error("Erro ao registrar resposta:", error);
+    }
+  };
+
   const handleAnswerSelect = async (index, isCustomQuestion = false) => {
     if (!selectedStudent) {
       alert("Por favor, selecione ou sorteie um aluno primeiro!");
@@ -237,7 +269,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     setShowFeedback(true);
 
     let isCorrect;
-    
+
     if (isCustomQuestion) {
       isCorrect = index === 0;
     } else {
@@ -246,13 +278,14 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
     try {
       await registerStudentAnswer(isCorrect, index, isCustomQuestion);
+      updateStudentCorrectAnswer(isCorrect);
 
       if (!isCorrect) {
         setTimeout(() => {
           setSelectedAnswer(null);
           setShowFeedback(false);
         }, 1900);
-        
+
         return { resetStudent: true, autoSelectNext: true };
       }
     } catch (error) {

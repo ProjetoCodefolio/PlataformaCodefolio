@@ -8,6 +8,7 @@ import YouTube from "react-youtube";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import SchoolIcon from "@mui/icons-material/School";
+import PersonIcon from "@mui/icons-material/Person";
 import { handleGoogleSignIn } from "../../../utils/authUtils";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
@@ -239,6 +240,12 @@ const VideoPlayer = forwardRef(
       }
     }, [player, ref]);
 
+    // Função para redirecionar para o dashboard de estudantes
+    const handleViewStudents = () => {
+      // Navega para studentDashboard com o ID do quiz como parâmetro
+      navigate(`/studentDashboard?quizId=${video.quizId?.split('/')[1] || video.quizId}`);
+    };
+
     return (
       <Box
         sx={{
@@ -281,22 +288,45 @@ const VideoPlayer = forwardRef(
             {video.title.split(" - ")[0]}
           </Typography>
 
-          {userDetails?.userId === courseOwnerUid && onOpenQuizGigi && (
-            <IconButton
-              onClick={onOpenQuizGigi}
-              sx={{
-                color: "#fff",
-                bgcolor: "#9041c1",
-                ml: "auto",
-                mr: 1,
-                p: 0.8,
-                "&:hover": {
-                  bgcolor: "#7a35a3",
-                },
-              }}
-            >
-              <SchoolIcon sx={{ fontSize: "18px" }} />
-            </IconButton>
+          {userDetails?.userId === courseOwnerUid && video.quizId && (
+            <>
+              {/* Novo ícone de estudantes */}
+              <IconButton
+                onClick={handleViewStudents}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "#9041c1",
+                  ml: "auto",
+                  mr: 1,
+                  p: 0.8,
+                  "&:hover": {
+                    bgcolor: "#7a35a3",
+                  },
+                }}
+                title="Ver resultados dos estudantes"
+              >
+                <PersonIcon sx={{ fontSize: "18px" }} />
+              </IconButton>
+              
+              {/* Ícone existente do Quiz Gigi */}
+              {onOpenQuizGigi && (
+                <IconButton
+                  onClick={onOpenQuizGigi}
+                  sx={{
+                    color: "#fff",
+                    bgcolor: "#9041c1",
+                    mr: 1,
+                    p: 0.8,
+                    "&:hover": {
+                      bgcolor: "#7a35a3",
+                    },
+                  }}
+                  title="Abrir Quiz Gigi"
+                >
+                  <SchoolIcon sx={{ fontSize: "18px" }} />
+                </IconButton>
+              )}
+            </>
           )}
         </Box>
 
@@ -424,6 +454,7 @@ VideoPlayer.propTypes = {
     progress: PropTypes.number,
     watchedTime: PropTypes.number,
     watched: PropTypes.bool,
+    quizId: PropTypes.string,
   }).isRequired,
   onProgress: PropTypes.func,
   videos: PropTypes.array.isRequired,

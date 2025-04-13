@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -16,6 +16,8 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import SearchIcon from "@mui/icons-material/Search";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 
 const StudentSelector = ({
   loading,
@@ -32,18 +34,27 @@ const StudentSelector = ({
   onAbleStudent,
   enrolledStudents,
   waitingForNextStudent,
+  onEyeToggle,
+  eyeOpen,
+  isCustomMode = false, 
 }) => {
   const chooseButtonRef = useRef(null);
+  const popperRef = useRef(null);
+
+  const handleSortStudent = () => {
+    onSortStudent(isCustomMode);
+  };
 
   useEffect(() => {
     const handleKeyDown = (event) => {
+      if (menuOpen) return;
       if (event.key === " ") {
         if (document.activeElement) {
           document.activeElement.blur();
         }
         document.body.focus();
         if (enrolledStudents && enrolledStudents.length > 0) {
-          onSortStudent();
+          handleSortStudent();
         }
       }
     };
@@ -52,130 +63,199 @@ const StudentSelector = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onSortStudent, enrolledStudents]);
+  }, [handleSortStudent, enrolledStudents]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        menuOpen &&
+        popperRef.current &&
+        !popperRef.current.contains(event.target) &&
+        chooseButtonRef.current &&
+        !chooseButtonRef.current.contains(event.target)
+      ) {
+        onCloseMenu();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [menuOpen, onCloseMenu]);
 
   return (
     <Box
       sx={{
         display: "flex",
         justifyContent: "center",
+        alignItems: "center",
         mb: 2,
         opacity: 0.9,
         transform: "scale(0.95)",
+        width: "100%",
+        mt: 3,
       }}
     >
-      {loading ? (
-        <Box sx={{ width: "60%", maxWidth: "400px" }}>
-          <Typography
-            variant="body2"
-            sx={{ mb: 1, textAlign: "center", fontSize: "0.9rem" }}
-          >
-            Carregando alunos...
-          </Typography>
-          <LinearProgress color="inherit" sx={{ opacity: 0.7 }} />
-        </Box>
-      ) : selectedStudent ? (
-        <Paper
-          elevation={2}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            p: 1.5,
-            backgroundColor: "rgba(255, 255, 255, 0.2)",
-            borderRadius: 2,
-            maxWidth: "400px",
-            border: "1px solid rgba(255, 255, 255, 0.3)",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Avatar
-              src={selectedStudent.photoURL}
-              alt={selectedStudent.name}
-              sx={{
-                bgcolor: "rgba(255, 255, 255, 0.3)",
-                color: "#fff",
-                width: 45,
-                height: 45,
-                mr: 2,
-                fontSize: 18,
-                border: "1px solid rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              {selectedStudent.initials}
-            </Avatar>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          width: "100%",
+          justifyContent: "center",
+        }}
+      >
+        {loading ? (
+          <Box sx={{ width: "75%", maxWidth: "500px" }}>
             <Typography
+              variant="body2"
+              sx={{ mb: 1, textAlign: "center", fontSize: "0.9rem" }}
+            >
+              Carregando alunos...
+            </Typography>
+            <LinearProgress color="inherit" sx={{ opacity: 0.7 }} />
+          </Box>
+        ) : selectedStudent ? (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "100%",
+              maxWidth: "600px",
+            }}
+          >
+            <Paper
+              elevation={2}
               sx={{
-                color: "#fff",
-                fontSize: "1.15rem",
-                fontWeight: 500,
-                textShadow: "0px 1px 2px rgba(0,0,0,0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                p: 1.5,
+                backgroundColor: "rgba(255, 255, 255, 0.2)",
+                borderRadius: 2,
+                width: "100%",
+                border: "1px solid rgba(255, 255, 255, 0.3)",
               }}
             >
-              {selectedStudent.name}
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Avatar
+                  src={selectedStudent.photoURL}
+                  alt={selectedStudent.name}
+                  sx={{
+                    bgcolor: "rgba(255, 255, 255, 0.3)",
+                    color: "#fff",
+                    width: 45,
+                    height: 45,
+                    mr: 2,
+                    fontSize: 18,
+                    border: "1px solid rgba(255, 255, 255, 0.5)",
+                  }}
+                >
+                  {selectedStudent.initials}
+                </Avatar>
+                <Typography
+                  sx={{
+                    color: "#fff",
+                    fontSize: "1.15rem",
+                    fontWeight: 500,
+                    textShadow: "0px 1px 2px rgba(0,0,0,0.2)",
+                    maxWidth: "300px",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {selectedStudent.name}
+                </Typography>
+              </Box>
+              <Box>
+                <IconButton
+                  onClick={handleSortStudent}
+                  sx={{ color: "#fff" }}
+                  title="Sortear outro aluno"
+                  size="small"
+                >
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  onClick={() => onEyeToggle(!eyeOpen)}
+                  sx={{ color: "#fff" }}
+                  title={eyeOpen ? "Ocultar respostas" : "Mostrar respostas"}
+                  size="small"
+                >
+                  {eyeOpen ? (
+                    <VisibilityIcon fontSize="small" />
+                  ) : (
+                    <VisibilityOffIcon fontSize="small" />
+                  )}
+                </IconButton>
+                <IconButton
+                  ref={chooseButtonRef}
+                  onClick={onOpenMenu}
+                  sx={{ color: "#fff", opacity: 0.8 }}
+                  title="Escolher outro aluno"
+                  size="small"
+                >
+                  <ArrowDropDownIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            </Paper>
+          </Box>
+        ) : waitingForNextStudent ? (
+          <Box sx={{ width: "75%", maxWidth: "500px" }}>
+            <Typography
+              variant="body2"
+              sx={{ mb: 1, textAlign: "center", fontSize: "0.9rem" }}
+            >
+              Próximo aluno...
             </Typography>
+            <LinearProgress color="inherit" sx={{ opacity: 0.7 }} />
           </Box>
-          <Box>
-            <IconButton
-              onClick={onSortStudent}
-              sx={{ color: "#fff" }}
-              title="Sortear outro aluno"
-              size="small"
-            >
-              <RefreshIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              ref={chooseButtonRef}
-              onClick={onOpenMenu}
-              sx={{ color: "#fff", opacity: 0.8 }}
-              title="Escolher outro aluno"
-              size="small"
-            >
-              <ArrowDropDownIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </Paper>
-      ) : waitingForNextStudent ? (
-        // Quando estiver aguardando o próximo aluno, mostrar progresso
-        <Box sx={{ width: "60%", maxWidth: "400px" }}>
-          <Typography
-            variant="body2"
-            sx={{ mb: 1, textAlign: "center", fontSize: "0.9rem" }}
-          >
-            Próximo aluno...
-          </Typography>
-          <LinearProgress color="inherit" sx={{ opacity: 0.7 }} />
-        </Box>
-      ) : (
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            justifyContent: "center",
-          }}
-        >
-          <Button
-            ref={chooseButtonRef}
-            onClick={onOpenMenu}
-            variant="outlined"
-            disabled={enrolledStudents.length === 0}
+        ) : (
+          <Box
             sx={{
-              color: "#fff",
-              borderColor: "rgba(255, 255, 255, 0.4)",
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                borderColor: "#fff",
-              },
-              py: 1,
-              px: 2,
-              fontSize: "0.9rem",
+              display: "flex",
+              gap: 2,
+              justifyContent: "center",
+              alignItems: "center",
+              width: "100%",
             }}
-            endIcon={<ArrowDropDownIcon />}
           >
-            Escolher aluno
-          </Button>
-        </Box>
-      )}
+            <Button
+              ref={chooseButtonRef}
+              onClick={handleSortStudent} 
+              variant="outlined"
+              disabled={enrolledStudents.length === 0}
+              sx={{
+                color: "#fff",
+                borderColor: "rgba(255, 255, 255, 0.4)",
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderColor: "#fff",
+                },
+                py: 1,
+                px: 2,
+                fontSize: "0.9rem",
+              }}
+              endIcon={<ArrowDropDownIcon />}
+            >
+              Escolher aluno
+            </Button>
+
+            <IconButton
+              onClick={() => onEyeToggle(!eyeOpen)}
+              sx={{
+                color: "#fff",
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+              }}
+              title={eyeOpen ? "Ocultar respostas" : "Mostrar respostas"}
+            >
+              {eyeOpen ? <VisibilityIcon /> : <VisibilityOffIcon />}
+            </IconButton>
+          </Box>
+        )}
+      </Box>
 
       <Popper
         open={menuOpen}
@@ -192,6 +272,7 @@ const StudentSelector = ({
         ]}
       >
         <Paper
+          ref={popperRef}
           sx={{
             width: "300px",
             maxHeight: "400px",
@@ -215,7 +296,6 @@ const StudentSelector = ({
               }}
             >
               <TextField
-                autoFocus
                 placeholder="Buscar aluno..."
                 fullWidth
                 variant="outlined"
@@ -277,7 +357,7 @@ const StudentSelector = ({
                           backgroundColor: "rgba(144, 65, 193, 0.1)",
                         },
                       }}
-                      onClick={() => onSelectStudent(student)}
+                      onClick={() => onSelectStudent(student, isCustomMode)} 
                       disabled={student.disabled}
                     >
                       <Avatar
@@ -325,8 +405,8 @@ const StudentSelector = ({
                   {searchTerm
                     ? "Nenhum aluno encontrado"
                     : loading
-                      ? "Carregando alunos..."
-                      : "Nenhum aluno disponível"}
+                    ? "Carregando alunos..."
+                    : "Nenhum aluno disponível"}
                 </Box>
               )}
             </Box>
