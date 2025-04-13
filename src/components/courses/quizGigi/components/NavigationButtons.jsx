@@ -9,13 +9,16 @@ const NavigationButtons = ({
   onPrevious,
   onNext,
   isCurrentAnswerCorrect,
-  showFeedback
+  showFeedback,
 }) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "ArrowLeft" && currentQuestionIndex > 0) {
         onPrevious();
-      } else if (event.key === "ArrowRight" && currentQuestionIndex < totalQuestions - 1) {
+      } else if (
+        event.key === "ArrowRight" &&
+        currentQuestionIndex < totalQuestions - 1
+      ) {
         onNext();
       }
     };
@@ -26,7 +29,10 @@ const NavigationButtons = ({
     };
   }, [currentQuestionIndex, totalQuestions, onPrevious, onNext]);
 
-  const showCelebrationStyle = showFeedback && isCurrentAnswerCorrect && currentQuestionIndex < totalQuestions - 1;
+  const showCelebrationStyle =
+    showFeedback &&
+    isCurrentAnswerCorrect &&
+    currentQuestionIndex < totalQuestions - 1;
 
   return (
     <>
@@ -67,11 +73,12 @@ const NavigationButtons = ({
         />
       </IconButton>
 
-      {/* Botão Próxima - Lado Direito - Apenas se não for a última questão */}
       {currentQuestionIndex < totalQuestions - 1 && (
         <IconButton
           onClick={onNext}
-          disabled={totalQuestions === 0 || showFeedback}
+          disabled={
+            totalQuestions === 0 || (showFeedback && !isCurrentAnswerCorrect)
+          }
           sx={{
             position: "fixed",
             right: {
@@ -80,15 +87,17 @@ const NavigationButtons = ({
               md: "calc(50% - 650px)",
             },
             top: "calc(50% + 30px)",
-            transform: `translateY(-50%) ${showCelebrationStyle ? "scale(1.15)" : "scale(1)"}`,
+            transform: `translateY(-50%) ${
+              showCelebrationStyle ? "scale(1.15)" : "scale(1)"
+            }`,
             backgroundColor: showCelebrationStyle
-                ? "rgba(76, 175, 80, 0.75)" // Verde quando acertar
-                : "rgba(255, 255, 255, 0.2)",
+              ? "rgba(76, 175, 80, 0.75)" 
+              : "rgba(255, 255, 255, 0.2)",
             color: "#fff",
             "&:hover": {
               backgroundColor: showCelebrationStyle
-                  ? "rgba(76, 175, 80, 0.9)" // Verde mais forte ao passar o mouse
-                  : "rgba(255, 255, 255, 0.3)",
+                ? "rgba(76, 175, 80, 0.9)" 
+                : "rgba(255, 255, 255, 0.3)",
             },
             "&.Mui-disabled": {
               backgroundColor: "rgba(255, 255, 255, 0.05)",
@@ -97,7 +106,7 @@ const NavigationButtons = ({
             width: { xs: 40, sm: 44, md: 48 },
             height: { xs: 40, sm: 44, md: 48 },
             zIndex: 1410,
-            boxShadow: showCelebrationStyle 
+            boxShadow: showCelebrationStyle
               ? "0 0 15px rgba(76, 175, 80, 0.6)"
               : "0 2px 5px rgba(0,0,0,0.2)",
             transition: "all 0.3s ease-in-out",

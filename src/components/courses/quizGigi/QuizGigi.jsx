@@ -34,6 +34,11 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const [waitingForNextStudent, setWaitingForNextStudent] = useState(false);
   const [showCustomQuestion, setShowCustomQuestion] = useState(false);
   const [showQuizRanking, setShowQuizRanking] = useState(false);
+  const [eyeOpen, setEyeOpen] = useState(true);
+
+  const handleEyeToggle = (isOpen) => {
+    setEyeOpen(isOpen);
+  };
 
   const {
     enrolledStudents,
@@ -159,7 +164,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         try {
           elem.parentNode?.removeChild(elem);
         } catch (e) {
-          // Silenciar erros
         }
       });
     };
@@ -177,7 +181,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
-        // Comportamento diferente dependendo do estado atual
         if (showSummary) {
           // No summary, volta para o quiz normal
           setShowSummary(false);
@@ -404,7 +407,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             display: "flex",
             justifyContent: "center",
             width: "100%",
-          
           }}
         >
           <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
@@ -512,6 +514,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 onAbleStudent={handleAbleStudent}
                 enrolledStudents={enrolledStudents}
                 waitingForNextStudent={waitingForNextStudent}
+                onEyeToggle={handleEyeToggle}
               />
 
               <Typography
@@ -657,46 +660,46 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   alignItems: "center",
                 }}
               >
-                {Object.keys(customResults?.correctAnswers || {}).length >
-                  0 && (
-                  <>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 0.8,
-                        justifyContent: "center",
-                        mb: 2,
-                      }}
-                    >
-                      {processCustomResults(customResults.correctAnswers).map(
-                        (student, idx) => (
-                          <Chip
-                            key={idx}
-                            size="large"
-                            label={`${student.studentName} ${
-                              student.count > 1 ? student.count + "x" : ""
-                            }`}
-                            avatar={
-                              <Avatar src={student.photoURL}>
-                                {(student.studentName || "?").charAt(0)}
-                              </Avatar>
-                            }
-                            sx={{
-                              backgroundColor: "rgba(76, 175, 80, 0.3)",
-                              color: "#fff",
-                              fontSize: "1.1rem",
-                              mb: 1,
-                              "& .MuiChip-label": {
-                                fontWeight: student.count > 1 ? 600 : 400,
-                              },
-                            }}
-                          />
-                        )
-                      )}
-                    </Box>
-                  </>
-                )}
+                {Object.keys(customResults?.correctAnswers || {}).length > 0 &&
+                  eyeOpen && (
+                    <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: 0.8,
+                          justifyContent: "center",
+                          mb: 2,
+                        }}
+                      >
+                        {processCustomResults(customResults.correctAnswers).map(
+                          (student, idx) => (
+                            <Chip
+                              key={idx}
+                              size="large"
+                              label={`${student.studentName} ${
+                                student.count > 1 ? student.count + "x" : ""
+                              }`}
+                              avatar={
+                                <Avatar src={student.photoURL}>
+                                  {(student.studentName || "?").charAt(0)}
+                                </Avatar>
+                              }
+                              sx={{
+                                backgroundColor: "rgba(76, 175, 80, 0.3)",
+                                color: "#fff",
+                                fontSize: "1.1rem",
+                                mb: 1,
+                                "& .MuiChip-label": {
+                                  fontWeight: student.count > 1 ? 600 : 400,
+                                },
+                              }}
+                            />
+                          )
+                        )}
+                      </Box>
+                    </>
+                  )}
               </Box>
             </Box>
           )}
@@ -704,7 +707,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           {showQuizRanking && !showSummary && !showCustomQuestion && (
             <CustomQuizRanking
               onBack={handleBackToCustomQuestion}
-              customResults={customResults} // Este valor está undefined
+              customResults={customResults} 
             />
           )}
 
@@ -737,6 +740,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 onAnswerSelect={handleAnswerSelectWithReset}
                 isCorrectAnswer={isCorrectAnswer}
                 waitingForNextStudent={waitingForNextStudent}
+                eyeOpen={eyeOpen}
+                onEyeToggle={handleEyeToggle}
               />
             )}
 

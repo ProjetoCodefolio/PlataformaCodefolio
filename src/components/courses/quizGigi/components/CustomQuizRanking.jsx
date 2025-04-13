@@ -14,7 +14,6 @@ import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import MilitaryTechIcon from "@mui/icons-material/MilitaryTech";
 import { keyframes } from "@mui/system";
 
-// Animações keyframes permanecem iguais
 const fadeIn = keyframes`
   from { opacity: 0; transform: scale(0.8); }
   to { opacity: 1; transform: scale(1); }
@@ -38,58 +37,38 @@ const shimmer = keyframes`
 `;
 
 const CustomQuizRanking = ({ onBack, customResults }) => {
-  // Estados para controlar as animações
   const [showSecondPlace, setShowSecondPlace] = useState(false);
   const [showFirstPlace, setShowFirstPlace] = useState(false);
   const [showThirdPlace, setShowThirdPlace] = useState(false);
   const [showList, setShowList] = useState(false);
 
-  // Processar os resultados reais do quiz - SIMPLIFICADO
   const processarResultados = () => {
-    console.log("CustomResults recebido:", customResults);
-
     if (!customResults) {
-      console.log("customResults é null ou undefined");
       return [];
     }
 
-    // ABORDAGEM SIMPLIFICADA
     const participantes = [];
     const contadorAlunos = {};
 
-    // Verificar a estrutura exata do objeto customResults
     if (customResults.results) {
-      console.log("Usando customResults.results");
-      // Formato: { results: { ... } }
       processarDados(customResults.results);
     } else if (customResults.correctAnswers) {
-      console.log("Usando customResults.correctAnswers");
-      // Formato: { correctAnswers: { ... } }
       processarDados(customResults.correctAnswers);
     } else if (customResults.answers) {
-      console.log("Usando customResults.answers");
-      // Formato: { answers: { ... } }
       processarDados(customResults.answers);
     } else {
-      console.log("Tentando usar customResults diretamente");
-      // Talvez o próprio customResults seja o objeto de respostas
       processarDados(customResults);
     }
 
-    // Função para processar dados em qualquer formato
     function processarDados(dados) {
-      console.log("Processando dados:", dados);
       try {
-        // Iterar sobre cada entrada (aluno ou resposta)
         Object.entries(dados).forEach(([chave, valor]) => {
           if (typeof valor === "object" && valor !== null) {
-            // Pode ser um aluno com várias respostas
             if (
               Object.values(valor).some(
                 (item) => item && typeof item === "object"
               )
             ) {
-              // Formato: { userId: { timestamp1: answer1, timestamp2: answer2, ... } }
               let acertos = 0;
               let nome = "Aluno";
               let photoURL = null;
@@ -113,7 +92,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                 };
               }
             } else {
-              // Formato: { resposta1, resposta2, ... } ou { userId: dados }
               const resposta = valor;
               const idAluno =
                 resposta.studentId || resposta.student?.uid || chave;
@@ -135,28 +113,19 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
           }
         });
       } catch (error) {
-        console.error("Erro ao processar dados:", error);
+        // Silenciar erros em produção
       }
     }
 
-    // Verificação adicional para customQuestionResults
     if (customResults.customQuestionResults) {
-      console.log("Processando customQuestionResults");
       processarDados(customResults.customQuestionResults);
     }
 
-    // Debug: mostrar estrutura final dos alunos
-    console.log("Contador de alunos final:", contadorAlunos);
-
-    // Converter objeto para array e ordenar
     Object.values(contadorAlunos).forEach((aluno) => {
       participantes.push(aluno);
     });
 
-    // Demonstrativo para debug
     if (participantes.length === 0) {
-      // Dados de exemplo para debug
-      console.warn("USANDO DADOS DE EXEMPLO PARA DEBUG");
       return [
         {
           id: "example1",
@@ -186,14 +155,9 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
   };
 
   const participantesOrdenados = processarResultados();
-
-  // Os três primeiros colocados
   const podio = participantesOrdenados.slice(0, 3);
-
-  // Demais participantes
   const demaisParticipantes = participantesOrdenados.slice(3);
 
-  // Efeito para disparar as animações em sequência
   useEffect(() => {
     if (podio.length > 1) setTimeout(() => setShowSecondPlace(true), 1000);
     if (podio.length > 2) setTimeout(() => setShowThirdPlace(true), 2000);
@@ -201,7 +165,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
     setTimeout(() => setShowList(true), 4500);
   }, [podio.length]);
 
-  // Controle para tecla ESC fechar o ranking
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
@@ -289,7 +252,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
           </Typography>
         </Box>
 
-        {/* Mensagem quando não há participantes */}
         {participantesOrdenados.length === 0 ? (
           <Typography variant="body1" sx={{ color: "#fff", my: 5 }}>
             Nenhum aluno acertou perguntas ainda. O ranking será atualizado
@@ -304,6 +266,10 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
               flexWrap: "wrap",
               position: "relative",
               minHeight: "220px",
+              "& > *": {
+                width: "120px",
+                mx: { xs: 1, sm: 2 },
+              },
             }}
           >
             {/* 2º Lugar */}
@@ -313,8 +279,8 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  mx: 2,
                   mt: 2,
+                  order: 1,
                   opacity: 0,
                   animation: showSecondPlace
                     ? `${fadeIn} 0.8s ease forwards`
@@ -344,17 +310,38 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                     px: 2,
                     py: 0.5,
                     backdropFilter: "blur(5px)",
+                    width: "100%",
+                    height: "32px",
+                    overflow: "hidden",
                   }}
                 >
-                  <MilitaryTechIcon sx={{ color: "#C0C0C0", mr: 0.5 }} />
+                  <MilitaryTechIcon
+                    sx={{
+                      color: "#C0C0C0",
+                      mr: 0.5,
+                      minWidth: "16px",
+                      fontSize: "16px",
+                    }}
+                  />
                   <Typography
                     variant="body2"
-                    sx={{ color: "#fff", fontWeight: 500 }}
+                    sx={{
+                      color: "#fff",
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "calc(100% - 20px)",
+                    }}
+                    title={podio[1].nome}
                   >
                     {podio[1].nome}
                   </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: "#C0C0C0", mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#C0C0C0", mt: 0.5, textAlign: "center" }}
+                >
                   {podio[1].acertos}{" "}
                   {podio[1].acertos === 1 ? "acerto" : "acertos"}
                 </Typography>
@@ -368,7 +355,7 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  mx: 2,
+                  order: 0,
                   zIndex: 1,
                   opacity: 0,
                   animation: showFirstPlace
@@ -401,20 +388,42 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                     py: 0.5,
                     backdropFilter: "blur(5px)",
                     position: "relative",
+                    width: "100%",
+                    height: "36px",
                     overflow: "hidden",
                   }}
                 >
-                  <MilitaryTechIcon sx={{ color: "#FFD700", mr: 0.5 }} />
+                  <MilitaryTechIcon
+                    sx={{
+                      color: "#FFD700",
+                      mr: 0.5,
+                      minWidth: "18px",
+                      fontSize: "18px",
+                    }}
+                  />
                   <Typography
                     variant="body1"
-                    sx={{ color: "#fff", fontWeight: 600 }}
+                    sx={{
+                      color: "#fff",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "calc(100% - 22px)",
+                    }}
+                    title={podio[0].nome}
                   >
                     {podio[0].nome}
                   </Typography>
                 </Box>
                 <Typography
                   variant="body1"
-                  sx={{ color: "#FFD700", mt: 0.5, fontWeight: 600 }}
+                  sx={{
+                    color: "#FFD700",
+                    mt: 0.5,
+                    fontWeight: 600,
+                    textAlign: "center",
+                  }}
                 >
                   {podio[0].acertos}{" "}
                   {podio[0].acertos === 1 ? "acerto" : "acertos"}
@@ -429,8 +438,8 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  mx: 2,
                   mt: 3,
+                  order: 2,
                   opacity: 0,
                   animation: showThirdPlace
                     ? `${fadeIn} 0.8s ease forwards`
@@ -445,6 +454,7 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                     bgcolor: "#CD7F32",
                     mb: 1,
                     border: "2px solid #CD7F32",
+                    boxShadow: "0 0 10px rgba(205, 127, 50, 0.7)",
                   }}
                 >
                   {podio[2].avatar}
@@ -459,17 +469,38 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                     px: 2,
                     py: 0.5,
                     backdropFilter: "blur(5px)",
+                    width: "100%",
+                    height: "32px",
+                    overflow: "hidden",
                   }}
                 >
-                  <MilitaryTechIcon sx={{ color: "#CD7F32", mr: 0.5 }} />
+                  <MilitaryTechIcon
+                    sx={{
+                      color: "#CD7F32",
+                      mr: 0.5,
+                      minWidth: "16px",
+                      fontSize: "16px",
+                    }}
+                  />
                   <Typography
                     variant="body2"
-                    sx={{ color: "#fff", fontWeight: 500 }}
+                    sx={{
+                      color: "#fff",
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      maxWidth: "calc(100% - 20px)",
+                    }}
+                    title={podio[2].nome}
                   >
                     {podio[2].nome}
                   </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: "#CD7F32", mt: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#CD7F32", mt: 0.5, textAlign: "center" }}
+                >
                   {podio[2].acertos}{" "}
                   {podio[2].acertos === 1 ? "acerto" : "acertos"}
                 </Typography>
@@ -478,7 +509,6 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
           </Box>
         )}
 
-        {/* Lista de todos os participantes */}
         {participantesOrdenados.length > 0 && (
           <>
             <Divider

@@ -8,85 +8,70 @@ const QuestionResultDisplay = ({
   courseTitle,
   quizTitle,
   currentQuestionIndex,
+  eyeOpen,
 }) => {
-  if (!currentQuestion) return null;
+  if (!currentQuestion || !quizResults) return null;
 
   const questionId = currentQuestion.id || `question_${currentQuestionIndex}`;
-  const results = quizResults[questionId];
-
-  if (!results) return null;
-
-  const correctAnswers = results.correctAnswers || {};
+  const questionResults = quizResults[questionId] || {};
+  const correctAnswers = questionResults.correctAnswers || {};
   const hasCorrect = Object.keys(correctAnswers).length > 0;
 
-  if (!hasCorrect) return null;
+  // Se não houver acertos OU se o olho estiver fechado, não renderiza nada
+  if (!hasCorrect || !eyeOpen) return null;
 
+  // Só renderiza quando há acertos E o olho está aberto
   return (
     <Box
       sx={{
-        mt: 1,
+        width: "100%",
+        maxWidth: "600px",
         mb: 2,
-        px: 2,
-        py: 1.5,
+        p: 2,
         borderRadius: 2,
         backgroundColor: "rgba(255, 255, 255, 0.1)",
+        backdropFilter: "blur(5px)",
         border: "1px solid rgba(255, 255, 255, 0.2)",
+        mx: "auto",
       }}
     >
-      <Typography
-        variant="caption"
-        sx={{
-          display: "block",
-          mb: 1,
-          color: "rgba(255, 255, 255, 0.7)",
-          fontSize: "0.75rem",
-        }}
-      >
-        {`${courseTitle || "Curso"} • ${quizTitle || "Quiz"} • Questão ${
-          currentQuestionIndex + 1
-        }`}
-      </Typography>
+      <Box>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            color: "rgba(255, 255, 255, 0.9)",
+            mb: 0.5,
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <CheckCircleOutlineIcon
+            sx={{ fontSize: 18, mr: 0.5, color: "#4caf50" }}
+          />
+          Resposta correta:{" "}
+          {String.fromCharCode(65 + currentQuestion.correctOption)}
+        </Typography>
 
-      {hasCorrect && (
-        <Box>
-          <Typography
-            variant="subtitle2"
-            sx={{
-              color: "rgba(255, 255, 255, 0.9)",
-              mb: 0.5,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <CheckCircleOutlineIcon
-              sx={{ fontSize: 18, mr: 0.5, color: "#4caf50" }}
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
+          {Object.values(correctAnswers).map((student, idx) => (
+            <Chip
+              key={idx}
+              size="small"
+              label={student.studentName}
+              avatar={
+                <Avatar src={student.photoURL}>
+                  {(student.studentName || "?").charAt(0)}
+                </Avatar>
+              }
+              sx={{
+                backgroundColor: "rgba(76, 175, 80, 0.3)",
+                color: "#fff",
+                fontSize: "0.75rem",
+              }}
             />
-            Resposta correta:{" "}
-            {String.fromCharCode(65 + currentQuestion.correctOption)}
-          </Typography>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, ml: 2 }}>
-            {Object.values(correctAnswers).map((answer, idx) => (
-              <Chip
-                key={idx}
-                size="small"
-                label={answer.student?.name || answer.studentName}
-                avatar={
-                  <Avatar src={answer.student?.photoURL || answer.photoURL}>
-                    {(answer.student?.name || answer.studentName || "?").charAt(
-                      0
-                    )}
-                  </Avatar>
-                }
-                sx={{
-                  backgroundColor: "rgba(76, 175, 80, 0.3)",
-                  color: "#fff",
-                  fontSize: "0.8rem",
-                }}
-              />
-            ))}
-          </Box>
+          ))}
         </Box>
-      )}
+      </Box>
     </Box>
   );
 };

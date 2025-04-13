@@ -106,9 +106,11 @@ const FeedbackOverlay = ({ show, wasCorrect, studentName }) => (
   </Fade>
 );
 
-const StudentChips = ({ correctAnswers }) => {
+const StudentChips = ({ correctAnswers, eyeOpen }) => {
   const hasCorrectAnswers =
     correctAnswers && Object.keys(correctAnswers).length > 0;
+
+  if (!eyeOpen) return null;
 
   return (
     <Box sx={{ mt: 3, textAlign: "center" }}>
@@ -170,16 +172,15 @@ const CustomQuestion = ({
   incorrectFeedback,
   buttonsDisabled,
   customResults,
+  eyeOpen,
+  onEyeToggle,
 }) => {
   const showFeedback = correctFeedback || incorrectFeedback;
   const [selectedOption, setSelectedOption] = useState(null);
   const containerRef = useRef(null);
-  const [eyeOpen, setEyeOpen] = useState(true); // Estado para controlar o ícone do olho
 
-  // Verificar se podemos mostrar os controles
   const canUseControls = selectedStudent && !showFeedback && !buttonsDisabled;
 
-  // Manipuladores de clique diretos
   const handleCorrectClick = () => {
     setSelectedOption("correct");
     onCorrect();
@@ -190,9 +191,10 @@ const CustomQuestion = ({
     onIncorrect();
   };
 
-  // Função para alternar o estado do olho
   const toggleEye = () => {
-    setEyeOpen(!eyeOpen);
+    if (onEyeToggle) {
+      onEyeToggle(!eyeOpen);
+    }
   };
 
   return (
@@ -222,11 +224,10 @@ const CustomQuestion = ({
         Voltar ao Quiz
       </Button>
 
-      {/* Área do Sorteador com margem superior aumentada */}
       <Box
         sx={{
           width: "100%",
-          mt: 5, // Margem superior aumentada para o sorteador apenas em CustomQuestion
+          mt: 5,
           mb: 3,
           display: "flex",
           alignItems: "center",
@@ -234,13 +235,10 @@ const CustomQuestion = ({
           position: "relative",
         }}
       >
-        {/* O sorteador vai aqui - mantendo compatibilidade com o componente original */}
         <Box sx={{ flexGrow: 1, maxWidth: "calc(100% - 50px)" }}>
-          {/* Esta é a área onde o StudentSelector seria renderizado */}
-          {/* Pode ser necessário ajustar dependendo de como é passado para este componente */}
+          {/* Área onde o StudentSelector seria renderizado */}
         </Box>
 
-        {/* Ícone de olho à direita do sorteador */}
         <IconButton
           onClick={toggleEye}
           sx={{
@@ -323,7 +321,10 @@ const CustomQuestion = ({
         </Box>
       </Paper>
 
-      <StudentChips correctAnswers={customResults?.correctAnswers || {}} />
+      <StudentChips
+        correctAnswers={customResults?.correctAnswers || {}}
+        eyeOpen={eyeOpen}
+      />
     </Box>
   );
 };
