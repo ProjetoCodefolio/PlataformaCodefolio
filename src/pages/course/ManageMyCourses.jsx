@@ -389,8 +389,18 @@ const ManageMyCourses = () => {
               icon={<CreateIcon />}
               iconPosition="start"
               label={
-                <Badge badgeContent={courses.length} color="primary" sx={{ '& .MuiBadge-badge': { backgroundColor: '#9041c1' } }}>
-                  <Box sx={{ px: 1 }}>Meus Cursos</Box>
+                <Badge
+                  badgeContent={courses.length}
+                  color="primary"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      backgroundColor: '#9041c1',
+                      right: -2, // Deslocado mais à direita 
+                      // transform: 'translate(0, 1px)' // Pequeno ajuste vertical
+                    }
+                  }}
+                >
+                  <Box sx={{ px: 1, mr: 1 }}>Meus Cursos</Box>
                 </Badge>
               }
             />
@@ -400,8 +410,18 @@ const ManageMyCourses = () => {
               icon={<SchoolIcon />}
               iconPosition="start"
               label={
-                <Badge badgeContent={teacherCourses.length} color="primary" sx={{ '& .MuiBadge-badge': { backgroundColor: '#9041c1' } }}>
-                  <Box sx={{ px: 1 }}>Cursos que Leciono</Box>
+                <Badge
+                  badgeContent={teacherCourses.length}
+                  color="primary"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      backgroundColor: '#9041c1',
+                      right: -2, // Deslocado mais à direita
+                      // transform: 'translate(0, 1px)' // Pequeno ajuste vertical
+                    }
+                  }}
+                >
+                  <Box sx={{ px: 1, mr: 1 }}>Cursos que Leciono</Box>
                 </Badge>
               }
             />

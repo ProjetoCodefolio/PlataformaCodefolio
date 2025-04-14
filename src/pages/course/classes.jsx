@@ -31,7 +31,6 @@ const Classes = () => {
   const [selectedTab, setSelectedTab] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
-  const [courseOwnerUid, setCourseOwnerUid] = useState(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showLogInModal, setShowLogInModal] = useState(false);
   const { userDetails } = useAuth();
@@ -616,27 +615,6 @@ const Classes = () => {
                   position: "relative",
                 }}
               >
-                {userDetails?.userId === courseOwnerUid && (
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: "8px",
-                      right: "75px",
-                      zIndex: 10,
-                      display: { xs: "none", md: "flex" }, // Oculta em telas pequenas
-                      alignItems: "center",
-                      bgcolor: "#9041c1",
-                      color: "white",
-                      p: 1,
-                      borderRadius: 5,
-                      cursor: "pointer",
-                    }}
-                    onClick={handleOpenQuizGigi}
-                  >
-                    {/* <SchoolIcon sx={{ fontSize: "18px" }} />{" "} */}
-                    {/* Diminui o tamanho do ícone */}
-                  </Box>
-                )}
                 <VideoPlayer
                   ref={videoPlayerRef}
                   video={{
