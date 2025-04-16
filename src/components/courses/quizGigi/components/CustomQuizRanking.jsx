@@ -36,21 +36,21 @@ const shimmer = keyframes`
   100% { background-position: 200% 0; }
 `;
 
-const CustomQuizRanking = ({ onBack, customResults }) => {
+const CustomQuizRanking = ({ onBack, customResults, liveQuizResults = {} }) => {
   const [showSecondPlace, setShowSecondPlace] = useState(false);
   const [showFirstPlace, setShowFirstPlace] = useState(false);
   const [showThirdPlace, setShowThirdPlace] = useState(false);
   const [showList, setShowList] = useState(false);
 
   const processarResultados = () => {
-    if (!customResults) {
+    if (!customResults && !liveQuizResults) {
       return [];
     }
 
     const participantes = [];
     const contadorAlunos = {};
 
-    if (customResults.correctAnswers) {
+    if (customResults && customResults.correctAnswers) {
       Object.entries(customResults.correctAnswers).forEach(
         ([userId, answers]) => {
           if (typeof answers === "object" && !Array.isArray(answers)) {
@@ -73,8 +73,10 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                 id: userId,
                 nome: nome,
                 photoURL: photoURL,
-                avatar: nome.charAt(0),
-                acertos: acertos,
+                avatar: nome ? nome.charAt(0) : "?",
+                acertosCustom: acertos,
+                acertosLive: 0,
+                acertosTotal: acertos,
               };
             }
           }
@@ -82,11 +84,76 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
       );
     }
 
+    // Processar resultados do Live Quiz - suporta ambas estruturas
+    if (liveQuizResults) {
+      // Verificar se é formato de questionId ou formato de userId
+      const isQuestionFormat = Object.values(liveQuizResults).some(
+        (val) => val && typeof val === "object" && val.correctAnswers
+      );
+
+      if (isQuestionFormat) {
+        // Formato organizado por questionId (estrutura do QuizGigi)
+        Object.entries(liveQuizResults).forEach(
+          ([questionId, questionData]) => {
+            if (questionData && questionData.correctAnswers) {
+              Object.entries(questionData.correctAnswers).forEach(
+                ([userId, answerData]) => {
+                  if (contadorAlunos[userId]) {
+                    contadorAlunos[userId].acertosLive += 1;
+                    contadorAlunos[userId].acertosTotal =
+                      contadorAlunos[userId].acertosCustom +
+                      contadorAlunos[userId].acertosLive;
+                  } else {
+                    contadorAlunos[userId] = {
+                      id: userId,
+                      nome:
+                        answerData.studentName || "Aluno " + userId.slice(0, 5),
+                      photoURL: answerData.photoURL || null,
+                      avatar: answerData.studentName
+                        ? answerData.studentName.charAt(0)
+                        : "?",
+                      acertosCustom: 0,
+                      acertosLive: 1,
+                      acertosTotal: 1,
+                    };
+                  }
+                }
+              );
+            }
+          }
+        );
+      } else {
+        // Formato organizado por userId (estrutura do Firebase)
+        Object.entries(liveQuizResults).forEach(([userId, data]) => {
+          const correctAnswers = data.correctAnswers || 0;
+
+          if (correctAnswers > 0) {
+            if (contadorAlunos[userId]) {
+              contadorAlunos[userId].acertosLive = correctAnswers;
+              contadorAlunos[userId].acertosTotal =
+                contadorAlunos[userId].acertosCustom + correctAnswers;
+            } else {
+              contadorAlunos[userId] = {
+                id: userId,
+                nome: data.studentName || "Aluno " + userId.slice(0, 5),
+                photoURL: data.photoURL || null,
+                avatar: data.studentName ? data.studentName.charAt(0) : "?",
+                acertosCustom: 0,
+                acertosLive: correctAnswers,
+                acertosTotal: correctAnswers,
+              };
+            }
+          }
+        });
+      }
+    }
+
+    // Converter para array e ordenar por total de acertos
     Object.values(contadorAlunos).forEach((aluno) => {
       participantes.push(aluno);
     });
 
-    return participantes.sort((a, b) => b.acertos - a.acertos);
+    return participantes.sort((a, b) => b.acertosTotal - a.acertosTotal);
   };
 
   const participantesOrdenados = processarResultados();
@@ -252,8 +319,8 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   </Typography>
                 </Box>
                 <Typography variant="body2" sx={{ color: "#C0C0C0", mt: 0.5 }}>
-                  {podio[1].acertos}{" "}
-                  {podio[1].acertos === 1 ? "acerto" : "acertos"}
+                  {podio[1].acertosTotal}{" "}
+                  {podio[1].acertosTotal === 1 ? "acerto" : "acertos"}
                 </Typography>
               </Box>
             )}
@@ -312,8 +379,8 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   variant="body1"
                   sx={{ color: "#FFD700", mt: 0.5, fontWeight: 600 }}
                 >
-                  {podio[0].acertos}{" "}
-                  {podio[0].acertos === 1 ? "acerto" : "acertos"}
+                  {podio[0].acertosTotal}{" "}
+                  {podio[0].acertosTotal === 1 ? "acerto" : "acertos"}
                 </Typography>
               </Box>
             )}
@@ -365,8 +432,8 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                   </Typography>
                 </Box>
                 <Typography variant="body2" sx={{ color: "#CD7F32", mt: 0.5 }}>
-                  {podio[2].acertos}{" "}
-                  {podio[2].acertos === 1 ? "acerto" : "acertos"}
+                  {podio[2].acertosTotal}{" "}
+                  {podio[2].acertosTotal === 1 ? "acerto" : "acertos"}
                 </Typography>
               </Box>
             )}
@@ -459,8 +526,10 @@ const CustomQuizRanking = ({ onBack, customResults }) => {
                             variant="body2"
                             sx={{ color: "rgba(255, 255, 255, 0.7)" }}
                           >
-                            {participante.acertos}{" "}
-                            {participante.acertos === 1 ? "acerto" : "acertos"}
+                            {participante.acertosTotal}{" "}
+                            {participante.acertosTotal === 1
+                              ? "acerto"
+                              : "acertos"}
                           </Typography>
                         }
                       />

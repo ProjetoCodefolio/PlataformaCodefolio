@@ -34,8 +34,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
   const [waitingForNextStudent, setWaitingForNextStudent] = useState(false);
   const [showCustomQuestion, setShowCustomQuestion] = useState(false);
   const [showQuizRanking, setShowQuizRanking] = useState(false);
-  const [eyeOpen, setEyeOpen] = useState(true);
-  const [isCustomMode, setIsCustomMode] = useState(false); // Adicionar estado para rastrear o modo
+  const [eyeOpen, setEyeOpen] = useState(false); 
+  const [isCustomMode, setIsCustomMode] = useState(false);
 
   const handleEyeToggle = (isOpen) => {
     setEyeOpen(isOpen);
@@ -58,7 +58,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleSearchChange,
     handleAbleStudent,
     setMenuOpen,
-  } = useStudentData(courseId, quizData?.id); 
+  } = useStudentData(courseId, quizData?.id);
 
   const {
     quizResults,
@@ -712,6 +712,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
             <CustomQuizRanking
               onBack={handleBackToCustomQuestion}
               customResults={customResults}
+              liveQuizResults={quizResults} 
             />
           )}
 
