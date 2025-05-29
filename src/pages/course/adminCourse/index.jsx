@@ -1,7 +1,7 @@
-import { ref, set, push, get, update } from 'firebase/database';
+import { ref, set, push, get, update } from "firebase/database";
 import { database } from "../../../service/firebase";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from "../../../context/AuthContext";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   Box,
@@ -11,19 +11,20 @@ import {
   Paper,
   Tabs,
   Tab,
-  Grid,   
+  Grid,
   Modal,
   FormControlLabel,
-  Switch
+  Switch,
 } from "@mui/material";
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import Topbar from "../../../components/topbar/Topbar";
-import CourseVideosTab from './CourseVideosTab';
-import CourseMaterialsTab from './CourseMaterialsTab';
-import CourseQuizzesTab from './courseQuizzesTab/';
-import CourseStudentsTab from './CourseStudentsTab';
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import CourseVideosTab from "./CourseVideosTab";
+import CourseSlidesTab from "./CourseSlidesTab";
+import CourseMaterialsTab from "./CourseMaterialsTab";
+import CourseQuizzesTab from "./courseQuizzesTab/";
+import CourseStudentsTab from "./CourseStudentsTab";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const CourseForm = () => {
   const navigate = useNavigate();
@@ -33,6 +34,7 @@ const CourseForm = () => {
   const [courseId, setCourseId] = useState(params.get("courseId"));
 
   const courseVideosRef = useRef();
+  const courseSlidesRef = useRef();
   const courseMaterialsRef = useRef();
   const courseQuizzesRef = useRef();
   const courseStudentsRef = useRef();
@@ -44,7 +46,9 @@ const CourseForm = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pinRequired, setPinRequired] = useState(false);
   const [coursePin, setCoursePin] = useState("");
-  const [randomPin, setRandomPin] = useState(Math.floor(1000000 + Math.random() * 9000000).toString());
+  const [randomPin, setRandomPin] = useState(
+    Math.floor(1000000 + Math.random() * 9000000).toString()
+  );
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -81,7 +85,7 @@ const CourseForm = () => {
       }
 
       const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
-      if (quizzes.some(quiz => quiz.questions.length === 0)) {
+      if (quizzes.some((quiz) => quiz.questions.length === 0)) {
         toast.error("Não é possível salvar um curso com quizzes sem questões");
         return;
       }
@@ -114,6 +118,7 @@ const CourseForm = () => {
 
       await Promise.all([
         courseVideosRef.current?.saveVideos(finalCourseId),
+        courseSlidesRef.current?.saveSlides(finalCourseId),
         courseMaterialsRef.current?.saveMaterials(finalCourseId),
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
         // courseStudentsRef.current?.saveStudents(finalCourseId),
@@ -130,14 +135,22 @@ const CourseForm = () => {
       console.error("Erro ao salvar curso:", error);
       toast.error("Erro ao salvar o curso: " + error.message);
     }
-  }, [courseTitle, courseDescription, userDetails, courseId, coursePin, pinRequired, randomPin, navigate]);
+  }, [
+    courseTitle,
+    courseDescription,
+    userDetails,
+    courseId,
+    coursePin,
+    pinRequired,
+    randomPin,
+  ]);
 
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
     return (
       courseTitle.trim() !== "" &&
       courseDescription.trim() !== "" &&
-      !quizzes.some(quiz => quiz.questions.length === 0)
+      !quizzes.some((quiz) => quiz.questions.length === 0)
     );
   }, [courseTitle, courseDescription]);
 
@@ -235,23 +248,23 @@ const CourseForm = () => {
                       }
                     }}
                     sx={{
-                      '& .MuiSwitch-switchBase': {
-                        color: 'grey', // Cor quando desmarcado
-                        '&.Mui-checked': {
-                          color: '#9041c1', // Cor quando marcado
+                      "& .MuiSwitch-switchBase": {
+                        color: "grey", // Cor quando desmarcado
+                        "&.Mui-checked": {
+                          color: "#9041c1", // Cor quando marcado
                         },
-                        '&.Mui-checked + .MuiSwitch-track': {
-                          backgroundColor: '#9041c1', // Cor da trilha quando marcado
+                        "&.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#9041c1", // Cor da trilha quando marcado
                         },
                       },
-                      '& .MuiSwitch-track': {
-                        backgroundColor: '#666', // Cor da trilha quando desmarcado
+                      "& .MuiSwitch-track": {
+                        backgroundColor: "#666", // Cor da trilha quando desmarcado
                       },
                     }}
                   />
                 }
                 label="Criar PIN para acesso ao curso"
-                sx={{ color: '#666' }}
+                sx={{ color: "#666" }}
               />
             </Grid>
 
@@ -288,28 +301,69 @@ const CourseForm = () => {
 
           {courseId && (
             <>
-              <Tabs
-                value={selectedTab}
-                onChange={handleTabChange}
-                indicatorColor="primary"
-                textColor="primary"
-                centered
-                sx={{
-                  mb: 4,
-                  "& .MuiTab-root": { color: "#666", "&.Mui-selected": { color: "#9041c1" } },
-                  "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
-                }}
-              >
-                <Tab label="Vídeos" />
-                <Tab label="Materiais Extras" />
-                <Tab label="Quiz" />
-                <Tab label="Alunos" />
-              </Tabs>
+              {/* Versão para telas maiores (centralizadas) */}
+              <Box sx={{ display: { xs: "none", md: "block" } }}>
+                <Tabs
+                  value={selectedTab}
+                  onChange={handleTabChange}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  centered
+                  sx={{
+                    mb: 4,
+                    "& .MuiTab-root": {
+                      color: "#666",
+                      "&.Mui-selected": { color: "#9041c1" },
+                    },
+                    "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                  }}
+                >
+                  <Tab label="Vídeos" />
+                  <Tab label="Slides" />
+                  <Tab label="Materiais Extras" />
+                  <Tab label="Quiz" />
+                  <Tab label="Alunos" />
+                </Tabs>
+              </Box>
+
+              {/* Versão para telas menores (scrolláveis) */}
+              <Box sx={{ display: { xs: "block", md: "none" } }}>
+                <Tabs
+                  value={selectedTab}
+                  onChange={handleTabChange}
+                  indicatorColor="primary"
+                  textColor="primary"
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  allowScrollButtonsMobile
+                  sx={{
+                    mb: 4,
+                    "& .MuiTab-root": {
+                      color: "#666",
+                      "&.Mui-selected": { color: "#9041c1" },
+                      fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                    },
+                    "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+                    "& .MuiTabs-scrollButtons": { color: "#9041c1" },
+                  }}
+                >
+                  <Tab label="Vídeos" />
+                  <Tab label="Slides" />
+                  <Tab label="Materiais Extras" />
+                  <Tab label="Quiz" />
+                  <Tab label="Alunos" />
+                </Tabs>
+              </Box>
 
               {selectedTab === 0 && <CourseVideosTab ref={courseVideosRef} />}
-              {selectedTab === 1 && <CourseMaterialsTab ref={courseMaterialsRef} />}
-              {selectedTab === 2 && <CourseQuizzesTab ref={courseQuizzesRef} />}
-              {selectedTab === 3 && <CourseStudentsTab ref={courseStudentsRef} />}
+              {selectedTab === 1 && <CourseSlidesTab ref={courseSlidesRef} />}
+              {selectedTab === 2 && (
+                <CourseMaterialsTab ref={courseMaterialsRef} />
+              )}
+              {selectedTab === 3 && <CourseQuizzesTab ref={courseQuizzesRef} />}
+              {selectedTab === 4 && (
+                <CourseStudentsTab ref={courseStudentsRef} />
+              )}
             </>
           )}
         </Paper>
@@ -359,7 +413,9 @@ const CourseForm = () => {
             textAlign: "center",
           }}
         >
-          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <CheckCircleOutlineIcon
+            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+          />
           <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
             Curso criado com sucesso!
           </Typography>
@@ -368,9 +424,12 @@ const CourseForm = () => {
             onClick={() => {
               setShowSuccessModal(false);
               navigate(`/adm-cursos?courseId=${courseId}`);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              window.scrollTo({ top: 0, behavior: "smooth" });
             }}
-            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+            }}
           >
             OK!
           </Button>
@@ -392,7 +451,9 @@ const CourseForm = () => {
             textAlign: "center",
           }}
         >
-          <CheckCircleOutlineIcon sx={{ fontSize: 60, color: "#4caf50", mb: 2 }} />
+          <CheckCircleOutlineIcon
+            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+          />
           <Typography id="update-modal-title" variant="h6" sx={{ mb: 2 }}>
             Curso atualizado com sucesso!
           </Typography>
@@ -402,7 +463,10 @@ const CourseForm = () => {
               setShowUpdateModal(false);
               navigate(`/adm-cursos?courseId=${courseId}`);
             }}
-            sx={{ backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+            }}
           >
             OK!
           </Button>

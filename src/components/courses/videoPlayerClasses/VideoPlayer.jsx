@@ -9,6 +9,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LockIcon from "@mui/icons-material/Lock";
 import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
+import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { handleGoogleSignIn } from "../../../utils/authUtils";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
@@ -36,6 +37,8 @@ const VideoPlayer = forwardRef(
       onVideoProgressUpdate,
       onOpenQuizGigi,
       courseOwnerUid,
+      onOpenSlide,
+      hasSlide,
     },
     ref
   ) => {
@@ -67,6 +70,13 @@ const VideoPlayer = forwardRef(
           setWatchTime(time);
         },
         player: event.target,
+        pause: () => {
+          try {
+            event.target.pauseVideo();
+          } catch (e) {
+            console.error("Erro ao pausar vídeo:", e);
+          }
+        },
       };
       setPlayer(event.target);
       event.target.seekTo(video?.watchedTime || 0);
@@ -243,7 +253,19 @@ const VideoPlayer = forwardRef(
     // Função para redirecionar para o dashboard de estudantes
     const handleViewStudents = () => {
       // Navega para studentDashboard com o ID do quiz como parâmetro
-      navigate(`/studentDashboard?quizId=${video.quizId?.split('/')[1] || video.quizId}`);
+      navigate(
+        `/studentDashboard?quizId=${
+          video.quizId?.split("/")[1] || video.quizId
+        }`
+      );
+    };
+
+    // Função para abrir os slides
+    const handleOpenSlide = () => {
+      if (onOpenSlide) {
+        pauseVideo();
+        onOpenSlide(video.id);
+      }
     };
 
     return (
@@ -288,30 +310,32 @@ const VideoPlayer = forwardRef(
             {video.title.split(" - ")[0]}
           </Typography>
 
-          {userDetails?.userId === courseOwnerUid && video.quizId && (
-            <>
-              {/* Novo ícone de estudantes */}
+          <Box sx={{ display: "flex", ml: "auto" }}>
+            {/* Botão de Slides */}
+            {hasSlide && (
               <IconButton
-                onClick={handleViewStudents}
+                onClick={handleOpenSlide}
                 sx={{
                   color: "#fff",
                   bgcolor: "#9041c1",
-                  ml: "auto",
                   mr: 1,
                   p: 0.8,
                   "&:hover": {
                     bgcolor: "#7a35a3",
                   },
                 }}
-                title="Ver resultados dos estudantes"
+                title="Ver Slides"
               >
-                <PersonIcon sx={{ fontSize: "18px" }} />
+                <SlideshowIcon sx={{ fontSize: "18px" }} />
               </IconButton>
-              
-              {/* Ícone existente do Quiz Gigi */}
-              {onOpenQuizGigi && (
+            )}
+
+            {/* Botões para administrador do curso */}
+            {userDetails?.userId === courseOwnerUid && video.quizId && (
+              <>
+                {/* Botão de estudantes */}
                 <IconButton
-                  onClick={onOpenQuizGigi}
+                  onClick={handleViewStudents}
                   sx={{
                     color: "#fff",
                     bgcolor: "#9041c1",
@@ -321,13 +345,32 @@ const VideoPlayer = forwardRef(
                       bgcolor: "#7a35a3",
                     },
                   }}
-                  title="Abrir Quiz Gigi"
+                  title="Ver resultados dos estudantes"
                 >
-                  <SchoolIcon sx={{ fontSize: "18px" }} />
+                  <PersonIcon sx={{ fontSize: "18px" }} />
                 </IconButton>
-              )}
-            </>
-          )}
+
+                {/* Botão do Quiz Gigi */}
+                {onOpenQuizGigi && (
+                  <IconButton
+                    onClick={onOpenQuizGigi}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "#9041c1",
+                      mr: 1,
+                      p: 0.8,
+                      "&:hover": {
+                        bgcolor: "#7a35a3",
+                      },
+                    }}
+                    title="Abrir Quiz Gigi"
+                  >
+                    <SchoolIcon sx={{ fontSize: "18px" }} />
+                  </IconButton>
+                )}
+              </>
+            )}
+          </Box>
         </Box>
 
         <Box
@@ -343,7 +386,7 @@ const VideoPlayer = forwardRef(
           }}
         >
           {video.url.includes("youtube.com") ||
-            video.url.includes("youtu.be") ? (
+          video.url.includes("youtu.be") ? (
             <Box
               sx={{
                 width: "100%",
@@ -463,6 +506,9 @@ VideoPlayer.propTypes = {
   setCurrentVideoId: PropTypes.func.isRequired,
   onVideoProgressUpdate: PropTypes.func,
   onOpenQuizGigi: PropTypes.func,
+  onOpenSlide: PropTypes.func,
+  hasSlide: PropTypes.bool,
+  courseOwnerUid: PropTypes.string,
 };
 
 VideoPlayer.displayName = "VideoPlayer";

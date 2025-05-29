@@ -18,7 +18,12 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
-import { hasCourseVideos, hasCourseMaterials, hasCourseQuizzes } from "../../utils/courseUtils";
+import {
+  hasCourseVideos,
+  hasCourseMaterials,
+  hasCourseQuizzes,
+  hasCourseSlides,
+} from "../../utils/courseUtils";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -92,16 +97,21 @@ const ManageMyCourses = () => {
       const courseId = courseToDelete;
       if (!courseId) return;
 
-
-      const [videos, materials, quizzes] = await Promise.all([
+      const [videos, materials, quizzes, slides] = await Promise.all([
         hasCourseVideos(courseId),
         hasCourseMaterials(courseId),
         hasCourseQuizzes(courseId),
+        hasCourseSlides(courseId),
       ]);
 
-      if (videos.length > 0 || materials.length > 0 || quizzes.length > 0) {
+      if (
+        videos.length > 0 ||
+        materials.length > 0 ||
+        quizzes.length > 0 ||
+        slides.length > 0
+      ) {
         toast.error(
-          "Não é possível deletar o curso pois existem vídeos, materiais ou quizzes associados a ele."
+          "Não é possível deletar o curso pois existem vídeos, materiais, slides ou quizzes associados a ele."
         );
         setDeleteModalOpen(false);
         setCourseToDelete(null);
@@ -118,7 +128,7 @@ const ManageMyCourses = () => {
 
       if (studentCoursesData) {
         const updates = {};
-        Object.keys(studentCoursesData).forEach(userId => {
+        Object.keys(studentCoursesData).forEach((userId) => {
           if (studentCoursesData[userId][courseId]) {
             updates[`studentCourses/${userId}/${courseId}`] = null;
           }
@@ -133,7 +143,7 @@ const ManageMyCourses = () => {
 
       if (videoProgressData) {
         const updates = {};
-        Object.keys(videoProgressData).forEach(userId => {
+        Object.keys(videoProgressData).forEach((userId) => {
           if (videoProgressData[userId][courseId]) {
             updates[`videoProgress/${userId}/${courseId}`] = null;
           }

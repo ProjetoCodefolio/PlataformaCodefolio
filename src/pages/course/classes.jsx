@@ -24,6 +24,7 @@ import { fetchQuizQuestions, validateQuizAnswers } from "../../service/courses";
 import LoginModal from "../../components/modals/LoginModal";
 import CompletionModal from "../../components/modals/CompletionModal";
 import QuizGigi from "../../components/courses/quizGigi";
+import SlidePlayer from "../../components/courses/slidePlayer";
 
 const Classes = () => {
   const [videos, setVideos] = useState([]);
@@ -48,6 +49,9 @@ const Classes = () => {
   const [showQuizGigi, setShowQuizGigi] = useState(false);
   const [quizData, setQuizData] = useState(null);
   const [courseOwnerUid, setCourseOwnerUid] = useState("");
+  const [showSlidePlayer, setShowSlidePlayer] = useState(false);
+  const [slideData, setSlideData] = useState(null);
+  const [videoSlides, setVideoSlides] = useState({});
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -477,7 +481,6 @@ const Classes = () => {
 
   const handleOpenQuizGigi = async () => {
     if (currentVideo?.quizId) {
-
       // Pausar o vídeo antes de abrir o quiz
       if (
         videoPlayerRef.current &&
@@ -490,8 +493,7 @@ const Classes = () => {
         const quiz = await fetchQuizQuestions(currentVideo.quizId);
         setQuizData(quiz);
         setShowQuizGigi(true);
-      } catch (error) {
-      }
+      } catch (error) {}
     } else {
     }
   };
@@ -500,6 +502,66 @@ const Classes = () => {
   if (quizData) {
     quizData.id = currentVideo?.quizId.split("/")[1] || null;
   }
+
+  // Adicione esta função para buscar os slides relacionados a cada vídeo
+  const fetchSlides = async () => {
+    try {
+      if (!courseId) return;
+
+      const slidesRef = ref(database, `courseSlides/${courseId}`);
+      const snapshot = await get(slidesRef);
+      const slidesData = snapshot.val();
+
+      if (slidesData) {
+        const slidesMap = Object.entries(slidesData).reduce(
+          (acc, [slideId, slide]) => {
+            // Organizar os slides por videoId
+            if (!acc[slide.videoId]) {
+              acc[slide.videoId] = [];
+            }
+            acc[slide.videoId].push({
+              id: slideId,
+              ...slide,
+            });
+            return acc;
+          },
+          {}
+        );
+        setVideoSlides(slidesMap);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar slides:", error);
+    }
+  };
+
+  // Chamada para fetchSlides no useEffect onde você carrega os dados do curso
+  useEffect(() => {
+    fetchSlides();
+  }, [courseId]);
+
+  // Adicione esta função para abrir o slide
+  const handleOpenSlide = async (videoId) => {
+    // Pausar o vídeo se estiver rolando
+    if (
+      videoPlayerRef.current &&
+      typeof videoPlayerRef.current.pause === "function"
+    ) {
+      videoPlayerRef.current.pause();
+    }
+
+    // Encontrar o slide para este vídeo
+    const slides = videoSlides[videoId] || [];
+    if (slides.length > 0) {
+      setSlideData(slides[0]); // Pegar o primeiro slide (já que cada vídeo só pode ter um slide)
+      setShowSlidePlayer(true);
+    }
+  };
+
+  // Adicione esta função para voltar ao vídeo
+  const handleReturnToVideo = () => {
+    setShowSlidePlayer(false);
+    setSlideData(null);
+  };
 
   return (
     <>
@@ -615,21 +677,31 @@ const Classes = () => {
                   position: "relative",
                 }}
               >
-                <VideoPlayer
-                  ref={videoPlayerRef}
-                  video={{
-                    ...currentVideo,
-                    title: `${courseTitle} - ${currentVideo.title}`,
-                  }}
-                  onProgress={saveVideoProgress}
-                  videos={videos}
-                  onVideoChange={handleVideoSelect}
-                  setShowQuiz={setShowQuiz}
-                  setCurrentVideoId={setCurrentVideoId}
-                  onVideoProgressUpdate={handleVideoProgressUpdate}
-                  onOpenQuizGigi={handleOpenQuizGigi}
-                  courseOwnerUid={courseOwnerUid}
-                />
+                {showSlidePlayer && slideData ? (
+                  <SlidePlayer
+                    slideData={slideData}
+                    onReturnToVideo={handleReturnToVideo}
+                    courseTitle={courseTitle}
+                  />
+                ) : (
+                  <VideoPlayer
+                    ref={videoPlayerRef}
+                    video={{
+                      ...currentVideo,
+                      title: `${courseTitle} - ${currentVideo.title}`,
+                    }}
+                    onProgress={saveVideoProgress}
+                    videos={videos}
+                    onVideoChange={handleVideoSelect}
+                    setShowQuiz={setShowQuiz}
+                    setCurrentVideoId={setCurrentVideoId}
+                    onVideoProgressUpdate={handleVideoProgressUpdate}
+                    onOpenQuizGigi={handleOpenQuizGigi}
+                    courseOwnerUid={courseOwnerUid}
+                    onOpenSlide={handleOpenSlide}
+                    hasSlide={!!videoSlides[currentVideo?.id]?.length}
+                  />
+                )}
               </Box>
             ) : (
               <Box
@@ -724,11 +796,12 @@ const Classes = () => {
         userName={userDetails?.firstName}
         courseTitle={courseTitle}
       />
+
       {showQuizGigi && (
         <QuizGigi
           onClose={() => setShowQuizGigi(false)}
           quizData={quizData}
-          courseId={courseId} // Adicionando o courseId
+          courseId={courseId}
         />
       )}
     </>
