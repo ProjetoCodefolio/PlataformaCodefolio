@@ -8,14 +8,18 @@ import React, {
   useImperativeHandle,
   useRef,
 } from "react";
-import { Box } from "@mui/material";
+import { Box, Divider } from "@mui/material";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import { ConfirmationModal, SuccessModal } from "./Modals";
-import { generateUUID, saveQuizToDatabase } from "../../../../utils/courseUtils";
+import {
+  generateUUID,
+  saveQuizToDatabase,
+} from "../../../../utils/courseUtils";
+import PdfQuizGenerator from "./PdfQuizGenerator";
 
 const CourseQuizzesTab = forwardRef((props, ref) => {
   const [newQuizVideoId, setNewQuizVideoId] = useState("");
@@ -174,7 +178,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     );
     setEditQuiz(updatedQuiz);
 
-    const saved = await saveQuizToDatabase(updatedQuiz, courseId, database, firebaseRef);
+    const saved = await saveQuizToDatabase(
+      updatedQuiz,
+      courseId,
+      database,
+      firebaseRef
+    );
     if (saved) {
       toast.success("Questão deletada com sucesso!");
     } else {
@@ -274,26 +283,26 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     if (!editQuiz || !newQuizQuestion.trim()) {
       return;
     }
-  
+
     let currentQuestionId;
-  
+
     if (editQuestion) {
       currentQuestionId = editQuestion.id;
-  
+
       const updatedQuestion = {
         ...editQuestion,
         question: newQuizQuestion,
         options: [...newQuizOptions],
         correctOption: newQuizCorrectOption,
       };
-      
+
       const updatedQuiz = {
         ...editQuiz,
         questions: editQuiz.questions.map((q) =>
           q.id === updatedQuestion.id ? updatedQuestion : q
         ),
       };
-      
+
       setEditQuiz(updatedQuiz);
     } else {
       if (!draftQuestionId) {
@@ -304,7 +313,6 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   };
 
   const handleAddQuestion = async () => {
-
     handleBlurSave();
 
     if (!newQuizQuestion.trim() || newQuizOptions.some((opt) => !opt.trim())) {
@@ -315,7 +323,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     if (!editQuiz) return;
 
     const questionId = draftQuestionId || generateUUID();
-    
+
     const newQuestion = {
       id: questionId,
       question: newQuizQuestion,
@@ -347,7 +355,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     );
     setEditQuiz(updatedQuiz);
 
-    const saved = await saveQuizToDatabase(updatedQuiz, courseId, database, firebaseRef);
+    const saved = await saveQuizToDatabase(
+      updatedQuiz,
+      courseId,
+      database,
+      firebaseRef
+    );
     if (saved) {
       toast.success("Questão adicionada com sucesso!");
       setDraftQuestionId(null);
@@ -384,7 +397,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     );
     setEditQuiz(updatedQuiz);
 
-    const saved = await saveQuizToDatabase(updatedQuiz, courseId, database, firebaseRef);
+    const saved = await saveQuizToDatabase(
+      updatedQuiz,
+      courseId,
+      database,
+      firebaseRef
+    );
     if (saved) {
       toast.success("Questão editada com sucesso!");
       setEditQuestion(null);
@@ -409,7 +427,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
       );
 
-      const saved = await saveQuizToDatabase(updatedQuiz, courseId, database, firebaseRef);
+      const saved = await saveQuizToDatabase(
+        updatedQuiz,
+        courseId,
+        database,
+        firebaseRef
+      );
       if (saved) {
         toast.success("Nota mínima atualizada com sucesso!", {
           autoClose: 2000,
@@ -434,6 +457,45 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
     }
   };
 
+  const handleQuestionsFromPdf = (generatedQuestions) => {
+    if (!editQuiz || generatedQuestions.length === 0) {
+      toast.error("Selecione um quiz primeiro para adicionar as questões");
+      return;
+    }
+
+    // Adaptar as questões geradas para o formato esperado pelo quiz
+    const formattedQuestions = generatedQuestions.map((question) => ({
+      id: question.id || generateUUID(),
+      question: question.question,
+      options: question.options,
+      correctOption: question.correctOption,
+    }));
+
+    // Adicionar as novas questões ao quiz atual
+    const updatedQuiz = {
+      ...editQuiz,
+      questions: [...editQuiz.questions, ...formattedQuestions],
+    };
+
+    // Atualizar o estado
+    setQuizzes((prev) =>
+      prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+    );
+
+    // Salvar no Firebase
+    saveQuizToDatabase(updatedQuiz, courseId, database, firebaseRef)
+      .then(() => {
+        toast.success(
+          `${formattedQuestions.length} questões adicionadas com sucesso!`
+        );
+        setEditQuiz(updatedQuiz);
+      })
+      .catch((error) => {
+        console.error("Erro ao salvar questões:", error);
+        toast.error("Erro ao salvar questões no banco de dados");
+      });
+  };
+
   return (
     <Box
       sx={{
@@ -444,7 +506,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       }}
       ref={quizSettingsRef}
     >
-      <QuizForm 
+      <QuizForm
         videos={videos}
         newQuizVideoId={newQuizVideoId}
         setNewQuizVideoId={setNewQuizVideoId}
@@ -457,32 +519,45 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
       />
 
       {editQuiz && (
-        <QuestionForm 
-          editQuiz={editQuiz}
-          newQuizQuestion={newQuizQuestion}
-          setNewQuizQuestion={setNewQuizQuestion}
-          newQuizOptions={newQuizOptions}
-          setNewQuizOptions={setNewQuizOptions}
-          newQuizCorrectOption={newQuizCorrectOption}
-          setNewQuizCorrectOption={setNewQuizCorrectOption}
-          handleBlurSave={handleBlurSave}
-          handleKeyDown={handleKeyDown}
-          questionRef={questionRef}
-          optionsRefs={optionsRefs}
-          addOptionButtonRef={addOptionButtonRef}
-          saveButtonRef={saveButtonRef}
-          cancelButtonRef={cancelButtonRef}
-          handleAddQuizOption={handleAddQuizOption}
-          handleRemoveQuizOption={handleRemoveQuizOption}
-          editQuestion={editQuestion}
-          handleSaveEditQuestion={handleSaveEditQuestion}
-          handleAddQuestion={handleAddQuestion}
-          setEditQuiz={setEditQuiz}
-          setEditQuestion={setEditQuestion}
-        />
+        <>
+          <Divider sx={{ my: 3 }} />
+          <PdfQuizGenerator
+            onQuestionsGenerated={handleQuestionsFromPdf}
+            setEditQuestion={setEditQuestion}
+            setNewQuizQuestion={setNewQuizQuestion}
+            setNewQuizOptions={setNewQuizOptions}
+            setNewQuizCorrectOption={setNewQuizCorrectOption}
+          />
+
+          <Box id="question-form" sx={{ scrollMarginTop: "20px" }}>
+            <QuestionForm
+              editQuiz={editQuiz}
+              newQuizQuestion={newQuizQuestion}
+              setNewQuizQuestion={setNewQuizQuestion}
+              newQuizOptions={newQuizOptions}
+              setNewQuizOptions={setNewQuizOptions}
+              newQuizCorrectOption={newQuizCorrectOption}
+              setNewQuizCorrectOption={setNewQuizCorrectOption}
+              handleBlurSave={handleBlurSave}
+              handleKeyDown={handleKeyDown}
+              questionRef={questionRef}
+              optionsRefs={optionsRefs}
+              addOptionButtonRef={addOptionButtonRef}
+              saveButtonRef={saveButtonRef}
+              cancelButtonRef={cancelButtonRef}
+              handleAddQuizOption={handleAddQuizOption}
+              handleRemoveQuizOption={handleRemoveQuizOption}
+              editQuestion={editQuestion}
+              handleSaveEditQuestion={handleSaveEditQuestion}
+              handleAddQuestion={handleAddQuestion}
+              setEditQuiz={setEditQuiz}
+              setEditQuestion={setEditQuestion}
+            />
+          </Box>
+        </>
       )}
 
-      <QuizList 
+      <QuizList
         quizzes={quizzes}
         videos={videos}
         expandedQuiz={expandedQuiz}
@@ -513,7 +588,9 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         open={showDeleteQuizModal}
         onClose={() => setShowDeleteQuizModal(false)}
         onConfirm={confirmRemoveQuiz}
-        title={`Tem certeza que deseja excluir o quiz para "${videos.find((v) => v.id === quizToDelete?.videoId)?.title}?"`}
+        title={`Tem certeza que deseja excluir o quiz para "${
+          videos.find((v) => v.id === quizToDelete?.videoId)?.title
+        }?"`}
       />
 
       <ConfirmationModal
