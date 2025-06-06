@@ -17,6 +17,11 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -24,6 +29,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import SettingsIcon from "@mui/icons-material/Settings";
 import * as pdfjs from "pdfjs-dist";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
@@ -31,8 +37,8 @@ import { v4 as uuidv4 } from "uuid";
 // Defina o worker para o pdfjs
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-
-const createGroqPrompt = (pdfText, numQuestions) => `
+// Prompt padrão movido para uma função separada que pode ser modificada
+const createDefaultPrompt = (numQuestions) => `
 Você é um professor especializado em criar avaliações educacionais de alta qualidade.
 
 Com base exclusivamente no texto a seguir, crie ${numQuestions} questões de múltipla escolha que avaliem a compreensão dos conceitos principais e informações específicas contidas no texto.
@@ -47,7 +53,7 @@ Diretrizes para as alternativas:
 1. Inclua 4 alternativas para cada questão (A, B, C, D).
 2. Apenas uma alternativa deve estar correta.
 3. As alternativas incorretas devem ser plausíveis, mas claramente incorretas para quem leu o texto atentamente.
-4. Evite padrões óbvios nas respostas corretas (como sempre ser a alternativa A).
+4. Varie aleatoriamente a posição da resposta correta entre as alternativas.
 5. As alternativas devem ter comprimento e estilo semelhantes entre si.
 
 Estruture cada questão em formato JSON com:
@@ -63,11 +69,29 @@ Apresente as questões em um array JSON com este formato:
     "correctOption": 0
   }
 ]
-
-O texto para análise é:
-
-${pdfText}
 `;
+
+// Parte fixa do prompt que garantirá o formato correto das respostas
+const JSON_FORMAT_INSTRUCTION = `
+IMPORTANTE: Não modifique este formato. A saída DEVE ser um array JSON com esta estrutura:
+[
+  {
+    "question": "Pergunta baseada no texto?",
+    "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
+    "correctOption": 0
+  }
+]
+
+Qualquer outro formato não será processado corretamente.
+`;
+
+const createGroqPrompt = (pdfText, numQuestions, customPrompt) => {
+  // Se tivermos um prompt personalizado, use-o, caso contrário use o padrão
+  const promptTemplate = customPrompt || createDefaultPrompt(numQuestions);
+  
+  // Adiciona as instruções fixas de formato JSON antes do texto do PDF
+  return promptTemplate + "\n\n" + JSON_FORMAT_INSTRUCTION + "\n\nO texto para análise é:\n\n" + pdfText;
+};
 
 const PdfQuizGenerator = ({
   onQuestionsGenerated,
@@ -85,6 +109,11 @@ const PdfQuizGenerator = ({
   const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const fileInputRef = useRef(null);
+  
+  // Estados para o diálogo de configurações
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [usingCustomPrompt, setUsingCustomPrompt] = useState(false);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -119,6 +148,40 @@ const PdfQuizGenerator = ({
 
   const handleNumQuestionsChange = (e) => {
     setNumQuestions(e.target.value);
+  };
+
+  // Manipulação do diálogo de configurações
+  const handleOpenSettings = () => {
+    if (!customPrompt && !usingCustomPrompt) {
+      setCustomPrompt(createDefaultPrompt(numQuestions));
+    }
+    setSettingsOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    setSettingsOpen(false);
+  };
+
+  const handleSaveSettings = () => {
+    if (customPrompt.trim()) {
+      // Verifica se o prompt personalizado menciona o formato JSON esperado
+      if (!customPrompt.includes('"question"') || 
+          !customPrompt.includes('"options"') || 
+          !customPrompt.includes('"correctOption"')) {
+        toast.warning("Atenção: Seu prompt personalizado pode não especificar o formato JSON correto. As instruções de formato serão adicionadas automaticamente.");
+      }
+      
+      setUsingCustomPrompt(true);
+      toast.success("Configurações personalizadas de prompt salvas!");
+    } else {
+      setUsingCustomPrompt(false);
+    }
+    setSettingsOpen(false);
+  };
+
+  const handleResetPrompt = () => {
+    setCustomPrompt(createDefaultPrompt(numQuestions));
+    toast.info("Prompt restaurado para o padrão");
   };
 
   const extractTextFromPdf = async (file) => {
@@ -208,7 +271,12 @@ const PdfQuizGenerator = ({
       }
 
       // Preparar o prompt para o GROQ com o texto do PDF e o número de questões
-      const prompt = createGroqPrompt(pdfText, numQuestions);
+      // Usa prompt personalizado se disponível
+      const promptToUse = usingCustomPrompt && customPrompt.trim() 
+        ? customPrompt.trim()
+        : createDefaultPrompt(numQuestions);
+      
+      const prompt = createGroqPrompt(pdfText, numQuestions, promptToUse);
 
       // URL da API GROQ
       const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
@@ -369,12 +437,26 @@ const PdfQuizGenerator = ({
 
   return (
     <Box sx={{ mt: 3, mb: 4 }}>
-      <Typography
-        variant="h6"
-        sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
-      >
-        Gerar Questões a partir de PDF
-      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: "bold", color: "#333" }}
+        >
+          Gerar Questões a partir de PDF
+        </Typography>
+        
+        <Tooltip title="Configurações do gerador">
+          <IconButton 
+            onClick={handleOpenSettings}
+            sx={{ 
+              color: usingCustomPrompt ? "#9041c1" : "#666",
+              '&:hover': { backgroundColor: 'rgba(144, 65, 193, 0.08)' }
+            }}
+          >
+            <SettingsIcon />
+          </IconButton>
+        </Tooltip>
+      </Box>
 
       {/* Seleção do número de questões */}
       {!loading && (
@@ -494,7 +576,7 @@ const PdfQuizGenerator = ({
                   "&:hover": { backgroundColor: "#7d37a7" },
                 }}
               >
-                Gerar {numQuestions} Questões
+                Gerar {numQuestions} Questões {usingCustomPrompt && "(Prompt Personalizado)"}
               </Button>
             )}
           </Box>
@@ -592,6 +674,92 @@ const PdfQuizGenerator = ({
           </Button>
         </Box>
       )}
+
+      {/* Diálogo de configurações */}
+      <Dialog 
+        open={settingsOpen} 
+        onClose={handleCloseSettings}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: "#f5f5fa" }}>
+          Configurações do Gerador de Questões
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Personalize o prompt usado para gerar questões. As instruções de formato JSON serão 
+            adicionadas automaticamente ao final do seu prompt.
+          </Typography>
+          
+          <Box sx={{ p: 2, mb: 2, bgcolor: "rgba(25, 118, 210, 0.08)", borderLeft: "4px solid #1976d2", borderRadius: 1 }}>
+            <Typography variant="subtitle2" color="primary">
+              Formato obrigatório
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace", mt: 1 }}>
+              O sistema adicionará automaticamente instruções para garantir que as questões sejam retornadas no formato:
+              <pre style={{ margin: "8px 0", overflow: "auto" }}>
+                {`[
+  {
+    "question": "Pergunta baseada no texto?",
+    "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
+    "correctOption": 0
+  }
+]`}
+              </pre>
+            </Typography>
+          </Box>
+          
+          <TextField
+            label="Prompt personalizado"
+            multiline
+            rows={15}
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            placeholder="Insira seu prompt personalizado aqui..."
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#666" },
+                "&:hover fieldset": { borderColor: "#9041c1" },
+                "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+              },
+              fontFamily: "monospace",
+            }}
+          />
+          
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              O texto do PDF será anexado ao final do prompt. Certifique-se de incluir uma referência a ele em suas instruções.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={handleResetPrompt} 
+            color="secondary"
+          >
+            Restaurar Padrão
+          </Button>
+          <Button 
+            onClick={handleCloseSettings} 
+            color="inherit"
+          >
+            Cancelar
+          </Button>
+          <Button 
+            onClick={handleSaveSettings} 
+            variant="contained"
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+            }}
+          >
+            Salvar Configurações
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
