@@ -394,7 +394,7 @@ const Classes = () => {
     }
   };
 
-  const handleVideoSelect = (video) => {
+  const handleVideoSelect = async (video) => {
     const videoIndex = videos.findIndex((v) => v.id === video.id);
 
     if (!userDetails?.userId && videoIndex > 1) {
@@ -412,15 +412,74 @@ const Classes = () => {
       }
     }
 
+    // Salvar progresso do vídeo atual antes de mudar
+    if (videoPlayerRef.current && currentVideoId) {
+      try {
+        if (typeof videoPlayerRef.current.pause === "function") {
+          videoPlayerRef.current.pause();
+        }
+
+        // Forçar salvamento do progresso atual
+        const currentVideo = videos.find((v) => v.id === currentVideoId);
+        if (currentVideo) {
+          const currentTime = videoPlayerRef.current.getCurrentTime
+            ? videoPlayerRef.current.getCurrentTime()
+            : 0;
+          const duration = videoPlayerRef.current.getDuration
+            ? videoPlayerRef.current.getDuration()
+            : 0;
+          if (currentTime && duration) {
+            await saveVideoProgress(currentTime, duration, true);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao salvar progresso do vídeo atual:", err);
+      }
+    }
+
+    // Importante: Recuperar os dados mais recentes do vídeo selecionado
+    // para garantir que tenhamos o progresso correto
+    let updatedVideoData = { ...video };
+
+    if (userDetails?.userId) {
+      try {
+        const progressRef = ref(
+          database,
+          `videoProgress/${userDetails.userId}/${courseId}/${video.id}`
+        );
+        const snapshot = await get(progressRef);
+        if (snapshot.exists()) {
+          const data = snapshot.val();
+          updatedVideoData = {
+            ...updatedVideoData,
+            watchedTime: data.watchedTimeInSeconds || 0,
+            progress: data.percentageWatched || 0,
+            watched: data.watched || false,
+          };
+        }
+      } catch (err) {
+        console.error("Erro ao buscar progresso atualizado:", err);
+      }
+    }
+
+    // Atualizar estado com os dados mais recentes
     setCurrentVideoId(video.id);
     setShowQuiz(false);
-    if (videoPlayerRef.current) {
-      videoPlayerRef.current.seekTo(video.watchedTime || 0);
-      videoPlayerRef.current.updateProgress(
-        video.progress || 0,
-        video.watchedTime || 0
-      );
-    }
+
+    // Pequeno delay para garantir que a referência do player está atualizada
+    setTimeout(() => {
+      if (videoPlayerRef.current) {
+        if (videoPlayerRef.current.seekTo) {
+          videoPlayerRef.current.seekTo(updatedVideoData.watchedTime || 0);
+        }
+        if (videoPlayerRef.current.updateProgress) {
+          videoPlayerRef.current.updateProgress(
+            updatedVideoData.progress || 0,
+            updatedVideoData.watchedTime || 0
+          );
+        }
+      }
+    }, 100);
   };
 
   const handleQuizStart = (quizId, videoId) => {

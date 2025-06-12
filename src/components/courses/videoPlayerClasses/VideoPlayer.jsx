@@ -98,14 +98,28 @@ const VideoPlayer = forwardRef(
 
     useEffect(() => {
       const fetchWatchData = async () => {
-        if (!video?.id || !video?.courseId || !userDetails?.userId) return;
+        if (!video?.id || !video?.courseId) return;
 
         try {
+          // Resetar completamente os estados quando o vídeo muda
+          setWatchTime(0);
+          setPercentageWatched(0);
+          hasNotifiedRef.current = false;
+
+          // Se não há usuário logado, podemos usar dados locais
+          if (!userDetails?.userId) {
+            setWatchTime(video.watchedTime || 0);
+            setPercentageWatched(video.progress || 0);
+            return;
+          }
+
+          // Buscar dados mais recentes do progresso deste vídeo
           const progressRef = databaseRef(
             database,
             `videoProgress/${userDetails.userId}/${video.courseId}/${video.id}`
           );
           const snapshot = await get(progressRef);
+
           if (snapshot.exists()) {
             const data = snapshot.val();
             setWatchTime(data.watchedTimeInSeconds || 0);
@@ -117,11 +131,21 @@ const VideoPlayer = forwardRef(
           }
         } catch (error) {
           console.error("Erro ao buscar tempo assistido:", error);
+          // Em caso de erro, usar dados fornecidos via props
+          setWatchTime(video.watchedTime || 0);
+          setPercentageWatched(video.progress || 0);
         }
       };
 
       fetchWatchData();
-    }, [video, userDetails]);
+
+      // Limpar estados quando o componente desmontar ou o vídeo mudar
+      return () => {
+        setWatchTime(0);
+        setPercentageWatched(0);
+        hasNotifiedRef.current = false;
+      };
+    }, [video?.id]); // Executar apenas quando o ID do vídeo mudar
 
     useEffect(() => {
       const styleSheet = document.createElement("style");
