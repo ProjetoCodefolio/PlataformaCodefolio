@@ -90,6 +90,15 @@ const CourseForm = () => {
         return;
       }
 
+      // Verificar se existem vídeos com URLs inválidas
+      try {
+        // Pré-validação dos vídeos (vai disparar erro se tiver URLs inválidas)
+        await courseVideosRef.current?.validateVideos();
+      } catch (error) {
+        toast.error(error.message);
+        return;
+      }
+
       const courseData = {
         title: courseTitle,
         description: courseDescription,
