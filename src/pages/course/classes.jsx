@@ -405,7 +405,7 @@ const Classes = () => {
     if (video.requiresPrevious && videoIndex > 0) {
       const previousVideo = videos[videoIndex - 1];
       if (
-        !previousVideo.watched ||
+        !previousVideo.watched |
         (previousVideo.quizId && !previousVideo.quizPassed)
       ) {
         return;

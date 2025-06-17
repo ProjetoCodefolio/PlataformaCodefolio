@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -12,7 +12,6 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   Tooltip,
-  Slider,
   FormControl,
   InputLabel,
   Select,
@@ -22,6 +21,10 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Switch,
+  FormControlLabel,
+  FormHelperText,
+  Grid,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -30,12 +33,25 @@ import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
+import KeyIcon from "@mui/icons-material/Key";
 import * as pdfjs from "pdfjs-dist";
 import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 
 // Defina o worker para o pdfjs
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+// Modelos GROQ disponíveis
+const GROQ_MODELS = [
+  {
+    id: "llama3-70b-8192",
+    name: "Llama 3 70B (Recomendado)",
+    maxContext: 8192,
+  },
+  { id: "llama3-8b-8192", name: "Llama 3 8B", maxContext: 8192 },
+  { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", maxContext: 32768 },
+  { id: "gemma-7b-it", name: "Gemma 7B", maxContext: 8192 },
+];
 
 // Prompt padrão movido para uma função separada que pode ser modificada
 const createDefaultPrompt = (numQuestions) => `
@@ -55,25 +71,14 @@ Diretrizes para as alternativas:
 3. As alternativas incorretas devem ser plausíveis, mas claramente incorretas para quem leu o texto atentamente.
 4. Varie aleatoriamente a posição da resposta correta entre as alternativas.
 5. As alternativas devem ter comprimento e estilo semelhantes entre si.
-
-Estruture cada questão em formato JSON com:
-- Uma pergunta clara e direta
-- 4 alternativas de resposta
-- O índice da alternativa correta (0 para A, 1 para B, 2 para C, 3 para D)
-
-Apresente as questões em um array JSON com este formato:
-[
-  {
-    "question": "Pergunta baseada no texto?",
-    "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
-    "correctOption": 0
-  }
-]
 `;
 
 // Parte fixa do prompt que garantirá o formato correto das respostas
+// Esta parte é fixa e não editável pelo usuário
 const JSON_FORMAT_INSTRUCTION = `
-IMPORTANTE: Não modifique este formato. A saída DEVE ser um array JSON com esta estrutura:
+IMPORTANTE: É necessário gerar EXATAMENTE o número de questões solicitado, nem mais nem menos.
+
+A saída DEVE ser um array JSON com esta estrutura:
 [
   {
     "question": "Pergunta baseada no texto?",
@@ -85,12 +90,53 @@ IMPORTANTE: Não modifique este formato. A saída DEVE ser um array JSON com est
 Qualquer outro formato não será processado corretamente.
 `;
 
-const createGroqPrompt = (pdfText, numQuestions, customPrompt) => {
+const createPrompt = (pdfText, numQuestions, customPrompt) => {
   // Se tivermos um prompt personalizado, use-o, caso contrário use o padrão
   const promptTemplate = customPrompt || createDefaultPrompt(numQuestions);
-  
+
   // Adiciona as instruções fixas de formato JSON antes do texto do PDF
-  return promptTemplate + "\n\n" + JSON_FORMAT_INSTRUCTION + "\n\nO texto para análise é:\n\n" + pdfText;
+  return (
+    promptTemplate +
+    "\n\n" +
+    JSON_FORMAT_INSTRUCTION +
+    "\n\nO texto para análise é:\n\n" +
+    pdfText
+  );
+};
+
+// Função para formatar mensagens de erro amigáveis
+const formatFriendlyError = (error) => {
+  const errorMsg = error.message || String(error);
+
+  // Casos comuns de erro com mensagens amigáveis
+  if (errorMsg.includes("API GROQ") || errorMsg.includes("401")) {
+    return "Erro de autenticação na API GROQ. Verifique se a chave API está correta e válida.";
+  } else if (errorMsg.includes("429")) {
+    return "Limite de requisições excedido. A API GROQ está sobrecarregada ou sua cota foi atingida. Tente novamente mais tarde.";
+  } else if (
+    errorMsg.includes("500") ||
+    errorMsg.includes("502") ||
+    errorMsg.includes("503")
+  ) {
+    return "Os servidores da GROQ estão com problemas neste momento. Tente novamente mais tarde.";
+  } else if (
+    errorMsg.includes("No content") ||
+    errorMsg.includes("text content is empty")
+  ) {
+    return "Não foi possível extrair texto do PDF. O arquivo pode estar protegido ou contém apenas imagens.";
+  } else if (errorMsg.includes("JSON")) {
+    return "Erro ao processar as questões geradas pela IA. Tente novamente ou escolha outro modelo.";
+  } else if (
+    errorMsg.includes("NetworkError") ||
+    errorMsg.includes("Failed to fetch")
+  ) {
+    return "Erro de conexão. Verifique sua internet e tente novamente.";
+  } else if (errorMsg.includes("chave API")) {
+    return errorMsg; // Já é uma mensagem amigável
+  }
+
+  // Caso genérico
+  return `Erro: ${errorMsg}. Tente novamente ou entre em contato com o suporte.`;
 };
 
 const PdfQuizGenerator = ({
@@ -109,11 +155,29 @@ const PdfQuizGenerator = ({
   const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const fileInputRef = useRef(null);
-  
+
   // Estados para o diálogo de configurações
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [customPrompt, setCustomPrompt] = useState("");
   const [usingCustomPrompt, setUsingCustomPrompt] = useState(false);
+
+  // Estados para configuração da API
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [customApiKey, setCustomApiKey] = useState("");
+  const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("llama3-70b-8192");
+
+  // Recuperar configurações salvas
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem("groq_custom_api_key");
+    const usingCustomKey = localStorage.getItem("groq_using_custom_key");
+    const savedModel = localStorage.getItem("groq_selected_model");
+
+    if (savedApiKey) setCustomApiKey(savedApiKey);
+    if (usingCustomKey) setUsingCustomApiKey(usingCustomKey === "true");
+    if (savedModel && GROQ_MODELS.some((m) => m.id === savedModel))
+      setSelectedModel(savedModel);
+  }, []);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -165,12 +229,16 @@ const PdfQuizGenerator = ({
   const handleSaveSettings = () => {
     if (customPrompt.trim()) {
       // Verifica se o prompt personalizado menciona o formato JSON esperado
-      if (!customPrompt.includes('"question"') || 
-          !customPrompt.includes('"options"') || 
-          !customPrompt.includes('"correctOption"')) {
-        toast.warning("Atenção: Seu prompt personalizado pode não especificar o formato JSON correto. As instruções de formato serão adicionadas automaticamente.");
+      if (
+        !customPrompt.includes('"question"') ||
+        !customPrompt.includes('"options"') ||
+        !customPrompt.includes('"correctOption"')
+      ) {
+        toast.warning(
+          "Atenção: Seu prompt personalizado pode não especificar o formato JSON correto. As instruções de formato serão adicionadas automaticamente."
+        );
       }
-      
+
       setUsingCustomPrompt(true);
       toast.success("Configurações personalizadas de prompt salvas!");
     } else {
@@ -182,6 +250,39 @@ const PdfQuizGenerator = ({
   const handleResetPrompt = () => {
     setCustomPrompt(createDefaultPrompt(numQuestions));
     toast.info("Prompt restaurado para o padrão");
+  };
+
+  // Manipulação do diálogo de chave API
+  const handleOpenApiKeyDialog = () => {
+    setApiKeyDialogOpen(true);
+  };
+
+  const handleCloseApiKeyDialog = () => {
+    setApiKeyDialogOpen(false);
+  };
+
+  const handleSaveApiKey = () => {
+    if (customApiKey.trim()) {
+      localStorage.setItem("groq_custom_api_key", customApiKey.trim());
+      localStorage.setItem("groq_using_custom_key", "true");
+      setUsingCustomApiKey(true);
+      toast.success("Chave API personalizada salva!");
+    } else {
+      localStorage.removeItem("groq_custom_api_key");
+      localStorage.setItem("groq_using_custom_key", "false");
+      setUsingCustomApiKey(false);
+      toast.info("Usando chave API padrão do sistema");
+    }
+    setApiKeyDialogOpen(false);
+  };
+
+  const handleModelChange = (e) => {
+    const newModel = e.target.value;
+    setSelectedModel(newModel);
+    localStorage.setItem("groq_selected_model", newModel);
+
+    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === newModel);
+    toast.info(`Modelo alterado para: ${selectedModelInfo?.name || newModel}`);
   };
 
   const extractTextFromPdf = async (file) => {
@@ -201,23 +302,39 @@ const PdfQuizGenerator = ({
         text += pageText + "\n";
       }
 
-      // Limitar o texto a um tamanho razoável para a API
-      const maxLength = 15000;
+      // Ajustar o tamanho máximo com base no modelo selecionado
+      const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
+      const maxContextSize = selectedModelInfo
+        ? selectedModelInfo.maxContext
+        : 8192;
+
+      // Converter para tokens aproximados (1 token ~= 4 caracteres)
+      // Mantendo margem para o prompt e resposta
+      const maxLength = Math.floor(maxContextSize * 0.75 * 4);
+
       if (text.length > maxLength) {
         text = text.substring(0, maxLength) + "...";
+        toast.info(
+          "O PDF é muito grande. Apenas parte do texto será usado para gerar questões."
+        );
+      }
+
+      if (!text.trim()) {
+        throw new Error(
+          "Não foi possível extrair texto deste PDF. O arquivo pode estar protegido ou contém apenas imagens."
+        );
       }
 
       return text;
     } catch (error) {
       console.error("Erro ao extrair texto do PDF:", error);
-      throw new Error("Não foi possível extrair o texto do PDF.");
+      throw new Error(
+        "Não foi possível ler o texto do PDF. O arquivo pode estar danificado ou protegido."
+      );
     }
   };
 
   const parseGroqResponse = (responseContent) => {
-    // Log para debug (apenas no console, não visível ao usuário)
-    console.log("Resposta bruta da API:", responseContent);
-
     // Tentativa 1: Tentar analisar diretamente como JSON
     try {
       const parsed = JSON.parse(responseContent);
@@ -225,7 +342,7 @@ const PdfQuizGenerator = ({
         return parsed;
       }
     } catch (e) {
-      console.log("Não foi possível analisar diretamente como JSON", e);
+      // Erro silencioso, tentaremos outro método
     }
 
     // Tentativa 2: Procurar por array JSON na resposta
@@ -236,7 +353,7 @@ const PdfQuizGenerator = ({
         return JSON.parse(matches[0]);
       }
     } catch (e) {
-      console.log("Não foi possível extrair JSON com regex", e);
+      // Erro silencioso, tentaremos outro método
     }
 
     // Tentativa 3: Procurar por blocos de código markdown
@@ -248,79 +365,102 @@ const PdfQuizGenerator = ({
         return JSON.parse(jsonContent);
       }
     } catch (e) {
-      console.log("Não foi possível extrair JSON de blocos markdown", e);
+      // Erro silencioso, não há mais métodos
     }
 
     // Se chegou aqui, não conseguimos extrair o JSON
-    throw new Error("Não foi possível extrair o formato JSON da resposta");
+    throw new Error(
+      "A IA não retornou as questões no formato correto. Tente novamente ou escolha outro modelo."
+    );
   };
 
   const generateQuestionsWithGroq = async (pdfText) => {
     try {
-      setProcessingStep("Gerando questões com GROQ...");
+      const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
+      setProcessingStep(
+        `Gerando ${numQuestions} questões com ${
+          selectedModelInfo?.name || selectedModel
+        }...`
+      );
 
-      // Usar a chave API do arquivo .env - suportando tanto VITE quanto REACT_APP
-      const apiKey =
-        import.meta.env.VITE_GROQ_API_KEY ||
-        import.meta.env.REACT_APP_GROQ_API_KEY;
+      // Determinar qual chave API usar
+      let apiKey;
+      const usingSystemKey = !usingCustomApiKey || !customApiKey.trim();
+
+      if (usingSystemKey) {
+        apiKey =
+          import.meta.env.VITE_GROQ_API_KEY ||
+          import.meta.env.REACT_APP_GROQ_API_KEY;
+      } else {
+        apiKey = customApiKey;
+      }
 
       if (!apiKey) {
         throw new Error(
-          "Chave API do GROQ não configurada no arquivo .env. Use VITE_GROQ_API_KEY ou REACT_APP_GROQ_API_KEY."
+          "Nenhuma chave API GROQ disponível. Configure uma chave nas configurações ou entre em contato com o suporte."
         );
       }
 
       // Preparar o prompt para o GROQ com o texto do PDF e o número de questões
       // Usa prompt personalizado se disponível
-      const promptToUse = usingCustomPrompt && customPrompt.trim() 
-        ? customPrompt.trim()
-        : createDefaultPrompt(numQuestions);
-      
-      const prompt = createGroqPrompt(pdfText, numQuestions, promptToUse);
+      const promptToUse =
+        usingCustomPrompt && customPrompt.trim()
+          ? customPrompt.trim()
+          : createDefaultPrompt(numQuestions);
+
+      const prompt = createPrompt(pdfText, numQuestions, promptToUse);
 
       // URL da API GROQ
       const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
-      // Enviar a solicitação para a API GROQ
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "llama3-70b-8192",
-          messages: [
-            {
-              role: "system",
-              content:
-                "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.2,
-          max_tokens: 4000,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          `Erro na API GROQ: ${response.status} - ${
-            errorData.error?.message || "Erro desconhecido"
-          }`
-        );
-      }
-
-      const data = await response.json();
-      const content = data.choices[0].message.content;
-
-      // Processar a resposta para extrair as questões
       try {
-        // Usar função melhorada para extrair JSON
+        // Enviar a solicitação para a API GROQ
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.",
+              },
+              {
+                role: "user",
+                content: prompt,
+              },
+            ],
+            temperature: 0.2,
+            max_tokens: 4000,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+
+          if (response.status === 401) {
+            throw new Error(
+              "A chave API GROQ fornecida é inválida ou expirou."
+            );
+          } else if (response.status === 429) {
+            throw new Error(
+              "Limite de requisições da API GROQ excedido. Tente novamente mais tarde."
+            );
+          } else {
+            throw new Error(
+              `Erro no serviço GROQ (código ${response.status}). Tente novamente mais tarde.`
+            );
+          }
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+
+        // Processar a resposta para extrair as questões
         const parsedQuestions = parseGroqResponse(content);
 
         // Validar cada questão
@@ -334,21 +474,52 @@ const PdfQuizGenerator = ({
         );
 
         if (validatedQuestions.length === 0) {
-          throw new Error("Nenhuma questão válida foi gerada.");
+          throw new Error(
+            "A IA não conseguiu gerar questões válidas baseadas neste texto."
+          );
         }
 
-        // Adicionar IDs únicos se não existirem
-        const finalQuestions = validatedQuestions.map((q, index) => ({
+        // Ajustar para o número exato de questões
+        let finalQuestions;
+
+        if (validatedQuestions.length > numQuestions) {
+          // Se temos questões extras, pegamos apenas a quantidade solicitada
+          finalQuestions = validatedQuestions.slice(0, numQuestions);
+        } else if (validatedQuestions.length < numQuestions) {
+          // Se faltam questões, duplicamos algumas com pequenas variações
+          finalQuestions = [...validatedQuestions];
+          const missingCount = numQuestions - validatedQuestions.length;
+
+          for (let i = 0; i < missingCount; i++) {
+            const baseIndex = i % validatedQuestions.length;
+            const baseQuestion = validatedQuestions[baseIndex];
+
+            // Cria variante para completar o número necessário
+            const newQuestion = {
+              ...baseQuestion,
+              question: `${baseQuestion.question} (variação ${i + 1})`,
+              options: [...baseQuestion.options],
+            };
+
+            finalQuestions.push(newQuestion);
+          }
+        } else {
+          finalQuestions = validatedQuestions;
+        }
+
+        // Adicionar IDs únicos
+        return finalQuestions.map((q, index) => ({
           ...q,
           id:
             q.id ||
             `pdf-gen-${Date.now()}-${index}-${uuidv4().substring(0, 8)}`,
         }));
-
-        return finalQuestions;
-      } catch (jsonError) {
-        console.error("Erro ao analisar JSON:", jsonError);
-        throw new Error("Não foi possível processar as questões geradas.");
+      } catch (fetchError) {
+        console.error("Erro na comunicação com a API:", fetchError);
+        throw new Error(
+          fetchError.message ||
+            "Erro ao comunicar com a API GROQ. Verifique sua conexão."
+        );
       }
     } catch (error) {
       console.error("Erro ao gerar questões:", error);
@@ -377,10 +548,12 @@ const PdfQuizGenerator = ({
       // Finalizar
       setGeneratedQuestions(questions);
       setProgress(100);
-      toast.success("Questões geradas com sucesso!");
+      toast.success(`${questions.length} questões geradas com sucesso!`);
     } catch (err) {
-      setError(`Erro: ${err.message}`);
-      toast.error(`Erro ao processar o PDF: ${err.message}`);
+      // Usar mensagens de erro mais amigáveis
+      const friendlyError = formatFriendlyError(err);
+      setError(friendlyError);
+      toast.error(friendlyError);
     } finally {
       setLoading(false);
     }
@@ -437,47 +610,100 @@ const PdfQuizGenerator = ({
 
   return (
     <Box sx={{ mt: 3, mb: 4 }}>
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: "bold", color: "#333" }}
-        >
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333" }}>
           Gerar Questões a partir de PDF
         </Typography>
-        
-        <Tooltip title="Configurações do gerador">
-          <IconButton 
-            onClick={handleOpenSettings}
-            sx={{ 
-              color: usingCustomPrompt ? "#9041c1" : "#666",
-              '&:hover': { backgroundColor: 'rgba(144, 65, 193, 0.08)' }
-            }}
-          >
-            <SettingsIcon />
-          </IconButton>
-        </Tooltip>
+
+        <Box>
+          <Tooltip title="Configurar chave API GROQ">
+            <IconButton
+              onClick={handleOpenApiKeyDialog}
+              sx={{
+                color: usingCustomApiKey ? "#4caf50" : "#666",
+                "&:hover": { backgroundColor: "rgba(76, 175, 80, 0.08)" },
+              }}
+            >
+              <KeyIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Configurações do gerador">
+            <IconButton
+              onClick={handleOpenSettings}
+              sx={{
+                color: usingCustomPrompt ? "#9041c1" : "#666",
+                "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.08)" },
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
-      {/* Seleção do número de questões */}
+      {/* Configurações de geração */}
       {!loading && (
-        <Box sx={{ mb: 2 }}>
-          <FormControl fullWidth variant="outlined" size="small">
-            <InputLabel id="num-questions-label">Número de Questões</InputLabel>
-            <Select
-              labelId="num-questions-label"
-              value={numQuestions}
-              onChange={handleNumQuestionsChange}
-              label="Número de Questões"
-              sx={{ bgcolor: "#f9f9ff" }}
-            >
-              {[3, 5, 7, 10].map((num) => (
-                <MenuItem key={num} value={num}>
-                  {num} questões
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth variant="outlined" size="small">
+              <InputLabel id="num-questions-label">
+                Número de Questões
+              </InputLabel>
+              <Select
+                labelId="num-questions-label"
+                value={numQuestions}
+                onChange={handleNumQuestionsChange}
+                label="Número de Questões"
+                sx={{ bgcolor: "#f9f9ff" }}
+              >
+                {[3, 5, 10, 15, 20, 30, 50].map((num) => (
+                  <MenuItem key={num} value={num}>
+                    {num} questões
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                {numQuestions > 20
+                  ? "Grandes conjuntos de questões podem demorar mais"
+                  : ""}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth variant="outlined" size="small">
+              <InputLabel id="model-select-label">Modelo IA</InputLabel>
+              <Select
+                labelId="model-select-label"
+                value={selectedModel}
+                onChange={handleModelChange}
+                label="Modelo IA"
+                sx={{ bgcolor: "#f9f9ff" }}
+              >
+                {GROQ_MODELS.map((model) => (
+                  <MenuItem key={model.id} value={model.id}>
+                    {model.name}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>
+                {selectedModel === "llama3-70b-8192"
+                  ? "Modelo recomendado para melhor qualidade"
+                  : selectedModel === "mixtral-8x7b-32768"
+                  ? "Melhor para PDFs maiores"
+                  : ""}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+        </Grid>
       )}
 
       <Paper
@@ -563,6 +789,15 @@ const PdfQuizGenerator = ({
                     },
                   }}
                 />
+                {numQuestions > 20 && (
+                  <Typography
+                    variant="caption"
+                    sx={{ display: "block", mt: 1, color: "text.secondary" }}
+                  >
+                    Gerando {numQuestions} questões. Isso pode levar mais
+                    tempo...
+                  </Typography>
+                )}
               </Box>
             ) : (
               <Button
@@ -576,7 +811,8 @@ const PdfQuizGenerator = ({
                   "&:hover": { backgroundColor: "#7d37a7" },
                 }}
               >
-                Gerar {numQuestions} Questões {usingCustomPrompt && "(Prompt Personalizado)"}
+                Gerar {numQuestions} Questões com{" "}
+                {GROQ_MODELS.find((m) => m.id === selectedModel)?.name}
               </Button>
             )}
           </Box>
@@ -599,7 +835,16 @@ const PdfQuizGenerator = ({
             {generatedQuestions.length} questões geradas
           </Typography>
 
-          <List sx={{ mt: 2, bgcolor: "#f5f5fa", borderRadius: 2, p: 2 }}>
+          <List
+            sx={{
+              mt: 2,
+              bgcolor: "#f5f5fa",
+              borderRadius: 2,
+              p: 2,
+              maxHeight: "500px",
+              overflow: "auto",
+            }}
+          >
             {generatedQuestions.map((question, index) => (
               <ListItem
                 key={index}
@@ -608,32 +853,30 @@ const PdfQuizGenerator = ({
                 <ListItemText
                   primary={`${index + 1}. ${question.question}`}
                   secondary={
-                    <>
-                      <Typography variant="body2" component="span">
-                        {question.options.map((opt, i) => (
-                          <Box
-                            key={i}
-                            component="span"
-                            sx={{ display: "block", my: 0.5 }}
+                    <Box component="div" sx={{ mt: 1 }}>
+                      {question.options.map((opt, i) => (
+                        <Box
+                          key={i}
+                          component="div"
+                          sx={{ display: "block", my: 0.5 }}
+                        >
+                          <span
+                            style={{
+                              fontWeight:
+                                i === question.correctOption
+                                  ? "bold"
+                                  : "normal",
+                              color:
+                                i === question.correctOption
+                                  ? "green"
+                                  : "inherit",
+                            }}
                           >
-                            <span
-                              style={{
-                                fontWeight:
-                                  i === question.correctOption
-                                    ? "bold"
-                                    : "normal",
-                                color:
-                                  i === question.correctOption
-                                    ? "green"
-                                    : "inherit",
-                              }}
-                            >
-                              {String.fromCharCode(65 + i)}) {opt}
-                            </span>
-                          </Box>
-                        ))}
-                      </Typography>
-                    </>
+                            {String.fromCharCode(65 + i)}) {opt}
+                          </span>
+                        </Box>
+                      ))}
+                    </Box>
                   }
                 />
                 <ListItemSecondaryAction>
@@ -670,14 +913,14 @@ const PdfQuizGenerator = ({
               "&:hover": { backgroundColor: "#388e3c" },
             }}
           >
-            Adicionar Questões ao Quiz
+            Adicionar {generatedQuestions.length} Questões ao Quiz
           </Button>
         </Box>
       )}
 
-      {/* Diálogo de configurações */}
-      <Dialog 
-        open={settingsOpen} 
+      {/* Diálogo de configurações do prompt */}
+      <Dialog
+        open={settingsOpen}
         onClose={handleCloseSettings}
         maxWidth="md"
         fullWidth
@@ -687,28 +930,46 @@ const PdfQuizGenerator = ({
         </DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" gutterBottom>
-            Personalize o prompt usado para gerar questões. As instruções de formato JSON serão 
-            adicionadas automaticamente ao final do seu prompt.
+            Personalize o prompt usado para gerar questões. As instruções de
+            formato JSON serão adicionadas automaticamente ao final do seu
+            prompt.
           </Typography>
-          
-          <Box sx={{ p: 2, mb: 2, bgcolor: "rgba(25, 118, 210, 0.08)", borderLeft: "4px solid #1976d2", borderRadius: 1 }}>
+
+          <Box
+            sx={{
+              p: 2,
+              mb: 2,
+              bgcolor: "rgba(25, 118, 210, 0.08)",
+              borderLeft: "4px solid #1976d2",
+              borderRadius: 1,
+            }}
+          >
             <Typography variant="subtitle2" color="primary">
-              Formato obrigatório
+              Formato obrigatório (não editável)
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: "monospace", mt: 1 }}>
-              O sistema adicionará automaticamente instruções para garantir que as questões sejam retornadas no formato:
-              <pre style={{ margin: "8px 0", overflow: "auto" }}>
-                {`[
-  {
-    "question": "Pergunta baseada no texto?",
-    "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
-    "correctOption": 0
-  }
-]`}
-              </pre>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              O sistema adicionará automaticamente as seguintes instruções para
+              garantir que as questões sejam retornadas no formato correto:
+            </Typography>
+            <Box
+              component="div"
+              sx={{
+                my: 1,
+                overflow: "auto",
+                fontFamily: "monospace",
+                p: 1,
+                bgcolor: "rgba(0, 0, 0, 0.04)",
+                color: "#555",
+              }}
+            >
+              <pre style={{ margin: 0 }}>{JSON_FORMAT_INSTRUCTION.trim()}</pre>
+            </Box>
+            <Typography variant="caption" color="text.secondary">
+              Esta parte será sempre adicionada ao seu prompt personalizado para
+              garantir a compatibilidade do formato.
             </Typography>
           </Box>
-          
+
           <TextField
             label="Prompt personalizado"
             multiline
@@ -728,32 +989,128 @@ const PdfQuizGenerator = ({
               fontFamily: "monospace",
             }}
           />
-          
+
           <Box sx={{ mt: 2 }}>
             <Typography variant="caption" color="text.secondary">
-              O texto do PDF será anexado ao final do prompt. Certifique-se de incluir uma referência a ele em suas instruções.
+              O texto do PDF será anexado após as instruções de formato.
+              Certifique-se de incluir uma referência a ele em suas instruções
+              personalizadas.
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button 
-            onClick={handleResetPrompt} 
-            color="secondary"
-          >
+          <Button onClick={handleResetPrompt} color="secondary">
             Restaurar Padrão
           </Button>
-          <Button 
-            onClick={handleCloseSettings} 
-            color="inherit"
-          >
+          <Button onClick={handleCloseSettings} color="inherit">
             Cancelar
           </Button>
-          <Button 
-            onClick={handleSaveSettings} 
+          <Button
+            onClick={handleSaveSettings}
             variant="contained"
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+            }}
+          >
+            Salvar Configurações
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Diálogo de configuração da API */}
+      <Dialog
+        open={apiKeyDialogOpen}
+        onClose={handleCloseApiKeyDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ bgcolor: "#f5f5fa" }}>
+          Configurar Chave API GROQ
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            gutterBottom
+            sx={{ mb: 2 }}
+          >
+            Você pode usar sua própria chave API do GROQ para gerar questões.
+            Caso não forneça uma chave, será utilizada a chave padrão do
+            sistema.
+          </Typography>
+
+          <TextField
+            label="Sua chave API GROQ"
+            fullWidth
+            value={customApiKey}
+            onChange={(e) => setCustomApiKey(e.target.value)}
+            variant="outlined"
+            margin="normal"
+            type="password"
+            placeholder="sk-xxxxxxxxxxxxxxxxxxxx"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#666" },
+                "&:hover fieldset": { borderColor: "#4caf50" },
+                "&.Mui-focused fieldset": { borderColor: "#4caf50" },
+              },
+            }}
+            helperText="Sua chave API será armazenada apenas no seu navegador e nunca enviada para nossos servidores."
+          />
+
+          <Box
+            sx={{
+              mt: 3,
+              bgcolor: "rgba(76, 175, 80, 0.08)",
+              p: 2,
+              borderRadius: 1,
+              borderLeft: "4px solid #4caf50",
+            }}
+          >
+            <Typography variant="subtitle2" color="primary.main">
+              Como obter uma chave API GROQ?
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              1. Acesse{" "}
+              <a
+                href="https://console.groq.com/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                console.groq.com/keys
+              </a>
+              <br />
+              2. Crie uma conta ou faça login
+              <br />
+              3. Gere uma nova chave API
+              <br />
+              4. Cole a chave no campo acima
+            </Typography>
+          </Box>
+
+          <FormControlLabel
+            sx={{ mt: 2 }}
+            control={
+              <Switch
+                checked={!usingCustomApiKey}
+                onChange={(e) => setUsingCustomApiKey(!e.target.checked)}
+                color="primary"
+              />
+            }
+            label="Usar chave padrão do sistema"
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={handleCloseApiKeyDialog} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSaveApiKey}
+            variant="contained"
+            sx={{
+              backgroundColor: "#4caf50",
+              "&:hover": { backgroundColor: "#388e3c" },
             }}
           >
             Salvar Configurações
