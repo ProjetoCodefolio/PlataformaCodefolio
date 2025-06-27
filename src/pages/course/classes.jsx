@@ -53,6 +53,7 @@ const Classes = () => {
   const [slideData, setSlideData] = useState(null);
   const [videoSlides, setVideoSlides] = useState({});
   const [hasNotifiedAboutProgress, setHasNotifiedAboutProgress] = useState({});
+  const [userAttempts, setUserAttempts] = useState({});
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -286,7 +287,7 @@ const Classes = () => {
         if (progressPercentage === 100) {
           setShowCompletionModal(true);
         }
-      } catch (error) {}
+      } catch (error) { }
     } else {
       if (progressPercentage === 100) {
         setShowCompletionModal(true);
@@ -381,39 +382,73 @@ const Classes = () => {
   };
 
   const handleQuizComplete = async (isPassed, action, videoId) => {
-    // Verifica se a ação é returnToVideo
-    if (action === "returnToVideo") {
-      setShowQuiz(false); // Isso vai mostrar o vídeo novamente
-      if (videoId) {
-        setCurrentVideoId(videoId);
-      }
-      return; // Retorna mais cedo para não executar o resto da função
-    }
-
-    // O código existente para quando o quiz é aprovado
-    if (isPassed) {
-      const updatedVideos = videos.map((v) =>
-        v.id === currentVideoId ? { ...v, quizPassed: true } : v
-      );
-      setVideos(updatedVideos);
-
-      if (!userDetails?.userId) {
-        sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
-        await updateCourseProgress(updatedVideos);
-      } else {
-        const progressRef = ref(
-          database,
-          `videoProgress/${userDetails.userId}/${courseId}/${currentVideoId}`
+    try {
+      // Primeiro verifica se passou no quiz e atualiza o progresso
+      if (isPassed) {
+        // Criar cópia atualizada dos vídeos
+        const updatedVideos = videos.map((v) =>
+          v.id === currentVideoId ? { ...v, quizPassed: true } : v
         );
-        await set(progressRef, {
-          watchedTimeInSeconds: currentVideo.watchedTime,
-          percentageWatched: currentVideo.progress,
-          watched: currentVideo.watched,
-          quizPassed: true,
-          lastUpdated: new Date().toISOString(),
-        });
-        await updateCourseProgress(updatedVideos);
+        
+        // Atualizar Firebase ANTES de atualizar estado local
+        if (userDetails?.userId) {
+          const progressRef = ref(
+            database,
+            `videoProgress/${userDetails.userId}/${courseId}/${currentVideoId}`
+          );
+          await set(progressRef, {
+            watchedTimeInSeconds: currentVideo.watchedTime,
+            percentageWatched: currentVideo.progress,
+            watched: currentVideo.watched,
+            quizPassed: true,
+            lastUpdated: new Date().toISOString(),
+          });
+          
+          // Buscar tentativas atualizadas depois de salvar no Firebase
+          const attempts = await fetchUserQuizAttempts(userDetails.userId, courseId);
+          setUserAttempts(attempts);
+        } else {
+          sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
+        }
+        
+        // Atualizar o estado local DEPOIS do Firebase
+        setVideos(updatedVideos);
+        
+        // Verificar progresso do curso imediatamente
+        const totalVideos = updatedVideos.length;
+        const completedVideos = updatedVideos.filter(
+          (v) => v.watched && (!v.quizId || v.quizPassed)
+        ).length;
+        const progressPercentage = (completedVideos / totalVideos) * 100;
+        
+        if (progressPercentage === 100) {
+          if (userDetails?.userId) {
+            const courseProgressRef = ref(
+              database,
+              `studentCourses/${userDetails.userId}/${courseId}`
+            );
+            await set(courseProgressRef, {
+              courseId,
+              progress: progressPercentage,
+              status: "completed",
+              lastUpdated: new Date().toISOString(),
+            });
+          }
+          
+          // Mostrar modal de conclusão somente depois de tudo estar salvo
+          setShowCompletionModal(true);
+        }
       }
+  
+      // Retornar ao vídeo depois de toda lógica concluída
+      if (action === "returnToVideo") {
+        setShowQuiz(false);
+        if (videoId) {
+          setCurrentVideoId(videoId);
+        }
+      }
+    } catch (error) {
+      console.error("Erro ao processar conclusão do quiz:", error);
     }
   };
 
@@ -560,7 +595,7 @@ const Classes = () => {
       } else {
         await handleQuizComplete(false);
       }
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const handleNextVideo = () => {
@@ -612,7 +647,7 @@ const Classes = () => {
         const quiz = await fetchQuizQuestions(currentVideo.quizId);
         setQuizData(quiz);
         setShowQuizGigi(true);
-      } catch (error) {}
+      } catch (error) { }
     } else {
     }
   };
@@ -729,6 +764,105 @@ const Classes = () => {
       fetchVideoData();
     }
   }, [courseId, userDetails?.userId]);
+
+  const fetchUserQuizAttempts = async (userId, courseId) => {
+    if (!userId || !courseId) {
+      return {};
+    }
+
+    try {
+      // Buscar dados de quizResults para o usuário específico e curso
+      const quizResultsRef = ref(database, `quizResults/${userId}/${courseId}`);
+      const quizResultsSnapshot = await get(quizResultsRef);
+
+      if (!quizResultsSnapshot.exists()) {
+        return {};
+      }
+
+      const quizResults = quizResultsSnapshot.val();
+      // const userAttempts = {};
+
+      console.log(quizResults)
+
+      // // Para cada quiz que o usuário já fez, obter o número de tentativas
+      // Object.entries(quizResults).forEach(([videoId, result]) => {
+      //   // O quizId no componente VideoList é formatado como `${courseId}/${videoId}`
+      //   const quizId = `${courseId}/${videoId}`;
+      //   userAttempts[quizId] = result.attemptCount || 1;
+      // });
+
+      // console.log("Tentativas de quiz do usuário:", userAttempts);
+      return quizResults;
+    } catch (error) {
+      console.error("Erro ao buscar tentativas de quiz do usuário:", error);
+      return {};
+    }
+  };
+
+  // Adicione este useEffect ou modifique um existente que carrega dados iniciais
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (userDetails?.userId && courseId) {
+        const attempts = await fetchUserQuizAttempts(userDetails.userId, courseId);
+        console.log(attempts)
+        setUserAttempts(attempts);
+      }
+    };
+
+    loadUserData();
+  }, [userDetails?.userId, courseId]);
+
+    // Adicione este useEffect logo após os outros useEffects no componente Classes
+  
+  // 1. useEffect para verificar a conclusão do curso sempre que o estado videos mudar
+  useEffect(() => {
+    const checkCourseCompletion = async () => {
+      if (!videos.length) return;
+      
+      const totalVideos = videos.length;
+      const completedVideos = videos.filter(
+        (v) => v.watched && (!v.quizId || v.quizPassed)
+      ).length;
+      
+      const progressPercentage = (completedVideos / totalVideos) * 100;
+      
+      if (progressPercentage === 100) {
+        if (userDetails?.userId) {
+          const courseProgressRef = ref(
+            database,
+            `studentCourses/${userDetails.userId}/${courseId}`
+          );
+          
+          await set(courseProgressRef, {
+            courseId,
+            progress: progressPercentage,
+            status: "completed",
+            lastUpdated: new Date().toISOString(),
+          });
+        }
+        
+        setShowCompletionModal(true);
+      }
+    };
+    
+    checkCourseCompletion();
+  }, [videos]);
+  
+  // 2. useEffect para atualizar o estado userAttempts quando um quiz é concluído
+  const [previousShowQuiz, setPreviousShowQuiz] = useState(showQuiz);
+  
+  useEffect(() => {
+    // Se o quiz estava sendo mostrado e agora não está mais, atualizar tentativas
+    if (previousShowQuiz && !showQuiz && userDetails?.userId && courseId) {
+      const updateUserAttempts = async () => {
+        const attempts = await fetchUserQuizAttempts(userDetails.userId, courseId);
+        setUserAttempts(attempts);
+      };
+      updateUserAttempts();
+    }
+    
+    setPreviousShowQuiz(showQuiz);
+  }, [showQuiz]);
 
   return (
     <>
@@ -935,6 +1069,7 @@ const Classes = () => {
                     setCurrentVideo={handleVideoSelect}
                     onQuizStart={handleQuizStart}
                     currentVideoId={currentVideoId}
+                    userQuizAttempts={userAttempts}
                   />
                 ) : (
                   <MaterialExtra courseId={courseId} />

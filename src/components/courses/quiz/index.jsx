@@ -102,9 +102,8 @@ const Quiz = ({
         quizMinPercentage
       );
 
-      const calculatedPercentage =
-        (result.earnedPoints / result.totalPoints) * 100;
-      const isPassed = calculatedPercentage >= quizMinPercentage;
+      const calculatedPercentage = (result.earnedPoints / result.totalPoints) * 100;
+      const isPassed = quizMinPercentage === 0 || calculatedPercentage >= quizMinPercentage;
 
       // Criar o objeto detailedAnswers para armazenar informações de cada pergunta
       const detailedAnswers = {};
@@ -188,8 +187,17 @@ const Quiz = ({
           attemptCount: attemptCount,
           detailedAnswers: detailedAnswers,
         });
-        // }
+        // }  
       }
+
+      // IMPORTANTE: Chamar automaticamente onComplete após um breve atraso 
+      // para garantir que o resultado seja exibido antes de voltar ao vídeo
+      setTimeout(() => {
+        if (typeof onComplete === "function") {
+          onComplete(isPassed, "nothing", currentVideoId);
+        }
+      }, 2000); // Espera 3 segundos antes de retornar ao vídeo
+
     } catch (error) {
       console.error("Erro ao processar quiz:", error);
       setQuizCompleted(false);
@@ -328,7 +336,7 @@ const Quiz = ({
                 ? "Parabéns, você passou!"
                 : `Você não atingiu a nota mínima de ${getRequiredCorrectAnswers()}`}
           </Typography>
-          <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+          {/* <Box sx={{ mb: { xs: 2, sm: 4 } }}>
             {questions.map((q) => {
               const userAnswer = result.userAnswers[q.id];
               const isCorrect = userAnswer === q.correctOption;
@@ -395,7 +403,7 @@ const Quiz = ({
                 </Box>
               );
             })}
-          </Box>
+          </Box> */}
           <Box
             sx={{
               display: "flex",

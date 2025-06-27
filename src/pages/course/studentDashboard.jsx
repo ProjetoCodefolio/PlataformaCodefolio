@@ -1,729 +1,740 @@
-  import React, { useEffect, useState } from "react";
-  import { useLocation, useNavigate } from "react-router-dom";
-  import {
-    Box,
-    Typography,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Button,
-    IconButton,
-    CircularProgress,
-    Divider,
-    Card,
-    CardContent,
-    Grid,
-    Avatar,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Stack,
-    TextField,
-    Tabs,
-    Tab,
-    Chip,
-  } from "@mui/material";
-  import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-  import SortIcon from "@mui/icons-material/Sort";
-  import { database } from "../../service/firebase";
-  import { ref, get } from "firebase/database";
-  import { useAuth } from "../../context/AuthContext";
-  import Topbar from "../../components/topbar/Topbar";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Button,
+  IconButton,
+  CircularProgress,
+  Divider,
+  Card,
+  CardContent,
+  Grid,
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  TextField,
+  Tabs,
+  Tab,
+  Chip,
+} from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import SortIcon from "@mui/icons-material/Sort";
+import { database } from "../../service/firebase";
+import { ref, get } from "firebase/database";
+import { useAuth } from "../../context/AuthContext";
+import Topbar from "../../components/topbar/Topbar";
 
-  const capitalizeWords = (name) => {
-    if (!name) return "Nome Indisponível";
-    return name
-      .split(" ")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
+const capitalizeWords = (name) => {
+  if (!name) return "Nome Indisponível";
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
 
-  const StudentDashboard = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const params = new URLSearchParams(location.search);
-    const quizId = params.get("quizId");
-    const { userDetails } = useAuth();
+const StudentDashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const params = new URLSearchParams(location.search);
+  const quizId = params.get("quizId");
+  const { userDetails } = useAuth();
 
-    const [quiz, setQuiz] = useState(null);
-    const [courseData, setCourseData] = useState(null);
-    const [videoData, setVideoData] = useState(null);
-    const [studentResults, setStudentResults] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [sortType, setSortType] = useState("name");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [activeTab, setActiveTab] = useState(0);
-    const [liveQuizResults, setLiveQuizResults] = useState({});
-    const [customQuizResults, setCustomQuizResults] = useState({});
+  const [quiz, setQuiz] = useState(null);
+  const [courseData, setCourseData] = useState(null);
+  const [videoData, setVideoData] = useState(null);
+  const [studentResults, setStudentResults] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sortType, setSortType] = useState("name");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState(0);
+  const [liveQuizResults, setLiveQuizResults] = useState({});
+  const [customQuizResults, setCustomQuizResults] = useState({});
+  const [expandedStudentId, setExpandedStudentId] = useState(null);
 
-    useEffect(() => {
-      document.body.style.backgroundColor = "#f9f9f9";
+  useEffect(() => {
+    document.body.style.backgroundColor = "#f9f9f9";
 
-      return () => {
-        document.body.style.backgroundColor = "";
-      };
-    }, []);
+    return () => {
+      document.body.style.backgroundColor = "";
+    };
+  }, []);
 
-    useEffect(() => {
-      const fetchQuizData = async () => {
-        if (!quizId) {
+  useEffect(() => {
+    const fetchQuizData = async () => {
+      if (!quizId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+
+        const coursesRef = ref(database, "courses");
+        const coursesSnapshot = await get(coursesRef);
+
+        if (!coursesSnapshot.exists()) {
           setLoading(false);
           return;
         }
 
-        try {
-          setLoading(true);
+        let foundQuiz = null;
+        let foundCourse = null;
+        let foundVideo = null;
 
-          const coursesRef = ref(database, "courses");
-          const coursesSnapshot = await get(coursesRef);
+        const quizzesPromises = [];
+        const courseIds = [];
 
-          if (!coursesSnapshot.exists()) {
-            setLoading(false);
-            return;
-          }
+        coursesSnapshot.forEach((courseSnapshot) => {
+          const courseId = courseSnapshot.key;
+          const quizRef = ref(database, `courseQuizzes/${courseId}/${quizId}`);
+          quizzesPromises.push(get(quizRef));
+          courseIds.push(courseId);
+        });
 
-          let foundQuiz = null;
-          let foundCourse = null;
-          let foundVideo = null;
+        const quizzesResults = await Promise.all(quizzesPromises);
 
-          const quizzesPromises = [];
-          const courseIds = [];
+        for (let i = 0; i < quizzesResults.length; i++) {
+          if (quizzesResults[i].exists()) {
+            foundQuiz = quizzesResults[i].val();
+            foundQuiz.videoId = quizId;
 
-          coursesSnapshot.forEach((courseSnapshot) => {
-            const courseId = courseSnapshot.key;
-            const quizRef = ref(database, `courseQuizzes/${courseId}/${quizId}`);
-            quizzesPromises.push(get(quizRef));
-            courseIds.push(courseId);
-          });
+            const courseRef = ref(database, `courses/${courseIds[i]}`);
+            const courseSnapshot = await get(courseRef);
 
-          const quizzesResults = await Promise.all(quizzesPromises);
+            if (courseSnapshot.exists()) {
+              foundCourse = courseSnapshot.val();
+              foundCourse.courseId = courseIds[i];
 
-          for (let i = 0; i < quizzesResults.length; i++) {
-            if (quizzesResults[i].exists()) {
-              foundQuiz = quizzesResults[i].val();
-              foundQuiz.videoId = quizId;
+              const videoRef = ref(
+                database,
+                `courseVideos/${courseIds[i]}/${quizId}`
+              );
+              const videoSnapshot = await get(videoRef);
 
-              const courseRef = ref(database, `courses/${courseIds[i]}`);
-              const courseSnapshot = await get(courseRef);
-
-              if (courseSnapshot.exists()) {
-                foundCourse = courseSnapshot.val();
-                foundCourse.courseId = courseIds[i];
-
-                const videoRef = ref(
-                  database,
-                  `courseVideos/${courseIds[i]}/${quizId}`
-                );
-                const videoSnapshot = await get(videoRef);
-
-                if (videoSnapshot.exists()) {
-                  foundVideo = videoSnapshot.val();
-                  foundVideo.id = quizId;
-                }
-
-                break;
+              if (videoSnapshot.exists()) {
+                foundVideo = videoSnapshot.val();
+                foundVideo.id = quizId;
               }
+
+              break;
             }
           }
-
-          if (foundQuiz && foundCourse) {
-            setQuiz(foundQuiz);
-            setCourseData(foundCourse);
-            setVideoData(foundVideo);
-          }
-
-          const liveQuizResultsRef = ref(
-            database,
-            `liveQuizResults/${foundCourse.courseId}/${quizId}`
-          );
-          const liveQuizResultsSnapshot = await get(liveQuizResultsRef);
-
-          const customQuizResultsRef = ref(
-            database,
-            `customQuizResults/${foundCourse.courseId}/${quizId}`
-          );
-          const customQuizResultsSnapshot = await get(customQuizResultsRef);
-
-          const liveQuizData = liveQuizResultsSnapshot.exists()
-            ? liveQuizResultsSnapshot.val()
-            : {};
-          const customQuizData = customQuizResultsSnapshot.exists()
-            ? customQuizResultsSnapshot.val()
-            : {};
-
-          setLiveQuizResults(liveQuizData);
-          setCustomQuizResults(customQuizData);
-
-          await fetchAllStudentResults(
-            foundCourse.courseId,
-            quizId,
-            foundQuiz,
-            liveQuizData,
-            customQuizData
-          );
-
-          setLoading(false);
-        } catch (error) {
-          console.error("Erro ao buscar dados do quiz:", error);
-          setLoading(false);
         }
-      };
 
-      const fetchAllStudentResults = async (
-        courseId,
-        videoId,
-        quizObj,
-        liveQuizData,
-        customQuizData
-      ) => {
-        try {
-          const results = await fetchStudentResults(courseId, videoId, quizObj);
-
-          const usersRef = ref(database, "users");
-          const usersSnapshot = await get(usersRef);
-          const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
-
-          const allStudentIds = new Set(results.map((student) => student.userId));
-
-          for (const userId in liveQuizData) {
-            if (!allStudentIds.has(userId)) {
-              const userData = usersData[userId] || {};
-
-              let userName = "Usuário Desconhecido";
-              if (userData.displayName) {
-                userName = userData.displayName;
-              } else if (userData.firstName) {
-                userName = `${userData.firstName} ${userData.lastName || ""}`;
-              } else if (userData.name) {
-                userName = userData.name;
-              } else if (userData.email) {
-                userName = userData.email.split("@")[0];
-              }
-
-              results.push({
-                userId,
-                name: userName.trim() || "Usuário " + userId.substring(0, 6),
-                email: userData.email || "Email não disponível",
-                photoURL: userData.photoURL || "",
-                score: 0,
-                correctAnswers: 0,
-                totalQuestions: quizObj.questions?.length || 0,
-                passed: false,
-                attemptCount: 0,
-                lastAttemptDate: "Não realizou o quiz",
-                onlyLiveQuiz: true,
-              });
-
-              allStudentIds.add(userId);
-            }
-          }
-
-          for (const userId in customQuizData) {
-            if (!allStudentIds.has(userId)) {
-              const userData = usersData[userId] || {};
-
-              let userName = "Usuário Desconhecido";
-              if (userData.displayName) {
-                userName = userData.displayName;
-              } else if (userData.firstName) {
-                userName = `${userData.firstName} ${userData.lastName || ""}`;
-              } else if (userData.name) {
-                userName = userData.name;
-              } else if (userData.email) {
-                userName = userData.email.split("@")[0];
-              }
-
-              results.push({
-                userId,
-                name: userName.trim() || "Usuário " + userId.substring(0, 6),
-                email: userData.email || "Email não disponível",
-                photoURL: userData.photoURL || "",
-                score: 0,
-                correctAnswers: 0,
-                totalQuestions: quizObj.questions?.length || 0,
-                passed: false,
-                attemptCount: 0,
-                lastAttemptDate: "Não realizou o quiz",
-                onlyCustomQuiz: true,
-              });
-            }
-          }
-
-          setStudentResults(results);
-        } catch (error) {
-          console.error("Erro ao buscar todos os resultados:", error);
-          setStudentResults([]);
+        if (foundQuiz && foundCourse) {
+          setQuiz(foundQuiz);
+          setCourseData(foundCourse);
+          setVideoData(foundVideo);
         }
-      };
 
-      const fetchStudentResults = async (courseId, videoId, quizObj) => {
-        try {
-          if (!quizObj) {
-            return [];
-          }
+        const liveQuizResultsRef = ref(
+          database,
+          `liveQuizResults/${foundCourse.courseId}/${quizId}`
+        );
+        const liveQuizResultsSnapshot = await get(liveQuizResultsRef);
 
-          const quizResultsRef = ref(database, "quizResults");
-          const quizResultsSnapshot = await get(quizResultsRef);
+        const customQuizResultsRef = ref(
+          database,
+          `customQuizResults/${foundCourse.courseId}/${quizId}`
+        );
+        const customQuizResultsSnapshot = await get(customQuizResultsRef);
 
-          if (!quizResultsSnapshot.exists()) {
-            return [];
-          }
+        const liveQuizData = liveQuizResultsSnapshot.exists()
+          ? liveQuizResultsSnapshot.val()
+          : {};
+        const customQuizData = customQuizResultsSnapshot.exists()
+          ? customQuizResultsSnapshot.val()
+          : {};
 
-          const usersRef = ref(database, "users");
-          const usersSnapshot = await get(usersRef);
-          const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
+        setLiveQuizResults(liveQuizData);
+        setCustomQuizResults(customQuizData);
 
-          const results = [];
-          const studentsData = quizResultsSnapshot.val();
+        await fetchAllStudentResults(
+          foundCourse.courseId,
+          quizId,
+          foundQuiz,
+          liveQuizData,
+          customQuizData
+        );
 
-          for (const userId in studentsData) {
-            if (
-              studentsData[userId] &&
-              studentsData[userId][courseId] &&
-              studentsData[userId][courseId][videoId]
-            ) {
-              const quizResult = studentsData[userId][courseId][videoId];
-              const userData = usersData[userId] || {};
+        setLoading(false);
+      } catch (error) {
+        console.error("Erro ao buscar dados do quiz:", error);
+        setLoading(false);
+      }
+    };
 
-              let userName = "Usuário Desconhecido";
-              if (userData.displayName) {
-                userName = userData.displayName;
-              } else if (userData.firstName) {
-                userName = `${userData.firstName} ${userData.lastName || ""}`;
-              } else if (userData.name) {
-                userName = userData.name;
-              } else if (userData.email) {
-                userName = userData.email.split("@")[0];
-              }
+    const fetchAllStudentResults = async (
+      courseId,
+      videoId,
+      quizObj,
+      liveQuizData,
+      customQuizData
+    ) => {
+      try {
+        const results = await fetchStudentResults(courseId, videoId, quizObj);
 
-              let correctAnswers = 0;
-              const totalQuestionsInQuiz = quizObj.questions?.length || 0;
+        const usersRef = ref(database, "users");
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
 
-              const scorePercentage =
-                quizResult.scorePercentage || quizResult.score || 0;
+        const allStudentIds = new Set(results.map((student) => student.userId));
 
-              if (quizResult.correctAnswers !== undefined) {
-                correctAnswers = quizResult.correctAnswers;
-              } else if (scorePercentage !== undefined) {
-                correctAnswers = Math.round(
-                  (scorePercentage / 100) * totalQuestionsInQuiz
-                );
-              }
+        for (const userId in liveQuizData) {
+          if (!allStudentIds.has(userId)) {
+            const userData = usersData[userId] || {};
 
-              const minPercentage = quizObj.minPercentage;
-              const isPassed =
-                quizResult.passed !== undefined
-                  ? quizResult.passed
-                  : quizResult.isPassed !== undefined
-                  ? quizResult.isPassed
-                  : scorePercentage >= minPercentage;
-
-              let lastAttemptDate = "Data não disponível";
-              if (quizResult.submittedAt) {
-                try {
-                  lastAttemptDate = new Date(
-                    quizResult.submittedAt
-                  ).toLocaleDateString("pt-BR");
-                } catch (e) {}
-              } else if (quizResult.timestamp) {
-                lastAttemptDate = new Date(
-                  quizResult.timestamp
-                ).toLocaleDateString("pt-BR");
-              } else if (quizResult.lastAttempt) {
-                lastAttemptDate = new Date(
-                  quizResult.lastAttempt
-                ).toLocaleDateString("pt-BR");
-              } else if (quizResult.updatedAt) {
-                lastAttemptDate = new Date(
-                  quizResult.updatedAt
-                ).toLocaleDateString("pt-BR");
-              }
-
-              let lastAttemptTime = "";
-              try {
-                if (quizResult.submittedAt) {
-                  const date = new Date(quizResult.submittedAt);
-                  lastAttemptTime = date.toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
-                }
-              } catch (e) {}
-
-              if (lastAttemptDate !== "Data não disponível" && lastAttemptTime) {
-                lastAttemptDate = `${lastAttemptDate} às ${lastAttemptTime}`;
-              }
-
-              results.push({
-                userId,
-                name: userName.trim() || "Usuário " + userId.substring(0, 6),
-                email: userData.email || "Email não disponível",
-                photoURL: userData.photoURL || "",
-                score: scorePercentage,
-                correctAnswers,
-                totalQuestions: totalQuestionsInQuiz,
-                passed: isPassed,
-                attemptCount: quizResult.attemptCount || "#",
-                lastAttemptDate: lastAttemptDate,
-              });
+            let userName = "Usuário Desconhecido";
+            if (userData.displayName) {
+              userName = userData.displayName;
+            } else if (userData.firstName) {
+              userName = `${userData.firstName} ${userData.lastName || ""}`;
+            } else if (userData.name) {
+              userName = userData.name;
+            } else if (userData.email) {
+              userName = userData.email.split("@")[0];
             }
-          }
 
-          return results;
-        } catch (error) {
-          console.error("Erro ao buscar resultados de estudantes:", error);
+            results.push({
+              userId,
+              name: userName.trim() || "Usuário " + userId.substring(0, 6),
+              email: userData.email || "Email não disponível",
+              photoURL: userData.photoURL || "",
+              score: 0,
+              correctAnswers: 0,
+              totalQuestions: quizObj.questions?.length || 0,
+              passed: false,
+              attemptCount: 0,
+              lastAttemptDate: "Não realizou o quiz",
+              onlyLiveQuiz: true,
+            });
+
+            allStudentIds.add(userId);
+          }
+        }
+
+        for (const userId in customQuizData) {
+          if (!allStudentIds.has(userId)) {
+            const userData = usersData[userId] || {};
+
+            let userName = "Usuário Desconhecido";
+            if (userData.displayName) {
+              userName = userData.displayName;
+            } else if (userData.firstName) {
+              userName = `${userData.firstName} ${userData.lastName || ""}`;
+            } else if (userData.name) {
+              userName = userData.name;
+            } else if (userData.email) {
+              userName = userData.email.split("@")[0];
+            }
+
+            results.push({
+              userId,
+              name: userName.trim() || "Usuário " + userId.substring(0, 6),
+              email: userData.email || "Email não disponível",
+              photoURL: userData.photoURL || "",
+              score: 0,
+              correctAnswers: 0,
+              totalQuestions: quizObj.questions?.length || 0,
+              passed: false,
+              attemptCount: 0,
+              lastAttemptDate: "Não realizou o quiz",
+              onlyCustomQuiz: true,
+            });
+          }
+        }
+
+        setStudentResults(results);
+      } catch (error) {
+        console.error("Erro ao buscar todos os resultados:", error);
+        setStudentResults([]);
+      }
+    };
+
+    const fetchStudentResults = async (courseId, videoId, quizObj) => {
+      try {
+        if (!quizObj) {
           return [];
         }
-      };
 
-      fetchQuizData();
-    }, [quizId]);
+        const quizResultsRef = ref(database, "quizResults");
+        const quizResultsSnapshot = await get(quizResultsRef);
 
-    const handleGoBack = () => {
-      navigate(-1);
-    };
+        console.log("Quiz Results Snapshot:", quizResultsSnapshot.val());
 
-    const getSortedResults = () => {
-      if (!studentResults.length) return [];
+        if (!quizResultsSnapshot.exists()) {
+          return [];
+        }
 
-      let results = [...studentResults];
+        const usersRef = ref(database, "users");
+        const usersSnapshot = await get(usersRef);
+        const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
 
-      if (searchTerm.trim() !== "") {
-        const normalizedSearchTerm = searchTerm.toLowerCase().trim();
-        results = results.filter(
-          (student) =>
-            student.name.toLowerCase().includes(normalizedSearchTerm) ||
-            student.email.toLowerCase().includes(normalizedSearchTerm)
-        );
+        const results = [];
+        const studentsData = quizResultsSnapshot.val();
+
+        for (const userId in studentsData) {
+          if (
+            studentsData[userId] &&
+            studentsData[userId][courseId] &&
+            studentsData[userId][courseId][videoId]
+          ) {
+            const quizResult = studentsData[userId][courseId][videoId];
+            const userData = usersData[userId] || {};
+
+            let userName = "Usuário Desconhecido";
+            if (userData.displayName) {
+              userName = userData.displayName;
+            } else if (userData.firstName) {
+              userName = `${userData.firstName} ${userData.lastName || ""}`;
+            } else if (userData.name) {
+              userName = userData.name;
+            } else if (userData.email) {
+              userName = userData.email.split("@")[0];
+            }
+
+            let correctAnswers = 0;
+            const totalQuestionsInQuiz = quizObj.questions?.length || 0;
+
+            const scorePercentage =
+              quizResult.scorePercentage || quizResult.score || 0;
+
+            if (quizResult.correctAnswers !== undefined) {
+              correctAnswers = quizResult.correctAnswers;
+            } else if (scorePercentage !== undefined) {
+              correctAnswers = Math.round(
+                (scorePercentage / 100) * totalQuestionsInQuiz
+              );
+            }
+
+            const minPercentage = quizObj.minPercentage;
+            const isPassed =
+              quizResult.passed !== undefined
+                ? quizResult.passed
+                : quizResult.isPassed !== undefined
+                ? quizResult.isPassed
+                : scorePercentage >= minPercentage;
+
+            let lastAttemptDate = "Data não disponível";
+            if (quizResult.submittedAt) {
+              try {
+                lastAttemptDate = new Date(
+                  quizResult.submittedAt
+                ).toLocaleDateString("pt-BR");
+              } catch (e) {}
+            } else if (quizResult.timestamp) {
+              lastAttemptDate = new Date(
+                quizResult.timestamp
+              ).toLocaleDateString("pt-BR");
+            } else if (quizResult.lastAttempt) {
+              lastAttemptDate = new Date(
+                quizResult.lastAttempt
+              ).toLocaleDateString("pt-BR");
+            } else if (quizResult.updatedAt) {
+              lastAttemptDate = new Date(
+                quizResult.updatedAt
+              ).toLocaleDateString("pt-BR");
+            }
+
+            let lastAttemptTime = "";
+            try {
+              if (quizResult.submittedAt) {
+                const date = new Date(quizResult.submittedAt);
+                lastAttemptTime = date.toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+              }
+            } catch (e) {}
+
+            if (lastAttemptDate !== "Data não disponível" && lastAttemptTime) {
+              lastAttemptDate = `${lastAttemptDate} às ${lastAttemptTime}`;
+            }
+
+            results.push({
+              userId,
+              name: userName.trim() || "Usuário " + userId.substring(0, 6),
+              email: userData.email || "Email não disponível",
+              photoURL: userData.photoURL || "",
+              score: scorePercentage,
+              correctAnswers,
+              totalQuestions: totalQuestionsInQuiz,
+              passed: isPassed,
+              attemptCount: quizResult.attemptCount || "#",
+              lastAttemptDate: lastAttemptDate,
+              detailedAnswers: quizResult.detailedAnswers || null,
+            });
+          }
+        }
+
+        return results;
+      } catch (error) {
+        console.error("Erro ao buscar resultados de estudantes:", error);
+        return [];
       }
-
-      switch (sortType) {
-        case "name":
-          return results.sort((a, b) => a.name.localeCompare(b.name));
-        case "score-high":
-          return results.sort((a, b) => b.score - a.score);
-        case "score-low":
-          return results.sort((a, b) => a.score - b.score);
-        case "date-recent":
-          return results.sort((a, b) => {
-            const getDateFromString = (dateStr) => {
-              if (dateStr === "Data não disponível") return new Date(0);
-              const datePart = dateStr.split(" às")[0];
-              const [day, month, year] = datePart.split("/");
-              return new Date(`${year}-${month}-${day}`);
-            };
-
-            return (
-              getDateFromString(b.lastAttemptDate) -
-              getDateFromString(a.lastAttemptDate)
-            );
-          });
-        case "date-old":
-          return results.sort((a, b) => {
-            const getDateFromString = (dateStr) => {
-              if (dateStr === "Data não disponível") return new Date(0);
-              const datePart = dateStr.split(" às")[0];
-              const [day, month, year] = datePart.split("/");
-              return new Date(`${year}-${month}-${day}`);
-            };
-
-            return (
-              getDateFromString(a.lastAttemptDate) -
-              getDateFromString(b.lastAttemptDate)
-            );
-          });
-        default:
-          return results;
-      }
     };
 
-    const handleSortChange = (event) => {
-      setSortType(event.target.value);
-    };
+    fetchQuizData();
+  }, [quizId]);
 
-    const handleSearch = (searchTerm) => {
-      setSearchTerm(searchTerm);
-    };
+  const handleGoBack = () => {
+    navigate(-1);
+  };
 
-    const handleTabChange = (event, newValue) => {
-      setActiveTab(newValue);
-    };
+  const getSortedResults = () => {
+    if (!studentResults.length) return [];
 
-    if (loading) {
-      return (
-        <>
-          <Topbar hideSearch={true} />
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "calc(100vh - 64px)",
-              flexDirection: "column",
-              gap: 2,
-              backgroundColor: "#f9f9f9",
-            }}
-          >
-            <CircularProgress sx={{ color: "#9041c1" }} />
-            <Typography variant="h6">Carregando dados do quiz...</Typography>
-          </Box>
-        </>
+    let results = [...studentResults];
+
+    if (searchTerm.trim() !== "") {
+      const normalizedSearchTerm = searchTerm.toLowerCase().trim();
+      results = results.filter(
+        (student) =>
+          student.name.toLowerCase().includes(normalizedSearchTerm) ||
+          student.email.toLowerCase().includes(normalizedSearchTerm)
       );
     }
 
-    if (!quiz || !courseData) {
-      return (
-        <>
-          <Topbar hideSearch={true} />
-          <Box
-            sx={{
-              p: 3,
-              maxWidth: 1200,
-              margin: "0 auto",
-              mt: 5,
-              textAlign: "center",
-              backgroundColor: "#f9f9f9",
-            }}
-          >
-            <Paper sx={{ p: 3, borderRadius: 2 }}>
-              <Typography variant="h5" color="error">
-                Quiz não encontrado
-              </Typography>
-              <Typography variant="body1" sx={{ mt: 2 }}>
-                Não foi possível encontrar dados para o quiz especificado.
-              </Typography>
-              <Button
-                startIcon={<ArrowBackIcon />}
-                variant="contained"
-                onClick={handleGoBack}
-                sx={{
-                  mt: 3,
-                  backgroundColor: "#9041c1",
-                  "&:hover": { backgroundColor: "#7d37a7" },
-                }}
-              >
-                Voltar
-              </Button>
-            </Paper>
-          </Box>
-        </>
-      );
-    }
+    switch (sortType) {
+      case "name":
+        return results.sort((a, b) => a.name.localeCompare(b.name));
+      case "score-high":
+        return results.sort((a, b) => b.score - a.score);
+      case "score-low":
+        return results.sort((a, b) => a.score - b.score);
+      case "date-recent":
+        return results.sort((a, b) => {
+          const getDateFromString = (dateStr) => {
+            if (dateStr === "Data não disponível") return new Date(0);
+            const datePart = dateStr.split(" às")[0];
+            const [day, month, year] = datePart.split("/");
+            return new Date(`${year}-${month}-${day}`);
+          };
 
+          return (
+            getDateFromString(b.lastAttemptDate) -
+            getDateFromString(a.lastAttemptDate)
+          );
+        });
+      case "date-old":
+        return results.sort((a, b) => {
+          const getDateFromString = (dateStr) => {
+            if (dateStr === "Data não disponível") return new Date(0);
+            const datePart = dateStr.split(" às")[0];
+            const [day, month, year] = datePart.split("/");
+            return new Date(`${year}-${month}-${day}`);
+          };
+
+          return (
+            getDateFromString(a.lastAttemptDate) -
+            getDateFromString(b.lastAttemptDate)
+          );
+        });
+      default:
+        return results;
+    }
+  };
+
+  const handleSortChange = (event) => {
+    setSortType(event.target.value);
+  };
+
+  const handleSearch = (searchTerm) => {
+    setSearchTerm(searchTerm);
+  };
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
+
+  const handleExpandStudent = (studentId) => {
+    setExpandedStudentId(expandedStudentId === studentId ? null : studentId);
+  };
+
+  if (loading) {
     return (
       <>
         <Topbar hideSearch={true} />
         <Box
           sx={{
-            p: { xs: 2, sm: 3 },
-            maxWidth: 1200,
-            margin: "0 auto",
-            mt: { xs: 2, sm: 5 },
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "calc(100vh - 64px)",
+            flexDirection: "column",
+            gap: 2,
             backgroundColor: "#f9f9f9",
-            minHeight: "calc(100vh - 64px)",
           }}
         >
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, mb: 3 }}>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <IconButton onClick={handleGoBack} sx={{ mr: 1, color: "#9041c1" }}>
-                <ArrowBackIcon />
-              </IconButton>
-              <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-                Dashboard de Estudantes
-              </Typography>
-            </Box>
+          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Typography variant="h6">Carregando dados do quiz...</Typography>
+        </Box>
+      </>
+    );
+  }
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <Card sx={{ height: "100%", borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
-                    >
-                      Informações do Curso
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Curso:</strong> {courseData.title}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Descrição:</strong>{" "}
-                      {courseData.description || "Sem descrição"}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Card sx={{ height: "100%", borderRadius: 2 }}>
-                  <CardContent>
-                    <Typography
-                      variant="h6"
-                      sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
-                    >
-                      Informações do Quiz
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Vídeo:</strong>{" "}
-                      {videoData?.title || "Video não encontrado"}
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Nota Mínima:</strong> {quiz.minPercentage || 0}%
-                    </Typography>
-                    <Typography variant="body1">
-                      <strong>Total de Questões:</strong>{" "}
-                      {quiz.questions?.length || 0}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            </Grid>
+  if (!quiz || !courseData) {
+    return (
+      <>
+        <Topbar hideSearch={true} />
+        <Box
+          sx={{
+            p: 3,
+            maxWidth: 1200,
+            margin: "0 auto",
+            mt: 5,
+            textAlign: "center",
+            backgroundColor: "#f9f9f9",
+          }}
+        >
+          <Paper sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="h5" color="error">
+              Quiz não encontrado
+            </Typography>
+            <Typography variant="body1" sx={{ mt: 2 }}>
+              Não foi possível encontrar dados para o quiz especificado.
+            </Typography>
+            <Button
+              startIcon={<ArrowBackIcon />}
+              variant="contained"
+              onClick={handleGoBack}
+              sx={{
+                mt: 3,
+                backgroundColor: "#9041c1",
+                "&:hover": { backgroundColor: "#7d37a7" },
+              }}
+            >
+              Voltar
+            </Button>
           </Paper>
+        </Box>
+      </>
+    );
+  }
 
-          <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+  return (
+    <>
+      <Topbar hideSearch={true} />
+      <Box
+        sx={{
+          p: { xs: 2, sm: 3 },
+          maxWidth: 1200,
+          margin: "0 auto",
+          mt: { xs: 2, sm: 5 },
+          backgroundColor: "#f9f9f9",
+          minHeight: "calc(100vh - 64px)",
+        }}
+      >
+        <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, mb: 3 }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <IconButton onClick={handleGoBack} sx={{ mr: 1, color: "#9041c1" }}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+              Dashboard de Estudantes
+            </Typography>
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Card sx={{ height: "100%", borderRadius: 2 }}>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                  >
+                    Informações do Curso
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Curso:</strong> {courseData.title}
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Descrição:</strong>{" "}
+                    {courseData.description || "Sem descrição"}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <Card sx={{ height: "100%", borderRadius: 2 }}>
+                <CardContent>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                  >
+                    Informações do Quiz
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Vídeo:</strong>{" "}
+                    {videoData?.title || "Video não encontrado"}
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Nota Mínima:</strong> {quiz.minPercentage || 0}%
+                  </Typography>
+                  <Typography variant="body1">
+                    <strong>Total de Questões:</strong>{" "}
+                    {quiz.questions?.length || 0}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "center",
+              width: "100%",
+              mb: 3,
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              indicatorColor="secondary"
+              textColor="secondary"
+              sx={{
+                ".MuiTabs-indicator": {
+                  backgroundColor: "#9041c1",
+                },
+                ".MuiTab-root.Mui-selected": {
+                  color: "#9041c1",
+                  fontWeight: "bold",
+                },
+              }}
+            >
+              <Tab label="Quiz" />
+              <Tab label="Live Quiz" />
+              <Tab label="Custom Quiz" />
+            </Tabs>
+          </Box>
+
+          <Box
+            sx={{
+              mb: 3,
+            }}
+          >
             <Box
               sx={{
                 display: "flex",
-                justifyContent: "center",
-                width: "100%",
-                mb: 3,
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
               }}
             >
-              <Tabs
-                value={activeTab}
-                onChange={handleTabChange}
-                indicatorColor="secondary"
-                textColor="secondary"
-                sx={{
-                  ".MuiTabs-indicator": {
-                    backgroundColor: "#9041c1",
-                  },
-                  ".MuiTab-root.Mui-selected": {
-                    color: "#9041c1",
-                    fontWeight: "bold",
-                  },
-                }}
+              <Typography
+                variant="h5"
+                sx={{ fontWeight: "bold", color: "#333" }}
               >
-                <Tab label="Quiz" />
-                <Tab label="Live Quiz" />
-                <Tab label="Custom Quiz" />
-              </Tabs>
-            </Box>
+                Resultados dos Estudantes
+              </Typography>
 
-            <Box
-              sx={{
-                mb: 3,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 2,
-                }}
-              >
-                <Typography
-                  variant="h5"
-                  sx={{ fontWeight: "bold", color: "#333" }}
+              <Stack direction="row" spacing={2} alignItems="center">
+                <SortIcon sx={{ color: "#9041c1" }} />
+                <FormControl
+                  variant="outlined"
+                  size="small"
+                  sx={{ minWidth: 200 }}
                 >
-                  Resultados dos Estudantes
-                </Typography>
-
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <SortIcon sx={{ color: "#9041c1" }} />
-                  <FormControl
-                    variant="outlined"
-                    size="small"
-                    sx={{ minWidth: 200 }}
+                  <InputLabel id="sort-select-label">Ordenar por</InputLabel>
+                  <Select
+                    labelId="sort-select-label"
+                    id="sort-select"
+                    value={sortType}
+                    onChange={handleSortChange}
+                    label="Ordenar por"
+                    sx={{
+                      borderRadius: 2,
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#9041c1",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#7d37a7",
+                      },
+                      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#9041c1",
+                      },
+                    }}
                   >
-                    <InputLabel id="sort-select-label">Ordenar por</InputLabel>
-                    <Select
-                      labelId="sort-select-label"
-                      id="sort-select"
-                      value={sortType}
-                      onChange={handleSortChange}
-                      label="Ordenar por"
-                      sx={{
-                        borderRadius: 2,
-                        "& .MuiOutlinedInput-notchedOutline": {
-                          borderColor: "#9041c1",
-                        },
-                        "&:hover .MuiOutlinedInput-notchedOutline": {
-                          borderColor: "#7d37a7",
-                        },
-                        "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                          borderColor: "#9041c1",
-                        },
-                      }}
-                    >
-                      <MenuItem value="name">Nome (A-Z)</MenuItem>
-                      <MenuItem value="score-high">Nota (Maior-Menor)</MenuItem>
-                      <MenuItem value="score-low">Nota (Menor-Maior)</MenuItem>
-                      <MenuItem value="date-recent">
-                        Data (Recente-Antiga)
-                      </MenuItem>
-                      <MenuItem value="date-old">Data (Antiga-Recente)</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Stack>
-              </Box>
-
-              <TextField
-                fullWidth
-                variant="outlined"
-                size="small"
-                placeholder="Buscar estudante por nome ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                sx={{
-                  mb: 2,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    "& fieldset": { borderColor: "#9041c1" },
-                    "&:hover fieldset": { borderColor: "#7d37a7" },
-                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
-                  },
-                }}
-              />
+                    <MenuItem value="name">Nome (A-Z)</MenuItem>
+                    <MenuItem value="score-high">Nota (Maior-Menor)</MenuItem>
+                    <MenuItem value="score-low">Nota (Menor-Maior)</MenuItem>
+                    <MenuItem value="date-recent">
+                      Data (Recente-Antiga)
+                    </MenuItem>
+                    <MenuItem value="date-old">Data (Antiga-Recente)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Stack>
             </Box>
 
-            {activeTab === 0 && (
-              <>
-                {studentResults.length > 0 ? (
-                  <TableContainer>
-                    <Table sx={{ minWidth: 650 }}>
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Estudante
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Nota</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Status
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Tentativas
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Última Tentativa
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos Totais (Geral)
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {getSortedResults().map((student) => (
+            <TextField
+              fullWidth
+              variant="outlined"
+              size="small"
+              placeholder="Buscar estudante por nome ou email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{
+                mb: 2,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  "& fieldset": { borderColor: "#9041c1" },
+                  "&:hover fieldset": { borderColor: "#7d37a7" },
+                  "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                },
+              }}
+            />
+          </Box>
+
+          {activeTab === 0 && (
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Nota</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Status
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Tentativas
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Última Tentativa
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Geral)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => (
+                        <>
                           <TableRow key={student.userId} hover>
                             <TableCell>
                               <Box
@@ -733,6 +744,16 @@
                                   gap: 2,
                                 }}
                               >
+                                <IconButton 
+                                  onClick={() => handleExpandStudent(student.userId)}
+                                  size="small"
+                                  sx={{ color: "black" }}
+                                >
+                                  {expandedStudentId === student.userId ? 
+                                    <KeyboardArrowDownIcon /> : 
+                                    <KeyboardArrowRightIcon />
+                                  }
+                                </IconButton>
                                 <Avatar
                                   src={student.photoURL}
                                   alt={student.name}
@@ -844,368 +865,454 @@
                                     ?.correctAnswers || 0)}
                               </Typography>
                             </TableCell>
+                          </TableRow>  
+                          {expandedStudentId === student.userId && (
+                            <TableRow>
+                              <TableCell colSpan={8}>
+                                <Paper elevation={0} sx={{ p: 2, bgcolor: "#f9f9fa", borderRadius: 2 }}>
+                                  <Typography variant="h6" sx={{ mb: 2, color: "#9041c1", fontWeight: "bold" }}>
+                                    Respostas detalhadas de {capitalizeWords(student.name)}
+                                  </Typography>
+                                  
+                                  {/* Verificamos se existem respostas detalhadas */}
+                                  {student.detailedAnswers ? (
+                                    <Box>
+                                      {Object.entries(student.detailedAnswers).map(([questionId, detail], index) => (
+                                        <Box 
+                                          key={questionId} 
+                                          sx={{ 
+                                            mb: 2, 
+                                            p: 1.5, 
+                                            bgcolor: "white", 
+                                            borderRadius: 1,
+                                            border: "1px solid #e0e0e0" 
+                                          }}
+                                        >
+                                          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                            {index + 1}. {detail.question}
+                                          </Typography>
+                                          
+                                          <Box sx={{ mt: 1, display: "flex", flexDirection: "column", gap: 1.5 }}>
+                                            <Box
+                                              sx={{
+                                                p: 1.5,
+                                                borderRadius: 1,
+                                                backgroundColor: detail.isCorrect ? "rgba(76, 175, 80, 0.15)" : "rgba(211, 47, 47, 0.12)",
+                                                border: `1px solid ${detail.isCorrect ? "rgba(76, 175, 80, 0.5)" : "rgba(211, 47, 47, 0.5)"}`,
+                                              }}
+                                            >
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  fontWeight: 500,
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  gap: 0.5,
+                                                  color: detail.isCorrect ? "#2e7d32" : "#c62828",
+                                                }}
+                                              >
+                                                {detail.isCorrect ? "✓" : "✗"} Resposta do aluno: <Box component="span" sx={{ fontWeight: 600 }}>{detail.userAnswerText}</Box>
+                                              </Typography>
+                                            </Box>
+                                            
+                                            {!detail.isCorrect && (
+                                              <Box
+                                                sx={{
+                                                  p: 1.5,
+                                                  borderRadius: 1,
+                                                  backgroundColor: "rgba(76, 175, 80, 0.12)",
+                                                  border: "1px solid rgba(76, 175, 80, 0.5)",
+                                                }}
+                                              >
+                                                <Typography
+                                                  variant="body2"
+                                                  sx={{
+                                                    fontWeight: 500,
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: 0.5,
+                                                    color: "#2e7d32",
+                                                  }}
+                                                >
+                                                  ✓ Resposta correta: <Box component="span" sx={{ fontWeight: 600 }}>{detail.correctOptionText}</Box>
+                                                </Typography>
+                                              </Box>
+                                            )}
+                                          </Box>
+                                        </Box>
+                                      ))}
+                                    </Box>
+                                  ) : (
+                                    <Typography variant="body1" color="text.secondary">
+                                      Nenhuma resposta detalhada disponível para este estudante.
+                                    </Typography>
+                                  )}
+                                </Paper>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante realizou este quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+
+          {activeTab === 1 && (
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Vezes Sorteado
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Taxa de Acerto
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Live + Custom)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => {
+                        const studentLiveData =
+                          liveQuizResults[student.userId] || {};
+
+                        const correctAnswers =
+                          studentLiveData.correctAnswers || 0;
+                        const wrongAnswers = studentLiveData.wrongAnswers || 0;
+                        const totalAnswered = correctAnswers + wrongAnswers;
+                        const successRate =
+                          totalAnswered > 0
+                            ? Math.round((correctAnswers / totalAnswered) * 100)
+                            : 0;
+
+                        const totalCorrectAnswers =
+                          (liveQuizResults[student.userId]?.correctAnswers ||
+                            0) +
+                          (customQuizResults[student.userId]?.correctAnswers ||
+                            0);
+
+                        return (
+                          <TableRow key={student.userId} hover>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
+                                }}
+                              >
+                                <Avatar
+                                  src={student.photoURL}
+                                  alt={student.name}
+                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    backgroundColor: "#9041c1",
+                                    color: "white",
+                                    fontWeight: "bold",
+                                  }}
+                                >
+                                  {student.name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{student.email}</TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "medium" }}
+                              >
+                                {correctAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "medium" }}
+                              >
+                                {wrongAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "bold",
+                                  color:
+                                    studentLiveData.timesDraw > 0
+                                      ? "#ff9800"
+                                      : "inherit",
+                                }}
+                              >
+                                {studentLiveData.timesDraw || 0}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: "medium",
+                                    color:
+                                      successRate > 50 ? "#2e7d32" : "#c62828",
+                                  }}
+                                >
+                                  {successRate}%
+                                </Typography>
+                                <Box
+                                  sx={{
+                                    ml: 1,
+                                    width: 50,
+                                    backgroundColor: "rgba(0,0,0,0.1)",
+                                    height: 6,
+                                    borderRadius: 3,
+                                    position: "relative",
+                                    overflow: "hidden",
+                                  }}
+                                >
+                                  <Box
+                                    sx={{
+                                      position: "absolute",
+                                      top: 0,
+                                      left: 0,
+                                      height: "100%",
+                                      width: `${successRate}%`,
+                                      backgroundColor:
+                                        successRate > 50
+                                          ? "#2e7d32"
+                                          : "#c62828",
+                                    }}
+                                  />
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                              >
+                                {totalCorrectAnswers}
+                              </Typography>
+                            </TableCell>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 4 }}>
-                    <Typography variant="h6" color="textSecondary">
-                      Nenhum estudante realizou este quiz ainda
-                    </Typography>
-                  </Box>
-                )}
-              </>
-            )}
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante participou de Live Quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
 
-            {activeTab === 1 && (
-              <>
-                {studentResults.length > 0 ? (
-                  <TableContainer>
-                    <Table sx={{ minWidth: 650 }}>
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Estudante
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Vezes Sorteado
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Taxa de Acerto
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos Totais (Live + Custom)
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {getSortedResults().map((student) => {
-                          const studentLiveData =
-                            liveQuizResults[student.userId] || {};
+          {activeTab === 2 && (
+            <>
+              {studentResults.length > 0 ? (
+                <TableContainer>
+                  <Table sx={{ minWidth: 650 }}>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Estudante
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Vezes Sorteado
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Taxa de Acerto
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>
+                          Acertos Totais (Live + Custom)
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {getSortedResults().map((student) => {
+                        const studentCustomData =
+                          customQuizResults[student.userId] || {};
 
-                          const correctAnswers =
-                            studentLiveData.correctAnswers || 0;
-                          const wrongAnswers = studentLiveData.wrongAnswers || 0;
-                          const totalAnswered = correctAnswers + wrongAnswers;
-                          const successRate =
-                            totalAnswered > 0
-                              ? Math.round((correctAnswers / totalAnswered) * 100)
-                              : 0;
+                        const correctAnswers =
+                          studentCustomData.correctAnswers || 0;
+                        const wrongAnswers =
+                          studentCustomData.wrongAnswers || 0;
+                        const totalAnswered = correctAnswers + wrongAnswers;
+                        const successRate =
+                          totalAnswered > 0
+                            ? Math.round((correctAnswers / totalAnswered) * 100)
+                            : 0;
 
-                          const totalCorrectAnswers =
-                            (liveQuizResults[student.userId]?.correctAnswers ||
-                              0) +
-                            (customQuizResults[student.userId]?.correctAnswers ||
-                              0);
+                        const totalCorrectAnswers =
+                          (liveQuizResults[student.userId]?.correctAnswers ||
+                            0) +
+                          (customQuizResults[student.userId]?.correctAnswers ||
+                            0);
 
-                          return (
-                            <TableRow key={student.userId} hover>
-                              <TableCell>
-                                <Box
+                        return (
+                          <TableRow key={student.userId} hover>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 2,
+                                }}
+                              >
+                                <Avatar
+                                  src={student.photoURL}
+                                  alt={student.name}
                                   sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 2,
-                                  }}
-                                >
-                                  <Avatar
-                                    src={student.photoURL}
-                                    alt={student.name}
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      backgroundColor: "#9041c1",
-                                      color: "white",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    {student.name.charAt(0).toUpperCase()}
-                                  </Avatar>
-                                  <Typography variant="body1">
-                                    {capitalizeWords(student.name)}
-                                  </Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell>{student.email}</TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{ fontWeight: "medium" }}
-                                >
-                                  {correctAnswers}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{ fontWeight: "medium" }}
-                                >
-                                  {wrongAnswers}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{
+                                    width: 40,
+                                    height: 40,
+                                    backgroundColor: "#9041c1",
+                                    color: "white",
                                     fontWeight: "bold",
-                                    color:
-                                      studentLiveData.timesDraw > 0
-                                        ? "#ff9800"
-                                        : "inherit",
                                   }}
                                 >
-                                  {studentLiveData.timesDraw || 0}
+                                  {student.name.charAt(0).toUpperCase()}
+                                </Avatar>
+                                <Typography variant="body1">
+                                  {capitalizeWords(student.name)}
                                 </Typography>
-                              </TableCell>
-                              <TableCell>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{student.email}</TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#2e7d32",
+                                }}
+                              >
+                                {correctAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "medium",
+                                  color: "#c62828",
+                                }}
+                              >
+                                {wrongAnswers}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{
+                                  fontWeight: "bold",
+                                  color:
+                                    studentCustomData.timesDraw > 0
+                                      ? "#ff9800"
+                                      : "inherit",
+                                }}
+                              >
+                                {studentCustomData.timesDraw || 0}
+                              </Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                }}
+                              >
+                                <Typography variant="body1">
+                                  {successRate}%
+                                </Typography>
                                 <Box
                                   sx={{
-                                    display: "flex",
-                                    alignItems: "center",
+                                    width: 60,
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: "#f0f0f0",
+                                    overflow: "hidden",
                                   }}
                                 >
-                                  <Typography
-                                    variant="body1"
-                                    sx={{
-                                      fontWeight: "medium",
-                                      color:
-                                        successRate > 50 ? "#2e7d32" : "#c62828",
-                                    }}
-                                  >
-                                    {successRate}%
-                                  </Typography>
                                   <Box
                                     sx={{
-                                      ml: 1,
-                                      width: 50,
-                                      backgroundColor: "rgba(0,0,0,0.1)",
-                                      height: 6,
-                                      borderRadius: 3,
-                                      position: "relative",
-                                      overflow: "hidden",
+                                      height: "100%",
+                                      width: `${successRate}%`,
+                                      backgroundColor:
+                                        successRate >= 80
+                                          ? "#2e7d32"
+                                          : successRate >= 50
+                                          ? "#ff9800"
+                                          : "#c62828",
                                     }}
-                                  >
-                                    <Box
-                                      sx={{
-                                        position: "absolute",
-                                        top: 0,
-                                        left: 0,
-                                        height: "100%",
-                                        width: `${successRate}%`,
-                                        backgroundColor:
-                                          successRate > 50
-                                            ? "#2e7d32"
-                                            : "#c62828",
-                                      }}
-                                    />
-                                  </Box>
+                                  />
                                 </Box>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{ fontWeight: "bold", color: "#2e7d32" }}
-                                >
-                                  {totalCorrectAnswers}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 4 }}>
-                    <Typography variant="h6" color="textSecondary">
-                      Nenhum estudante participou de Live Quiz ainda
-                    </Typography>
-                  </Box>
-                )}
-              </>
-            )}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                              >
+                                {totalCorrectAnswers}
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" color="textSecondary">
+                    Nenhum estudante participou de Custom Quiz ainda
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+        </Paper>
+      </Box>
+    </>
+  );
+};
 
-            {activeTab === 2 && (
-              <>
-                {studentResults.length > 0 ? (
-                  <TableContainer>
-                    <Table sx={{ minWidth: 650 }}>
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Estudante
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Erros</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Vezes Sorteado
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Taxa de Acerto
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>
-                            Acertos Totais (Live + Custom)
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {getSortedResults().map((student) => {
-                          const studentCustomData =
-                            customQuizResults[student.userId] || {};
-
-                          const correctAnswers =
-                            studentCustomData.correctAnswers || 0;
-                          const wrongAnswers =
-                            studentCustomData.wrongAnswers || 0;
-                          const totalAnswered = correctAnswers + wrongAnswers;
-                          const successRate =
-                            totalAnswered > 0
-                              ? Math.round((correctAnswers / totalAnswered) * 100)
-                              : 0;
-
-                          const totalCorrectAnswers =
-                            (liveQuizResults[student.userId]?.correctAnswers ||
-                              0) +
-                            (customQuizResults[student.userId]?.correctAnswers ||
-                              0);
-
-                          return (
-                            <TableRow key={student.userId} hover>
-                              <TableCell>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 2,
-                                  }}
-                                >
-                                  <Avatar
-                                    src={student.photoURL}
-                                    alt={student.name}
-                                    sx={{
-                                      width: 40,
-                                      height: 40,
-                                      backgroundColor: "#9041c1",
-                                      color: "white",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    {student.name.charAt(0).toUpperCase()}
-                                  </Avatar>
-                                  <Typography variant="body1">
-                                    {capitalizeWords(student.name)}
-                                  </Typography>
-                                </Box>
-                              </TableCell>
-                              <TableCell>{student.email}</TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{
-                                    fontWeight: "medium",
-                                    color: "#2e7d32",
-                                  }}
-                                >
-                                  {correctAnswers}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{
-                                    fontWeight: "medium",
-                                    color: "#c62828",
-                                  }}
-                                >
-                                  {wrongAnswers}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{
-                                    fontWeight: "bold",
-                                    color:
-                                      studentCustomData.timesDraw > 0
-                                        ? "#ff9800"
-                                        : "inherit",
-                                  }}
-                                >
-                                  {studentCustomData.timesDraw || 0}
-                                </Typography>
-                              </TableCell>
-                              <TableCell>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 1,
-                                  }}
-                                >
-                                  <Typography variant="body1">
-                                    {successRate}%
-                                  </Typography>
-                                  <Box
-                                    sx={{
-                                      width: 60,
-                                      height: 8,
-                                      borderRadius: 4,
-                                      backgroundColor: "#f0f0f0",
-                                      overflow: "hidden",
-                                    }}
-                                  >
-                                    <Box
-                                      sx={{
-                                        height: "100%",
-                                        width: `${successRate}%`,
-                                        backgroundColor:
-                                          successRate >= 80
-                                            ? "#2e7d32"
-                                            : successRate >= 50
-                                            ? "#ff9800"
-                                            : "#c62828",
-                                      }}
-                                    />
-                                  </Box>
-                                </Box>
-                              </TableCell>
-                              <TableCell>
-                                <Typography
-                                  variant="body1"
-                                  sx={{ fontWeight: "bold", color: "#2e7d32" }}
-                                >
-                                  {totalCorrectAnswers}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                ) : (
-                  <Box sx={{ textAlign: "center", py: 4 }}>
-                    <Typography variant="h6" color="textSecondary">
-                      Nenhum estudante participou de Custom Quiz ainda
-                    </Typography>
-                  </Box>
-                )}
-              </>
-            )}
-          </Paper>
-        </Box>
-      </>
-    );
-  };
-
-  export default StudentDashboard;
+export default StudentDashboard;

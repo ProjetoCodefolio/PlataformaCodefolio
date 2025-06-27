@@ -21,6 +21,8 @@ const VideoList = ({
   setCurrentVideo,
   onQuizStart,
   currentVideoId,
+  userQuizAttempts = {}, // Novo parâmetro para controlar tentativas
+  maxAttempts = 1, // Número máximo de tentativas permitidas
 }) => {
   const handleLockedClick = (video, previousVideo) => {
     if (previousVideo) {
@@ -47,6 +49,37 @@ const VideoList = ({
     setCurrentVideo(video);
   };
 
+  console.log(userQuizAttempts)
+
+    // Função para verificar se o usuário atingiu o limite de tentativas
+  const hasReachedAttemptLimit = (quizId) => {
+    // Verificar se userQuizAttempts existe antes de acessar a propriedade
+    if (!userQuizAttempts) return false;
+    
+    // Extrair apenas o videoId do quizId completo (formato: courseId/videoId)
+    const videoId = quizId.split('/')[1];
+    
+    // Verificar se o videoId existe em userQuizAttempts
+    // E se o usuário já alcançou o número máximo de tentativas
+    return Object.keys(userQuizAttempts).some(key => {
+      // Verificar se a chave é exatamente igual ao videoId
+      if (key === videoId) return true;
+      
+      // Verificar se o quiz está na parte final da chave (caso seja armazenado como courseId/videoId)
+      if (key.endsWith(`/${videoId}`)) return true;
+      
+      return false;
+    });
+  };
+
+  // Função para exibir mensagem quando tentar refazer quiz após limite de tentativas
+  const handleMaxAttemptsReached = () => {
+    toast.info(`Você já atingiu o limite de ${maxAttempts} tentativas para este quiz.`, {
+      position: "bottom-center",
+      autoClose: 5000,
+    });
+  };
+
   return (
     <Box>
       {videos.map((video, index) => {
@@ -60,6 +93,8 @@ const VideoList = ({
           video.watched && (!video.quizId || video.quizPassed);
         const isCurrent = video.id === currentVideoId;
         const isQuizLocked = !video.watched;
+        const quizAttemptsExhausted = video.quizId && hasReachedAttemptLimit(video.quizId);
+        console.log(quizAttemptsExhausted)
 
         return (
           <Card
@@ -230,16 +265,19 @@ const VideoList = ({
                   ))}
 
                 {video.quizId && video.quizPassed && !isLocked && (
-                  <Tooltip title="Refazer Quiz">
-                    <IconButton
-                      onClick={() => onQuizStart(video.quizId, video.id)}
-                      sx={{
-                        color: "#9041c1",
-                        "&:hover": { color: "#7d37a7" },
-                      }}
-                    >
-                      <ReplayIcon sx={{ fontSize: { xs: 24 } }} />
-                    </IconButton>
+                  <Tooltip title={quizAttemptsExhausted ? "Limite de tentativas atingido" : "Refazer Quiz"}>
+                    <span>
+                      <IconButton
+                        onClick={quizAttemptsExhausted ? handleMaxAttemptsReached : () => onQuizStart(video.quizId, video.id)}
+                        sx={{
+                          color: quizAttemptsExhausted ? "#bdbdbd" : "#9041c1",
+                          "&:hover": { color: quizAttemptsExhausted ? "#bdbdbd" : "#7d37a7" },
+                        }}
+                        disabled={quizAttemptsExhausted}
+                      >
+                        <ReplayIcon sx={{ fontSize: { xs: 24 } }} />
+                      </IconButton>
+                    </span>
                   </Tooltip>
                 )}
               </Box>
@@ -356,15 +394,15 @@ const VideoList = ({
                 {video.quizId && video.quizPassed && !isLocked && (
                   <Button
                     variant="outlined"
-                    onClick={() => onQuizStart(video.quizId, video.id)}
+                    onClick={quizAttemptsExhausted ? handleMaxAttemptsReached : () => onQuizStart(video.quizId, video.id)}
                     startIcon={
                       <ReplayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                     }
                     sx={{
-                      borderColor: "#9041c1",
-                      color: "#9041c1",
+                      borderColor: quizAttemptsExhausted ? "#bdbdbd" : "#9041c1",
+                      color: quizAttemptsExhausted ? "#bdbdbd" : "#9041c1",
                       borderRadius: "12px",
-                      "&:hover": { borderColor: "#7d37a7", color: "#7d37a7" },
+                      "&:hover": { borderColor: quizAttemptsExhausted ? "#bdbdbd" : "#7d37a7", color: quizAttemptsExhausted ? "#bdbdbd" : "#7d37a7" },
                       textTransform: "none",
                       fontWeight: 500,
                       fontSize: "0.875rem",
@@ -373,8 +411,9 @@ const VideoList = ({
                       width: "100%",
                       minHeight: "45px",
                     }}
+                    disabled={quizAttemptsExhausted}
                   >
-                    Refazer Quiz
+                    {quizAttemptsExhausted ? "Limite Atingido" : "Refazer Quiz"}
                   </Button>
                 )}
               </Box>
