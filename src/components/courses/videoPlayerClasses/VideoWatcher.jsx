@@ -40,75 +40,43 @@ function VideoWatcher({
   const progressInterval = useRef(null);
   const [lastSavedPercentage, setLastSavedPercentage] =
     useState(percentageWatched);
-  const hasNotified90Percent = useRef(false);
-  const videoCompletedRef = useRef(false);
-  const lastTimeRef = useRef(watchTime);
-  const lastSaved10PercentageRef = useRef(
-    Math.floor(percentageWatched / 10) * 10
-  );
-  const currentVideoIdRef = useRef(videoId);
 
-  // CORREÇÃO 1: Inicializar corretamente o estado quando o componente monta
+  // Usar objetos para armazenar os estados por vídeo
+  // Isso é crucial para manter estados separados por vídeo
+  const videoStates = useRef({});
+
+  // Inicializar estado para o vídeo atual se ainda não existir
+  if (!videoStates.current[videoId]) {
+    videoStates.current[videoId] = {
+      hasNotified90Percent: percentageWatched >= 90,
+      videoCompleted: percentageWatched >= 100,
+      lastTime: watchTime || 0,
+      lastSaved10Percentage: Math.floor(percentageWatched / 10) * 10,
+    };
+
+    console.log(
+      `[VideoWatcher] Inicializando estado para o vídeo ${videoId}:`,
+      {
+        percentageWatched,
+        watchTime,
+        completed: percentageWatched >= 100,
+      }
+    );
+  }
+
+  // Obter o estado específico do vídeo atual
+  const videoState = videoStates.current[videoId];
+
+  // Limpar intervalo quando o componente é desmontado ou o vídeo muda
   useEffect(() => {
-    // Definir o estado inicial corretamente
-    videoCompletedRef.current = percentageWatched >= 100;
-    hasNotified90Percent.current = percentageWatched >= 90;
-    lastTimeRef.current = watchTime;
-    lastSaved10PercentageRef.current = Math.floor(percentageWatched / 10) * 10;
-    setLastSavedPercentage(percentageWatched);
-    currentVideoIdRef.current = videoId;
-
-    // Limpar na desmontagem
     return () => {
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
         progressInterval.current = null;
       }
     };
-  }, []); // Executar apenas uma vez na montagem
+  }, [videoId]);
 
-  // CORREÇÃO 2: Redefinir explicitamente todos os estados quando o videoId muda
-  useEffect(() => {
-    // Verificação crítica: se o ID do vídeo mudou, redefina explicitamente videoCompletedRef
-    if (currentVideoIdRef.current !== videoId) {
-      console.log(
-        `Vídeo mudou de ${currentVideoIdRef.current} para ${videoId}`
-      );
-
-      // CORREÇÃO PRINCIPAL: Forçar videoCompletedRef.current = false para o novo vídeo
-      // a menos que o novo vídeo já tenha percentageWatched >= 100
-      videoCompletedRef.current = false;
-
-      // Limpar o intervalo existente
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-      }
-
-      // Resetar todos os estados para o novo vídeo
-      hasNotified90Percent.current = percentageWatched >= 90;
-
-      // Definir videoCompletedRef apenas se o novo vídeo realmente tiver 100%
-      // Esta é a correção principal
-      if (percentageWatched >= 100) {
-        videoCompletedRef.current = true;
-      } else {
-        videoCompletedRef.current = false; // Garantir que seja false para o novo vídeo
-      }
-
-      lastTimeRef.current = watchTime;
-      lastSaved10PercentageRef.current =
-        Math.floor(percentageWatched / 10) * 10;
-      setLastSavedPercentage(percentageWatched);
-      currentVideoIdRef.current = videoId;
-
-      console.log(
-        `Estado inicial para vídeo ${videoId}: completado=${videoCompletedRef.current}, percentageWatched=${percentageWatched}`
-      );
-    }
-  }, [videoId]); // Dependência apenas do videoId para garantir que seja executado quando o vídeo mudar
-
-  // CORREÇÃO 3: updateProgressUI melhorado para verificação mais robusta
   const updateProgressUI = () => {
     if (!player) return;
 
@@ -120,10 +88,10 @@ function VideoWatcher({
       if (duration <= 0) return;
 
       // Verificar se houve um seek significativo
-      const timeDifference = Math.abs(currentTime - lastTimeRef.current);
+      const timeDifference = Math.abs(currentTime - videoState.lastTime);
       const isSeek = timeDifference > 2; // Um seek é detectado se a diferença for maior que 2 segundos
 
-      lastTimeRef.current = currentTime;
+      videoState.lastTime = currentTime;
 
       // Considera como 100% se estiver a menos de 2 segundos do final ou se a % for >= 99.5%
       const isNearEnd =
@@ -140,20 +108,20 @@ function VideoWatcher({
 
       // Verificar se ultrapassamos um marco de 10%
       const current10Percentage = Math.floor(newPercentage / 10) * 10;
-      if (current10Percentage > lastSaved10PercentageRef.current) {
+      if (current10Percentage > videoState.lastSaved10Percentage) {
         // Salvar explicitamente no banco pois atingimos um novo marco de 10%
         saveProgress(currentTime, duration);
-        lastSaved10PercentageRef.current = current10Percentage;
+        videoState.lastSaved10Percentage = current10Percentage;
       }
 
       // Se for um seek ou estiver próximo do final, podemos verificar conclusão
-      if ((isSeek || isNearEnd) && currentVideoIdRef.current === videoId) {
-        if (newPercentage >= 100 && !videoCompletedRef.current) {
+      if ((isSeek || isNearEnd) && currentTime > 0) {
+        if (newPercentage >= 100 && !videoState.videoCompleted) {
           handleVideoCompletion(duration);
         } else if (
           lastSavedPercentage < 90 &&
           newPercentage >= 90 &&
-          !hasNotified90Percent.current
+          !videoState.hasNotified90Percent
         ) {
           handleReachedMilestone(currentTime, duration, newPercentage);
         }
@@ -163,17 +131,20 @@ function VideoWatcher({
     }
   };
 
-  // Função para lidar com vídeo completo
   const handleVideoCompletion = (duration) => {
-    if (currentVideoIdRef.current !== videoId) return;
+    console.log(
+      `[VideoWatcher] Completando vídeo ${videoId} com duração ${duration}`
+    );
 
-    console.log(`Completando vídeo ${videoId}`);
     setWatchTime(duration);
     setPercentageWatched(100);
     saveProgress(duration, duration);
     setLastSavedPercentage(100);
     toast.success("Vídeo concluído com sucesso!");
-    videoCompletedRef.current = true;
+
+    // Marcar APENAS o vídeo atual como completo
+    videoState.videoCompleted = true;
+    videoState.hasNotified90Percent = true;
 
     if (onVideoProgressUpdate) {
       onVideoProgressUpdate(videoId, 100, true);
@@ -185,12 +156,9 @@ function VideoWatcher({
     }
   };
 
-  // Função para lidar com milestone de 90%
   const handleReachedMilestone = (currentTime, duration, percentage) => {
-    if (currentVideoIdRef.current !== videoId) return;
-
     toast.success("Progresso do vídeo salvo com sucesso!");
-    hasNotified90Percent.current = true;
+    videoState.hasNotified90Percent = true;
 
     if (onVideoProgressUpdate) {
       onVideoProgressUpdate(videoId, percentage, true);
@@ -200,21 +168,17 @@ function VideoWatcher({
     setLastSavedPercentage(percentage);
   };
 
-  // CORREÇÃO 4: saveProgress melhorado com verificações adicionais
   const saveProgress = async (currentTime, duration) => {
-    // Verificar se este ainda é o vídeo atual
-    if (currentVideoIdRef.current !== videoId) return;
-
     let currentPercentage = Math.floor((currentTime / duration) * 100);
 
     // Arredonda para o múltiplo de 10 mais próximo (para baixo)
     let newPercentage = Math.floor(currentPercentage / 10) * 10;
 
-    newPercentage = Math.max(newPercentage, lastSaved10PercentageRef.current);
+    newPercentage = Math.max(newPercentage, videoState.lastSaved10Percentage);
 
     // Se não mudou o marco de 10%, não salva (exceto para 100%)
     if (
-      newPercentage === lastSaved10PercentageRef.current &&
+      newPercentage === videoState.lastSaved10Percentage &&
       newPercentage < 100
     ) {
       return;
@@ -235,8 +199,6 @@ function VideoWatcher({
         if (snapshot.exists()) {
           const data = snapshot.val();
           currentDbPercentage = data.percentageWatched || 0;
-          // Arredonda o valor do banco para múltiplo de 10 também
-          currentDbPercentage = Math.floor(currentDbPercentage / 10) * 10;
         }
 
         // Usa o maior valor entre o atual e o do banco
@@ -245,26 +207,21 @@ function VideoWatcher({
         // Se for 100%, mantém 100% sem arredondar
         if (currentPercentage >= 100) {
           newPercentage = 100;
+          videoState.videoCompleted = true;
         }
 
         const progressData = {
-          watchedTimeInSeconds: Math.max(
-            currentTime,
-            (newPercentage / 100) * duration
-          ),
+          watchedTimeInSeconds: currentTime,
           percentageWatched: newPercentage,
           watched: newPercentage >= 90,
           lastUpdated: new Date().toISOString(),
-          completed: newPercentage >= 100, // Campo booleano para indicar conclusão
+          completed: newPercentage >= 100,
+          videoId: videoId,
         };
-
-        if (newPercentage >= 100) {
-          videoCompletedRef.current = true;
-        }
 
         // Salva no banco e atualiza o estado local
         await set(progressRef, progressData);
-        lastSaved10PercentageRef.current = Math.floor(newPercentage / 10) * 10;
+        videoState.lastSaved10Percentage = Math.floor(newPercentage / 10) * 10;
         setLastSavedPercentage(newPercentage);
       } catch (error) {
         console.error("Erro ao salvar progresso:", error);
@@ -278,182 +235,148 @@ function VideoWatcher({
 
   const debouncedSaveProgress = debounce(saveProgress, 1000);
 
-  // CORREÇÃO 5: Setup YouTube player events com verificações adicionais
   useEffect(() => {
     if (!player) return;
 
     // Adicionar event listeners para o player
     try {
-      // Evento de mudança de estado (play, pause, buffer, etc)
-      player.addEventListener("onStateChange", (event) => {
+      const playerStateChangeHandler = (event) => {
         // Estado -1: unstarted, 0: ended, 1: playing, 2: paused, 3: buffering, 5: video cued
         const playerState = event.data;
 
         // Atualizar a UI imediatamente em qualquer mudança de estado
-        if (currentVideoIdRef.current === videoId) {
-          updateProgressUI();
-        }
+        updateProgressUI();
 
         // Em caso de pause ou fim do vídeo, podemos salvar o progresso
         if (playerState === 0 || playerState === 2) {
-          if (currentVideoIdRef.current === videoId) {
-            const currentTime = player.getCurrentTime() || 0;
-            const duration = player.getDuration() || 0;
+          const currentTime = player.getCurrentTime() || 0;
+          const duration = player.getDuration() || 0;
 
-            // Se o vídeo terminou normalmente
-            if (playerState === 0 && !videoCompletedRef.current) {
-              handleVideoCompletion(duration);
-            } else {
-              // Se pausou, atualiza progresso mas não marca como completo
-              debouncedSaveProgress(currentTime, duration);
-            }
+          // Se o vídeo terminou normalmente
+          if (playerState === 0 && !videoState.videoCompleted) {
+            handleVideoCompletion(duration);
+          } else {
+            // Se pausou, atualiza progresso mas não marca como completo
+            debouncedSaveProgress(currentTime, duration);
           }
         }
-      });
-
-      // Criar um observador para detectar seeks
-      const seekObserver = setInterval(() => {
-        if (
-          currentVideoIdRef.current === videoId &&
-          player &&
-          player.getPlayerState &&
-          player.getPlayerState() === 3
-        ) {
-          // 3 = buffering (que ocorre após seeks)
-          updateProgressUI();
-        }
-      }, 200); // Verificar mais frequentemente durante buffers
-
-      return () => {
-        clearInterval(seekObserver);
-        // Não podemos remover event listeners do YouTube player diretamente
-        // O YouTube API não oferece um método removeEventListener
       };
+
+      // Adicionar o event listener apenas se o player tiver suporte
+      if (player.addEventListener) {
+        player.addEventListener("onStateChange", playerStateChangeHandler);
+      }
     } catch (error) {
       console.error("Erro ao configurar event listeners do player:", error);
     }
+
+    return () => {
+      // Não podemos remover event listeners do YouTube player diretamente
+      // O YouTube API não oferece um método removeEventListener
+    };
   }, [player, videoId]);
 
-  // CORREÇÃO 6: Monitoramento de progresso com limpeza adequada
+  // Monitoramento de progresso contínuo
   useEffect(() => {
-    // Limpar intervalo existente antes de configurar um novo
+    if (!player) return;
+
+    // Limpar intervalo existente
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
       progressInterval.current = null;
     }
 
     // Se já está em 100% ou não tem player, não iniciar monitoramento
-    if (!player || percentageWatched >= 100 || videoCompletedRef.current) {
+    if (!player || percentageWatched >= 100 || videoState.videoCompleted) {
       return;
     }
 
-    const monitorProgress = () => {
-      // Garantir que estamos trabalhando com o vídeo correto
-      if (currentVideoIdRef.current !== videoId) {
-        return;
-      }
+    let isComponentMounted = true;
 
-      // Verificação extra para garantir que não continuemos se já está em 100%
-      if (percentageWatched >= 100 || videoCompletedRef.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-        debouncedSaveProgress.cancel();
-        return;
-      }
+    const monitorProgress = () => {
+      if (!isComponentMounted || !player || !videoId) return;
 
       try {
+        const playerState = player.getPlayerState?.() || -1;
+
+        // Só monitora quando o vídeo está em reprodução
+        if (playerState !== 1) return;
+
         const duration = player.getDuration() || 0;
         const currentTime = player.getCurrentTime() || 0;
 
         if (duration <= 0) return; // Evita cálculos inválidos
 
-        // Atualiza lastTimeRef para o monitoramento de seeks
-        lastTimeRef.current = currentTime;
+        // Atualiza lastTime para o monitoramento de seeks
+        videoState.lastTime = currentTime;
 
-        // Considera como 100% se estiver a menos de 2 segundos do final ou se a % for >= 99.5%
+        // Calcula o percentual atual
         const isNearEnd =
           duration - currentTime <= 2 || currentTime / duration >= 0.995;
-
-        // Se estiver no final, força 100%
         const newPercentage = isNearEnd
           ? 100
           : Math.min(100, Math.floor((currentTime / duration) * 100));
 
-        // Se já atingiu 100% ou está muito próximo do final, parar o monitoramento imediatamente
+        // Se já atingiu 100% ou está muito próximo do final
         if (newPercentage >= 100 || isNearEnd) {
-          if (!videoCompletedRef.current) {
+          if (!videoState.videoCompleted) {
             handleVideoCompletion(duration);
           }
-          clearInterval(progressInterval.current); // Para o intervalo
-          progressInterval.current = null;
-          debouncedSaveProgress.cancel(); // Cancela qualquer salvamento pendente
           return;
         }
 
-        // Atualiza o progresso apenas se ainda não atingiu 100%
-        if (currentTime > watchTime) {
+        // Atualiza o progresso apenas se for maior
+        if (newPercentage > percentageWatched) {
           setWatchTime(currentTime);
           setPercentageWatched(newPercentage);
 
           if (
             lastSavedPercentage < 90 &&
             newPercentage >= 90 &&
-            !hasNotified90Percent.current
+            !videoState.hasNotified90Percent
           ) {
             handleReachedMilestone(currentTime, duration, newPercentage);
           }
 
           const current10Percentage = Math.floor(newPercentage / 10) * 10;
-          if (current10Percentage > lastSaved10PercentageRef.current) {
-            // Salvar explicitamente no banco pois atingimos um novo marco de 10%
+          if (current10Percentage > videoState.lastSaved10Percentage) {
             saveProgress(currentTime, duration);
-            lastSaved10PercentageRef.current = current10Percentage;
+            videoState.lastSaved10Percentage = current10Percentage;
           }
-        }
-
-        // Verificação adicional para quando estiver muito próximo do fim
-        if (duration - currentTime <= 2 && !videoCompletedRef.current) {
-          handleVideoCompletion(duration);
         }
       } catch (error) {
         console.error("Erro ao monitorar progresso:", error);
       }
     };
 
-    // Executa uma vez imediatamente para verificar o estado inicial
+    // Executa uma vez imediatamente
     monitorProgress();
 
-    // Configura o intervalo com uma verificação adicional para garantir que
-    // não será executado se o vídeo atingir 100% entre verificações
-    progressInterval.current = setInterval(() => {
-      if (percentageWatched >= 100 || videoCompletedRef.current) {
-        clearInterval(progressInterval.current);
-        progressInterval.current = null;
-        return;
-      }
-      monitorProgress();
-    }, 5000);
+    // Configura o intervalo - 5 segundos é um bom equilíbrio
+    progressInterval.current = setInterval(monitorProgress, 5000);
 
     return () => {
+      isComponentMounted = false;
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
         progressInterval.current = null;
       }
-      debouncedSaveProgress.cancel();
     };
-  }, [player, videoId]);
+  }, [player, videoId, percentageWatched]);
 
-  // CORREÇÃO 7: Manipulador de beforeunload atualizado
+  // Salvar progresso antes de fechar a página
   useEffect(() => {
-    const handleBeforeUnload = (event) => {
-      if (
-        player &&
-        currentVideoIdRef.current === videoId &&
-        !videoCompletedRef.current
-      ) {
-        const currentTime = player.getCurrentTime() || 0;
-        const duration = player.getDuration() || 0;
-        saveProgress(currentTime, duration);
+    const handleBeforeUnload = () => {
+      if (player) {
+        try {
+          const currentTime = player.getCurrentTime() || 0;
+          const duration = player.getDuration() || 0;
+          if (duration > 0) {
+            saveProgress(currentTime, duration);
+          }
+        } catch (error) {
+          console.error("Erro ao salvar progresso antes de sair:", error);
+        }
       }
     };
 
@@ -463,7 +386,6 @@ function VideoWatcher({
       window.removeEventListener("beforeunload", handleBeforeUnload);
       if (progressInterval.current) {
         clearInterval(progressInterval.current);
-        progressInterval.current = null;
       }
       debouncedSaveProgress.cancel();
     };
@@ -473,7 +395,6 @@ function VideoWatcher({
   const hasPrevious = currentIndex > 0;
   const hasNext = currentIndex < videos.length - 1;
 
-  // CORREÇÃO 8: Manipuladores de navegação atualizados
   const handlePrevious = () => {
     if (hasPrevious) {
       const previousItem = videos[currentIndex - 1];
@@ -483,17 +404,24 @@ function VideoWatcher({
         );
         return;
       }
+
+      // Salvar progresso atual
+      if (player) {
+        try {
+          const currentTime = player.getCurrentTime() || 0;
+          const duration = player.getDuration() || 0;
+          if (duration > 0) {
+            saveProgress(currentTime, duration);
+          }
+        } catch (error) {
+          console.error("Erro ao salvar progresso:", error);
+        }
+      }
+
       if (previousItem.quizId && !previousItem.quizPassed) {
         setShowQuiz(true);
         setCurrentVideoId(previousItem.id);
       } else {
-        // Forçar salvamento do vídeo atual antes de mudar
-        if (player && currentVideoIdRef.current === videoId) {
-          const currentTime = player.getCurrentTime() || 0;
-          const duration = player.getDuration() || 0;
-          saveProgress(currentTime, duration);
-        }
-
         onVideoChange(previousItem);
       }
     }
@@ -501,6 +429,7 @@ function VideoWatcher({
 
   const handleNext = () => {
     if (hasNext) {
+      // Verificar se precisa fazer o quiz atual
       if (
         currentVideo.quizId &&
         !currentVideo.quizPassed &&
@@ -527,11 +456,17 @@ function VideoWatcher({
         );
         return;
       } else {
-        // Forçar salvamento do vídeo atual antes de mudar
-        if (player && currentVideoIdRef.current === videoId) {
-          const currentTime = player.getCurrentTime() || 0;
-          const duration = player.getDuration() || 0;
-          saveProgress(currentTime, duration);
+        // Salvar progresso atual
+        if (player) {
+          try {
+            const currentTime = player.getCurrentTime() || 0;
+            const duration = player.getDuration() || 0;
+            if (duration > 0) {
+              saveProgress(currentTime, duration);
+            }
+          } catch (error) {
+            console.error("Erro ao salvar progresso:", error);
+          }
         }
 
         onVideoChange(nextItem);
@@ -574,7 +509,7 @@ function VideoWatcher({
         <Box sx={{ flex: 1, position: "relative" }}>
           <LinearProgress
             variant="determinate"
-            value={videoCompletedRef.current ? 100 : percentageWatched}
+            value={videoState.videoCompleted ? 100 : percentageWatched}
             sx={{
               width: "100%",
               height: 10,
@@ -637,7 +572,7 @@ function VideoWatcher({
             borderRadius: 10,
           }}
         >
-          {videoCompletedRef.current ? 100 : percentageWatched}%{" "}
+          {videoState.videoCompleted ? 100 : percentageWatched}%{" "}
           {percentageWatched >= 90 ? "✓" : ""}
         </Typography>
       </Box>

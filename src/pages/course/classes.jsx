@@ -52,6 +52,7 @@ const Classes = () => {
   const [showSlidePlayer, setShowSlidePlayer] = useState(false);
   const [slideData, setSlideData] = useState(null);
   const [videoSlides, setVideoSlides] = useState({});
+  const [hasNotifiedAboutProgress, setHasNotifiedAboutProgress] = useState({});
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -298,62 +299,84 @@ const Classes = () => {
     duration,
     forceSave = false
   ) => {
-    const percentage = Math.floor((currentTime / duration) * 100);
-    const roundedPercentage = Math.floor(percentage / 10) * 10; // Arredonda para o múltiplo de 10 mais próximo
+    if (!userDetails?.userId || !currentVideoId || !courseId) return;
 
-    // Verificar se o progresso já está em 100% e já foi salvo anteriormente
-    const [lastVideoSavedPercentage, setLastVideoSavedPercentage] = useState(0);
-    if (lastVideoSavedPercentage === 100 && percentage >= 100 && !forceSave)
-      return;
+    try {
+      // Calcular o percentual assistido
+      let percentageWatched = Math.floor((currentTime / duration) * 100);
 
-    const updatedVideos = videos.map((v) =>
-      v.id === currentVideo.id
-        ? {
-            ...v,
-            watched: percentage >= 90,
-            progress: percentage,
-            watchedTime: currentTime,
-          }
-        : v
-    );
-    setVideos(updatedVideos);
+      // Se forçar salvamento ou se percentual >= 90%, marca como assistido
+      const watched = forceSave || percentageWatched >= 90;
 
-    if (!userDetails?.userId) {
-      sessionStorage.setItem("videoProgress", JSON.stringify(updatedVideos));
-      return;
-    }
-
-    // Salvar no banco de dados a cada múltiplo de 10% ou se for um salvamento forçado
-    if (forceSave || percentage % 10 === 0) {
+      // Usar o videoId correto para o salvamento
       const progressRef = ref(
         database,
-        `videoProgress/${userDetails.userId}/${courseId}/${currentVideo.id}`
+        `videoProgress/${userDetails.userId}/${courseId}/${currentVideoId}`
       );
 
-      try {
-        const wasWatched = currentVideo.watched;
-        const progressData = {
-          watchedTimeInSeconds: currentTime,
-          percentageWatched: roundedPercentage,
-          watched: percentage >= 90,
-          quizPassed: currentVideo.quizPassed || false,
-          lastUpdated: new Date().toISOString(),
-        };
-
-        // Adicionar data de conclusão se o vídeo foi completado
-        if (percentage === 100) {
-          progressData.completedAt = new Date().toISOString();
-          setLastVideoSavedPercentage(100); // Marcar como completado
-        }
-
-        await set(progressRef, progressData);
-
-        if (!wasWatched && percentage >= 90) {
-          await updateCourseProgress(updatedVideos);
-        }
-      } catch (error) {
-        console.error("Erro ao salvar progresso do vídeo:", error);
+      // Obter valor atual do banco se existir
+      const snapshot = await get(progressRef);
+      let currentSaved = 0;
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        currentSaved = data.percentageWatched || 0;
       }
+
+      // Usar o maior valor entre o atual e o salvo
+      percentageWatched = Math.max(percentageWatched, currentSaved);
+
+      // Dados para salvar
+      const progressData = {
+        watchedTimeInSeconds: currentTime,
+        percentageWatched: percentageWatched,
+        watched: watched,
+        lastUpdated: new Date().toISOString(),
+        videoId: currentVideoId,
+      };
+
+      // Salvar no banco
+      await set(progressRef, progressData);
+
+      // Atualizar o array de vídeos com o novo progresso
+      const updatedVideos = videos.map((v) => {
+        if (v.id === currentVideoId) {
+          return {
+            ...v,
+            progress: percentageWatched,
+            watchedTime: currentTime,
+            watched: watched,
+          };
+        }
+        return v;
+      });
+
+      // Atualizar o estado
+      setVideos(updatedVideos);
+
+      // Verificar se já notificamos sobre o progresso para este vídeo
+      const videoNotified = hasNotifiedAboutProgress[currentVideoId] || false;
+
+      if (!videoNotified && percentageWatched >= 90) {
+        toast.success("Progresso salvo!");
+        // Atualize o estado usando o spread operator para manter os outros valores
+        setHasNotifiedAboutProgress((prev) => ({
+          ...prev,
+          [currentVideoId]: true,
+        }));
+
+        // Verificar se temos um quiz para este vídeo
+        const currentVideo = videos.find((v) => v.id === currentVideoId);
+        if (currentVideo?.quizId && !currentVideo?.quizPassed) {
+          toast.info("Quiz disponível! Complete para prosseguir.", {
+            autoClose: 5000,
+          });
+        }
+      }
+
+      return { percentageWatched, watched };
+    } catch (error) {
+      console.error("Erro ao salvar progresso de vídeo:", error);
+      return null;
     }
   };
 
@@ -396,6 +419,9 @@ const Classes = () => {
 
   const handleVideoSelect = async (video) => {
     const videoIndex = videos.findIndex((v) => v.id === video.id);
+    console.log(
+      `[Classes] Selecionando vídeo: ${video.id} (índice ${videoIndex})`
+    );
 
     if (!userDetails?.userId && videoIndex > 1) {
       setShowLogInModal(true);
@@ -405,7 +431,7 @@ const Classes = () => {
     if (video.requiresPrevious && videoIndex > 0) {
       const previousVideo = videos[videoIndex - 1];
       if (
-        !previousVideo.watched |
+        !previousVideo.watched ||
         (previousVideo.quizId && !previousVideo.quizPassed)
       ) {
         return;
@@ -415,20 +441,38 @@ const Classes = () => {
     // Salvar progresso do vídeo atual antes de mudar
     if (videoPlayerRef.current && currentVideoId) {
       try {
-        if (typeof videoPlayerRef.current.pause === "function") {
+        console.log(
+          `[Classes] Salvando progresso do vídeo atual (${currentVideoId}) antes de mudar`
+        );
+        if (
+          videoPlayerRef.current.pause &&
+          typeof videoPlayerRef.current.pause === "function"
+        ) {
           videoPlayerRef.current.pause();
         }
 
         // Forçar salvamento do progresso atual
-        const currentVideo = videos.find((v) => v.id === currentVideoId);
-        if (currentVideo) {
-          const currentTime = videoPlayerRef.current.getCurrentTime
-            ? videoPlayerRef.current.getCurrentTime()
-            : 0;
-          const duration = videoPlayerRef.current.getDuration
-            ? videoPlayerRef.current.getDuration()
-            : 0;
-          if (currentTime && duration) {
+        const currentVideoObj = videos.find((v) => v.id === currentVideoId);
+        if (currentVideoObj) {
+          let currentTime = 0;
+          let duration = 0;
+
+          // Verificações de segurança
+          if (
+            videoPlayerRef.current.getCurrentTime &&
+            typeof videoPlayerRef.current.getCurrentTime === "function"
+          ) {
+            currentTime = videoPlayerRef.current.getCurrentTime();
+          }
+
+          if (
+            videoPlayerRef.current.getDuration &&
+            typeof videoPlayerRef.current.getDuration === "function"
+          ) {
+            duration = videoPlayerRef.current.getDuration();
+          }
+
+          if (currentTime > 0 && duration > 0) {
             await saveVideoProgress(currentTime, duration, true);
           }
         }
@@ -437,47 +481,63 @@ const Classes = () => {
       }
     }
 
-    // Importante: Recuperar os dados mais recentes do vídeo selecionado
-    // para garantir que tenhamos o progresso correto
-    let updatedVideoData = { ...video };
+    // IMPORTANTE: Desmontar o vídeo atual antes de carregar o novo
+    setCurrentVideoId(null);
 
-    if (userDetails?.userId) {
+    // Usar um timeout para garantir que o estado foi atualizado
+    setTimeout(async () => {
       try {
-        const progressRef = ref(
-          database,
-          `videoProgress/${userDetails.userId}/${courseId}/${video.id}`
-        );
-        const snapshot = await get(progressRef);
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          updatedVideoData = {
-            ...updatedVideoData,
-            watchedTime: data.watchedTimeInSeconds || 0,
-            progress: data.percentageWatched || 0,
-            watched: data.watched || false,
-          };
-        }
-      } catch (err) {
-        console.error("Erro ao buscar progresso atualizado:", err);
-      }
-    }
+        // CRÍTICO: Buscar dados atualizados do vídeo selecionado
+        let updatedVideoData = { ...video };
 
-    // Atualizar estado com os dados mais recentes
-    setCurrentVideoId(video.id);
-    setShowQuiz(false);
-
-    // Pequeno delay para garantir que a referência do player está atualizada
-    setTimeout(() => {
-      if (videoPlayerRef.current) {
-        if (videoPlayerRef.current.seekTo) {
-          videoPlayerRef.current.seekTo(updatedVideoData.watchedTime || 0);
-        }
-        if (videoPlayerRef.current.updateProgress) {
-          videoPlayerRef.current.updateProgress(
-            updatedVideoData.progress || 0,
-            updatedVideoData.watchedTime || 0
+        if (userDetails?.userId) {
+          console.log(
+            `[Classes] Buscando progresso salvo para vídeo ${video.id}`
           );
+          const progressRef = ref(
+            database,
+            `videoProgress/${userDetails.userId}/${courseId}/${video.id}`
+          );
+
+          const snapshot = await get(progressRef);
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            updatedVideoData = {
+              ...updatedVideoData,
+              watchedTime: data.watchedTimeInSeconds || 0,
+              progress: data.percentageWatched || 0,
+              watched: data.watched || false,
+            };
+
+            console.log(
+              `[Classes] Progresso recuperado para vídeo ${video.id}:`,
+              {
+                progress: updatedVideoData.progress,
+                watchedTime: updatedVideoData.watchedTime,
+              }
+            );
+          }
         }
+
+        // Atualizar vídeos com os dados mais recentes
+        setVideos((prevVideos) =>
+          prevVideos.map((v) =>
+            v.id === video.id ? { ...v, ...updatedVideoData } : v
+          )
+        );
+
+        // Agora é seguro definir o novo vídeo
+        console.log(`[Classes] Definindo vídeo atual: ${updatedVideoData.id}`);
+        setCurrentVideoId(updatedVideoData.id);
+
+        // Desativar quizzes e slides
+        setShowQuiz(false);
+        setShowQuizGigi(false);
+        setShowSlidePlayer(false);
+      } catch (error) {
+        console.error("Erro ao processar seleção de vídeo:", error);
+        // Em caso de erro, ainda tenta definir o vídeo atual
+        setCurrentVideoId(video.id);
       }
     }, 100);
   };
@@ -621,6 +681,54 @@ const Classes = () => {
     setShowSlidePlayer(false);
     setSlideData(null);
   };
+
+  useEffect(() => {
+    // Função para lidar com erros de comunicação do YouTube
+    const handlePlayerError = (e) => {
+      if (e.message && e.message.includes("Cannot read properties of null")) {
+        console.warn(
+          "[Classes] Detectado erro de inicialização do YouTube player"
+        );
+        // Se você detectar um erro específico do YouTube, pode exibir uma mensagem amigável
+        // ou tentar recarregar só o player (não a página inteira)
+      }
+    };
+
+    window.addEventListener("error", handlePlayerError);
+
+    return () => {
+      window.removeEventListener("error", handlePlayerError);
+    };
+  }, []);
+
+  // Adicione também este tratamento no carregamento inicial:
+  useEffect(() => {
+    const fetchVideoData = async () => {
+      try {
+        setLoadingVideos(true);
+
+        // ... código existente ...
+
+        // Adicione este trecho ao final:
+        if (videos.length > 0) {
+          const firstVideo = videos[0];
+          setCurrentVideoId(firstVideo.id);
+          console.log(`[Classes] Vídeo inicial definido: ${firstVideo.id}`);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar dados dos vídeos:", err);
+        toast.error(
+          "Houve um erro ao carregar os vídeos. Por favor, tente novamente."
+        );
+      } finally {
+        setLoadingVideos(false);
+      }
+    };
+
+    if (userDetails?.userId && courseId) {
+      fetchVideoData();
+    }
+  }, [courseId, userDetails?.userId]);
 
   return (
     <>

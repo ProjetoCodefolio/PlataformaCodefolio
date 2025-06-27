@@ -42,6 +42,11 @@ const VideoList = ({
     );
   };
 
+  // Função para lidar com o clique no botão de assistir vídeo
+  const handleVideoClick = (video) => {
+    setCurrentVideo(video);
+  };
+
   return (
     <Box>
       {videos.map((video, index) => {
@@ -87,7 +92,7 @@ const VideoList = ({
                       fontSize: { xs: "0.95rem", sm: "1.25rem" },
                     }}
                   >
-                    {video.title}
+                    {video.title} {/* Nome do vídeo */}
                   </Typography>
                   {isCurrent && (
                     <Typography
@@ -169,13 +174,12 @@ const VideoList = ({
                         ? "Ver este vídeo"
                         : video.watched
                         ? "Rever Vídeo"
-                        : "Assistir"
+                        : "Assistir Vídeo"
                     }
                   >
                     <span>
                       <IconButton
-                        onClick={() => setCurrentVideo(video)}
-                        // Removida a propriedade disabled
+                        onClick={() => handleVideoClick(video)}
                         sx={{
                           color: "#9041c1",
                           "&:hover": { color: "#7d37a7" },
@@ -253,8 +257,7 @@ const VideoList = ({
                 {!isLocked ? (
                   <Button
                     variant="contained"
-                    onClick={() => setCurrentVideo(video)}
-                    // Removida a propriedade disabled
+                    onClick={() => handleVideoClick(video)}
                     startIcon={
                       <PlayCircleIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                     }

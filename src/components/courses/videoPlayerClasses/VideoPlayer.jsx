@@ -50,6 +50,8 @@ const VideoPlayer = forwardRef(
     const [watchTime, setWatchTime] = useState(video?.watchedTime || 0);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [isVideoLocked, setIsVideoLocked] = useState(false);
+    const [playerLoadAttempt, setPlayerLoadAttempt] = useState(0);
+    const [playerError, setPlayerError] = useState(false);
     const videoRef = useRef(null);
     const hasNotifiedRef = useRef(video?.watched || false);
     const navigate = useNavigate();
@@ -63,23 +65,124 @@ const VideoPlayer = forwardRef(
     };
 
     const onReady = (event) => {
+      console.log("[VideoPlayer] Player pronto", video?.id);
+
+      // Guarde uma referência ao player
+      const playerInstance = event.target;
+
+      if (!playerInstance) {
+        console.warn("[VideoPlayer] Player não inicializado corretamente");
+        return;
+      }
+
+      // Função para verificar se o player está pronto
+      const isPlayerReady = () => {
+        try {
+          return (
+            playerInstance &&
+            typeof playerInstance.getPlayerState === "function" &&
+            playerInstance.getPlayerState() !== undefined
+          );
+        } catch (e) {
+          return false;
+        }
+      };
+
+      // Função segura para seekTo
+      const safeSeekTo = (time) => {
+        try {
+          if (!isPlayerReady()) {
+            console.warn("[VideoPlayer] Player não está pronto para seekTo");
+            return;
+          }
+          console.log(`[VideoPlayer] Seek para ${time}s`);
+          playerInstance.seekTo(time);
+        } catch (e) {
+          console.error("Erro ao chamar seekTo:", e);
+        }
+      };
+
+      // Configurar as referências com funções seguras
       ref.current = {
-        seekTo: (time) => event.target.seekTo(time),
+        seekTo: safeSeekTo,
         updateProgress: (progress, time) => {
           setPercentageWatched(progress);
           setWatchTime(time);
         },
-        player: event.target,
+        player: playerInstance,
         pause: () => {
           try {
-            event.target.pauseVideo();
+            if (isPlayerReady()) {
+              playerInstance.pauseVideo();
+            }
           } catch (e) {
             console.error("Erro ao pausar vídeo:", e);
           }
         },
+        getCurrentTime: () => {
+          try {
+            return isPlayerReady() ? playerInstance.getCurrentTime() : 0;
+          } catch (e) {
+            console.error("Erro ao obter tempo atual:", e);
+            return 0;
+          }
+        },
+        getDuration: () => {
+          try {
+            return isPlayerReady() ? playerInstance.getDuration() : 0;
+          } catch (e) {
+            console.error("Erro ao obter duração:", e);
+            return 0;
+          }
+        },
       };
-      setPlayer(event.target);
-      event.target.seekTo(video?.watchedTime || 0);
+
+      setPlayer(playerInstance);
+
+      // Sistema de retry para definir o tempo inicial
+      const startTime = video?.watchedTime || 0;
+      if (startTime > 0) {
+        console.log(
+          `[VideoPlayer] Agendando posicionamento para ${startTime}s`
+        );
+
+        // Implementar um sistema de tentativas
+        let attempts = 0;
+        const maxAttempts = 5;
+
+        const trySeekTo = () => {
+          if (attempts >= maxAttempts) {
+            console.warn(
+              `[VideoPlayer] Desistindo após ${attempts} tentativas de seekTo`
+            );
+            return;
+          }
+
+          attempts++;
+
+          try {
+            if (isPlayerReady()) {
+              console.log(
+                `[VideoPlayer] Tentativa ${attempts}: seekTo(${startTime})`
+              );
+              playerInstance.seekTo(startTime);
+            } else {
+              console.log(
+                `[VideoPlayer] Player não pronto. Tentativa ${attempts} de ${maxAttempts}`
+              );
+              // Agendar próxima tentativa
+              setTimeout(trySeekTo, 500 * attempts);
+            }
+          } catch (e) {
+            console.error(`[VideoPlayer] Erro na tentativa ${attempts}:`, e);
+            // Agendar próxima tentativa
+            setTimeout(trySeekTo, 500 * attempts);
+          }
+        };
+
+        // Primeira tentativa após um delay inicial
+        setTimeout(trySeekTo, 500);
+      }
     };
 
     useEffect(() => {
@@ -153,6 +256,32 @@ const VideoPlayer = forwardRef(
       document.head.appendChild(styleSheet);
       return () => document.head.removeChild(styleSheet);
     }, []);
+
+    // Adicione este useEffect para garantir que o estado local está sincronizado com as props
+    useEffect(() => {
+      // Quando o vídeo mudar, sincronize os estados locais
+      if (video?.id) {
+        console.log(`[VideoPlayer] Atualizando estados para vídeo ${video.id}`);
+        setPercentageWatched(video.progress || 0);
+        setWatchTime(video.watchedTime || 0);
+
+        // Se tiver um player e o vídeo tiver tempo salvo, tente posicionar
+        if (player && video.watchedTime > 0) {
+          try {
+            setTimeout(() => {
+              if (player && typeof player.seekTo === "function") {
+                player.seekTo(video.watchedTime);
+                console.log(
+                  `[VideoPlayer] Reposicionado para ${video.watchedTime}s`
+                );
+              }
+            }, 1000);
+          } catch (error) {
+            console.error("Erro ao posicionar vídeo:", error);
+          }
+        }
+      }
+    }, [video?.id, video?.watchedTime, video?.progress]);
 
     if (!video || !video.url) {
       return (
@@ -291,6 +420,23 @@ const VideoPlayer = forwardRef(
         onOpenSlide(video.id);
       }
     };
+
+    // Reiniciar player em caso de erro
+    useEffect(() => {
+      if (playerError && playerLoadAttempt < 3) {
+        const timer = setTimeout(() => {
+          console.log(
+            `[VideoPlayer] Tentando reiniciar player (${
+              playerLoadAttempt + 1
+            }/3)`
+          );
+          setPlayerLoadAttempt((prev) => prev + 1);
+          setPlayerError(false);
+        }, 2000);
+
+        return () => clearTimeout(timer);
+      }
+    }, [playerError, playerLoadAttempt]);
 
     return (
       <Box
@@ -434,6 +580,11 @@ const VideoPlayer = forwardRef(
                   },
                 }}
                 onReady={onReady}
+                onError={(e) => {
+                  console.error("[VideoPlayer] Erro ao carregar vídeo:", e);
+                  setPlayerError(true);
+                }}
+                key={`player-${video.id}-${playerLoadAttempt}`} // Força recriação do componente
                 className="youtube-player"
                 style={{
                   position: "absolute",
