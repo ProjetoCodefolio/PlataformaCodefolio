@@ -24,7 +24,7 @@ const saveUserToDatabase = async (user) => {
   });
 };
 
-export const handleGoogleSignIn = async (navigate, onSuccess, onError) => {
+export const handleGoogleSignIn = async (navigate, onSuccess, onError, refreshUserDetails) => {
   const provider = new GoogleAuthProvider();
   try {
     const result = await signInWithPopup(auth, provider);
@@ -35,11 +35,13 @@ export const handleGoogleSignIn = async (navigate, onSuccess, onError) => {
       await saveUserToDatabase(user);
     }
 
+    // Se temos a função refreshUserDetails, a chamamos para atualizar os detalhes do usuário
+    if (refreshUserDetails) {
+      await refreshUserDetails();
+    }
+
     if (onSuccess) onSuccess();
     if (navigate) navigate("/dashboard"); // Só navega se o navigate for fornecido
-
-    // Adicionar refresh da página após redirecionamento
-    window.location.reload();
   } catch (error) {
     console.error("Erro no login:", error);
     if (onError) onError(error);

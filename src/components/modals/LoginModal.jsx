@@ -1,13 +1,17 @@
 import React from 'react';
 import { Box, Typography, Modal, Button } from "@mui/material";
+import { useAuth } from "../../context/AuthContext";
 import { handleGoogleSignIn } from "../../utils/authUtils";
 
 const LoginModal = ({ open, onClose, modalRef }) => {
+  const { refreshUserDetails } = useAuth();
 
   const handleLogin = async () => {
     try {
-      await handleGoogleSignIn(null);
-      onClose();
+      await handleGoogleSignIn(null, async () => {
+        await refreshUserDetails();
+        onClose();
+      }, null, refreshUserDetails);
     } catch (error) {
       console.error("Erro no login:", error);
     }

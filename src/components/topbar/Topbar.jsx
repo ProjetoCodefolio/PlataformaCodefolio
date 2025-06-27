@@ -29,7 +29,8 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
   const open = Boolean(anchorEl);
   const mobileMenuOpen = Boolean(mobileMenuAnchorEl);
   const navigate = useNavigate();
-  const { userDetails } = useAuth();
+  const { userDetails, refreshUserDetails } = useAuth();
+
 
   useEffect(() => {
     const fetchCoursesTeacher = async () => {
@@ -70,7 +71,9 @@ export default function Topbar({ onSearch, hideSearch = false }) { // Adicionada
   };
 
   const handleLogin = () => {
-    handleGoogleSignIn(null);
+    handleGoogleSignIn(null, async () => {
+      await refreshUserDetails();
+    }, null, refreshUserDetails);
     handleClose();
     handleMobileMenuClose();
   };

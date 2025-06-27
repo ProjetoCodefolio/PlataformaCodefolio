@@ -12,13 +12,15 @@ const Header = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const navigate = useNavigate();
     const dropdownRef = useRef(null);
-    const { userDetails } = useAuth();
+    const { userDetails, refreshUserDetails } = useAuth();
 
     const handleLogin = () => {
-        handleGoogleSignIn(navigate, null, (error) => {
+        handleGoogleSignIn(navigate, async () => {
+            await refreshUserDetails();
+        }, (error) => {
             const message = getFirebaseErrorMessage(error);
             setError(message);
-        });
+        }, refreshUserDetails);
     };
 
     useEffect(() => {

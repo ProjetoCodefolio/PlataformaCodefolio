@@ -42,7 +42,7 @@ const VideoPlayer = forwardRef(
     },
     ref
   ) => {
-    const { userDetails } = useAuth();
+    const { userDetails, refreshUserDetails } = useAuth();
     const [player, setPlayer] = useState(null);
     const [percentageWatched, setPercentageWatched] = useState(
       video?.progress || 0
@@ -58,7 +58,9 @@ const VideoPlayer = forwardRef(
 
     const handleLogin = async () => {
       try {
-        await handleGoogleSignIn(null);
+        await handleGoogleSignIn(null, async () => {
+          await refreshUserDetails();
+        }, null, refreshUserDetails);
       } catch (error) {
         console.error("Erro no login:", error);
       }

@@ -12,18 +12,20 @@ import Logo from "../../src/assets/img/logo2.gif";
 import CodeImage from "../../src/assets/img/undraw_code-thinking_0vf2.svg";
 import GoogleIcon from "../../src/assets/img/googleicon.svg";
 import { handleGoogleSignIn, getFirebaseErrorMessage } from "../utils/authUtils";
+import { useAuth } from "../context/AuthContext";
 
 const defaultTheme = createTheme();
 
 export default function SignInSide() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const { refreshUserDetails } = useAuth();
 
   const handleLogin = () => {
     handleGoogleSignIn(navigate, null, (error) => {
       const message = getFirebaseErrorMessage(error);
       setError(message);
-    });
+    }, refreshUserDetails);
   };
 
   return (
