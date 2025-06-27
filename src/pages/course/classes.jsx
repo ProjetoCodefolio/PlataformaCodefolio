@@ -956,7 +956,7 @@ const Classes = () => {
         onClose={() => setShowCompletionModal(false)}
         onExplore={() => {
           setShowCompletionModal(false);
-          navigate("/dashboard");
+          navigate("/listcurso");
         }}
         modalRef={modalRef}
         modalDimensions={modalDimensions}

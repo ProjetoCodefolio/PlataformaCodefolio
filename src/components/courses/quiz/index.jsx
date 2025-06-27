@@ -223,7 +223,7 @@ const Quiz = ({
           detail: { videoId: currentVideoId },
         })
       );
-    } catch (error) {}
+    } catch (error) { }
   };
 
   const handleNextVideoClick = () => {
@@ -315,14 +315,18 @@ const Quiz = ({
             sx={{
               mb: { xs: 2, sm: 3 },
               textAlign: "center",
-              color: result.isPassed ? "#4caf50" : "#d32f2f",
+              color: quizMinPercentage === 0
+                ? "#000000"
+                : result.isPassed ? "#4caf50" : "#d32f2f",
               fontWeight: "bold",
               fontSize: { xs: "1.25rem", sm: "1.75rem" },
             }}
           >
-            {result.isPassed
-              ? "Parabéns, você passou!"
-              : `Você não atingiu a nota mínima de ${getRequiredCorrectAnswers()}`}
+            {quizMinPercentage === 0
+              ? "Quiz Finalizado!"
+              : result.isPassed
+                ? "Parabéns, você passou!"
+                : `Você não atingiu a nota mínima de ${getRequiredCorrectAnswers()}`}
           </Typography>
           <Box sx={{ mb: { xs: 2, sm: 4 } }}>
             {questions.map((q) => {
