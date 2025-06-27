@@ -30,13 +30,16 @@ export const handleGoogleSignIn = async (navigate, onSuccess, onError) => {
     const result = await signInWithPopup(auth, provider);
     const user = result.user;
     const emailExists = await checkIfEmailExists(user.email);
-    
+
     if (!emailExists) {
       await saveUserToDatabase(user);
     }
-    
+
     if (onSuccess) onSuccess();
     if (navigate) navigate("/dashboard"); // Só navega se o navigate for fornecido
+
+    // Adicionar refresh da página após redirecionamento
+    window.location.reload();
   } catch (error) {
     console.error("Erro no login:", error);
     if (onError) onError(error);
