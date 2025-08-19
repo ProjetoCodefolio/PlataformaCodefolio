@@ -32,6 +32,7 @@ import AdvancedSettingsModal from "../../../components/courses/AdvancedSettingsM
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { checkUserCourseRole } from "$api/services/courses/students";
 
 /**
  * Estrutura padrão de configurações avançadas
@@ -116,6 +117,7 @@ const CourseForm = () => {
     Math.floor(1000000 + Math.random() * 9000000).toString()
   );
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -139,6 +141,38 @@ const CourseForm = () => {
 
     loadCourse();
   }, [courseId]);
+
+  useEffect(() => {
+    checkCurrentUserRole();
+  }, [courseId, userDetails]);
+
+  useEffect(() => {
+    if (courseId && userDetails?.userId) {
+      checkCurrentUserRole();
+    }
+  }, [courseId, userDetails]);
+
+  const checkCurrentUserRole = async () => {
+    try {
+      if (!userDetails?.userId || !courseId) return;
+      
+      // Get course details to find the owner
+      const courseData = await fetchCourseDetails(courseId);
+      if (!courseData || !courseData.userId) return;
+      
+      // Check if the current user is just a teacher (not the admin)
+      const isTeacher = await checkUserCourseRole(
+        userDetails.userId, 
+        courseId, 
+        courseData.userId
+      );
+      
+      setIsCurrentUserTeacher(isTeacher);
+    } catch (error) {
+      console.error("Erro ao verificar papel do usuário:", error);
+      setIsCurrentUserTeacher(false);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -496,34 +530,36 @@ const CourseForm = () => {
           )}
         </Paper>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => navigate("/manage-courses")}
-            sx={{
-              color: "#9041c1",
-              borderColor: "#9041c1",
-              "&:hover": { borderColor: "#7d37a7" },
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSubmit}
-            disabled={!isFormValid()}
-            sx={{
-              backgroundColor: "#9041c1",
-              "&:hover": { backgroundColor: "#7d37a7" },
-              "&.Mui-disabled": {
-                backgroundColor: "rgba(0, 0, 0, 0.12)",
-                color: "rgba(0, 0, 0, 0.26)",
-              },
-            }}
-          >
-            Salvar Curso
-          </Button>
-        </Box>
+        {!isCurrentUserTeacher && (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate("/manage-courses")}
+              sx={{
+                color: "#9041c1",
+                borderColor: "#9041c1",
+                "&:hover": { borderColor: "#7d37a7" },
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={!isFormValid()}
+              sx={{
+                backgroundColor: "#9041c1",
+                "&:hover": { backgroundColor: "#7d37a7" },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(0, 0, 0, 0.12)",
+                  color: "rgba(0, 0, 0, 0.26)",
+                },
+              }}
+            >
+              Salvar Curso
+            </Button>
+          </Box>
+        )}
       </Box>
 
       {/* Modais permanecem iguais */}

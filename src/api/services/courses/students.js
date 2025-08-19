@@ -335,3 +335,28 @@ export const removeStudentFromCourse = async (userId, courseId) => {
     throw error;
   }
 };
+
+/**
+ * Verifica se o usuário é apenas professor do curso (não é o admin)
+ * @param {string} userId - ID do usuário
+ * @param {string} courseId - ID do curso
+ * @param {string} courseAdminId - ID do admin do curso
+ * @returns {Promise<boolean>} - Verdadeiro se o usuário é apenas professor
+ */
+export const checkUserCourseRole = async (userId, courseId, courseAdminId) => {
+  try {
+    if (!userId || !courseId) {
+      return false;
+    }
+    
+    // Buscar informações do usuário atual
+    const userRef = ref(database, `users/${userId}/coursesTeacher/${courseId}`);
+    const snapshot = await get(userRef);
+    
+    // Verificar se o usuário é professor mas não é o admin do curso
+    return snapshot.exists() && courseAdminId !== userId;
+  } catch (error) {
+    console.error("Erro ao verificar papel do usuário:", error);
+    return false;
+  }
+};

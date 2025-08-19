@@ -40,9 +40,11 @@ import MyConfirm from "$components/post/components/confirm/Confirm";
 import {
     fetchCourseStudentsEnriched,
     updateStudentCourseRole,
-    removeStudentFromCourse
+    removeStudentFromCourse,
+    checkUserCourseRole
 } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
+import { useAuth } from "$context/AuthContext";
 
 // Função para formatar nomes com capitalização adequada
 const capitalizeWords = (name) => {
@@ -65,6 +67,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const [updatingRole, setUpdatingRole] = useState(null);
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState(null);
+    const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
+    const { currentUser } = useAuth();
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
@@ -156,11 +160,11 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const loadCourseStudents = async () => {
         try {
             setLoading(true);
-            
+
             // Usar a função da API para buscar estudantes
             const studentsData = await fetchCourseStudentsEnriched(courseId);
             setStudents(studentsData);
-            
+
         } catch (error) {
             console.error("Erro ao buscar estudantes:", error);
             toast.error("Não foi possível carregar os estudantes do curso");
@@ -173,10 +177,10 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const loadCourseDetails = async (courseId) => {
         try {
             setLoading(true);
-            
+
             const studentsData = await fetchCourseDetails(courseId);
             setCourseDetails(studentsData);
-            
+
         } catch (error) {
             console.error("Erro ao buscar o curso:", error);
             toast.error("Não foi possível carregar os dados do curso");
@@ -200,7 +204,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
             // Usar a função da API para atualizar a role
             await updateStudentCourseRole(userId, courseId, newRole);
-            
+
             // Atualizar o estado local
             setStudents(prevStudents => prevStudents.map(student =>
                 student.userId === userId
@@ -222,7 +226,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
         setStudentToDelete(student);
         setShowDeleteAlert(true);
     };
-    
+
     // Function to handle alert close
     const handleAlertClose = () => {
         setShowDeleteAlert(false);
@@ -231,32 +235,50 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
     // Function to confirm deletion
     const handleConfirmDelete = () => {
-        if (studentToDelete) {   
+        if (studentToDelete) {
             // TODO descomentar e testar linha abaixo
             // handleRemoveStudent(studentToDelete.userId, studentToDelete.name);
         }
         setShowDeleteAlert(false);
         setStudentToDelete(null);
     };
-    
+
     // Função para remover estudante do curso
     const handleRemoveStudent = async (userId, studentName) => {
         // Aqui você pode adicionar uma confirmação antes de remover
         try {
             // Usar a função da API para remover o estudante
             await removeStudentFromCourse(userId, courseId);
-            
+
             // Atualizar a lista de estudantes localmente
-            setStudents(prevStudents => 
+            setStudents(prevStudents =>
                 prevStudents.filter(student => student.userId !== userId)
             );
-            
+
             toast.success(`${capitalizeWords(studentName)} foi removido do curso.`);
         } catch (error) {
             console.error("Erro ao remover estudante:", error);
             toast.error("Não foi possível remover o estudante do curso");
         }
     };
+
+    const checkCurrentUserRole = async () => {
+        try {
+            if (!currentUser || !courseId || !courseDetails.userId) return;
+
+            const isTeacher = await checkUserCourseRole(currentUser.uid, courseId, courseDetails.userId);
+            setIsCurrentUserTeacher(isTeacher);
+        } catch (error) {
+            console.error("Erro ao verificar papel do usuário:", error);
+            setIsCurrentUserTeacher(false);
+        }
+    };
+
+    useEffect(() => {
+        if (courseId && currentUser && courseDetails.userId) {
+            checkCurrentUserRole();
+        }
+    }, [courseId, currentUser, courseDetails]);
 
     return (
         <Box sx={{ padding: 2 }}>
@@ -476,7 +498,9 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     <FormControl
                                                         fullWidth
                                                         size="small"
-                                                        disabled={updatingRole === student.userId || courseDetails.userId === student.userId}
+                                                        disabled={updatingRole === student.userId ||
+                                                            courseDetails.userId === student.userId ||
+                                                            isCurrentUserTeacher}
                                                     >
                                                         <Select
                                                             value={courseDetails.userId === student.userId ? "admin" : student.role || "student"}
@@ -486,7 +510,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                                 borderRadius: 1,
                                                                 backgroundColor:
                                                                     student.role === "teacher" ? "#bbdefb" :
-                                                                    courseDetails.userId === student.userId ? "#ffccbc" : "#e0e0e0",
+                                                                        courseDetails.userId === student.userId ? "#ffccbc" : "#e0e0e0",
                                                                 "& .MuiOutlinedInput-notchedOutline": {
                                                                     borderColor: "transparent"
                                                                 },
@@ -526,6 +550,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <IconButton
+                                                        disabled={isCurrentUserTeacher}
                                                         size="small"
                                                         color="error"
                                                         // onClick={() => handleRemoveStudent(student.userId, student.name)}
