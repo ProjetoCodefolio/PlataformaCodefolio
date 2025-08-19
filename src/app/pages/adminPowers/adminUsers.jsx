@@ -23,7 +23,8 @@ import {
 import { Search, Person, Close } from "@mui/icons-material";
 import Topbar from "../../components/topbar/Topbar";
 import MyConfirm from "$components/post/components/confirm/Confirm";
-import { fetchAllUsers, updateUserRole, filterUsersBySearchTerm, sortUsers } from "$api/services/admin";
+import { updateUserRole, filterUsersBySearchTerm, sortUsers } from "$api/services/admin";
+import { fetchAllUsers } from "$api/services/users";
 
 // Função para formatar nomes com capitalização adequada
 const capitalizeWords = (name) => {

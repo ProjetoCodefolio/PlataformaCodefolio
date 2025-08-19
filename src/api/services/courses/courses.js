@@ -8,7 +8,7 @@ import {
 } from "../../utils/courseUtils";
 import { updateCourseProgress } from './students';
 
-export const fetchCourses = async (limit = 5) => {
+export const fetchCourses = async (limit) => {
   try {
     const coursesRef = ref(database, "courses");
     const snapshot = await get(coursesRef);
@@ -20,7 +20,7 @@ export const fetchCourses = async (limit = 5) => {
         ...course,
       }));
       
-      return coursesArray.slice(0, limit);
+      return limit ? coursesArray.slice(0, limit) : coursesArray;
     }
     return [];
   } catch (error) {

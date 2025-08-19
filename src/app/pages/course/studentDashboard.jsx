@@ -561,81 +561,58 @@ const StudentDashboard = () => {
                                   {/* Verificamos se existem respostas detalhadas */}
                                   {student.detailedAnswers ? (
                                     <Box>
-                                      {Object.entries(
-                                        student.detailedAnswers
-                                      ).map(([questionId, detail], index) => (
-                                        <Box
-                                          key={questionId}
-                                          sx={{
-                                            mb: 2,
-                                            p: 1.5,
-                                            bgcolor: "white",
-                                            borderRadius: 1,
-                                            border: "1px solid #e0e0e0",
-                                          }}
-                                        >
-                                          <Typography
-                                            variant="subtitle1"
-                                            sx={{ fontWeight: 500 }}
-                                          >
-                                            {index + 1}. {detail.question}
-                                          </Typography>
-
+                                      {Object.entries(student.detailedAnswers)
+                                        // Sort questions by their keys or try to extract question numbers
+                                        .sort(([keyA, detailA], [keyB, detailB]) => {
+                                          // Try to extract numbers from the keys (e.g., "q2" -> 2)
+                                          const numA = parseInt(keyA.replace(/\D/g, '')) || 0;
+                                          const numB = parseInt(keyB.replace(/\D/g, '')) || 0;
+                                          
+                                          if (numA !== numB) return numA - numB;
+                                          
+                                          // If numbers are the same or not available, sort alphabetically
+                                          return keyA.localeCompare(keyB);
+                                        })
+                                        .map(([questionId, detail], index) => (
                                           <Box
+                                            key={questionId}
                                             sx={{
-                                              mt: 1,
-                                              display: "flex",
-                                              flexDirection: "column",
-                                              gap: 1.5,
+                                              mb: 2,
+                                              p: 1.5,
+                                              bgcolor: "white",
+                                              borderRadius: 1,
+                                              border: "1px solid #e0e0e0",
                                             }}
                                           >
+                                            <Typography
+                                              variant="subtitle1"
+                                              sx={{ fontWeight: 500 }}
+                                            >
+                                              {index + 1}. {detail.question}
+                                            </Typography>
+
                                             <Box
                                               sx={{
-                                                p: 1.5,
-                                                borderRadius: 1,
-                                                backgroundColor:
-                                                  detail.isCorrect
-                                                    ? "rgba(76, 175, 80, 0.15)"
-                                                    : "rgba(211, 47, 47, 0.12)",
-                                                border: `1px solid ${
-                                                  detail.isCorrect
-                                                    ? "rgba(76, 175, 80, 0.5)"
-                                                    : "rgba(211, 47, 47, 0.5)"
-                                                }`,
+                                                mt: 1,
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 1.5,
                                               }}
                                             >
-                                              <Typography
-                                                variant="body2"
-                                                sx={{
-                                                  fontWeight: 500,
-                                                  display: "flex",
-                                                  alignItems: "center",
-                                                  gap: 0.5,
-                                                  color: detail.isCorrect
-                                                    ? "#2e7d32"
-                                                    : "#c62828",
-                                                }}
-                                              >
-                                                {detail.isCorrect ? "✓" : "✗"}{" "}
-                                                Resposta do aluno:{" "}
-                                                <Box
-                                                  component="span"
-                                                  sx={{ fontWeight: 600 }}
-                                                >
-                                                  {detail.userAnswerText}
-                                                </Box>
-                                              </Typography>
-                                            </Box>
-
-                                            {!detail.isCorrect && (
                                               <Box
                                                 sx={{
                                                   p: 1.5,
                                                   borderRadius: 1,
-                                                  backgroundColor:
-                                                    "rgba(76, 175, 80, 0.12)",
-                                                  border:
-                                                    "1px solid rgba(76, 175, 80, 0.5)",
+                                                  // Check if the answer text matches the correct option text to determine true correctness
+                                                  backgroundColor: 
+                                                    detail.userAnswerText === detail.correctOptionText
+                                                      ? "rgba(76, 175, 80, 0.15)"
+                                                      : "rgba(211, 47, 47, 0.12)",
+                                                  border: `1px solid ${
+                                                    detail.userAnswerText === detail.correctOptionText
+                                                      ? "rgba(76, 175, 80, 0.5)"
+                                                      : "rgba(211, 47, 47, 0.5)"
+                                                  }`,
                                                 }}
                                               >
                                                 <Typography
@@ -645,22 +622,55 @@ const StudentDashboard = () => {
                                                     display: "flex",
                                                     alignItems: "center",
                                                     gap: 0.5,
-                                                    color: "#2e7d32",
+                                                    color: detail.userAnswerText === detail.correctOptionText
+                                                      ? "#2e7d32"
+                                                      : "#c62828",
                                                   }}
                                                 >
-                                                  ✓ Resposta correta:{" "}
+                                                  {detail.userAnswerText === detail.correctOptionText ? "✓" : "✗"}{" "}
+                                                  Resposta do aluno:{" "}
                                                   <Box
                                                     component="span"
                                                     sx={{ fontWeight: 600 }}
                                                   >
-                                                    {detail.correctOptionText}
+                                                    {detail.userAnswerText}
                                                   </Box>
                                                 </Typography>
                                               </Box>
-                                            )}
+
+                                              {/* Only show the correct answer section if user's answer doesn't match the correct answer */}
+                                              {detail.userAnswerText !== detail.correctOptionText && (
+                                                <Box
+                                                  sx={{
+                                                    p: 1.5,
+                                                    borderRadius: 1,
+                                                    backgroundColor: "rgba(76, 175, 80, 0.12)",
+                                                    border: "1px solid rgba(76, 175, 80, 0.5)",
+                                                  }}
+                                                >
+                                                  <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                      fontWeight: 500,
+                                                      display: "flex",
+                                                      alignItems: "center",
+                                                      gap: 0.5,
+                                                      color: "#2e7d32",
+                                                    }}
+                                                  >
+                                                    ✓ Resposta correta:{" "}
+                                                    <Box
+                                                      component="span"
+                                                      sx={{ fontWeight: 600 }}
+                                                    >
+                                                      {detail.correctOptionText}
+                                                    </Box>
+                                                  </Typography>
+                                                </Box>
+                                              )}
+                                            </Box>
                                           </Box>
-                                        </Box>
-                                      ))}
+                                        ))}
                                     </Box>
                                   ) : (
                                     <Typography

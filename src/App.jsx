@@ -21,6 +21,7 @@ import StudentDashboard from "./app/pages/course/studentDashboard";
 import ManageMyCourses from "./app/pages/course/ManageMyCourses";
 import AdminPanel from "$pages/adminPowers/adminPanel";
 import AdminUsers from "$pages/adminPowers/adminUsers";
+import AdminCourses from "$pages/adminPowers/adminCourses";
 import NotFound from "$pages/NotFound";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -151,6 +152,17 @@ function App() {
                 <PrivateRoute >
                   <AdminRoute >
                     <AdminUsers />
+                  </AdminRoute >
+                </PrivateRoute >
+              }
+            />
+            
+            <Route
+              path="/admin-courses"
+              element={
+                <PrivateRoute >
+                  <AdminRoute >
+                    <AdminCourses />
                   </AdminRoute >
                 </PrivateRoute >
               }

@@ -498,7 +498,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     <FormControl
                                                         fullWidth
                                                         size="small"
-                                                        disabled={updatingRole === student.userId ||
+                                                        disabled={courseDetails.userId !== currentUser.uid ||
+                                                            updatingRole === student.userId ||
                                                             courseDetails.userId === student.userId ||
                                                             isCurrentUserTeacher}
                                                     >
@@ -550,7 +551,9 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <IconButton
-                                                        disabled={isCurrentUserTeacher}
+                                                        disabled={isCurrentUserTeacher ||
+                                                            courseDetails.userId !== currentUser.uid
+                                                        }
                                                         size="small"
                                                         color="error"
                                                         // onClick={() => handleRemoveStudent(student.userId, student.name)}
