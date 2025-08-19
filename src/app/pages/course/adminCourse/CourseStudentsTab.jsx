@@ -32,7 +32,7 @@ import {
     Tooltip
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SortIcon from "@mui/icons-material/Sort";
+import SortIcon from '@mui/icons-material/Sort';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
@@ -515,23 +515,20 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                                     borderColor: "transparent"
                                                                 },
                                                                 "&:hover .MuiOutlinedInput-notchedOutline": {
-                                                                    borderColor: "#9041c1"
+                                                                    borderColor: student.isCourseOwner ? "transparent" : "#9041c1"
                                                                 },
                                                                 "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                                                                    borderColor: "#9041c1"
+                                                                    borderColor: student.isCourseOwner ? "transparent" : "#9041c1"
                                                                 },
                                                                 "& .MuiSelect-select": {
-                                                                    fontWeight: "medium",
+                                                                    fontWeight: student.isCourseOwner ? "bold" : "medium",
                                                                     py: 0.5,
                                                                     fontSize: "0.875rem"
                                                                 }
                                                             }}
                                                             MenuProps={{
                                                                 PaperProps: {
-                                                                    sx: {
-                                                                        maxHeight: 200,
-                                                                        mt: 0.5
-                                                                    }
+                                                                    sx: { maxHeight: 200, mt: 0.5 }
                                                                 }
                                                             }}
                                                         >

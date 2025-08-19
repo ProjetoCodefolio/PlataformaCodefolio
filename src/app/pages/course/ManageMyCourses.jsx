@@ -26,7 +26,9 @@ import {
 } from "$api/services/courses/manageMyCourses";
 
 const ManageMyCourses = () => {
+  // Estados existentes
   const [courses, setCourses] = useState([]);
+  const [teacherCourses, setTeacherCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [canCreateCourse, setCanCreateCourse] = useState(false);
@@ -110,6 +112,12 @@ const ManageMyCourses = () => {
     // Utiliza a função do serviço para filtrar cursos
     setFilteredCourses(searchTeacherCourses(courses, searchTerm));
   };
+
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  // Funções existentes (handleEditCourse, handleCreateNewCourse, etc.)
 
   const handleEditCourse = (course) => {
     navigate(`/adm-cursos?courseId=${course.courseId}`);
@@ -227,6 +235,7 @@ const ManageMyCourses = () => {
                   mt: "auto",
                   gap: { xs: 1, sm: 2 },
                   flexWrap: "wrap",
+                  flexWrap: "wrap",
                 }}
               >
                 <Button
@@ -243,30 +252,37 @@ const ManageMyCourses = () => {
                     py: { xs: 0.5, sm: 1 },
                     minWidth: { xs: "80px", sm: "100px", md: "120px" },
                     width: { xs: "45%", sm: "auto" },
-                  }}
-                  onClick={() => onClickAction(course)}
-                >
-                  {actionButtonLabel}
-                </Button>
-                <Button
-                  variant="contained"
-                  sx={{
-                    backgroundColor: "#dc3545",
-                    color: "white",
-                    borderRadius: "12px",
-                    "&:hover": { backgroundColor: "#c82333" },
-                    textTransform: "none",
-                    fontWeight: 500,
                     fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
                     px: { xs: 1, sm: 2 },
                     py: { xs: 0.5, sm: 1 },
                     minWidth: { xs: "80px", sm: "100px", md: "120px" },
                     width: { xs: "45%", sm: "auto" },
                   }}
-                  onClick={() => handleDeleteCourse(course.courseId)}
+                  onClick={() => onClickAction(course)}
                 >
-                  Deletar
+                  {actionButtonLabel}
                 </Button>
+                {course.isOwner && allowDelete && (
+                  <Button
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "#dc3545",
+                      color: "white",
+                      borderRadius: "12px",
+                      "&:hover": { backgroundColor: "#c82333" },
+                      textTransform: "none",
+                      fontWeight: 500,
+                      fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                      px: { xs: 1, sm: 2 },
+                      py: { xs: 0.5, sm: 1 },
+                      minWidth: { xs: "80px", sm: "100px", md: "120px" },
+                      width: { xs: "45%", sm: "auto" },
+                    }}
+                    onClick={() => handleDeleteCourse(course.courseId)}
+                  >
+                    Deletar
+                  </Button>
+                )}
               </CardActions>
             </Card>
           </Grid>
@@ -333,11 +349,23 @@ const ManageMyCourses = () => {
           maxWidth: { xs: "calc(100% - 16px)", sm: "1200px" },
         }}
       >
-        <Box sx={{ p: { xs: 1, sm: 2 } }}>
-          {renderCourses(filteredCourses, "Gerenciar Curso", handleEditCourse)}
-        </Box>
+        {showTabs ? (
+          <>
+            {renderTabs()}
+            <Box sx={{ p: { xs: 1, sm: 2 } }}>
+              {renderTabContent()}
+            </Box>
+          </>
+        ) : (
+          <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            <Typography variant="body1" color="textSecondary" align="center">
+              Você não tem permissão para acessar esta página.
+            </Typography>
+          </Box>
+        )}
       </Paper>
 
+      {/* Modal existente para confirmação de exclusão */}
       <Modal
         open={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

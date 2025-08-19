@@ -130,7 +130,7 @@ export default function Topbar({ onSearch, hideSearch = false }) {
                 <span className="topbarIconText">Home</span>
               </Box>
             </Link>
-            <Link to="/listcurso" style={{ textDecoration: "none" }}>
+            <Link to="/cursos" style={{ textDecoration: "none" }}>
               <Box className="topbarIconCont">
                 <SmartDisplay />
                 <span className="topbarIconText">Cursos</span>
@@ -197,7 +197,7 @@ export default function Topbar({ onSearch, hideSearch = false }) {
               </ListItemIcon>
               Home
             </MenuItem>
-            <MenuItem onClick={() => navigate("/listcurso")}>
+            <MenuItem onClick={() => navigate("/cursos")}>
               <ListItemIcon>
                 <SmartDisplay fontSize="small" />
               </ListItemIcon>

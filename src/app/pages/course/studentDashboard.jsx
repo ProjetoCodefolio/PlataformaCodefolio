@@ -1005,8 +1005,8 @@ const StudentDashboard = () => {
                                         successRate >= 80
                                           ? "#2e7d32"
                                           : successRate >= 50
-                                          ? "#ff9800"
-                                          : "#c62828",
+                                            ? "#ff9800"
+                                            : "#c62828",
                                     }}
                                   />
                                 </Box>
