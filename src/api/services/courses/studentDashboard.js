@@ -117,13 +117,20 @@ export const fetchQuizData = async (quizId) => {
       customQuizResults
     );
 
+    console.log("===== DADOS DO QUIZ =====");
+    console.log("Quiz:", foundQuiz);
+    console.log("Curso:", foundCourse);
+    console.log("Vídeo:", foundVideo);
+    console.log("Total de estudantes:", studentResults.length);
+    console.log("=========================");
+
     return {
       quiz: foundQuiz,
       courseData: foundCourse,
       videoData: foundVideo,
       studentResults,
       liveQuizResults,
-      customQuizResults
+      customQuizResults,
     };
   } catch (error) {
     console.error("Erro ao buscar dados do quiz:", error);
@@ -242,68 +249,66 @@ export const fetchAllStudentResults = async (
 export const fetchStudentResults = async (courseId, videoId, quizObj) => {
   try {
     if (!quizObj) {
+      console.log("Nenhum objeto de quiz fornecido");
       return [];
     }
 
+    console.log("🔍 BUSCANDO RESULTADOS DOS ESTUDANTES");
+    console.log("courseId:", courseId);
+    console.log("videoId:", videoId);
+
+    // Buscar resultados de quizResults
     const quizResultsRef = ref(database, "quizResults");
     const quizResultsSnapshot = await get(quizResultsRef);
 
     if (!quizResultsSnapshot.exists()) {
+      console.log("❌ Nenhum resultado encontrado em quizResults");
       return [];
     }
 
+    const studentsData = quizResultsSnapshot.val();
+    console.log(
+      `📊 Total de usuários com resultados: ${Object.keys(studentsData).length}`
+    );
+
+    // Buscar informações dos usuários
     const usersRef = ref(database, "users");
     const usersSnapshot = await get(usersRef);
     const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
 
     const results = [];
-    const studentsData = quizResultsSnapshot.val();
 
-    // Para cada usuário, verificar se tem resultado para o quiz específico
+    // Processar resultados para cada estudante
     for (const userId in studentsData) {
-      if (
-        studentsData[userId] &&
-        studentsData[userId][courseId] &&
-        studentsData[userId][courseId][videoId]
-      ) {
+      // Verificar se o estudante tem resultado para este curso/video
+      if (studentsData[userId]?.[courseId]?.[videoId]) {
+        // Obter dados do quiz para este estudante
         const quizResult = studentsData[userId][courseId][videoId];
+        console.log(`Dados do quiz para ${userId}:`, quizResult);
+
+        // Obter dados do usuário
         const userData = usersData[userId] || {};
 
-        // Determinar o nome do usuário
+        // Determinar nome do usuário
         let userName = "Usuário Desconhecido";
         if (userData.displayName) {
           userName = userData.displayName;
         } else if (userData.firstName) {
-          userName = `${userData.firstName} ${userData.lastName || ""}`;
+          userName = `${userData.firstName} ${userData.lastName || ""}`.trim();
         } else if (userData.name) {
           userName = userData.name;
+        } else if (quizResult.name) {
+          userName = quizResult.name;
         } else if (userData.email) {
           userName = userData.email.split("@")[0];
         }
 
-        // Calcular dados do resultado
-        let correctAnswers = 0;
-        const totalQuestionsInQuiz = quizObj.questions?.length || 0;
-
-        const scorePercentage =
-          quizResult.scorePercentage || quizResult.score || 0;
-
-        if (quizResult.correctAnswers !== undefined) {
-          correctAnswers = quizResult.correctAnswers;
-        } else if (scorePercentage !== undefined) {
-          correctAnswers = Math.round(
-            (scorePercentage / 100) * totalQuestionsInQuiz
-          );
-        }
-
-        // Verificar se o estudante passou no quiz
-        const minPercentage = quizObj.minPercentage;
-        const isPassed =
-          quizResult.passed !== undefined
-            ? quizResult.passed
-            : quizResult.isPassed !== undefined
-            ? quizResult.isPassed
-            : scorePercentage >= minPercentage;
+        // Obter dados do resultado
+        const scorePercentage = Number(quizResult.scorePercentage) || 0;
+        const correctAnswers = Number(quizResult.correctAnswers) || 0;
+        const totalQuestionsInQuiz =
+          Number(quizResult.totalQuestions) || quizObj.questions?.length || 0;
+        const isPassed = quizResult.isPassed || quizResult.passed || false;
 
         // Formatar data da última tentativa
         let lastAttemptDate = "Data não disponível";
@@ -313,56 +318,41 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
               quizResult.submittedAt
             ).toLocaleDateString("pt-BR");
           } catch (e) {}
-        } else if (quizResult.timestamp) {
-          lastAttemptDate = new Date(
-            quizResult.timestamp
-          ).toLocaleDateString("pt-BR");
         } else if (quizResult.lastAttempt) {
-          lastAttemptDate = new Date(
-            quizResult.lastAttempt
-          ).toLocaleDateString("pt-BR");
-        } else if (quizResult.updatedAt) {
-          lastAttemptDate = new Date(
-            quizResult.updatedAt
-          ).toLocaleDateString("pt-BR");
-        }
-
-        // Formatar hora da última tentativa
-        let lastAttemptTime = "";
-        try {
-          if (quizResult.submittedAt) {
-            const date = new Date(quizResult.submittedAt);
-            lastAttemptTime = date.toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            });
-          }
-        } catch (e) {}
-
-        if (lastAttemptDate !== "Data não disponível" && lastAttemptTime) {
-          lastAttemptDate = `${lastAttemptDate} às ${lastAttemptTime}`;
+          try {
+            lastAttemptDate = new Date(
+              quizResult.lastAttempt
+            ).toLocaleDateString("pt-BR");
+          } catch (e) {}
         }
 
         // Adicionar resultado do estudante à lista
         results.push({
           userId,
-          name: userName.trim() || "Usuário " + userId.substring(0, 6),
-          email: userData.email || "Email não disponível",
+          name: userName || "Usuário " + userId.substring(0, 6),
+          email: userData.email || quizResult.email || "Email não disponível",
           photoURL: userData.photoURL || "",
           score: scorePercentage,
           correctAnswers,
           totalQuestions: totalQuestionsInQuiz,
           passed: isPassed,
-          attemptCount: quizResult.attemptCount || "#",
-          lastAttemptDate: lastAttemptDate,
+          attemptCount: quizResult.attemptCount || 1,
+          lastAttemptDate,
           detailedAnswers: quizResult.detailedAnswers || null,
         });
+
+        console.log(`✅ Estudante processado: ${userName} (${userId})`);
+        console.log(`  - Score: ${scorePercentage}%`);
+        console.log(`  - Acertos: ${correctAnswers}/${totalQuestionsInQuiz}`);
+        console.log(`  - Aprovado: ${isPassed ? "SIM" : "NÃO"}`);
+        console.log(`  - Última tentativa: ${lastAttemptDate}`);
       }
     }
 
+    console.log(`🎉 Total de estudantes com resultados: ${results.length}`);
     return results;
   } catch (error) {
-    console.error("Erro ao buscar resultados de estudantes:", error);
+    console.error("❌ Erro ao buscar resultados dos estudantes:", error);
     return [];
   }
 };
@@ -374,7 +364,11 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
  * @param {string} sortType - Tipo de ordenação
  * @returns {Array} - Lista filtrada e ordenada
  */
-export const getSortedStudentResults = (studentResults, searchTerm, sortType) => {
+export const getSortedStudentResults = (
+  studentResults,
+  searchTerm,
+  sortType
+) => {
   if (!studentResults.length) return [];
 
   let results = [...studentResults];
@@ -400,7 +394,10 @@ export const getSortedStudentResults = (studentResults, searchTerm, sortType) =>
     case "date-recent":
       return results.sort((a, b) => {
         const getDateFromString = (dateStr) => {
-          if (dateStr === "Data não disponível" || dateStr === "Não realizou o quiz") 
+          if (
+            dateStr === "Data não disponível" ||
+            dateStr === "Não realizou o quiz"
+          )
             return new Date(0);
           const datePart = dateStr.split(" às")[0];
           const [day, month, year] = datePart.split("/");
@@ -415,7 +412,10 @@ export const getSortedStudentResults = (studentResults, searchTerm, sortType) =>
     case "date-old":
       return results.sort((a, b) => {
         const getDateFromString = (dateStr) => {
-          if (dateStr === "Data não disponível" || dateStr === "Não realizou o quiz") 
+          if (
+            dateStr === "Data não disponível" ||
+            dateStr === "Não realizou o quiz"
+          )
             return new Date(0);
           const datePart = dateStr.split(" às")[0];
           const [day, month, year] = datePart.split("/");

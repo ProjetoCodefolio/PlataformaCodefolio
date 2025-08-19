@@ -1041,4 +1041,108 @@ const StudentDashboard = () => {
   );
 };
 
+// Substitua o componente de exibição de resposta detalhada pelo seguinte:
+
+const QuestionAnswer = ({ question, userAnswer, index }) => {
+  const { id, question: questionText, options, correctOption, userAnswer: userChoice, isCorrect } = question;
+  
+  return (
+    <div className="question-container mb-6 p-4 border rounded-lg bg-white shadow-sm">
+      <h3 className="text-lg font-medium mb-2">
+        {index + 1}. {questionText}
+      </h3>
+      
+      <div className="options-list mt-3">
+        {Object.entries(options).map(([optionKey, optionText]) => {
+          const isUserChoice = userChoice === optionKey || userAnswer === optionKey;
+          const isCorrectOption = correctOption === optionKey;
+          
+          // Define as classes CSS para cada opção
+          let optionClass = "flex items-start p-2 rounded-md mb-2";
+          
+          if (isUserChoice) {
+            optionClass += isCorrect 
+              ? " bg-green-100 border border-green-300" 
+              : " bg-red-100 border border-red-300";
+          } else if (isCorrectOption) {
+            optionClass += " border border-green-300";
+          } else {
+            optionClass += " border border-gray-200";
+          }
+          
+          return (
+            <div key={optionKey} className={optionClass}>
+              <div className="flex-shrink-0 mr-2 mt-0.5">
+                {isUserChoice ? (
+                  isCorrect ? (
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  )
+                ) : (
+                  <div className="w-5 h-5 border border-gray-300 rounded-full"></div>
+                )}
+              </div>
+              <div className="flex-grow">
+                <p className={`${isUserChoice && isCorrect ? "text-green-700" : isUserChoice ? "text-red-700" : ""}`}>
+                  {optionText}
+                </p>
+                {isUserChoice && !isCorrect && isCorrectOption && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Resposta incorreta
+                  </p>
+                )}
+                {isCorrectOption && !isUserChoice && (
+                  <p className="text-sm text-green-600 mt-1">
+                    Resposta correta
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      <div className="mt-2">
+        <p className={`text-sm font-medium ${isCorrect ? "text-green-600" : "text-red-600"}`}>
+          {isCorrect ? "✓ Você acertou esta questão" : "✗ Você errou esta questão"}
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// Componente principal que renderiza todas as respostas
+const StudentQuizResultDetails = ({ studentResult }) => {
+  if (!studentResult || !studentResult.detailedAnswers) {
+    return <div className="p-4 text-center">Não há detalhes disponíveis para este resultado</div>;
+  }
+
+  const questionsWithAnswers = Object.entries(studentResult.detailedAnswers).map(([id, question]) => ({
+    ...question,
+    id,
+  }));
+
+  return (
+    <div className="p-4">
+      <h2 className="text-xl font-semibold mb-4">
+        Respostas detalhadas de {studentResult.name}
+      </h2>
+      
+      {questionsWithAnswers.map((question, index) => (
+        <QuestionAnswer 
+          key={question.id} 
+          question={question} 
+          userAnswer={question.userAnswer}
+          index={index}
+        />
+      ))}
+    </div>
+  );
+};
+
 export default StudentDashboard;

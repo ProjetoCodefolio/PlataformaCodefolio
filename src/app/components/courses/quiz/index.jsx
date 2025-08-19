@@ -181,6 +181,55 @@ const Quiz = ({
 
       setQuizCompleted(true);
 
+      // IMPORTANTE: Obter o userId do contexto de autenticação
+      const userId = authUserDetails?.userId || userDetails?.userId;
+
+      // Verificar se temos userId válido
+      if (!userId) {
+        console.error(
+          "Erro: Nenhum ID de usuário disponível para salvar resultados"
+        );
+        toast.error(
+          "Não foi possível salvar seus resultados. Por favor, faça login."
+        );
+        return;
+      }
+
+      // Logs de debug antes de salvar
+      console.log("SALVANDO QUIZ COM OS SEGUINTES DADOS:");
+      console.log("userId:", userId);
+      console.log("courseId:", courseId);
+      console.log("videoId:", currentVideoId);
+      console.log("isPassed:", isPassed);
+      console.log("scorePercentage:", calculatedPercentage);
+      console.log("earnedPoints:", earnedPoints);
+      console.log("totalPoints:", totalPoints);
+      console.log("userAnswers:", finalAnswers);
+      console.log("questions:", questions);
+
+      // Garantir que todos os parâmetros obrigatórios sejam passados
+      const result = await saveQuizResults(
+        userId,
+        courseId,
+        currentVideoId,
+        {
+          isPassed,
+          scorePercentage: calculatedPercentage,
+          earnedPoints,
+          totalPoints,
+          minPercentage: quizMinPercentage,
+        },
+        finalAnswers, // Certifique-se de que estamos passando as respostas corretas
+        questions
+      );
+
+      // Verificar e exibir o resultado
+      console.log("RESULTADO DO SALVAMENTO:", result);
+      if (!result.success) {
+        toast.error(`Falha ao salvar resultados: ${result.error}`);
+        return;
+      }
+
       if (isPassed) {
         if (onComplete) {
           await onComplete(true);
@@ -191,7 +240,7 @@ const Quiz = ({
         await onSubmit(userAnswers, isPassed);
       }
     } catch (error) {
-      console.error("Erro ao processar respostas do quiz:", error);
+      console.error("❌ ERRO AO SALVAR QUIZ:", error);
       toast.error("Erro ao processar respostas. Tente novamente.");
     } finally {
       setLoading(false);
