@@ -6,21 +6,25 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import Login from "./pages/Login";
-import Dashboard from "./pages/dashboard";
-import ProfileHeader from "./pages/profile";
-import MembersPage from "./pages/members";
-import Portifolios from "./pages/portifolios";
-import Projetos from "./pages/projetos";
-import HomePage from "./pages/homePage";
-import Cursos from "./pages/course/adminCourse";
-import ListCursos from "./pages/course/list";
-import Classes from "./pages/course/classes";
-import StudentDashboard from "./pages/course/studentDashboard";
-import ManageMyCourses from "./pages/course/ManageMyCourses";
+import { AuthProvider, useAuth } from "./app/context/AuthContext";
+import Login from "./app/pages/Login";
+import Dashboard from "./app/pages/dashboard";
+import ProfileHeader from "./app/pages/profile";
+// import MembersPage from "./app/pages/members";
+import Portifolios from "./app/pages/portifolios";
+import Projetos from "./app/pages/projetos";
+import HomePage from "./app/pages/homePage";
+import Cursos from "./app/pages/course/adminCourse";
+import ListCursos from "./app/pages/course/list";
+import Classes from "./app/pages/course/classes";
+import StudentDashboard from "./app/pages/course/studentDashboard";
+import ManageMyCourses from "./app/pages/course/ManageMyCourses";
+import AdminPanel from "$pages/adminPowers/adminPanel";
+import AdminUsers from "$pages/adminPowers/adminUsers";
+import NotFound from "$pages/NotFound";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
 
 function App() {
   return (
@@ -36,9 +40,9 @@ function App() {
             <Route
               path="/dashboard"
               element={
-                <PrivateRoute>
+                // <PrivateRoute>
                   <Dashboard />
-                </PrivateRoute>
+                // </PrivateRoute>
               }
             />
 
@@ -50,7 +54,7 @@ function App() {
                 </PrivateRoute>
               }
             />
-
+            {/*
             <Route
               path="/members"
               element={
@@ -59,6 +63,7 @@ function App() {
                 </PrivateRoute>
               }
             />
+            */}
 
             <Route
               path="/portifolios"
@@ -81,47 +86,78 @@ function App() {
             <Route
               path="/adm-cursos"
               element={
-                <AdminRoute>
-                  <Cursos />
-                </AdminRoute>
+                <PrivateRoute >
+                  <TeacherRoute >
+                    <Cursos />
+                  </TeacherRoute> 
+                </PrivateRoute >
               }
             />
 
             <Route
               path="/studentDashboard"
               element={
-                <AdminRoute>
-                  <StudentDashboard />
-                </AdminRoute>
+                <PrivateRoute >
+                  <TeacherRoute>
+                    <StudentDashboard />
+                  </TeacherRoute>
+                </PrivateRoute >
               }
             />
 
             <Route
               path="/listcurso"
               element={
-                <PrivateRoute>
+                // <PrivateRoute >
                   <ListCursos />
-                </PrivateRoute>
+                // </PrivateRoute >
               }
             />
 
             <Route
               path="/classes"
               element={
-                <PrivateRoute>
+                // <PrivateRoute >
                   <Classes />
-                </PrivateRoute>
+                // </PrivateRoute >
               }
             />
 
             <Route
               path="/manage-courses"
               element={
-                <PrivateRoute>
-                  <ManageMyCourses />
-                </PrivateRoute>
+                <PrivateRoute >
+                  <TeacherRoute >
+                    <ManageMyCourses />
+                  </TeacherRoute >
+                </PrivateRoute >
               }
             />
+
+            <Route
+              path="/admin-panel"
+              element={
+                <PrivateRoute >
+                  <AdminRoute >
+                    <AdminPanel />
+                  </AdminRoute >
+                </PrivateRoute >
+              }
+            />
+
+            <Route
+              path="/admin-users"
+              element={
+                <PrivateRoute >
+                  <AdminRoute >
+                    <AdminUsers />
+                  </AdminRoute >
+                </PrivateRoute >
+              }
+            />
+
+            <Route path="*" element={<NotFound />} />
+
           </Routes>
         </Router>
       </AuthProvider>
@@ -134,11 +170,27 @@ function PrivateRoute({ children }) {
   const { currentUser } = useAuth();
   const location = useLocation();
 
-  // if (!currentUser) {
-  //   return <Navigate to="/login" state={{ from: location }} />;
-  // }
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location }} />;
+  }
 
   return children;
+}
+
+// Protege rotas de professor, exigindo autenticação e permissão de teacher
+function TeacherRoute({ children }) {
+  const { currentUser, userDetails } = useAuth();
+  const location = useLocation();
+
+  const isAdmin = userDetails?.role === "admin";
+  const isTeacher = userDetails?.role === "teacher" || userDetails.coursesTeacher;
+
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location }} />;
+  }
+
+  return teacherPermissions(children, isAdmin, isTeacher);
+
 }
 
 // Protege rotas de administrador, exigindo autenticação e permissão de admin
@@ -146,11 +198,30 @@ function AdminRoute({ children }) {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();
 
+  const isAdmin = userDetails?.role === "admin";
+
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
-  if (userDetails?.role !== "admin") {
+  return adminPermissions(children, isAdmin);
+}
+
+const teacherPermissions = (children, isAdmin, isTeacher) => {
+  const location = useLocation();
+
+  if(!isTeacher && !isAdmin) {
+    return <Navigate to="/dashboard" state={{ from: location }} />;
+  }
+
+  return children;
+}
+
+const adminPermissions = (children, isAdmin) => {
+  const { currentUser, userDetails } = useAuth();
+  const location = useLocation();
+
+  if(!isAdmin) {
     return <Navigate to="/dashboard" state={{ from: location }} />;
   }
 

@@ -23,3 +23,5 @@ serviceAccount.json
 
 # Ignore the default env used to run the project locally
 .env
+
+rules.js
