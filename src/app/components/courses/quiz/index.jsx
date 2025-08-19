@@ -440,63 +440,83 @@ const Quiz = ({
                     </Box>
                   </Box>
 
+                  {/* Apenas mostra a opção que o usuário selecionou e a correta (se forem diferentes) */}
                   <Box sx={{ pl: 2 }}>
-                    {answer.options.map((option, optIndex) => (
+                    {/* Opção selecionada pelo usuário */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        p: 1.5,
+                        my: 0.5,
+                        borderRadius: 1,
+                        bgcolor: answer.isCorrect
+                          ? "rgba(76, 175, 80, 0.1)"
+                          : "rgba(244, 67, 54, 0.1)",
+                        border: answer.isCorrect
+                          ? "1px solid #4caf50"
+                          : "1px solid #f44336",
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          fontWeight: 500,
+                          color: answer.isCorrect ? "#2e7d32" : "#d32f2f",
+                        }}
+                      >
+                        {String.fromCharCode(
+                          65 + parseInt(answer.userOption, 10)
+                        )}
+                        ) {answer.options[answer.userOption]}
+                      </Typography>
                       <Box
-                        key={optIndex}
+                        sx={{
+                          ml: "auto",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                        }}
+                      >
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: answer.isCorrect ? "#4caf50" : "#f44336",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {answer.isCorrect
+                            ? "Resposta correta"
+                            : "Sua resposta"}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {/* Mostrar a resposta correta apenas se o usuário errou */}
+                    {!answer.isCorrect && (
+                      <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           p: 1.5,
                           my: 0.5,
                           borderRadius: 1,
-                          bgcolor:
-                            option === answer.correctOption
-                              ? "rgba(76, 175, 80, 0.1)"
-                              : option === answer.userOption &&
-                                option !== answer.correctOption
-                              ? "rgba(244, 67, 54, 0.1)"
-                              : "transparent",
-                          border:
-                            option === answer.correctOption
-                              ? "1px solid #4caf50"
-                              : option === answer.userOption &&
-                                option !== answer.correctOption
-                              ? "1px solid #f44336"
-                              : "1px solid transparent",
+                          bgcolor: "rgba(76, 175, 80, 0.1)",
+                          border: "1px solid #4caf50",
                         }}
                       >
-                        {option === answer.correctOption ? (
-                          <CheckCircleIcon sx={{ color: "#4caf50", mr: 1 }} />
-                        ) : option === answer.userOption &&
-                          option !== answer.correctOption ? (
-                          <CancelIcon sx={{ color: "#f44336", mr: 1 }} />
-                        ) : (
-                          <RadioButtonUncheckedIcon
-                            sx={{ color: "#757575", mr: 1 }}
-                          />
-                        )}
                         <Typography
                           variant="body1"
                           sx={{
-                            fontWeight:
-                              option === answer.correctOption ||
-                              (option === answer.userOption &&
-                                option !== answer.correctOption)
-                                ? 600
-                                : 400,
-                            color:
-                              option === answer.correctOption
-                                ? "#4caf50"
-                                : option === answer.userOption &&
-                                  option !== answer.correctOption
-                                ? "#f44336"
-                                : "inherit",
+                            fontWeight: 500,
+                            color: "#2e7d32",
                           }}
                         >
-                          {option}
+                          {String.fromCharCode(
+                            65 + parseInt(answer.correctOption, 10)
+                          )}
+                          ) {answer.options[answer.correctOption]}
                         </Typography>
-
                         <Box
                           sx={{
                             ml: "auto",
@@ -505,45 +525,18 @@ const Quiz = ({
                             gap: 1,
                           }}
                         >
-                          {option === answer.userOption &&
-                            option !== answer.correctOption && (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "#f44336",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Sua resposta
-                              </Typography>
-                            )}
-                          {option === answer.userOption &&
-                            option === answer.correctOption && (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "#4caf50",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Sua resposta correta
-                              </Typography>
-                            )}
-                          {option === answer.correctOption &&
-                            option !== answer.userOption && (
-                              <Typography
-                                variant="caption"
-                                sx={{
-                                  color: "#4caf50",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Resposta correta
-                              </Typography>
-                            )}
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#4caf50",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Resposta correta
+                          </Typography>
                         </Box>
                       </Box>
-                    ))}
+                    )}
                   </Box>
                 </Box>
               ))}
