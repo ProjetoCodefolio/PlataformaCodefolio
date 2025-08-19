@@ -387,6 +387,9 @@ const Classes = () => {
 
           if (result?.attempts) {
             setUserAttempts(result.attempts);
+            
+            // Force immediate update to ensure limit is applied right away
+            console.log("Atualizando contagem de tentativas:", result.attempts);
           }
         } else {
           // Salva progresso local para usuários não logados

@@ -37,6 +37,37 @@ const VideoList = ({
   slideQuizzes,
   advancedSettings, // Adicione advancedSettings aos props do componente
 }) => {
+  // Add state to track recently completed quizzes that should be limited
+  const [pendingLimitUpdates, setPendingLimitUpdates] = useState({});
+
+  // Detect changes in quizId from url params or completion events
+  useEffect(() => {
+    const currentVideo = videos.find(v => v.id === currentVideoId);
+    if (currentVideo?.quizId && userQuizAttempts[currentVideo.quizId]) {
+      // When a quiz is completed, add it to pending updates with a delay
+      const attempts = userQuizAttempts[currentVideo.quizId]?.attemptCount || 0;
+      
+      if (attempts >= maxAttempts) {
+        console.log(`Quiz ${currentVideo.quizId} just reached max attempts, setting delay`);
+        
+        // Add to pending updates
+        setPendingLimitUpdates(prev => ({
+          ...prev,
+          [currentVideo.quizId]: true
+        }));
+        
+        // Remove from pending after delay (1 second)
+        setTimeout(() => {
+          console.log(`Setting limit for ${currentVideo.quizId} after delay`);
+          setPendingLimitUpdates(prev => ({
+            ...prev,
+            [currentVideo.quizId]: false
+          }));
+        }, 1000);
+      }
+    }
+  }, [currentVideoId, userQuizAttempts, videos, maxAttempts]);
+
   // Handler para clicar em um vídeo bloqueado
   const handleLockedClick = (video, previousVideo) => {
     if (previousVideo) {
@@ -75,6 +106,13 @@ const VideoList = ({
     );
   };
 
+  // Add a useEffect to log when the attempts data changes
+  useEffect(() => {
+    if (Object.keys(userQuizAttempts).length > 0) {
+      console.log("VideoList recebeu novas tentativas:", userQuizAttempts);
+    }
+  }, [userQuizAttempts]);
+
   return (
     <Box>
       {videos.map((video, index) => {
@@ -96,14 +134,24 @@ const VideoList = ({
           : video.watched && (!video.quizId || video.quizPassed);
         const isCurrent = video.id === currentVideoId;
         const quizLocked = video.isSlide ? false : isQuizLocked(video);
-        const attemptsExhausted =
+        const permanentlyExhausted = 
           video.quizId &&
-          advancedSettings?.quiz?.allowRetry !== false && // Verificar configuração
-          hasUserReachedQuizAttemptLimit(
-            userQuizAttempts,
-            video.quizId,
-            maxAttempts
-          );
+          (advancedSettings?.quiz?.allowRetry === false || 
+           hasUserReachedQuizAttemptLimit(
+             userQuizAttempts,
+             video.quizId,
+             maxAttempts
+           ));
+        
+        // Include both permanent exhaustion and pending updates
+        const attemptsExhausted = permanentlyExhausted || pendingLimitUpdates[video.quizId];
+
+        // Add additional debug log 
+        console.log(`Video ${video.title} - Attempts status:`, {
+          permanent: permanentlyExhausted,
+          pending: pendingLimitUpdates[video.quizId], 
+          final: attemptsExhausted
+        });
 
         // Determinar se é um slide
         const isSlide = video.isSlide || video.type === "slide";
