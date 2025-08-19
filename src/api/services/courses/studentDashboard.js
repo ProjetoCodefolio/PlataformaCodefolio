@@ -259,7 +259,7 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
     const results = [];
     const studentsData = quizResultsSnapshot.val();
 
-    // Para cada usuário, verificar se tem resultado para o quiz específico
+    // Para cada usuário, verificar se tem resultado pa ra o quiz específico
     for (const userId in studentsData) {
       if (
         studentsData[userId] &&
