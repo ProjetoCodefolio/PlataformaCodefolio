@@ -9,7 +9,7 @@ const DEFAULT_ADVANCED_SETTINGS = {
     requirePreviousCompletion: true
   },
   quiz: {
-    allowRetry: true,
+    allowRetry: false,
     showResultAfterCompletion: true
   }
 };

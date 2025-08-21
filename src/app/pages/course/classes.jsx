@@ -354,7 +354,31 @@ const Classes = () => {
       // IMPORTANTE: Garantir que isPassed seja um booleano
       const wasApproved = Boolean(isPassed);
       console.log("Aluno foi aprovado?", wasApproved);
+      
+      // Identifica se é um slide ou um vídeo que estamos atualizando
+      const contentId = videoId || currentVideoId;
+      
+      // Immediately update attempts for the UI - we'll do this regardless of pass/fail
+      // to ensure the "Limite Atingido" message appears right away
+      if (userDetails?.userId) {
+        // Create a synthetic attempt update that will be replaced by the real one later
+        const updatedAttempts = { ...userAttempts };
+        const quizIdForAttempts = contentId.includes("/") ? contentId.split("/")[1] : contentId;
+        
+        if (!updatedAttempts[quizIdForAttempts]) {
+          updatedAttempts[quizIdForAttempts] = { attemptCount: 1 };
+        } else {
+          updatedAttempts[quizIdForAttempts] = { 
+            ...updatedAttempts[quizIdForAttempts], 
+            attemptCount: (updatedAttempts[quizIdForAttempts].attemptCount || 0) + 1 
+          };
+        }
+        
+        // Update the attempts immediately to trigger UI changes
+        setUserAttempts(updatedAttempts);
+      }
 
+      // Continue with the rest of the function
       if (wasApproved) {
         // Identifica se é um slide ou um vídeo que estamos atualizando
         const contentId = videoId || currentVideoId;
@@ -387,6 +411,9 @@ const Classes = () => {
 
           if (result?.attempts) {
             setUserAttempts(result.attempts);
+            
+            // Force immediate update to ensure limit is applied right away
+            console.log("Atualizando contagem de tentativas:", result.attempts);
           }
         } else {
           // Salva progresso local para usuários não logados

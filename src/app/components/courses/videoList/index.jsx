@@ -37,6 +37,52 @@ const VideoList = ({
   slideQuizzes,
   advancedSettings, // Adicione advancedSettings aos props do componente
 }) => {
+  const [pendingLimitUpdates, setPendingLimitUpdates] = useState({});
+  
+  // Make sure to initialize properly when component mounts or userQuizAttempts changes
+  useEffect(() => {
+    if (Object.keys(userQuizAttempts).length > 0) {
+      // Initialize immediately with current attempts data
+      const initialUpdates = {};
+      
+      videos.forEach(video => {
+        if (video.quizId) {
+          // Extract the videoId part (handle both formats)
+          const videoId = video.quizId.includes("/") ? video.quizId.split("/")[1] : video.quizId;
+          
+          // Check if this quiz has reached its attempt limit
+          const attemptData = userQuizAttempts[videoId];
+          const attempts = attemptData?.attemptCount || 0;
+          
+          console.log(`Initializing attempt data for ${video.title} (${videoId}): ${attempts}/${maxAttempts}`);
+          
+          if (attempts >= maxAttempts) {
+            console.log(`Quiz ${videoId} has reached max attempts (${attempts}/${maxAttempts}), marking as exhausted`);
+            initialUpdates[video.quizId] = true;
+          }
+        }
+      });
+      
+      // Set the initial state with all attempts that reached the limit
+      setPendingLimitUpdates(initialUpdates);
+    }
+  }, [userQuizAttempts, videos, maxAttempts]);
+  
+  // Debug - log whenever attemptsExhausted changes for each video
+  useEffect(() => {
+    if (videos && videos.length > 0) {
+      videos.forEach(video => {
+        if (video.quizId) {
+          const videoId = video.quizId.includes("/") ? video.quizId.split("/")[1] : video.quizId;
+          const attempts = userQuizAttempts[videoId]?.attemptCount || 0;
+          const exhausted = (attempts >= maxAttempts) || pendingLimitUpdates[video.quizId];
+          
+          console.log(`[DEBUG] Quiz status for ${video.title}: attempts=${attempts}, maxAttempts=${maxAttempts}, exhausted=${exhausted}`);
+        }
+      });
+    }
+  }, [videos, userQuizAttempts, pendingLimitUpdates, maxAttempts]);
+
   // Handler para clicar em um vídeo bloqueado
   const handleLockedClick = (video, previousVideo) => {
     if (previousVideo) {
@@ -96,14 +142,24 @@ const VideoList = ({
           : video.watched && (!video.quizId || video.quizPassed);
         const isCurrent = video.id === currentVideoId;
         const quizLocked = video.isSlide ? false : isQuizLocked(video);
-        const attemptsExhausted =
+        const permanentlyExhausted = 
           video.quizId &&
-          advancedSettings?.quiz?.allowRetry !== false && // Verificar configuração
-          hasUserReachedQuizAttemptLimit(
-            userQuizAttempts,
-            video.quizId,
-            maxAttempts
-          );
+          (advancedSettings?.quiz?.allowRetry === false || 
+           hasUserReachedQuizAttemptLimit(
+             userQuizAttempts,
+             video.quizId,
+             maxAttempts
+           ));
+        
+        // Include both permanent exhaustion and pending updates
+        const attemptsExhausted = permanentlyExhausted || pendingLimitUpdates[video.quizId];
+
+        // Add additional debug log 
+        console.log(`Video ${video.title} - Attempts status:`, {
+          permanent: permanentlyExhausted,
+          pending: pendingLimitUpdates[video.quizId], 
+          final: attemptsExhausted
+        });
 
         // Determinar se é um slide
         const isSlide = video.isSlide || video.type === "slide";

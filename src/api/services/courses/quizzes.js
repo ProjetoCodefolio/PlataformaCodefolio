@@ -637,7 +637,6 @@ export const validateQuizAnswers = async (
   minPercentage = 70
 ) => {
   try {
-
     // Verificar se quizId é válido
     if (!quizId) {
       throw new Error("quizId é necessário para validar o quiz");
@@ -673,7 +672,7 @@ export const validateQuizAnswers = async (
 
       // Verificar se a resposta está correta
       if (userAnswer === correctAnswer) {
-        earnedPoints++;  
+        earnedPoints++;
       } else {
       }
     }
@@ -687,7 +686,7 @@ export const validateQuizAnswers = async (
 
     // Determinar aprovação
     const isPassed = scorePercentage >= requiredPercentage;
-    
+
     return {
       isPassed,
       scorePercentage,
@@ -720,7 +719,33 @@ export const markQuizAsCompleted = async (
       database,
       `quizResults/${userId}/${courseId}/${videoId}`
     );
-    await set(quizResultRef, quizResult);
+    
+    // Check if there's existing data we need to preserve
+    const existingSnapshot = await get(quizResultRef);
+    let completeData = quizResult;
+    
+    if (existingSnapshot.exists()) {
+      const existingData = existingSnapshot.val();
+      // Only update, don't replace existing fields
+      completeData = {
+        ...existingData,
+        ...quizResult,
+        // Make sure attemptCount exists and is incremented if needed
+        attemptCount: existingData.attemptCount 
+          ? existingData.attemptCount 
+          : (quizResult.attemptCount || 1)
+      };
+    } else {
+      // Ensure minimal required fields
+      completeData = {
+        ...quizResult,
+        attemptCount: quizResult.attemptCount || 1,
+        lastAttempt: quizResult.completedAt || new Date().toISOString()
+      };
+    }
+    
+    // Update with complete data
+    await set(quizResultRef, completeData);
 
     // Atualizar o progresso do vídeo para mostrar que o quiz foi passado
     const videoProgressRef = ref(
@@ -754,7 +779,18 @@ export const saveQuizResults = async (
   userAnswers,
   questions
 ) => {
+  console.log("==========================================");
+  console.log("🚀 SALVANDO RESULTADOS DO QUIZ");
+  console.log("userId:", userId);
+  console.log("courseId:", courseId);
+  console.log("videoId:", videoId);
+  console.log("==========================================");
+
   try {
+    if (!userId || !courseId || !videoId) {
+      throw new Error("IDs obrigatórios não fornecidos");
+    }
+
     const { isPassed, scorePercentage, earnedPoints, totalPoints } = quizData;
 
     // Obter dados do usuário
@@ -763,6 +799,7 @@ export const saveQuizResults = async (
     const user = userSnapshot.val();
 
     if (!user) {
+      console.error("Usuário não encontrado:", userId);
       throw new Error("Usuário não encontrado");
     }
 
@@ -776,9 +813,10 @@ export const saveQuizResults = async (
       ? existingResultSnapshot.val()
       : null;
 
-    // Verifica se o usuário já havia passado no quiz antes, mas não atingiu a pontuação mínima
-    const previousPassed = existingResult?.isPassed;
-    const isPending = previousPassed === true && isPassed === false;
+    // Calcular número da tentativa
+    const attemptCount = existingResult
+      ? (existingResult.attemptCount || 1) + 1
+      : 1;
 
     // Criar objeto detailedAnswers para armazenar informações de cada pergunta
     const detailedAnswers = {};
@@ -796,36 +834,68 @@ export const saveQuizResults = async (
       };
     });
 
-    // Calcular número da tentativa
-    const attemptCount = existingResult
-      ? (existingResult.attemptCount || 1) + 1
-      : 1;
+    const currentDate = new Date().toISOString();
 
-    await set(quizResultRef, {
+    // Criar objeto de resultado completo
+    const quizResultData = {
       name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
       email: user.email,
       scorePercentage,
       correctAnswers: earnedPoints,
       totalQuestions: totalPoints,
       isPassed,
-      pending: isPending,
+      passed: isPassed,
       minPercentage: quizData.minPercentage || 0,
-      submittedAt: new Date().toISOString(),
-      lastAttempt: new Date().toISOString(),
+      submittedAt: currentDate,
+      lastAttempt: currentDate,
       attemptCount,
       detailedAnswers,
-    });
+      // Adicionar campos que podem estar sendo adicionados por outro código
+      completedAt: currentDate,
+      isSlide: false,
+      // Adicionar flag para indicar que estes dados são completos
+      isComplete: true,
+    };
 
-    // Atualizar o progresso do vídeo - sempre atualiza se o usuário passou, independente de ser a melhor pontuação
+    // IMPORTANTE: Usar set para substituir completamente quaisquer dados anteriores
+    await set(quizResultRef, quizResultData);
+
+    // IMPORTANTE: Configurar um segundo salvamento após um pequeno delay
+    // Isso ajuda a evitar que outro código sobrescreva os dados
+    setTimeout(async () => {
+      try {
+        await set(quizResultRef, quizResultData);
+        console.log(
+          "🔄 VERIFICAÇÃO: Dados do quiz salvos novamente após delay"
+        );
+      } catch (error) {
+        console.error("Erro ao salvar dados novamente:", error);
+      }
+    }, 1500);
+
+    // Atualizar também o progresso do vídeo
     const videoProgressRef = ref(
       database,
       `videoProgress/${userId}/${courseId}/${videoId}`
     );
-    await update(videoProgressRef, { quizPassed: isPassed });
+    await update(videoProgressRef, {
+      quizPassed: isPassed,
+      hasQuizData: true, // Flag para indicar que existem dados de quiz
+    });
+
+    console.log("✅ QUIZ SALVO COM SUCESSO:", {
+      userId,
+      courseId,
+      videoId,
+      scorePercentage,
+      correctAnswers: earnedPoints,
+      totalQuestions: totalPoints,
+      isPassed,
+    });
 
     return { success: true, attemptCount };
   } catch (error) {
-    console.error("Erro ao salvar resultados do quiz:", error);
+    console.error("❌ ERRO AO SALVAR RESULTADOS DO QUIZ:", error);
     return { success: false, error: error.message };
   }
 };
@@ -850,21 +920,25 @@ export const hasUserReachedQuizAttemptLimit = (
 ) => {
   if (!userQuizAttempts || !quizId) return false;
 
-  // Extrair apenas o videoId do quizId completo (formato: courseId/videoId)
+  console.log(`[DEBUG] Checking limit for ${quizId}, max=${maxAttempts}`);
+  console.log(`[DEBUG] Available attempts:`, userQuizAttempts);
+
+  // Extract videoId from quizId (which may be in format "courseId/videoId")
   const videoId = quizId.includes("/") ? quizId.split("/")[1] : quizId;
-
-  // Verificar se o videoId existe em userQuizAttempts e se atingiu o limite
+  
+  // Check direct match first
+  if (userQuizAttempts[videoId] && userQuizAttempts[videoId].attemptCount >= maxAttempts) {
+    console.log(`[DEBUG] Found direct match for ${videoId}: ${userQuizAttempts[videoId].attemptCount} attempts`);
+    return true;
+  }
+  
+  // Also check for any key that ends with our videoId (for backward compatibility)
   const found = Object.keys(userQuizAttempts).some((key) => {
-    // Chave exatamente igual
-    if (key === videoId) {
-      return userQuizAttempts[key]?.attemptCount >= maxAttempts;
+    if (key === videoId || key.endsWith(`/${videoId}`)) {
+      const hasReached = userQuizAttempts[key]?.attemptCount >= maxAttempts;
+      console.log(`[DEBUG] Found match ${key} for ${videoId}: ${userQuizAttempts[key]?.attemptCount} attempts, limit reached: ${hasReached}`);
+      return hasReached;
     }
-
-    // Chave termina com o videoId (formato courseId/videoId)
-    if (key.endsWith(`/${videoId}`)) {
-      return userQuizAttempts[key]?.attemptCount >= maxAttempts;
-    }
-
     return false;
   });
 
