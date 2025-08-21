@@ -36,7 +36,6 @@ const MyCourses = () => {
   const [loading, setLoading] = useState(true);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Efeito para carregar cursos ao iniciar
   useEffect(() => {
@@ -120,106 +119,104 @@ const MyCourses = () => {
       );
     }
 
-
     return (
-      <>
-        <ToastContainer /><Grid container spacing={2}>
-          {courses.map((course) => (
-            <Grid item xs={12} sm={6} md={4} key={course.courseId}>
-              <Card
-                sx={{
-                  backgroundColor: "#ffffff",
-                  boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                  borderRadius: "16px",
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "transform 0.2s ease-in-out",
-                  "&:hover": {
-                    transform: "scale(1.02)",
-                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
-                  },
-                }}
-              >
-                <CardContent sx={{ flex: 1 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        fontWeight: "bold",
-                        textAlign: "center",
-                        color: "#333",
-                        fontSize: { xs: "0.9rem", sm: "1rem" },
-                      }}
-                    >
-                      {course.title || "Título do Curso"}
-                    </Typography>
-                    {course.pinEnabled && (
-                      <LockIcon
-                        sx={{
-                          color: "#9041c1",
-                          ml: 1,
-                          fontSize: { xs: "1rem", sm: "1.2rem" },
-                        }} />
-                    )}
-                  </Box>
+      <Grid container spacing={2}>
+        {courses.map((course) => (
+          <Grid item xs={12} sm={6} md={4} key={course.courseId}>
+            <Card
+              sx={{
+                backgroundColor: "#ffffff",
+                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                borderRadius: "16px",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                transition: "transform 0.2s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.02)",
+                  boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                },
+              }}
+            >
+              <CardContent sx={{ flex: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mb: 1,
+                  }}
+                >
                   <Typography
-                    variant="body2"
-                    color="textSecondary"
+                    variant="subtitle1"
                     sx={{
-                      mb: 1,
-                      fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                    }}
-                  >
-                    {course.description || "Descrição do curso"}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="textSecondary"
-                    sx={{
-                      mt: 1,
-                      fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                    }}
-                  >
-                    Progresso: {(course.progress || 0).toFixed(2)}%
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ p: 2, justifyContent: "center", mt: "auto" }}>
-                  <Button
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "#9041c1",
-                      color: "white",
-                      borderRadius: "8px",
-                      "&:hover": { backgroundColor: "#7d37a7" },
-                      textTransform: "none",
                       fontWeight: "bold",
-                      fontSize: { xs: "12px", sm: "14px" },
-                      padding: "6px 10px",
-                      width: "calc(100% - 16px)",
+                      textAlign: "center",
+                      color: "#333",
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
                     }}
-                    onClick={() => onClickAction(course)}
                   >
-                    {actionButtonLabel}
-                  </Button>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      </>
+                    {course.title || "Título do Curso"}
+                  </Typography>
+                  {course.pinEnabled && (
+                    <LockIcon
+                      sx={{
+                        color: "#9041c1",
+                        ml: 1,
+                        fontSize: { xs: "1rem", sm: "1.2rem" },
+                      }}
+                    />
+                  )}
+                </Box>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    mb: 1,
+                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                  }}
+                >
+                  {course.description || "Descrição do curso"}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  color="textSecondary"
+                  sx={{
+                    mt: 1,
+                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                  }}
+                >
+                  Progresso: {(course.progress || 0).toFixed(2)}%
+                </Typography>
+              </CardContent>
+              <CardActions sx={{ p: 2, justifyContent: "center", mt: "auto" }}>
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#9041c1",
+                    color: "white",
+                    borderRadius: "8px",
+                    "&:hover": { backgroundColor: "#7d37a7" },
+                    textTransform: "none",
+                    fontWeight: "bold",
+                    fontSize: { xs: "12px", sm: "14px" },
+                    padding: "6px 10px",
+                    width: "calc(100% - 16px)",
+                  }}
+                  onClick={() => onClickAction(course)}
+                >
+                  {actionButtonLabel}
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
     );
   };
 

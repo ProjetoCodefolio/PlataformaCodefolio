@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   BrowserRouter as Router,
   Route,
   Routes,
   Navigate,
   useLocation,
-  useSearchParams,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./app/context/AuthContext";
 import Login from "./app/pages/Login";
@@ -108,7 +107,7 @@ function App() {
             />
 
             <Route
-              path="/cursos"
+              path="/listcurso"
               element={
                 // <PrivateRoute >
                   <ListCursos />
@@ -238,86 +237,6 @@ const adminPermissions = (children, isAdmin) => {
     return <Navigate to="/dashboard" state={{ from: location }} />;
   }
 
-  return children;
-}
-
-// Nova rota que gerencia permissões para a página de cursos
-function CourseManagerRoute({ children }) {
-  const { currentUser, userDetails } = useAuth();
-  const location = useLocation();
-  const [searchParams] = useSearchParams();
-  const [hasAccess, setHasAccess] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const courseId = searchParams.get("courseId");
-
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!currentUser) {
-        setHasAccess(false);
-        setLoading(false);
-        return;
-      }
-
-      // Caso 1: Usuário é admin - acesso total
-      if (userDetails?.role === "admin") {
-        setHasAccess(true);
-        setLoading(false);
-        return;
-      }
-
-      // Caso 2: Não é admin mas tem courseId na URL - verificar se é professor deste curso
-      if (courseId) {
-        try {
-          const db = getDatabase();
-          const teacherRef = ref(db, `users/${currentUser.uid}/coursesTeacher/${courseId}`);
-          const snapshot = await get(teacherRef);
-
-          // Se o usuário é professor deste curso específico
-          if (snapshot.exists() && snapshot.val() === true) {
-            setHasAccess(true);
-          } else {
-            setHasAccess(false);
-          }
-        } catch (error) {
-          console.error("Erro ao verificar permissão:", error);
-          setHasAccess(false);
-        }
-      }
-      // Caso 3: Não é admin e não tem courseId (tentando criar curso) - acesso negado
-      else {
-        setHasAccess(false);
-      }
-
-      setLoading(false);
-    };
-
-    checkAccess();
-  }, [currentUser, userDetails, courseId]);
-
-  // Mostrar indicador de carregamento enquanto verifica permissões
-  if (loading) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh'
-      }}>
-        <div>Verificando permissões...</div>
-      </div>
-    );
-  }
-
-  // Redirecionar se não tiver acesso
-  if (!hasAccess) {
-    if (!currentUser) {
-      return <Navigate to="/login" state={{ from: location }} />;
-    }
-    return <Navigate to="/manage-courses" state={{ from: location }} />;
-  }
-
-  // Permitir acesso se tiver permissão
   return children;
 }
 
