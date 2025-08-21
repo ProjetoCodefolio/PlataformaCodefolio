@@ -719,7 +719,33 @@ export const markQuizAsCompleted = async (
       database,
       `quizResults/${userId}/${courseId}/${videoId}`
     );
-    await set(quizResultRef, quizResult);
+    
+    // Check if there's existing data we need to preserve
+    const existingSnapshot = await get(quizResultRef);
+    let completeData = quizResult;
+    
+    if (existingSnapshot.exists()) {
+      const existingData = existingSnapshot.val();
+      // Only update, don't replace existing fields
+      completeData = {
+        ...existingData,
+        ...quizResult,
+        // Make sure attemptCount exists and is incremented if needed
+        attemptCount: existingData.attemptCount 
+          ? existingData.attemptCount 
+          : (quizResult.attemptCount || 1)
+      };
+    } else {
+      // Ensure minimal required fields
+      completeData = {
+        ...quizResult,
+        attemptCount: quizResult.attemptCount || 1,
+        lastAttempt: quizResult.completedAt || new Date().toISOString()
+      };
+    }
+    
+    // Update with complete data
+    await set(quizResultRef, completeData);
 
     // Atualizar o progresso do vídeo para mostrar que o quiz foi passado
     const videoProgressRef = ref(
@@ -894,21 +920,25 @@ export const hasUserReachedQuizAttemptLimit = (
 ) => {
   if (!userQuizAttempts || !quizId) return false;
 
-  // Extrair apenas o videoId do quizId completo (formato: courseId/videoId)
+  console.log(`[DEBUG] Checking limit for ${quizId}, max=${maxAttempts}`);
+  console.log(`[DEBUG] Available attempts:`, userQuizAttempts);
+
+  // Extract videoId from quizId (which may be in format "courseId/videoId")
   const videoId = quizId.includes("/") ? quizId.split("/")[1] : quizId;
-
-  // Verificar se o videoId existe em userQuizAttempts e se atingiu o limite
+  
+  // Check direct match first
+  if (userQuizAttempts[videoId] && userQuizAttempts[videoId].attemptCount >= maxAttempts) {
+    console.log(`[DEBUG] Found direct match for ${videoId}: ${userQuizAttempts[videoId].attemptCount} attempts`);
+    return true;
+  }
+  
+  // Also check for any key that ends with our videoId (for backward compatibility)
   const found = Object.keys(userQuizAttempts).some((key) => {
-    // Chave exatamente igual
-    if (key === videoId) {
-      return userQuizAttempts[key]?.attemptCount >= maxAttempts;
+    if (key === videoId || key.endsWith(`/${videoId}`)) {
+      const hasReached = userQuizAttempts[key]?.attemptCount >= maxAttempts;
+      console.log(`[DEBUG] Found match ${key} for ${videoId}: ${userQuizAttempts[key]?.attemptCount} attempts, limit reached: ${hasReached}`);
+      return hasReached;
     }
-
-    // Chave termina com o videoId (formato courseId/videoId)
-    if (key.endsWith(`/${videoId}`)) {
-      return userQuizAttempts[key]?.attemptCount >= maxAttempts;
-    }
-
     return false;
   });
 
