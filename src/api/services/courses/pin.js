@@ -11,7 +11,7 @@ import { database } from '../../config/firebase';
  */
 export const encryptPin = (pin, courseId) => {
   // Usar uma chave de criptografia baseada no courseId + uma chave secreta
-  const secretKey = courseId + import.meta.env.REACT_APP_PIN_SECRET_KEY;
+  const secretKey = courseId + import.meta.env.VITE_PIN_SECRET_KEY;
   return crypto.AES.encrypt(pin, secretKey).toString();
 };
 
@@ -23,7 +23,7 @@ export const encryptPin = (pin, courseId) => {
  */
 export const decryptPin = (encryptedPin, courseId) => {
   try {
-    const secretKey = courseId + import.meta.env.REACT_APP_PIN_SECRET_KEY;
+    const secretKey = courseId + import.meta.env.VITE_PIN_SECRET_KEY;
     const bytes = crypto.AES.decrypt(encryptedPin, secretKey);
     return bytes.toString(crypto.enc.Utf8);
   } catch (error) {

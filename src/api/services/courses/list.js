@@ -55,19 +55,3 @@ export const courseRequiresPin = (course) => {
  * @param {string} enteredPin - PIN informado pelo usuário
  * @returns {Promise<boolean>} - Verdadeiro se o PIN for válido
  */
-export const validateCoursePin = async (courseId, enteredPin) => {
-  try {
-    // Implemente a validação do PIN aqui
-    // Exemplo de implementação:
-    // const courseRef = ref(database, `courses/${courseId}`);
-    // const snapshot = await get(courseRef);
-    // const courseData = snapshot.val();
-    // return courseData?.pin === enteredPin;
-
-    // Por enquanto, retornamos true para fins de demonstração
-    return true;
-  } catch (error) {
-    console.error(`Erro ao validar PIN do curso ${courseId}:`, error);
-    throw new Error("Não foi possível validar o PIN do curso.");
-  }
-};
