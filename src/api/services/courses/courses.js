@@ -7,6 +7,7 @@ import {
   hasCourseSlides 
 } from "../../utils/courseUtils";
 import { updateCourseProgress } from './students';
+import { hashPin, encryptPin, decryptPin } from './pin';
 
 export const fetchCourses = async (limit) => {
   try {
@@ -337,7 +338,27 @@ export const fetchCourseDetails = async (courseId) => {
     const courseSnapshot = await get(courseRef);
     
     if (courseSnapshot.exists()) {
-      return courseSnapshot.val();
+      const courseData = courseSnapshot.val();
+      
+      // Se o curso tem PIN habilitado, vamos tentar buscar o PIN original
+      // do armazenamento local (se estiver disponível)
+      if (courseData.pinEnabled) {
+        try {
+          // Aqui poderíamos buscar de algum cache local ou estado da aplicação
+          // Por enquanto, apenas indicamos que o PIN está configurado
+          courseData.pin = "[PIN configurado]";
+        } catch (e) {
+          // Se não conseguirmos recuperar, apenas indicamos que está configurado
+          courseData.pin = "[PIN configurado]";
+        }
+      }
+
+      if (courseData.pinEnabled && courseData.encryptedPin) {
+        // Descriptografar o PIN para visualização do admin
+        courseData.pin = decryptPin(courseData.encryptedPin, courseId);
+      }
+      
+      return courseData;
     }
     
     return null;
@@ -363,6 +384,9 @@ export const createCourse = async (courseData, userId) => {
     const courseRef = ref(database, "courses");
     const newCourseRef = push(courseRef);
     
+    // Importante: obter a key ANTES de salvar o curso
+    const courseKey = newCourseRef.key;
+    
     const finalCourseData = {
       ...courseData,
       userId,
@@ -370,16 +394,32 @@ export const createCourse = async (courseData, userId) => {
       updatedAt: new Date().toISOString()
     };
     
-    // Se o curso tiver PIN habilitado, garantimos que haja um PIN
-    if (finalCourseData.pinEnabled && !finalCourseData.pin) {
-      finalCourseData.pin = Math.floor(1000000 + Math.random() * 9000000).toString();
+    // Processar o PIN, mas NUNCA salvar o valor bruto
+    if (finalCourseData.pinEnabled) {
+      const rawPin = finalCourseData.pin || Math.floor(1000000 + Math.random() * 9000000).toString();
+      
+      // Armazenar o PIN criptografado (não o hash)
+      finalCourseData.encryptedPin = encryptPin(rawPin, courseKey);
+      
+      // Também mantemos o hash para validação rápida
+      finalCourseData.pinHash = hashPin(rawPin, courseKey);
+      
+      // Remover o PIN bruto
+      delete finalCourseData.pin;
+      
+      // Salvar no banco
+      await set(newCourseRef, finalCourseData);
+      
+      // Adicionar o PIN original no objeto retornado
+      finalCourseData.pin = rawPin;
+    } else {
+      // Salvar o curso normalmente
+      await set(newCourseRef, finalCourseData);
     }
     
-    await set(newCourseRef, finalCourseData);
-    
     return { 
-      courseId: newCourseRef.key,
-      courseData: finalCourseData
+      courseId: courseKey,
+      courseData: finalCourseData // Contém o PIN original para o admin
     };
   } catch (error) {
     console.error("Erro ao criar curso:", error);
@@ -399,12 +439,19 @@ export const updateCourse = async (courseId, courseData) => {
       throw new Error("ID do curso é obrigatório para atualização");
     }
     
-    const courseRef = ref(database, `courses/${courseId}`);
+    // Criar uma cópia do objeto para não modificar o original
     const updatedData = {
       ...courseData,
       updatedAt: new Date().toISOString()
     };
     
+    // Se o PIN foi atualizado, fazer o hash e remover o PIN bruto
+    if (updatedData.pinEnabled && updatedData.pin) {
+      updatedData.pinHash = hashPin(updatedData.pin, courseId);
+      delete updatedData.pin; // Remover o PIN bruto antes de salvar
+    }
+    
+    const courseRef = ref(database, `courses/${courseId}`);
     await update(courseRef, updatedData);
     
     return { 

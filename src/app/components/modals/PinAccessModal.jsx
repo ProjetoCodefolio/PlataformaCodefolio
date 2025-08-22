@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { Box, Typography, Modal, TextField, Button } from "@mui/material";
 import { keyframes } from "@emotion/react";
+import { validateCoursePin } from "$api/services/courses/list";
 
 const shake = keyframes`
   0% { transform: translateX(0); }
@@ -15,13 +16,24 @@ const PinAccessModal = ({ open, onClose, onSubmit, selectedCourse }) => {
   const [pinError, setPinError] = useState(false);
   const submitButtonRef = useRef(null);
 
-  const handlePinSubmit = () => {
-    if (pinInput === selectedCourse.pin) {
-      onSubmit(selectedCourse);
-      onClose();
-    } else {
+  const handlePinSubmit = async () => {
+    try {
+      const isValid = await validateCoursePin(
+        selectedCourse.courseId, 
+        pinInput
+      );
+      
+      if (isValid) {
+        onSubmit(selectedCourse);
+        onClose();
+      } else {
+        setPinError(true);
+        setTimeout(() => setPinError(false), 2000);
+      }
+    } catch (error) {
+      console.error("Error validating PIN:", error);
       setPinError(true);
-      setTimeout(() => setPinError(false), 2000); // Remove o efeito de tremor após 2 segundos
+      setTimeout(() => setPinError(false), 2000);
     }
   };
 

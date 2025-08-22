@@ -123,14 +123,20 @@ const CourseForm = () => {
     const loadCourse = async () => {
       if (courseId) {
         try {
-          // Usar a função da API para buscar os detalhes do curso
+          // Buscar os detalhes do curso
           const courseData = await fetchCourseDetails(courseId);
 
           if (courseData) {
             setCourseTitle(courseData.title || "");
             setCourseDescription(courseData.description || "");
             setPinRequired(courseData.pinEnabled);
-            setCoursePin(courseData.pin || "");
+            
+            // Se tiver pin habilitado e estiver retornando apenas o hash
+            if (courseData.pinEnabled) {
+              // Vamos mostrar o PIN original para o admin em vez do hash
+              // Se não existir pin, usaremos o randomPin gerado
+              setCoursePin(courseData.pin || "[PIN configurado]");
+            }
           }
         } catch (error) {
           console.error("Erro ao carregar curso:", error);
@@ -425,14 +431,14 @@ const CourseForm = () => {
                   label="PIN de Acesso"
                   fullWidth
                   variant="outlined"
-                  value={coursePin}
+                  value={coursePin === "[PIN configurado]" ? "" : coursePin}
                   disabled={!pinRequired}
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
                   helperText={
-                    courseId
-                      ? "O PIN já foi gerado e salvo para este curso."
-                      : "Caso não seja informado, será gerado um PIN aleatório de 7 dígitos"
+                    coursePin === "[PIN configurado]" 
+                      ? "O PIN já foi configurado. Para alterá-lo, desmarque e marque novamente a opção de PIN."
+                      : "Digite um PIN para o curso ou deixe em branco para gerar um automaticamente."
                   }
                   sx={{
                     "& .MuiOutlinedInput-root": {
