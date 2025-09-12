@@ -779,12 +779,6 @@ export const saveQuizResults = async (
   userAnswers,
   questions
 ) => {
-  console.log("==========================================");
-  console.log("🚀 SALVANDO RESULTADOS DO QUIZ");
-  console.log("userId:", userId);
-  console.log("courseId:", courseId);
-  console.log("videoId:", videoId);
-  console.log("==========================================");
 
   try {
     if (!userId || !courseId || !videoId) {
@@ -865,9 +859,6 @@ export const saveQuizResults = async (
     setTimeout(async () => {
       try {
         await set(quizResultRef, quizResultData);
-        console.log(
-          "🔄 VERIFICAÇÃO: Dados do quiz salvos novamente após delay"
-        );
       } catch (error) {
         console.error("Erro ao salvar dados novamente:", error);
       }
@@ -881,16 +872,6 @@ export const saveQuizResults = async (
     await update(videoProgressRef, {
       quizPassed: isPassed,
       hasQuizData: true, // Flag para indicar que existem dados de quiz
-    });
-
-    console.log("✅ QUIZ SALVO COM SUCESSO:", {
-      userId,
-      courseId,
-      videoId,
-      scorePercentage,
-      correctAnswers: earnedPoints,
-      totalQuestions: totalPoints,
-      isPassed,
     });
 
     return { success: true, attemptCount };
@@ -920,15 +901,11 @@ export const hasUserReachedQuizAttemptLimit = (
 ) => {
   if (!userQuizAttempts || !quizId) return false;
 
-  console.log(`[DEBUG] Checking limit for ${quizId}, max=${maxAttempts}`);
-  console.log(`[DEBUG] Available attempts:`, userQuizAttempts);
-
   // Extract videoId from quizId (which may be in format "courseId/videoId")
   const videoId = quizId.includes("/") ? quizId.split("/")[1] : quizId;
   
   // Check direct match first
   if (userQuizAttempts[videoId] && userQuizAttempts[videoId].attemptCount >= maxAttempts) {
-    console.log(`[DEBUG] Found direct match for ${videoId}: ${userQuizAttempts[videoId].attemptCount} attempts`);
     return true;
   }
   
@@ -936,7 +913,6 @@ export const hasUserReachedQuizAttemptLimit = (
   const found = Object.keys(userQuizAttempts).some((key) => {
     if (key === videoId || key.endsWith(`/${videoId}`)) {
       const hasReached = userQuizAttempts[key]?.attemptCount >= maxAttempts;
-      console.log(`[DEBUG] Found match ${key} for ${videoId}: ${userQuizAttempts[key]?.attemptCount} attempts, limit reached: ${hasReached}`);
       return hasReached;
     }
     return false;

@@ -108,10 +108,6 @@ export function VideoWatcher({
   };
 
   const handleVideoCompletion = async (duration) => {
-    console.log(
-      `[VideoWatcher] Completando vídeo ${videoId} com duração ${duration}`
-    );
-
     setWatchTime(duration);
     setPercentageWatched(100);
 

@@ -67,7 +67,6 @@ const AdminCourses = () => {
       try {
         setLoading(true);
         const allCourses = await fetchCourses();
-        console.log(`Total courses fetched: ${allCourses.length}`);
         
         // Add extra derived data for display and filtering
         const processedCoursesPromises = allCourses.map(async course => {
@@ -110,7 +109,6 @@ const AdminCourses = () => {
         });
         
         const processedCourses = await Promise.all(processedCoursesPromises);
-        console.log(`Processed courses with student counts: ${processedCourses.length}`);
         setCourses(processedCourses);
         setFilteredCourses(processedCourses);
       } catch (err) {

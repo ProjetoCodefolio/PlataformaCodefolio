@@ -47,8 +47,7 @@ export const isVideoLocked = (video, videos, advancedSettings = null) => {
     previousVideo &&
     (!previousVideo.watched ||
       (previousVideo.quizId && !previousVideo.quizPassed));
-
-  console.log("Resultado da verificação de bloqueio:", isBlocked);
+  
   return isBlocked;
 };
 

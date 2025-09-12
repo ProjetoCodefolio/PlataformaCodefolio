@@ -248,7 +248,6 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
     allVideos.forEach(v => {
       if (v.order > video.order) {
         updates[`courseVideos/${courseId}/${v.id}/order`] = v.order - 1;
-        console.log(`Atualizando ordem do vídeo ${v.id} para ${v.order - 1}`);
       }
     });
     

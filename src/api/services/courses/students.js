@@ -261,7 +261,6 @@ export const fetchStudentData = async (userId) => {
     if (snapshot.exists()) {
       return snapshot.val();
     } else {
-      console.log("Nenhum dado encontrado para o usuário:", userId);
       return null;
     }
   } catch (error) {

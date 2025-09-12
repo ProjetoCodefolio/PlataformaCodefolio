@@ -195,18 +195,6 @@ const Quiz = ({
         return;
       }
 
-      // Logs de debug antes de salvar
-      console.log("SALVANDO QUIZ COM OS SEGUINTES DADOS:");
-      console.log("userId:", userId);
-      console.log("courseId:", courseId);
-      console.log("videoId:", currentVideoId);
-      console.log("isPassed:", isPassed);
-      console.log("scorePercentage:", calculatedPercentage);
-      console.log("earnedPoints:", earnedPoints);
-      console.log("totalPoints:", totalPoints);
-      console.log("userAnswers:", finalAnswers);
-      console.log("questions:", questions);
-
       // Garantir que todos os parâmetros obrigatórios sejam passados
       const result = await saveQuizResults(
         userId,
@@ -224,7 +212,6 @@ const Quiz = ({
       );
 
       // Verificar e exibir o resultado
-      console.log("RESULTADO DO SALVAMENTO:", result);
       if (!result.success) {
         toast.error(`Falha ao salvar resultados: ${result.error}`);
         return;

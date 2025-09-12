@@ -69,7 +69,6 @@ const AdminPowers = () => {
         const usersList = await fetchAllUsers();
         setAllUsers(usersList);
         setAutocompleteOptions(usersList);
-        console.log(`Total de usuários carregados: ${usersList.length}`);
       } catch (error) {
         console.error("Erro ao carregar usuários:", error);
         setError("Não foi possível carregar a lista de usuários.");

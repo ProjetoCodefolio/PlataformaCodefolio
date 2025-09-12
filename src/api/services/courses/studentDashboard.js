@@ -117,13 +117,6 @@ export const fetchQuizData = async (quizId) => {
       customQuizResults
     );
 
-    console.log("===== DADOS DO QUIZ =====");
-    console.log("Quiz:", foundQuiz);
-    console.log("Curso:", foundCourse);
-    console.log("Vídeo:", foundVideo);
-    console.log("Total de estudantes:", studentResults.length);
-    console.log("=========================");
-
     return {
       quiz: foundQuiz,
       courseData: foundCourse,
@@ -249,27 +242,18 @@ export const fetchAllStudentResults = async (
 export const fetchStudentResults = async (courseId, videoId, quizObj) => {
   try {
     if (!quizObj) {
-      console.log("Nenhum objeto de quiz fornecido");
       return [];
     }
-
-    console.log("🔍 BUSCANDO RESULTADOS DOS ESTUDANTES");
-    console.log("courseId:", courseId);
-    console.log("videoId:", videoId);
 
     // Buscar resultados de quizResults
     const quizResultsRef = ref(database, "quizResults");
     const quizResultsSnapshot = await get(quizResultsRef);
 
     if (!quizResultsSnapshot.exists()) {
-      console.log("❌ Nenhum resultado encontrado em quizResults");
       return [];
     }
 
     const studentsData = quizResultsSnapshot.val();
-    console.log(
-      `📊 Total de usuários com resultados: ${Object.keys(studentsData).length}`
-    );
 
     // Buscar informações dos usuários
     const usersRef = ref(database, "users");
@@ -284,7 +268,6 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
       if (studentsData[userId]?.[courseId]?.[videoId]) {
         // Obter dados do quiz para este estudante
         const quizResult = studentsData[userId][courseId][videoId];
-        console.log(`Dados do quiz para ${userId}:`, quizResult);
 
         // Obter dados do usuário
         const userData = usersData[userId] || {};
@@ -317,13 +300,13 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
             lastAttemptDate = new Date(
               quizResult.submittedAt
             ).toLocaleDateString("pt-BR");
-          } catch (e) {}
+          } catch (e) { }
         } else if (quizResult.lastAttempt) {
           try {
             lastAttemptDate = new Date(
               quizResult.lastAttempt
             ).toLocaleDateString("pt-BR");
-          } catch (e) {}
+          } catch (e) { }
         }
 
         // Adicionar resultado do estudante à lista
@@ -340,16 +323,8 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
           lastAttemptDate,
           detailedAnswers: quizResult.detailedAnswers || null,
         });
-
-        console.log(`✅ Estudante processado: ${userName} (${userId})`);
-        console.log(`  - Score: ${scorePercentage}%`);
-        console.log(`  - Acertos: ${correctAnswers}/${totalQuestionsInQuiz}`);
-        console.log(`  - Aprovado: ${isPassed ? "SIM" : "NÃO"}`);
-        console.log(`  - Última tentativa: ${lastAttemptDate}`);
       }
     }
-
-    console.log(`🎉 Total de estudantes com resultados: ${results.length}`);
     return results;
   } catch (error) {
     console.error("❌ Erro ao buscar resultados dos estudantes:", error);

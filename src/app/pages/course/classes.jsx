@@ -349,11 +349,8 @@ const Classes = () => {
 
   const handleQuizComplete = async (isPassed, action, videoId) => {
     try {
-      console.log("Quiz completado:", { isPassed, action, videoId });
-
-      // IMPORTANTE: Garantir que isPassed seja um booleano
+      // Garantir que isPassed seja um booleano
       const wasApproved = Boolean(isPassed);
-      console.log("Aluno foi aprovado?", wasApproved);
       
       // Identifica se é um slide ou um vídeo que estamos atualizando
       const contentId = videoId || currentVideoId;
@@ -411,9 +408,6 @@ const Classes = () => {
 
           if (result?.attempts) {
             setUserAttempts(result.attempts);
-            
-            // Force immediate update to ensure limit is applied right away
-            console.log("Atualizando contagem de tentativas:", result.attempts);
           }
         } else {
           // Salva progresso local para usuários não logados
@@ -433,8 +427,6 @@ const Classes = () => {
         if (isCompleted) {
           setShowCompletionModal(true);
         }
-      } else {
-        console.log("Aluno não passou no quiz, não atualizando progresso");
       }
 
       // IMPORTANTE: Esta parte deve estar FORA do bloco if(wasApproved)
@@ -464,15 +456,11 @@ const Classes = () => {
   };
 
   const handleVideoSelect = (video) => {
-    console.log("Tentando selecionar vídeo:", video?.title);
-    console.log("Configurações atuais:", advancedSettings);
-
     // Se for slide ou se a configuração não exigir completar vídeo anterior, permitir acesso direto
     if (
       video.isSlide ||
       advancedSettings?.videos?.requirePreviousCompletion === false
     ) {
-      console.log("Permitindo acesso direto ao vídeo");
       setCurrentVideoId(video.id);
       return;
     }
@@ -658,7 +646,6 @@ const Classes = () => {
         if (courseId) {
           const settings = await fetchAdvancedSettings(courseId);
           setAdvancedSettings(settings);
-          console.log("Configurações avançadas carregadas:", settings);
         }
       } catch (error) {
         console.error("Erro ao carregar configurações avançadas:", error);

@@ -87,7 +87,6 @@ export const saveVideoProgress = async (
     // Verify the data was saved
     const verifySnapshot = await get(progressRef);
     if (verifySnapshot.exists()) {
-     console.log ("✅ Progress data successfully saved to Firebase!");
     } else {
       console.warn(
         "⚠️ Failed to verify saved data - snapshot does not exist after save"
@@ -119,10 +118,6 @@ export const saveVideoProgress = async (
  */
 export const fetchVideoProgress = async (userId, courseId, videoId) => {
   try {
-    console.log(
-      `Fetching video progress for: ${userId}/${courseId}/${videoId}`
-    );
-
     if (!userId || !courseId || !videoId) {
       console.warn("Missing required parameters for fetchVideoProgress");
       return { watchedTime: 0, percentageWatched: 0 };
@@ -143,8 +138,6 @@ export const fetchVideoProgress = async (userId, courseId, videoId) => {
         completed: data.completed || false,
         quizPassed: data.quizPassed || false,
       };
-    } else {
-      console.log(`No progress found for ${videoId}`);
     }
 
     return {

@@ -28,7 +28,6 @@ const CourseListSidebar = ({ onSelectCourse }) => {
   useEffect(() => {
     const loadCourses = async () => {
       let coursesData = await fetchCourses();
-      console.log("Cursos retornados:", coursesData);
 
       // Ordena corretamente convertendo createdAt para timestamp
       coursesData = coursesData

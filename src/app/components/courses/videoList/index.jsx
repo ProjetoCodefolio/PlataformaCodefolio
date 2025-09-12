@@ -54,10 +54,7 @@ const VideoList = ({
           const attemptData = userQuizAttempts[videoId];
           const attempts = attemptData?.attemptCount || 0;
           
-          console.log(`Initializing attempt data for ${video.title} (${videoId}): ${attempts}/${maxAttempts}`);
-          
           if (attempts >= maxAttempts) {
-            console.log(`Quiz ${videoId} has reached max attempts (${attempts}/${maxAttempts}), marking as exhausted`);
             initialUpdates[video.quizId] = true;
           }
         }
@@ -76,8 +73,6 @@ const VideoList = ({
           const videoId = video.quizId.includes("/") ? video.quizId.split("/")[1] : video.quizId;
           const attempts = userQuizAttempts[videoId]?.attemptCount || 0;
           const exhausted = (attempts >= maxAttempts) || pendingLimitUpdates[video.quizId];
-          
-          console.log(`[DEBUG] Quiz status for ${video.title}: attempts=${attempts}, maxAttempts=${maxAttempts}, exhausted=${exhausted}`);
         }
       });
     }
@@ -125,17 +120,12 @@ const VideoList = ({
     <Box>
       {videos.map((video, index) => {
         // Adicionamos logs e uma verificação explícita
-        console.log("Renderizando vídeo:", video.title);
-        console.log("Configurações avançadas:", advancedSettings);
-
         let locked = false;
         if (advancedSettings?.videos?.requirePreviousCompletion === false) {
-          console.log("Configuração: não bloquear vídeos - todos liberados");
           locked = false;
         } else {
           // Caso contrário, usamos a lógica padrão
           locked = !video.isSlide && isVideoLocked(video, videos);
-          console.log(`Vídeo ${video.title} bloqueado: ${locked}`);
         }
         const completed = video.isSlide
           ? true
@@ -153,13 +143,6 @@ const VideoList = ({
         
         // Include both permanent exhaustion and pending updates
         const attemptsExhausted = permanentlyExhausted || pendingLimitUpdates[video.quizId];
-
-        // Add additional debug log 
-        console.log(`Video ${video.title} - Attempts status:`, {
-          permanent: permanentlyExhausted,
-          pending: pendingLimitUpdates[video.quizId], 
-          final: attemptsExhausted
-        });
 
         // Determinar se é um slide
         const isSlide = video.isSlide || video.type === "slide";
