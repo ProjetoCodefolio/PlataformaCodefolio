@@ -30,6 +30,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import * as assessmentService from "$api/services/courses/assessments";
 import * as studentService from "$api/services/courses/students";
 import * as courseService from "$api/services/courses/courses";
+import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify"; // Adicione esta linha
 
 // Função para formatar nomes com capitalização adequada - igual ao CourseStudentsTab
@@ -44,7 +45,7 @@ const capitalizeWords = (name) => {
 export default function GradeAssignmentPage() {
   const [students, setStudents] = useState([]);
   const [assessment, setAssessment] = useState(null);
-  const [courseDetails, setCourseDetails] = useState(null);
+  const [courseDetails, setCourseDetails] = useState({});
   const [grades, setGrades] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState({});
@@ -52,14 +53,16 @@ export default function GradeAssignmentPage() {
   const [invalidStatus, setInvalidStatus] = useState({});
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isCourseOwner, setIsCourseOwner] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
   const assessmentId = params.get("assessmentId");
-
   const inputRefs = useRef([]);
+
+  const { currentUser } = useAuth();
 
   // Carregar dados necessários ao iniciar
   useEffect(() => {
@@ -161,8 +164,7 @@ export default function GradeAssignmentPage() {
         [studentId]: true,
       }));
       toast.error(
-        `Nota inválida para ${
-          students.find((s) => s.userId === studentId)?.name || "estudante"
+        `Nota inválida para ${students.find((s) => s.userId === studentId)?.name || "estudante"
         }. Use valores entre 0 e 10.`
       );
       return;
@@ -197,8 +199,7 @@ export default function GradeAssignmentPage() {
       // Remova o toast de sucesso daqui!
     } catch (err) {
       toast.error(
-        `Erro ao salvar nota para ${
-          students.find((s) => s.userId === studentId)?.name || "estudante"
+        `Erro ao salvar nota para ${students.find((s) => s.userId === studentId)?.name || "estudante"
         }: ${err.message}`
       );
     } finally {
@@ -219,6 +220,24 @@ export default function GradeAssignmentPage() {
   const filteredStudents = students.filter((student) =>
     (student.name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const checkCourseOwner = async () => {
+    try {
+      if (!currentUser || !courseDetails.userId) return;
+
+      const isCourseOwner = currentUser.uid === courseDetails.userId;
+      setIsCourseOwner(isCourseOwner);
+    } catch (error) {
+      console.error("Erro ao verificar papel do usuário:", error);
+      setIsCourseOwner(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser && courseDetails.userId) {
+      checkCourseOwner();
+    }
+  }, [currentUser, courseDetails]);
 
   return (
     <>
@@ -407,6 +426,7 @@ export default function GradeAssignmentPage() {
                               >
                                 <TextField
                                   value={grades[studentId] || ""}
+                                  disabled={!isCourseOwner}
                                   onChange={(e) =>
                                     handleGradeChange(studentId, e.target.value)
                                   }

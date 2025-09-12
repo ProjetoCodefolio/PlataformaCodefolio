@@ -23,6 +23,9 @@ import AddIcon from "@mui/icons-material/Add";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as assessmentService from "$api/services/courses/assessments";
+import { checkUserCourseRole } from "$api/services/courses/students";
+import { fetchCourseDetails } from "$api/services/courses/courses";
+import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
 
 export default function CourseAssessmentsTab() {
@@ -36,6 +39,9 @@ export default function CourseAssessmentsTab() {
   const [success, setSuccess] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [courseDetails, setCourseDetails] = useState({});
+  const [isCourseOwner, setIsCourseOwner] = useState(false);
+  const { currentUser } = useAuth();
 
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
@@ -91,13 +97,13 @@ export default function CourseAssessmentsTab() {
             percentage: Number(assessmentPercentage),
           }
         );
-      
+
       } else {
         await assessmentService.createAssessment(courseId, {
           name: assessmentName,
           percentage: Number(assessmentPercentage),
         });
-      
+
         toast.success("Avaliação criada com sucesso!"); // <-- Toast de sucesso ao cadastrar
       }
 
@@ -149,6 +155,46 @@ export default function CourseAssessmentsTab() {
     (total, assessment) => total + assessment.percentage,
     0
   );
+
+  const loadCourseDetails = async (courseId) => {
+    try {
+      setLoading(true);
+
+      const studentsData = await fetchCourseDetails(courseId);
+      setCourseDetails(studentsData);
+
+    } catch (error) {
+      console.error("Erro ao buscar o curso:", error);
+      toast.error("Não foi possível carregar os dados do curso");
+      setCourseDetails([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (courseId) {
+      loadCourseDetails(courseId)
+    }
+  }, [courseId]);
+
+  const checkCourseOwner = async () => {
+    try {
+      if (!currentUser || !courseDetails.userId) return;
+
+      const isCourseOwner = currentUser.uid === courseDetails.userId;
+      setIsCourseOwner(isCourseOwner);
+    } catch (error) {
+      console.error("Erro ao verificar papel do usuário:", error);
+      setIsCourseOwner(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser && courseDetails.userId) {
+      checkCourseOwner();
+    }
+  }, [currentUser, courseDetails]);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -253,7 +299,7 @@ export default function CourseAssessmentsTab() {
                 type="submit"
                 variant="contained"
                 startIcon={isEditing ? <EditIcon /> : <AddIcon />}
-                disabled={loading}
+                disabled={!isCourseOwner || loading}
                 sx={{
                   backgroundColor: "#9041c1",
                   "&:hover": { backgroundColor: "#7d37a7" },
@@ -346,6 +392,7 @@ export default function CourseAssessmentsTab() {
                       <Box sx={{ display: "flex", gap: 1 }}>
                         <IconButton
                           size="small"
+                          disabled={!isCourseOwner}
                           onClick={() => handleEditAssessment(assessment)}
                           sx={{ color: "#9041c1" }}
                         >
@@ -353,6 +400,7 @@ export default function CourseAssessmentsTab() {
                         </IconButton>
                         <IconButton
                           size="small"
+                          disabled={!isCourseOwner}
                           onClick={() => handleDeleteAssessment(assessment.id)}
                           sx={{ color: "#f44336" }}
                         >
@@ -360,6 +408,7 @@ export default function CourseAssessmentsTab() {
                         </IconButton>
                         <Button
                           size="small"
+                          // disabled={!isCourseOwner}
                           variant="outlined"
                           startIcon={<AssignmentIcon />}
                           onClick={() => navigateToGradeAssignment(assessment)}
