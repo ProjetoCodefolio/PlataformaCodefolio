@@ -26,7 +26,8 @@ import AdminCourses from "$pages/adminPowers/adminCourses";
 import NotFound from "$pages/NotFound";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import SentimentVeryDissatisfiedIcon from '@mui/icons-material/SentimentVeryDissatisfied';
+import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
+import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage"; // <-- adicionado
 
 function App() {
   return (
@@ -45,6 +46,16 @@ function App() {
                 // <PrivateRoute>
                 <Dashboard />
                 // </PrivateRoute>
+              }
+            />
+
+            {/* Rota para Minhas Avaliações (usuário logado) */}
+            <Route
+              path="/minhas-avaliacoes"
+              element={
+                <PrivateRoute>
+                  <MyAssessmentsPage />
+                </PrivateRoute>
               }
             />
 
@@ -88,22 +99,22 @@ function App() {
             <Route
               path="/adm-cursos"
               element={
-                <PrivateRoute >
-                  <TeacherRoute >
+                <PrivateRoute>
+                  <TeacherRoute>
                     <Cursos />
                   </TeacherRoute>
-                </PrivateRoute >
+                </PrivateRoute>
               }
             />
 
             <Route
               path="/studentDashboard"
               element={
-                <PrivateRoute >
+                <PrivateRoute>
                   <TeacherRoute>
                     <StudentDashboard />
                   </TeacherRoute>
-                </PrivateRoute >
+                </PrivateRoute>
               }
             />
 
@@ -125,7 +136,6 @@ function App() {
               }
             />
 
-
             <Route
               path="/course/grade-assignment"
               element={
@@ -140,49 +150,48 @@ function App() {
             <Route
               path="/manage-courses"
               element={
-                <PrivateRoute >
-                  <TeacherRoute >
+                <PrivateRoute>
+                  <TeacherRoute>
                     <ManageMyCourses />
-                  </TeacherRoute >
-                </PrivateRoute >
+                  </TeacherRoute>
+                </PrivateRoute>
               }
             />
 
             <Route
               path="/admin-panel"
               element={
-                <PrivateRoute >
-                  <AdminRoute >
+                <PrivateRoute>
+                  <AdminRoute>
                     <AdminPanel />
-                  </AdminRoute >
-                </PrivateRoute >
+                  </AdminRoute>
+                </PrivateRoute>
               }
             />
 
             <Route
               path="/admin-users"
               element={
-                <PrivateRoute >
-                  <AdminRoute >
+                <PrivateRoute>
+                  <AdminRoute>
                     <AdminUsers />
-                  </AdminRoute >
-                </PrivateRoute >
+                  </AdminRoute>
+                </PrivateRoute>
               }
             />
 
             <Route
               path="/admin-courses"
               element={
-                <PrivateRoute >
-                  <AdminRoute >
+                <PrivateRoute>
+                  <AdminRoute>
                     <AdminCourses />
-                  </AdminRoute >
-                </PrivateRoute >
+                  </AdminRoute>
+                </PrivateRoute>
               }
             />
 
             <Route path="*" element={<NotFound />} />
-
           </Routes>
         </Router>
       </AuthProvider>
@@ -208,14 +217,14 @@ function TeacherRoute({ children }) {
   const location = useLocation();
 
   const isAdmin = userDetails?.role === "admin";
-  const isTeacher = userDetails?.role === "teacher" || userDetails.coursesTeacher;
+  const isTeacher =
+    userDetails?.role === "teacher" || userDetails.coursesTeacher;
 
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
   return teacherPermissions(children, isAdmin, isTeacher);
-
 }
 
 // Protege rotas de administrador, exigindo autenticação e permissão de admin
@@ -240,7 +249,7 @@ const teacherPermissions = (children, isAdmin, isTeacher) => {
   }
 
   return children;
-}
+};
 
 const adminPermissions = (children, isAdmin) => {
   const { currentUser, userDetails } = useAuth();
@@ -251,6 +260,6 @@ const adminPermissions = (children, isAdmin) => {
   }
 
   return children;
-}
+};
 
 export default App;
