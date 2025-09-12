@@ -158,7 +158,7 @@
 //   return (
 //     <Box sx={{ p: 3, maxWidth: "1200px", mx: "auto" }}>
 //       <Box sx={{ mb: 3, display: "flex", alignItems: "center" }}>
-//         <IconButton 
+//         <IconButton
 //           onClick={handleBack}
 //           sx={{ mr: 2, color: "#9041c1" }}
 //         >
@@ -167,8 +167,8 @@
 
 //         <Box>
 //           <Breadcrumbs sx={{ mb: 1 }}>
-//             <Link 
-//               color="inherit" 
+//             <Link
+//               color="inherit"
 //               sx={{ cursor: "pointer", textDecoration: "none" }}
 //               onClick={handleBack}
 //             >
@@ -295,7 +295,7 @@
 //   );
 // }
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -317,7 +317,7 @@ import {
   Tooltip,
   Grid,
   Card,
-  CardContent
+  CardContent,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -345,12 +345,15 @@ export default function GradeAssignmentPage() {
   const [saving, setSaving] = useState({});
   const [saveStatus, setSaveStatus] = useState({});
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
   const assessmentId = params.get("assessmentId");
+
+  const inputRefs = useRef([]);
 
   // Carregar dados necessários ao iniciar
   useEffect(() => {
@@ -370,7 +373,9 @@ export default function GradeAssignmentPage() {
 
         // Carregar avaliação
         const assessments = await assessmentService.fetchAssessments(courseId);
-        const currentAssessment = assessments.find(a => a.id === assessmentId);
+        const currentAssessment = assessments.find(
+          (a) => a.id === assessmentId
+        );
         if (!currentAssessment) {
           setError("Avaliação não encontrada");
           setLoading(false);
@@ -379,14 +384,19 @@ export default function GradeAssignmentPage() {
         setAssessment(currentAssessment);
 
         // Carregar estudantes do curso usando o método enriquecido
-        const courseStudents = await studentService.fetchCourseStudentsEnriched(courseId);
+        const courseStudents = await studentService.fetchCourseStudentsEnriched(
+          courseId
+        );
         setStudents(courseStudents);
 
         // Carregar notas existentes
-        const existingGrades = await assessmentService.getAssessmentGrades(courseId, assessmentId);
+        const existingGrades = await assessmentService.getAssessmentGrades(
+          courseId,
+          assessmentId
+        );
         const gradesMap = {};
 
-        existingGrades.forEach(grade => {
+        existingGrades.forEach((grade) => {
           gradesMap[grade.studentId] = grade.grade.toString();
         });
 
@@ -403,53 +413,63 @@ export default function GradeAssignmentPage() {
 
   // Função para atualizar o valor da nota no estado
   const handleGradeChange = (studentId, value) => {
-    setGrades(prev => ({
+    setGrades((prev) => ({
       ...prev,
-      [studentId]: value
+      [studentId]: value,
     }));
   };
 
   // Função para salvar a nota quando o usuário clicar fora do campo
   const handleSaveGrade = async (studentId, value) => {
-    // Validar entrada
-    if (value.trim() === "") return;
-
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue < 0 || numValue > 10) {
-      setError(`Nota inválida para ${students.find(s => s.userId === studentId)?.name || "estudante"}. Use valores entre 0 e 10.`);
+      setError(
+        `Nota inválida para ${
+          students.find((s) => s.userId === studentId)?.name || "estudante"
+        }. Use valores entre 0 e 10.`
+      );
       return;
     }
 
     // Marcar que está salvando para este estudante
-    setSaving(prev => ({
+    setSaving((prev) => ({
       ...prev,
-      [studentId]: true
+      [studentId]: true,
     }));
 
     try {
-      await assessmentService.assignGrade(courseId, assessmentId, studentId, numValue);
+      await assessmentService.assignGrade(
+        courseId,
+        assessmentId,
+        studentId,
+        numValue
+      );
 
       // Atualizar status de salvamento
-      setSaveStatus(prev => ({
+      setSaveStatus((prev) => ({
         ...prev,
         [studentId]: {
           success: true,
-          timestamp: Date.now()
-        }
+          timestamp: Date.now(),
+        },
       }));
 
       // Limpar o status de sucesso após 3 segundos
       setTimeout(() => {
-        setSaveStatus(prev => {
+        setSaveStatus((prev) => {
           const newStatus = { ...prev };
           delete newStatus[studentId];
           return newStatus;
         });
       }, 3000);
     } catch (err) {
-      setError(`Erro ao salvar nota para ${students.find(s => s.userId === studentId)?.name || "estudante"}: ${err.message}`);
+      setError(
+        `Erro ao salvar nota para ${
+          students.find((s) => s.userId === studentId)?.name || "estudante"
+        }: ${err.message}`
+      );
     } finally {
-      setSaving(prev => {
+      setSaving((prev) => {
         const newSaving = { ...prev };
         delete newSaving[studentId];
         return newSaving;
@@ -462,9 +482,24 @@ export default function GradeAssignmentPage() {
     navigate(`/adm-cursos?courseId=${courseId}&tab=5`);
   };
 
+  // Filtrar alunos pelo nome
+  const filteredStudents = students.filter((student) =>
+    (student.name || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <>
-      <Topbar hideSearch={true} /><Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, margin: "0 auto", mt: { xs: 2, sm: 5 }, backgroundColor: "#f9f9f9", minHeight: "calc(100vh - 64px)" }}>
+      <Topbar hideSearch={true} />
+      <Box
+        sx={{
+          p: { xs: 2, sm: 3 },
+          maxWidth: 1200,
+          margin: "0 auto",
+          mt: { xs: 2, sm: 5 },
+          backgroundColor: "#f9f9f9",
+          minHeight: "calc(100vh - 64px)",
+        }}
+      >
         {/* Cabeçalho */}
         <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 2, mb: 3 }}>
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -487,7 +522,8 @@ export default function GradeAssignmentPage() {
                     Informações do Curso
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Curso:</strong> {courseDetails?.title || "Carregando..."}
+                    <strong>Curso:</strong>{" "}
+                    {courseDetails?.title || "Carregando..."}
                   </Typography>
                   <Typography variant="body1">
                     <strong>Descrição:</strong>{" "}
@@ -507,11 +543,11 @@ export default function GradeAssignmentPage() {
                     Informações da Avaliação
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Nome:</strong>{" "}
-                    {assessment?.name || "Carregando..."}
+                    <strong>Nome:</strong> {assessment?.name || "Carregando..."}
                   </Typography>
                   <Typography variant="body1">
-                    <strong>Percentual na Nota Final:</strong> {assessment?.percentage || 0}%
+                    <strong>Percentual na Nota Final:</strong>{" "}
+                    {assessment?.percentage || 0}%
                   </Typography>
                 </CardContent>
               </Card>
@@ -525,7 +561,15 @@ export default function GradeAssignmentPage() {
           </Alert>
         )}
 
-        <Paper elevation={0} sx={{ p: 3, backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            backgroundColor: "#ffffff",
+            borderRadius: "12px",
+            boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+          }}
+        >
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress sx={{ color: "#9041c1" }} />
@@ -534,7 +578,30 @@ export default function GradeAssignmentPage() {
             <>
               <Box sx={{ mb: 3 }}>
                 <Typography variant="body1" sx={{ color: "#666" }}>
-                  Digite as notas diretamente nos campos abaixo. As notas são salvas automaticamente quando você clica fora do campo.
+                  Digite as notas diretamente nos campos abaixo. As notas são
+                  salvas automaticamente quando você clica fora do campo.
+                </Typography>
+                <TextField
+                  fullWidth
+                  variant="outlined"
+                  size="small"
+                  placeholder="Buscar estudante por nome..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  sx={{
+                    mb: 2,
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      "& fieldset": { borderColor: "#9041c1" },
+                      "&:hover fieldset": { borderColor: "#7d37a7" },
+                      "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                    },
+                  }}
+                />
+
+                <Typography variant="body2" sx={{ mt: 1, color: "#666" }}>
+                  Percentual desta avaliação:{" "}
+                  <strong>{assessment?.percentage}%</strong> da nota final
                 </Typography>
               </Box>
 
@@ -542,25 +609,35 @@ export default function GradeAssignmentPage() {
                 <Table>
                   <TableHead>
                     <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                      <TableCell sx={{ fontWeight: "bold", width: "50%" }}>Estudante</TableCell>
-                      <TableCell sx={{ fontWeight: "bold", width: "30%" }}>Email</TableCell>
-                      <TableCell sx={{ fontWeight: "bold", width: "20%" }}>Nota (0-10)</TableCell>
+                      <TableCell sx={{ fontWeight: "bold", width: "50%" }}>
+                        Estudante
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", width: "30%" }}>
+                        Email
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: "bold", width: "20%" }}>
+                        Nota (0-10)
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {students.length === 0 ? (
+                    {filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
                           <Typography variant="body1" color="textSecondary">
-                            Nenhum estudante encontrado neste curso.
+                            Nenhum estudante encontrado.
                           </Typography>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      students.map((student) => (
+                      filteredStudents.map((student, idx) => (
                         <TableRow key={student.userId || student.id}>
                           <TableCell>
-                            <Stack direction="row" alignItems="center" spacing={2}>
+                            <Stack
+                              direction="row"
+                              alignItems="center"
+                              spacing={2}
+                            >
                               <Avatar
                                 alt={student.name}
                                 src={student.photoURL}
@@ -581,33 +658,74 @@ export default function GradeAssignmentPage() {
                           </TableCell>
                           <TableCell>{student.email}</TableCell>
                           <TableCell>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
                               <TextField
+                                value={
+                                  grades[student.userId || student.id] || ""
+                                }
+                                onChange={(e) =>
+                                  handleGradeChange(
+                                    student.userId || student.id,
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={(e) =>
+                                  handleSaveGrade(
+                                    student.userId || student.id,
+                                    e.target.value
+                                  )
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    // Salva a nota ao apertar Enter
+                                    handleSaveGrade(
+                                      student.userId || student.id,
+                                      e.target.value
+                                    );
+                                    // Foca no próximo campo, se existir
+                                    if (inputRefs.current[idx + 1]) {
+                                      inputRefs.current[idx + 1].focus();
+                                    }
+                                  }
+                                }}
+                                inputRef={(el) => (inputRefs.current[idx] = el)}
                                 type="number"
-                                size="small"
-                                value={grades[student.userId || student.id] || ""}
-                                onChange={(e) => handleGradeChange(student.userId || student.id, e.target.value)}
-                                onBlur={(e) => handleSaveGrade(student.userId || student.id, e.target.value)}
                                 inputProps={{
                                   min: 0,
                                   max: 10,
                                   step: 0.1,
-                                  style: { textAlign: "center" }
+                                  style: { textAlign: "center" },
                                 }}
                                 sx={{
                                   width: "80px",
                                   "& .MuiOutlinedInput-root": {
                                     "& fieldset": { borderColor: "#ccc" },
-                                    "&:hover fieldset": { borderColor: "#9041c1" },
-                                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                                    "&:hover fieldset": {
+                                      borderColor: "#9041c1",
+                                    },
+                                    "&.Mui-focused fieldset": {
+                                      borderColor: "#9041c1",
+                                    },
                                   },
-                                }} />
+                                }}
+                              />
 
                               {saving[student.userId || student.id] && (
-                                <CircularProgress size={20} sx={{ color: "#9041c1" }} />
+                                <CircularProgress
+                                  size={20}
+                                  sx={{ color: "#9041c1" }}
+                                />
                               )}
 
-                              {saveStatus[student.userId || student.id]?.success && (
+                              {saveStatus[student.userId || student.id]
+                                ?.success && (
                                 <Tooltip title="Nota salva com sucesso">
                                   <CheckCircleIcon sx={{ color: "#4caf50" }} />
                                 </Tooltip>

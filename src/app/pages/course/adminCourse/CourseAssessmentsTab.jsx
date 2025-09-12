@@ -23,6 +23,7 @@ import AddIcon from "@mui/icons-material/Add";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as assessmentService from "$api/services/courses/assessments";
+import { toast } from "react-toastify";
 
 export default function CourseAssessmentsTab() {
   const navigate = useNavigate();
@@ -62,35 +63,44 @@ export default function CourseAssessmentsTab() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
-    
+
     // Validate inputs
     if (!assessmentName.trim()) {
       setError("O nome da avaliação é obrigatório");
       return;
     }
-    
-    if (!assessmentPercentage.trim() || isNaN(assessmentPercentage) || 
-        Number(assessmentPercentage) <= 0 || Number(assessmentPercentage) > 100) {
+
+    if (
+      !assessmentPercentage.trim() ||
+      isNaN(assessmentPercentage) ||
+      Number(assessmentPercentage) <= 0 ||
+      Number(assessmentPercentage) > 100
+    ) {
       setError("O percentual deve ser um valor entre 1 e 100");
       return;
     }
-    
+
     setLoading(true);
     try {
       if (isEditing) {
-        await assessmentService.updateAssessment(courseId, currentAssessmentId, {
-          name: assessmentName,
-          percentage: Number(assessmentPercentage)
-        });
-        setSuccess("Avaliação atualizada com sucesso!");
+        await assessmentService.updateAssessment(
+          courseId,
+          currentAssessmentId,
+          {
+            name: assessmentName,
+            percentage: Number(assessmentPercentage),
+          }
+        );
+      
       } else {
         await assessmentService.createAssessment(courseId, {
           name: assessmentName,
-          percentage: Number(assessmentPercentage)
+          percentage: Number(assessmentPercentage),
         });
-        setSuccess("Avaliação criada com sucesso!");
-      }
       
+        toast.success("Avaliação criada com sucesso!"); // <-- Toast de sucesso ao cadastrar
+      }
+
       // Reload assessments after changes
       await loadAssessments();
       resetForm();
@@ -123,7 +133,9 @@ export default function CourseAssessmentsTab() {
 
   // Navegar para a página de atribuição de notas
   const navigateToGradeAssignment = (assessment) => {
-    navigate(`/course/grade-assignment?courseId=${courseId}&assessmentId=${assessment.id}`);
+    navigate(
+      `/course/grade-assignment?courseId=${courseId}&assessmentId=${assessment.id}`
+    );
   };
 
   const resetForm = () => {
@@ -134,13 +146,16 @@ export default function CourseAssessmentsTab() {
   };
 
   const totalPercentage = assessments.reduce(
-    (total, assessment) => total + assessment.percentage, 
+    (total, assessment) => total + assessment.percentage,
     0
   );
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h5" sx={{ mb: 3, fontWeight: "bold", color: "#333" }}>
+      <Typography
+        variant="h5"
+        sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
+      >
         Gerenciar Avaliações
       </Typography>
 
@@ -151,16 +166,32 @@ export default function CourseAssessmentsTab() {
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          onClose={() => setSuccess(null)}
+        >
           {success}
         </Alert>
       )}
 
-      <Paper elevation={0} sx={{ p: 3, mb: 4, backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", color: "#333" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          mb: 4,
+          backgroundColor: "#ffffff",
+          borderRadius: "12px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+        >
           {isEditing ? "Editar Avaliação" : "Nova Avaliação"}
         </Typography>
-        
+
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
@@ -194,12 +225,14 @@ export default function CourseAssessmentsTab() {
                 value={assessmentPercentage}
                 onChange={(e) => setAssessmentPercentage(e.target.value)}
                 InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                  endAdornment: (
+                    <InputAdornment position="end">%</InputAdornment>
+                  ),
                 }}
                 inputProps={{
                   min: 1,
                   max: 100,
-                  step: 1
+                  step: 1,
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -265,8 +298,19 @@ export default function CourseAssessmentsTab() {
         )}
       </Paper>
 
-      <Paper elevation={0} sx={{ p: 3, backgroundColor: "#ffffff", borderRadius: "12px", boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}>
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold", color: "#333" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          backgroundColor: "#ffffff",
+          borderRadius: "12px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <Typography
+          variant="h6"
+          sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+        >
           Avaliações Cadastradas
         </Typography>
 
@@ -280,7 +324,8 @@ export default function CourseAssessmentsTab() {
           </Box>
         ) : assessments.length === 0 ? (
           <Alert severity="info">
-            Nenhuma avaliação cadastrada. Adicione sua primeira avaliação usando o formulário acima.
+            Nenhuma avaliação cadastrada. Adicione sua primeira avaliação usando
+            o formulário acima.
           </Alert>
         ) : (
           <TableContainer>
