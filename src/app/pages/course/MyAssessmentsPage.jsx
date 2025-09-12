@@ -213,11 +213,8 @@ export default function MyAssessmentsPage() {
 
   return (
     <>
-      <Topbar
-        hideSearch={false}
-        onSearch={setSearchTerm} // <-- Passa função para atualizar o termo de busca
-      />
-      <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto", mt: 4 }}>
+      <Topbar hideSearch={false} onSearch={setSearchTerm} />
+      <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto", mt: 8 }}>
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
             <CircularProgress />
@@ -227,7 +224,7 @@ export default function MyAssessmentsPage() {
             {!filteredCourses || filteredCourses.length === 0 ? (
               <Typography>Nenhum curso encontrado.</Typography>
             ) : (
-              <Grid container spacing={2}>
+              <Grid container spacing={3}>
                 {filteredCourses.map((course) => {
                   const courseId = getCourseId(course);
                   const mapEntry = courseAssessmentsMap[courseId] || {
@@ -244,10 +241,7 @@ export default function MyAssessmentsPage() {
                         return acc + grade * (pct / 100);
                       }, 0)
                     : 0;
-
-                  // Limita a nota total máxima em 10
                   const totalWeightedCapped = Math.min(totalWeighted, 10);
-
                   const progressValue = Math.max(
                     0,
                     Math.min(100, (totalWeightedCapped / 10) * 100)
@@ -258,69 +252,92 @@ export default function MyAssessmentsPage() {
                       <Card
                         variant="outlined"
                         sx={{
-                          borderRadius: 2,
-                          boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-                          borderColor: "transparent",
+                          borderRadius: 3,
+                          boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
+                          borderColor: "#e3eafc",
                           overflow: "hidden",
+                          bgcolor: "#fafdff",
                         }}
                       >
-                        <CardContent>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "flex-start",
-                              gap: 2,
-                              mb: 1,
-                            }}
-                          >
-                            <Box>
-                              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                                {getCourseTitle(course)}
-                              </Typography>
-                            </Box>
-                            <Box sx={{ textAlign: "right" }}>
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ fontWeight: 600 }}
-                              >
-                                Nome
-                              </Typography>
-                              <Typography
-                                variant="body1"
-                                sx={{ fontWeight: 700 }}
-                              >
-                                {userName || "—"}
-                              </Typography>
-                            </Box>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            px: 3,
+                            pt: 3,
+                            pb: 1,
+                            borderBottom: "1px solid #e3eafc",
+                          }}
+                        >
+                          <Box>
+                            <Typography
+                              variant="h5"
+                              sx={{ fontWeight: 900, color: "#964bd0ff" }}
+                            >
+                              {getCourseTitle(course)}
+                            </Typography>
                           </Box>
-
+                          <Box sx={{ textAlign: "right" }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              Aluno
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ fontWeight: 700 }}
+                            >
+                              {userName || "—"}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <CardContent sx={{ p: 0 }}>
                           <Accordion
                             expanded={expandedCourseId === courseId}
                             onChange={() => handleToggleCourse(course)}
                             sx={{
-                              borderRadius: "8px",
                               boxShadow: "none",
-                              borderTop: "none",
-                              bgcolor: "#fafbff",
+                              bgcolor: "transparent",
+                              borderRadius: 0,
+                              border: "none",
                             }}
                           >
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                borderTop: "none",
-                                borderRadius: "8px",
-                                bgcolor: "#fafbff",
+                                px: 3,
+                                py: 2,
+                                bgcolor: "#faf8fca7",
+                                borderBottom: "1px solid #e3eafc",
+                                borderRadius: 0,
+                                minHeight: 0,
                               }}
                             >
-                              <Typography
-                                sx={{ fontWeight: 800, color: "primary.main" }}
-                              >
-                                Ver avaliações
+                              <Typography sx={{ fontWeight: 700 }}>
+                                Avaliações do curso
                               </Typography>
+                              <Chip
+                                label={
+                                  mapEntry.assessments
+                                    ? `${mapEntry.assessments.length} avaliações`
+                                    : mapEntry.loading
+                                    ? "Carregando..."
+                                    : ""
+                                }
+                                size="small"
+                                sx={{
+                                  ml: 2,
+                                  bgcolor: "#e3e4e9ff",
+                                  fontWeight: 700,
+                                }}
+                              />
                             </AccordionSummary>
-                            <AccordionDetails>
+                            <AccordionDetails
+                              sx={{ px: 3, py: 2, bgcolor: "#fafdff" }}
+                            >
                               {mapEntry.loading ? (
                                 <Box
                                   sx={{
@@ -343,120 +360,83 @@ export default function MyAssessmentsPage() {
                                       <React.Fragment
                                         key={a.id || a.assessmentId || a.name}
                                       >
-                                        <Accordion
+                                        <Box
                                           sx={{
-                                            boxShadow: "none",
-                                            borderRadius: 1,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "space-between",
+                                            py: 1.5,
+                                            px: 2,
+                                            bgcolor: "#f5f8ff",
+                                            borderRadius: 2,
+                                            mb: 1.5,
                                           }}
                                         >
-                                          <AccordionSummary
-                                            expandIcon={<ExpandMoreIcon />}
-                                          >
-                                            <Box
-                                              sx={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                width: "100%",
-                                                gap: 2,
-                                              }}
+                                          <Box>
+                                            <Typography
+                                              sx={{ fontWeight: 700 }}
                                             >
-                                              <Box sx={{ flex: 1 }}>
-                                                <Typography
-                                                  sx={{ fontWeight: 800 }}
-                                                >
-                                                  {a.name}
-                                                </Typography>
-                                                <Typography
-                                                  variant="caption"
-                                                  color="text.secondary"
-                                                >
-                                                  Percentual:{" "}
-                                                  {Number(
-                                                    a?.percentage ??
-                                                      a?.weight ??
-                                                      0
-                                                  )}
-                                                  %
-                                                </Typography>
-                                              </Box>
-                                              <Box>
-                                                <Chip
-                                                  label={
-                                                    a?.userGrade != null
-                                                      ? a.userGrade
-                                                      : "Sem nota"
-                                                  }
-                                                  color={
-                                                    a?.userGrade != null
-                                                      ? "success"
-                                                      : "default"
-                                                  }
-                                                  size="small"
-                                                  sx={{
-                                                    backgroundColor:
-                                                      a?.userGrade != null
-                                                        ? "#e6f4ea"
-                                                        : undefined,
-                                                    color:
-                                                      a?.userGrade != null
-                                                        ? "#2e7d32"
-                                                        : undefined,
-                                                    fontWeight: 800,
-                                                  }}
-                                                />
-                                              </Box>
-                                            </Box>
-                                          </AccordionSummary>
-                                          <AccordionDetails>
-                                            <Box
-                                              sx={{
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: 1,
-                                              }}
+                                              {a.name}
+                                            </Typography>
+                                            <Typography
+                                              variant="caption"
+                                              color="text.secondary"
                                             >
-                                              <Typography variant="body2">
-                                                <strong>Nome:</strong>{" "}
-                                                {userName || "—"}
-                                              </Typography>
-                                              <Typography variant="body2">
-                                                <strong>Percentual:</strong>{" "}
-                                                {Number(
-                                                  a?.percentage ??
-                                                    a?.weight ??
-                                                    0
-                                                )}
-                                                %
-                                              </Typography>
-                                              <Typography variant="body2">
-                                                <strong>Sua nota:</strong>{" "}
-                                                {a?.userGrade != null
+                                              Percentual:{" "}
+                                              {Number(
+                                                a?.percentage ?? a?.weight ?? 0
+                                              )}
+                                              %
+                                            </Typography>
+                                          </Box>
+                                          <Box sx={{ textAlign: "right" }}>
+                                            <Chip
+                                              label={
+                                                a?.userGrade != null
                                                   ? a.userGrade
-                                                  : "Sem nota"}
-                                              </Typography>
-                                            </Box>
-                                          </AccordionDetails>
-                                        </Accordion>
-                                        <Divider />
+                                                  : "Sem nota"
+                                              }
+                                              color={
+                                                a?.userGrade != null
+                                                  ? "success"
+                                                  : "default"
+                                              }
+                                              size="small"
+                                              sx={{
+                                                backgroundColor:
+                                                  a?.userGrade != null
+                                                    ? "#e6f4ea"
+                                                    : undefined,
+                                                color:
+                                                  a?.userGrade != null
+                                                    ? "#2e7d32"
+                                                    : undefined,
+                                                fontWeight: 800,
+                                              }}
+                                            />
+                                          </Box>
+                                        </Box>
                                       </React.Fragment>
                                     ))}
                                   </List>
-
+                                  <Divider sx={{ my: 2 }} />
                                   <Box
                                     sx={{
                                       display: "flex",
                                       justifyContent: "flex-end",
-                                      mt: 2,
+                                      alignItems: "center",
                                     }}
                                   >
                                     <Card
                                       variant="outlined"
                                       sx={{
-                                        px: 2,
-                                        py: 1.5,
+                                        px: 3,
+                                        py: 2,
                                         borderRadius: 2,
-                                        bgcolor: "#f6f9ff",
-                                        borderColor: "#d0e3ff",
+                                        bgcolor: "#f5f8ff",
+                                        borderColor: "#b362c7ff",
+                                        minWidth: 180,
+                                        boxShadow: "none",
                                       }}
                                     >
                                       <Box
@@ -496,6 +476,11 @@ export default function MyAssessmentsPage() {
                                           value={progressValue}
                                           size={54}
                                           thickness={5}
+                                          sx={{
+                                            color: "#a84fd4ff",
+                                            bgcolor: "#e3eafc",
+                                            borderRadius: "50%",
+                                          }}
                                         />
                                       </Box>
                                     </Card>
