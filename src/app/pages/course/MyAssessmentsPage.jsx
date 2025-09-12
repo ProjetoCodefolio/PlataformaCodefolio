@@ -32,6 +32,7 @@ export default function MyAssessmentsPage() {
   const [courseAssessmentsMap, setCourseAssessmentsMap] = useState({});
   const [courseMetaMap, setCourseMetaMap] = useState({});
   const [userFallbackName, setUserFallbackName] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const userName =
     userDetails?.name ||
@@ -43,7 +44,8 @@ export default function MyAssessmentsPage() {
     userFallbackName ||
     "";
 
-  const getCourseId = (c) => c?.courseId ?? c?.id ?? c?.course?.id ?? c?.course?.courseId;
+  const getCourseId = (c) =>
+    c?.courseId ?? c?.id ?? c?.course?.id ?? c?.course?.courseId;
   const getCourseTitle = (c) =>
     c?.title ||
     c?.name ||
@@ -161,14 +163,18 @@ export default function MyAssessmentsPage() {
     }));
 
     try {
-      const assessments = (await assessmentService.fetchAssessments(courseId)) || [];
+      const assessments =
+        (await assessmentService.fetchAssessments(courseId)) || [];
 
       const withGrades = await Promise.all(
         assessments.map(async (assess) => {
           const assessId = assess.id || assess.assessmentId;
           let userGrade = null;
           try {
-            const grades = await assessmentService.getAssessmentGrades(courseId, assessId);
+            const grades = await assessmentService.getAssessmentGrades(
+              courseId,
+              assessId
+            );
             const g = (grades || []).find((gg) => gg.studentId === userId);
             if (g) userGrade = g.grade;
           } catch (e) {
@@ -193,26 +199,36 @@ export default function MyAssessmentsPage() {
 
   const fmt = (n) =>
     Number.isFinite(n)
-      ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      ? n.toLocaleString("pt-BR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
       : "0,00";
+
+  // Função para filtrar cursos pelo termo de busca
+  const filteredCourses = courses.filter((course) => {
+    const title = getCourseTitle(course).toLowerCase();
+    return title.includes(searchTerm.toLowerCase());
+  });
 
   return (
     <>
-      <Topbar hideSearch={false} />
+      <Topbar
+        hideSearch={false}
+        onSearch={setSearchTerm} // <-- Passa função para atualizar o termo de busca
+      />
       <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto", mt: 4 }}>
-        
-
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
             <CircularProgress />
           </Box>
         ) : (
           <>
-            {!courses || courses.length === 0 ? (
-              <Typography>Nenhum curso iniciado encontrado.</Typography>
+            {!filteredCourses || filteredCourses.length === 0 ? (
+              <Typography>Nenhum curso encontrado.</Typography>
             ) : (
               <Grid container spacing={2}>
-                {courses.map((course) => {
+                {filteredCourses.map((course) => {
                   const courseId = getCourseId(course);
                   const mapEntry = courseAssessmentsMap[courseId] || {
                     loading: false,
@@ -223,14 +239,18 @@ export default function MyAssessmentsPage() {
                     ? mapEntry.assessments.reduce((acc, a) => {
                         const grade = Number(a?.userGrade ?? 0);
                         const pct = Number(a?.percentage ?? a?.weight ?? 0);
-                        if (!Number.isFinite(grade) || !Number.isFinite(pct)) return acc;
+                        if (!Number.isFinite(grade) || !Number.isFinite(pct))
+                          return acc;
                         return acc + grade * (pct / 100);
                       }, 0)
                     : 0;
 
+                  // Limita a nota total máxima em 10
+                  const totalWeightedCapped = Math.min(totalWeighted, 10);
+
                   const progressValue = Math.max(
                     0,
-                    Math.min(100, (totalWeighted / 10) * 100)
+                    Math.min(100, (totalWeightedCapped / 10) * 100)
                   );
 
                   return (
@@ -260,10 +280,17 @@ export default function MyAssessmentsPage() {
                               </Typography>
                             </Box>
                             <Box sx={{ textAlign: "right" }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ fontWeight: 600 }}
+                              >
                                 Nome
                               </Typography>
-                              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                              <Typography
+                                variant="body1"
+                                sx={{ fontWeight: 700 }}
+                              >
                                 {userName || "—"}
                               </Typography>
                             </Box>
@@ -287,16 +314,25 @@ export default function MyAssessmentsPage() {
                                 bgcolor: "#fafbff",
                               }}
                             >
-                              <Typography sx={{ fontWeight: 800, color: "primary.main" }}>
+                              <Typography
+                                sx={{ fontWeight: 800, color: "primary.main" }}
+                              >
                                 Ver avaliações
                               </Typography>
                             </AccordionSummary>
                             <AccordionDetails>
                               {mapEntry.loading ? (
-                                <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    py: 2,
+                                  }}
+                                >
                                   <CircularProgress size={20} />
                                 </Box>
-                              ) : mapEntry.assessments && mapEntry.assessments.length === 0 ? (
+                              ) : mapEntry.assessments &&
+                                mapEntry.assessments.length === 0 ? (
                                 <Typography variant="body2">
                                   Nenhuma avaliação encontrada neste curso.
                                 </Typography>
@@ -304,24 +340,67 @@ export default function MyAssessmentsPage() {
                                 <>
                                   <List disablePadding>
                                     {mapEntry.assessments.map((a) => (
-                                      <React.Fragment key={a.id || a.assessmentId || a.name}>
-                                        <Accordion sx={{ boxShadow: "none", borderRadius: 1 }}>
-                                          <AccordionSummary expandIcon={<ExpandMoreIcon />}> 
-                                            <Box sx={{ display: "flex", alignItems: "center", width: "100%", gap: 2 }}>
+                                      <React.Fragment
+                                        key={a.id || a.assessmentId || a.name}
+                                      >
+                                        <Accordion
+                                          sx={{
+                                            boxShadow: "none",
+                                            borderRadius: 1,
+                                          }}
+                                        >
+                                          <AccordionSummary
+                                            expandIcon={<ExpandMoreIcon />}
+                                          >
+                                            <Box
+                                              sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                width: "100%",
+                                                gap: 2,
+                                              }}
+                                            >
                                               <Box sx={{ flex: 1 }}>
-                                                <Typography sx={{ fontWeight: 800 }}>{a.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                  Percentual: {Number(a?.percentage ?? a?.weight ?? 0)}%
+                                                <Typography
+                                                  sx={{ fontWeight: 800 }}
+                                                >
+                                                  {a.name}
+                                                </Typography>
+                                                <Typography
+                                                  variant="caption"
+                                                  color="text.secondary"
+                                                >
+                                                  Percentual:{" "}
+                                                  {Number(
+                                                    a?.percentage ??
+                                                      a?.weight ??
+                                                      0
+                                                  )}
+                                                  %
                                                 </Typography>
                                               </Box>
                                               <Box>
                                                 <Chip
-                                                  label={a?.userGrade != null ? a.userGrade : "Sem nota"}
-                                                  color={a?.userGrade != null ? "success" : "default"}
+                                                  label={
+                                                    a?.userGrade != null
+                                                      ? a.userGrade
+                                                      : "Sem nota"
+                                                  }
+                                                  color={
+                                                    a?.userGrade != null
+                                                      ? "success"
+                                                      : "default"
+                                                  }
                                                   size="small"
                                                   sx={{
-                                                    backgroundColor: a?.userGrade != null ? "#e6f4ea" : undefined,
-                                                    color: a?.userGrade != null ? "#2e7d32" : undefined,
+                                                    backgroundColor:
+                                                      a?.userGrade != null
+                                                        ? "#e6f4ea"
+                                                        : undefined,
+                                                    color:
+                                                      a?.userGrade != null
+                                                        ? "#2e7d32"
+                                                        : undefined,
                                                     fontWeight: 800,
                                                   }}
                                                 />
@@ -329,15 +408,31 @@ export default function MyAssessmentsPage() {
                                             </Box>
                                           </AccordionSummary>
                                           <AccordionDetails>
-                                            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                            <Box
+                                              sx={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 1,
+                                              }}
+                                            >
                                               <Typography variant="body2">
-                                                <strong>Nome:</strong> {userName || "—"}
+                                                <strong>Nome:</strong>{" "}
+                                                {userName || "—"}
                                               </Typography>
                                               <Typography variant="body2">
-                                                <strong>Percentual:</strong> {Number(a?.percentage ?? a?.weight ?? 0)}%
+                                                <strong>Percentual:</strong>{" "}
+                                                {Number(
+                                                  a?.percentage ??
+                                                    a?.weight ??
+                                                    0
+                                                )}
+                                                %
                                               </Typography>
                                               <Typography variant="body2">
-                                                <strong>Sua nota:</strong> {a?.userGrade != null ? a.userGrade : "Sem nota"}
+                                                <strong>Sua nota:</strong>{" "}
+                                                {a?.userGrade != null
+                                                  ? a.userGrade
+                                                  : "Sem nota"}
                                               </Typography>
                                             </Box>
                                           </AccordionDetails>
@@ -347,7 +442,13 @@ export default function MyAssessmentsPage() {
                                     ))}
                                   </List>
 
-                                  <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      justifyContent: "flex-end",
+                                      mt: 2,
+                                    }}
+                                  >
                                     <Card
                                       variant="outlined"
                                       sx={{
@@ -358,17 +459,35 @@ export default function MyAssessmentsPage() {
                                         borderColor: "#d0e3ff",
                                       }}
                                     >
-                                      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                      <Box
+                                        sx={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: 2,
+                                        }}
+                                      >
                                         <Box sx={{ textAlign: "right" }}>
-                                          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700 }}>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              color: "text.secondary",
+                                              fontWeight: 700,
+                                            }}
+                                          >
                                             Nota total
                                           </Typography>
                                           <Tooltip title="Soma das notas ponderadas: nota × (percentual/100)">
-                                            <Typography variant="h5" sx={{ fontWeight: 900 }}>
-                                              {fmt(totalWeighted)}
+                                            <Typography
+                                              variant="h5"
+                                              sx={{ fontWeight: 900 }}
+                                            >
+                                              {fmt(totalWeightedCapped)}
                                             </Typography>
                                           </Tooltip>
-                                          <Typography variant="caption" color="text.secondary">
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                          >
                                             de 10,00
                                           </Typography>
                                         </Box>

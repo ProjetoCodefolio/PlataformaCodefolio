@@ -105,7 +105,7 @@ export default function Topbar({ onSearch, hideSearch = false }) {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
-    onSearch(event.target.value);
+    onSearch(event.target.value); // já está correto!
   };
 
   // Verificar se o usuário pode gerenciar cursos
