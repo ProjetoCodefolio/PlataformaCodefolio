@@ -1,18 +1,24 @@
 import { useState, useEffect } from "react";
 import "./topbar.css";
 import Box from "@mui/material/Box";
-import { Search, Home, Menu as MenuIcon, SmartDisplay } from "@mui/icons-material";
+import {
+  Search,
+  Home,
+  Menu as MenuIcon,
+  SmartDisplay,
+} from "@mui/icons-material";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import { Link } from "react-router-dom";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
-import LoginIcon from '@mui/icons-material/Login';
+import LoginIcon from "@mui/icons-material/Login";
 import Logout from "@mui/icons-material/Logout";
 import Divider from "@mui/material/Divider";
 import IconButton from "@mui/material/IconButton";
 import VideoSettingsIcon from "@mui/icons-material/VideoSettings";
 import Person from "@mui/icons-material/Person";
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import Settings from "@mui/icons-material/Settings";
 import Help from "@mui/icons-material/Help";
 import Tooltip from "@mui/material/Tooltip";
@@ -61,9 +67,14 @@ export default function Topbar({ onSearch, hideSearch = false }) {
   };
 
   const handleLogin = () => {
-    handleGoogleSignIn(null, async () => {
-      await refreshUserDetails();
-    }, null, refreshUserDetails);
+    handleGoogleSignIn(
+      null,
+      async () => {
+        await refreshUserDetails();
+      },
+      null,
+      refreshUserDetails
+    );
     handleClose();
     handleMobileMenuClose();
   };
@@ -98,7 +109,10 @@ export default function Topbar({ onSearch, hideSearch = false }) {
   };
 
   // Verificar se o usuário pode gerenciar cursos
-  const canManageCourses = userDetails?.role === "admin" || userDetails?.role === "teacher" || teacherCourses !== null;
+  const canManageCourses =
+    userDetails?.role === "admin" ||
+    userDetails?.role === "teacher" ||
+    teacherCourses !== null;
   const isAdmin = userDetails?.role === "admin";
 
   return (
@@ -136,12 +150,23 @@ export default function Topbar({ onSearch, hideSearch = false }) {
                 <span className="topbarIconText">Cursos</span>
               </Box>
             </Link>
-            {isAdmin && <Link to="/admin-panel" style={{ textDecoration: "none" }}>
+
+            {/* Nova aba: Minhas Avaliações (entre Cursos e Admin) */}
+            <Link to="/minhas-avaliacoes" style={{ textDecoration: "none" }}>
               <Box className="topbarIconCont">
-                <AdminPanelSettingsIcon />
-                <span className="topbarIconText">Admin</span>
+                <AssignmentIcon />
+                <span className="topbarIconText">Avaliações</span>
               </Box>
-            </Link>}
+            </Link>
+
+            {isAdmin && (
+              <Link to="/admin-panel" style={{ textDecoration: "none" }}>
+                <Box className="topbarIconCont">
+                  <AdminPanelSettingsIcon />
+                  <span className="topbarIconText">Admin</span>
+                </Box>
+              </Link>
+            )}
           </Box>
 
           <IconButton
@@ -203,12 +228,20 @@ export default function Topbar({ onSearch, hideSearch = false }) {
               </ListItemIcon>
               Cursos
             </MenuItem>
-            {isAdmin && <MenuItem onClick={() => navigate("/admin-panel")}>
+            <MenuItem onClick={() => navigate("/minhas-avaliacoes")}>
               <ListItemIcon>
-                <AdminPanelSettingsIcon fontSize="small" />
+                <AssignmentIcon fontSize="small" />
               </ListItemIcon>
-              Admin
-            </MenuItem>}
+              Minhas Avaliações
+            </MenuItem>
+            {isAdmin && (
+              <MenuItem onClick={() => navigate("/admin-panel")}>
+                <ListItemIcon>
+                  <AdminPanelSettingsIcon fontSize="small" />
+                </ListItemIcon>
+                Admin
+              </MenuItem>
+            )}
             {canManageCourses && (
               <MenuItem onClick={handleAdmCursoClick}>
                 <ListItemIcon>
