@@ -15,6 +15,7 @@ import Portifolios from "./app/pages/portifolios";
 import Projetos from "./app/pages/projetos";
 import HomePage from "./app/pages/homePage";
 import Cursos from "./app/pages/course/adminCourse";
+import GradeAssignmentPage from "./app/pages/course/adminCourse/GradeAssignment";
 import ListCursos from "./app/pages/course/list";
 import Classes from "./app/pages/course/classes";
 import StudentDashboard from "./app/pages/course/studentDashboard";
@@ -42,7 +43,7 @@ function App() {
               path="/dashboard"
               element={
                 // <PrivateRoute>
-                  <Dashboard />
+                <Dashboard />
                 // </PrivateRoute>
               }
             />
@@ -90,7 +91,7 @@ function App() {
                 <PrivateRoute >
                   <TeacherRoute >
                     <Cursos />
-                  </TeacherRoute> 
+                  </TeacherRoute>
                 </PrivateRoute >
               }
             />
@@ -110,7 +111,7 @@ function App() {
               path="/listcurso"
               element={
                 // <PrivateRoute >
-                  <ListCursos />
+                <ListCursos />
                 // </PrivateRoute >
               }
             />
@@ -119,8 +120,20 @@ function App() {
               path="/classes"
               element={
                 // <PrivateRoute >
-                  <Classes />
+                <Classes />
                 // </PrivateRoute >
+              }
+            />
+
+
+            <Route
+              path="/course/grade-assignment"
+              element={
+                <PrivateRoute>
+                  <TeacherRoute>
+                    <GradeAssignmentPage />
+                  </TeacherRoute>
+                </PrivateRoute>
               }
             />
 
@@ -156,7 +169,7 @@ function App() {
                 </PrivateRoute >
               }
             />
-            
+
             <Route
               path="/admin-courses"
               element={
@@ -222,7 +235,7 @@ function AdminRoute({ children }) {
 const teacherPermissions = (children, isAdmin, isTeacher) => {
   const location = useLocation();
 
-  if(!isTeacher && !isAdmin) {
+  if (!isTeacher && !isAdmin) {
     return <Navigate to="/dashboard" state={{ from: location }} />;
   }
 
@@ -233,7 +246,7 @@ const adminPermissions = (children, isAdmin) => {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();
 
-  if(!isAdmin) {
+  if (!isAdmin) {
     return <Navigate to="/dashboard" state={{ from: location }} />;
   }
 

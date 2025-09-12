@@ -26,6 +26,7 @@ import CourseSlidesTab from "./CourseSlidesTab";
 import CourseMaterialsTab from "./CourseMaterialsTab";
 import CourseQuizzesTab from "./courseQuizzesTab/";
 import CourseStudentsTab from "./CourseStudentsTab";
+import CourseAssessmentsTab from "./CourseAssessmentsTab";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdvancedSettingsModal from "../../../components/courses/AdvancedSettingsModal";
@@ -108,7 +109,7 @@ const CourseForm = () => {
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(parseInt(params.get("tab")) || 0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pinRequired, setPinRequired] = useState(false);
@@ -480,6 +481,7 @@ const CourseForm = () => {
                   <Tab label="Materiais Extras" />
                   <Tab label="Quiz" />
                   <Tab label="Alunos" />
+                  <Tab label="Avaliações" />
                 </Tabs>
               </Box>
 
@@ -531,6 +533,11 @@ const CourseForm = () => {
                   ref={courseStudentsRef}
                   courseId={courseId}
                 />
+              )}
+              {selectedTab === 5 && (
+                <Typography variant="h6" sx={{ color: "#666" }}>
+                  <CourseAssessmentsTab />
+                </Typography>
               )}
             </>
           )}
