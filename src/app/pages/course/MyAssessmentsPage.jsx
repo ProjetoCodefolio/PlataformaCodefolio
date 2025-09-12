@@ -150,21 +150,68 @@ export default function MyAssessmentsPage() {
     })();
   }, [courses]);
 
+  // Novo useEffect para buscar a quantidade de avaliações de todos os cursos ao carregar
+  useEffect(() => {
+    if (!courses.length) return;
+    (async () => {
+      const updates = {};
+      await Promise.all(
+        courses.map(async (course) => {
+          const courseId = getCourseId(course);
+          if (!courseId || courseAssessmentsMap[courseId]?.assessments) return;
+          try {
+            const assessments = await assessmentService.fetchAssessments(
+              courseId
+            );
+            updates[courseId] = {
+              loading: false,
+              assessments: assessments || [],
+            };
+          } catch {
+            updates[courseId] = {
+              loading: false,
+              assessments: [],
+            };
+          }
+        })
+      );
+      if (Object.keys(updates).length) {
+        setCourseAssessmentsMap((prev) => ({ ...prev, ...updates }));
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses]);
+
   const handleToggleCourse = async (course) => {
     const courseId = getCourseId(course);
     const isExpanding = expandedCourseId !== courseId;
     setExpandedCourseId(isExpanding ? courseId : null);
     if (!isExpanding) return;
-    if (courseAssessmentsMap[courseId]) return;
+
+    // Só busca as notas do usuário se ainda não buscou
+    if (
+      courseAssessmentsMap[courseId] &&
+      courseAssessmentsMap[courseId].assessments &&
+      courseAssessmentsMap[courseId].assessments.some(
+        (a) => a.userGrade !== undefined
+      )
+    ) {
+      return;
+    }
 
     setCourseAssessmentsMap((prev) => ({
       ...prev,
-      [courseId]: { loading: true, assessments: null },
+      [courseId]: {
+        loading: true,
+        assessments: prev[courseId]?.assessments || [],
+      },
     }));
 
     try {
       const assessments =
-        (await assessmentService.fetchAssessments(courseId)) || [];
+        courseAssessmentsMap[courseId]?.assessments ||
+        (await assessmentService.fetchAssessments(courseId)) ||
+        [];
 
       const withGrades = await Promise.all(
         assessments.map(async (assess) => {
