@@ -70,9 +70,11 @@ export const validateCoursePin = async (courseId, enteredPin) => {
     if (!courseData.pinEnabled || !courseData.pinHash) {
       return false;
     }
+
+    let coursePin = courseData.pin ? courseData.pin : courseData.pinHash;
     
     // Verify the entered PIN against the stored hash
-    return verifyPin(enteredPin, courseData.pinHash, courseId);
+    return verifyPin(enteredPin, coursePin, courseId);
   } catch (error) {
     console.error(`Erro ao validar PIN do curso ${courseId}:`, error);
     throw new Error("Não foi possível validar o PIN do curso.");
