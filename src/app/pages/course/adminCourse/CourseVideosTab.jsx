@@ -18,6 +18,8 @@ import {
   Grid,
   Modal,
   Typography,
+  FormControlLabel,
+  Switch
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -38,6 +40,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
   const [videoTitle, setVideoTitle] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
+  const [videoOrder, setVideoOrder] = useState(0);
+  const [videoRequiresPrevious, setVideoRequiresPrevious] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState(null);
@@ -78,6 +82,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
         url: videoUrl.trim(),
         description: videoDescription,
         order: videos.length,
+        requiresPrevious: videoRequiresPrevious
       };
 
       const newVideo = await addCourseVideo(courseId, videoData);
@@ -100,6 +105,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
     setVideoTitle(video.title);
     setVideoUrl(video.url);
     setVideoDescription(video.description || "");
+    setVideoRequiresPrevious(video.requiresPrevious || false);
+    setVideoOrder(video.order || 0);
   };
 
   // Modificar a função handleEditVideoSubmit
@@ -114,6 +121,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
         title: videoTitle.trim(),
         url: videoUrl.trim(),
         description: videoDescription,
+        requiresPrevious: videoRequiresPrevious,
+        order: videoOrder,
       };
 
       const updatedVideo = await updateCourseVideo(
@@ -307,6 +316,38 @@ const CourseVideosTab = forwardRef((props, ref) => {
             }}
           />
         </Grid>
+
+        {/* Switch para requiresPrevious */}
+        <Grid item xs={12}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={videoRequiresPrevious}
+                onChange={(e) => setVideoRequiresPrevious(e.target.checked)}
+                sx={{
+                  "& .MuiSwitch-switchBase": {
+                    color: "grey",
+                    "&.Mui-checked": {
+                      color: "#9041c1",
+                    },
+                    "&.Mui-checked + .MuiSwitch-track": {
+                      backgroundColor: "#9041c1",
+                    },
+                  },
+                  "& .MuiSwitch-track": {
+                    backgroundColor: "#666",
+                  },
+                }}
+              />
+            }
+            label="Exige Vídeos Anteriores"
+            sx={{
+              "& .MuiFormControlLabel-label": {
+                color: "#666",
+              },
+            }}
+          />
+        </Grid>
       </Grid>
 
       <Button
@@ -404,9 +445,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
               primary={video.title}
               secondary={
                 <Typography component="span" sx={{ color: "#666" }}>
-                  {`Exige anteriores: ${
-                    video.requiresPrevious ? "Sim" : "Não"
-                  }`}{" "}
+                  {`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"
+                    }`}{" "}
                   <br />
                   {`Existe Quiz: ${video.hasQuizzes ? "Sim" : "Não"}`}
                 </Typography>
@@ -442,9 +482,8 @@ const CourseVideosTab = forwardRef((props, ref) => {
             sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
           />
           <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
-            {`Vídeo ${
-              lastAction === "edit" ? "editado" : "adicionado"
-            } com sucesso!`}
+            {`Vídeo ${lastAction === "edit" ? "editado" : "adicionado"
+              } com sucesso!`}
           </Typography>
           <Button
             variant="contained"

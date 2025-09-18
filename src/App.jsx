@@ -216,14 +216,18 @@ function TeacherRoute({ children }) {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();
 
+  console.log("UserDetails:", userDetails)
+
+  // Verifica se o usuário é admin ou teacher, ou se possui cursos no objeto coursesTeacher
   const isAdmin = userDetails?.role === "admin";
   const isTeacher =
-    userDetails?.role === "teacher" || userDetails.coursesTeacher;
+    userDetails?.role === "teacher" || Object.keys(userDetails?.coursesTeacher || {}).length > 0;
 
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
+  // Permite acesso se o usuário for admin, teacher ou tiver cursos em coursesTeacher
   return teacherPermissions(children, isAdmin, isTeacher);
 }
 

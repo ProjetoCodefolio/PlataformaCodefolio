@@ -1,49 +1,138 @@
 {
   "rules": {
-    "post": {
-      "$postId": {
-        ".read": "true",
+    ".read": true,
+    ".write": false,
 
-        "likes": {
-          ".write": "auth != null"
-        },
+    "courseAssessments": {
+      "$courseId": {
+        "$assessmentId": {
+          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid",
+          ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
+        }
+      }
+    },
 
-        "comentarios": {
-          ".write": "auth != null"
-        },
-        "tags": {
-          ".read": "true",
-          ".write": "auth != null"
-        },
+    "courseMaterials": {
+      "$courseId": {
+        ".read": true,
+        "$materialId": {
+          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+        }
+      }
+    },
 
-        ".write": "auth != null && (!data.exists() || data.child('uidUser').val() === auth.uid || root.child('users/' + auth.uid + '/categoria').val() === 'admin')"
+    "courseQuizzes": {
+      "$courseId": {
+        ".read": true,
+        "$quizId": {
+          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+        }
+      }
+    },
+
+    "courseSlides": {
+      "$courseId": {
+        ".read": true,
+        "$slideId": {
+          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+        }
       }
     },
 
     "courseVideos": {
-      ".indexOn": ["courseId"],
-      ".read": "auth != null",
-      ".write": "auth != null"
+      "$courseId": {
+        ".read": true,
+        "$videoId": {
+          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+        }
+      }
+    },
+
+    "courses": {
+      "$courseId": {
+        ".read": true,
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'teacher')"
+      }
+    },
+
+    "customQuizResults": {
+      "$courseId": {
+        "$quizId": {
+          "$userId": {
+            ".write": "auth != null && auth.uid === $userId",
+            ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    "liveQuizResults": {
+      "$courseId": {
+        "$quizId": {
+          "$userId": {
+            ".write": "auth != null && auth.uid === $userId",
+            ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    "post": {
+      "$postId": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+
+    "quizGigi": {
+      "$courseId": {
+        "$quizId": {
+          "$userId": {
+            ".write": "auth != null && auth.uid === $userId",
+            ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    "quizResults": {
+      "$userId": {
+        ".write": "auth != null && auth.uid === $userId",
+        "$courseId": {
+          ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+        }
+      }
     },
 
     "studentCourses": {
-      ".indexOn": ["userId"],
-      "$entryId": {
-        ".write": "auth != null && data.child('userId').val() === auth.uid",
-        ".read": "auth != null && data.child('userId').val() === auth.uid"
+      "$userId": {
+        "$courseId":{
+          ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid)",
+          ".read": true
+        }
+      }
+    },
+
+    "tags": {
+      "$tagId": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
       }
     },
 
     "users": {
       ".indexOn": ["email"],
       "$userId": {
-        ".write": "auth != null && $userId === auth.uid",
-        ".read": "auth != null && $userId === auth.uid"
+        ".read": "auth != null && (auth.uid === $userId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        ".write": "auth != null && (auth.uid === $userId || (root.child('users').child(auth.uid).child('role').val() === 'admin' && newData.hasChild('role')))"
       }
     },
 
-    ".read": "true",
-
-    ".write": "auth != null"
+    "videoProgress": {
+      "$userId": {
+        ".write": "auth != null && auth.uid === $userId",
+        ".read": true
+      }
+    }
   }
 }
