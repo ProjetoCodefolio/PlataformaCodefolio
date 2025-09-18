@@ -59,22 +59,25 @@ export const validateCoursePin = async (courseId, enteredPin) => {
   try {
     const courseRef = ref(database, `courses/${courseId}`);
     const snapshot = await get(courseRef);
-    
+
     if (!snapshot.exists()) {
       throw new Error("Curso não encontrado");
     }
-    
+
     const courseData = snapshot.val();
-    
-    // If no PIN protection or no hash stored, validation fails
-    if (!courseData.pinEnabled || !courseData.pinHash) {
+
+    // Se o curso não tem proteção por PIN ou não há hash armazenado, a validação falha
+    if (!courseData.pinEnabled || (!courseData.pin && !courseData.pinHash)) {
       return false;
     }
 
-    let coursePin = courseData.pin ? courseData.pin : courseData.pinHash;
-    
-    // Verify the entered PIN against the stored hash
-    return verifyPin(enteredPin, coursePin, courseId);
+    // Se o atributo "pin" bruto estiver presente, comparar diretamente com ele
+    if (courseData.pin) {
+      return enteredPin === courseData.pin;
+    }
+
+    // Caso contrário, verificar o PIN informado contra o hash armazenado
+    return verifyPin(enteredPin, courseData.pinHash, courseId);
   } catch (error) {
     console.error(`Erro ao validar PIN do curso ${courseId}:`, error);
     throw new Error("Não foi possível validar o PIN do curso.");
