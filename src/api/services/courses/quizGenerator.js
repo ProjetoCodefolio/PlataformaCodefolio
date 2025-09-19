@@ -3,14 +3,75 @@ import { v4 as uuidv4 } from "uuid";
 
 // Modelos GROQ disponíveis
 export const GROQ_MODELS = [
+  // Alibaba / Qwen (ajustado)
+  { id: "qwen/qwen3-32b", name: "Qwen 3 32B (Recomendado)", maxContext: 65536 },
+
+  // OpenAI OSS builds (ajustados)
+  { id: "openai/gpt-oss-120b", name: "OpenAI GPT-OSS 120B", maxContext: 65536 },
+  { id: "openai/gpt-oss-20b", name: "OpenAI GPT-OSS 20B", maxContext: 32768 },
+
+  // Whisper (tts/transcrição — aumentados)
+  { id: "whisper-large-v3", name: "Whisper Large v3 (ASR)", maxContext: 8192 },
   {
-    id: "llama3-70b-8192",
-    name: "Llama 3 70B (Recomendado)",
+    id: "whisper-large-v3-turbo",
+    name: "Whisper Large v3 Turbo (ASR)",
     maxContext: 8192,
   },
-  { id: "llama3-8b-8192", name: "Llama 3 8B", maxContext: 8192 },
-  { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B", maxContext: 32768 },
-  { id: "gemma-7b-it", name: "Gemma 7B", maxContext: 8192 },
+
+  // PlayAI (TTS)
+  { id: "playai-tts", name: "PlayAI TTS", maxContext: 4096 },
+  { id: "playai-tts-arabic", name: "PlayAI TTS (Arabic)", maxContext: 4096 },
+
+  // Meta / LLaMA (aumentados onde aplicável)
+  {
+    id: "llama-3.1-8b-instant",
+    name: "Llama 3.1 8B Instant",
+    maxContext: 16384,
+  },
+  {
+    id: "llama-3.3-70b-versatile",
+    name: "Llama 3.3 70B Versatile",
+    maxContext: 65536,
+  },
+  {
+    id: "meta-llama/llama-4-maverick-17b",
+    name: "Meta Llama 4 Maverick 17B",
+    maxContext: 65536,
+  },
+  {
+    id: "meta-llama/llama-4-scout-17b",
+    name: "Meta Llama 4 Scout 17B",
+    maxContext: 65536,
+  },
+  {
+    id: "meta-llama/llama-guard-4-12b",
+    name: "Meta Llama Guard 4 12B",
+    maxContext: 32768,
+  },
+  {
+    id: "meta-llama/llama-prompt-guard-2-22m",
+    name: "Meta Llama Prompt Guard 2 (22M)",
+    maxContext: 8192,
+  },
+  {
+    id: "meta-llama/llama-prompt-guard-2-86m",
+    name: "Meta Llama Prompt Guard 2 (86M)",
+    maxContext: 8192,
+  },
+
+  // DeepSeek / outros
+  {
+    id: "deepseek-r1-distill-llama-70b",
+    name: "DeepSeek R1 Distill Llama 70B",
+    maxContext: 65536,
+  },
+
+  // Google / Gemma
+  { id: "gemma2-9b-it", name: "Gemma 2 9B (IT)", maxContext: 16384 },
+
+  // Groq models
+  { id: "groq/compound", name: "Groq Compound", maxContext: 65536 },
+  { id: "groq/compound-mini", name: "Groq Compound Mini", maxContext: 32768 },
 ];
 
 // Prompt padrão movido para uma função separada que pode ser modificada
@@ -76,37 +137,42 @@ export const createPrompt = (pdfText, numQuestions, customPrompt) => {
  * @returns {string} - Mensagem de erro formatada
  */
 export const formatFriendlyError = (error) => {
-  const errorMsg = error.message || String(error);
+  const errorMsg =
+    (error && (error.message || String(error))) || "Erro desconhecido";
 
-  // Casos comuns de erro com mensagens amigáveis
-  if (errorMsg.includes("API GROQ") || errorMsg.includes("401")) {
-    return "Erro de autenticação na API GROQ. Verifique se a chave API está correta e válida.";
+  // Mensagens amigáveis para o usuário (curtas e acionáveis)
+  if (
+    errorMsg.includes("401") ||
+    errorMsg.toLowerCase().includes("chave api")
+  ) {
+    return "Erro de autenticação: verifique sua chave API nas configurações.";
   } else if (errorMsg.includes("429")) {
-    return "Limite de requisições excedido. A API GROQ está sobrecarregada ou sua cota foi atingida. Tente novamente mais tarde.";
+    return "Muito tráfego: limite de requisições atingido. Tente novamente daqui a alguns minutos.";
   } else if (
     errorMsg.includes("500") ||
     errorMsg.includes("502") ||
     errorMsg.includes("503")
   ) {
-    return "Os servidores da GROQ estão com problemas neste momento. Tente novamente mais tarde.";
+    return "Serviço temporariamente indisponível. Tente novamente mais tarde.";
+  } else if (errorMsg.toLowerCase().includes("json")) {
+    return "A IA retornou um formato inesperado. Tente gerar novamente ou experimente outro modelo.";
   } else if (
-    errorMsg.includes("No content") ||
-    errorMsg.includes("text content is empty")
+    errorMsg.toLowerCase().includes("texto") &&
+    errorMsg.includes("empty")
   ) {
-    return "Não foi possível extrair texto do PDF. O arquivo pode estar protegido ou contém apenas imagens.";
-  } else if (errorMsg.includes("JSON")) {
-    return "Erro ao processar as questões geradas pela IA. Tente novamente ou escolha outro modelo.";
+    return "Não foi possível extrair texto do PDF. Verifique se o arquivo não está protegido ou contém apenas imagens.";
   } else if (
     errorMsg.includes("NetworkError") ||
     errorMsg.includes("Failed to fetch")
   ) {
     return "Erro de conexão. Verifique sua internet e tente novamente.";
-  } else if (errorMsg.includes("chave API")) {
-    return errorMsg; // Já é uma mensagem amigável
+  } else if (errorMsg.includes("400")) {
+    // incluir sugestão de ação para 400
+    return "Requisição inválida para o serviço de IA. Tente reduzir o tamanho do arquivo ou o número de questões, e tente novamente.";
   }
 
-  // Caso genérico
-  return `Erro: ${errorMsg}. Tente novamente ou entre em contato com o suporte.`;
+  // Caso genérico curto
+  return "Ocorreu um erro. Tente novamente ou entre em contato com o suporte se o problema persistir.";
 };
 
 /**
@@ -138,7 +204,9 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
 
     // Ajustar o tamanho máximo com base no modelo selecionado
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
-    const maxContextSize = selectedModelInfo ? selectedModelInfo.maxContext : 8192;
+    const maxContextSize = selectedModelInfo
+      ? selectedModelInfo.maxContext
+      : 8192;
 
     // Converter para tokens aproximados (1 token ~= 4 caracteres)
     // Mantendo margem para o prompt e resposta
@@ -228,7 +296,7 @@ export const generateQuestionsWithGroq = async (
 ) => {
   try {
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
-    
+
     if (onProcessingStep) {
       onProcessingStep(
         `Gerando ${numQuestions} questões com ${
@@ -250,6 +318,39 @@ export const generateQuestionsWithGroq = async (
     const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
     try {
+      // Preparar o body separadamente para poder logar
+      const requestBody = {
+        model: selectedModel,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 4000,
+      };
+
+      // Logs para diagnóstico
+      console.debug("GROQ request -> apiUrl:", apiUrl);
+      console.debug("GROQ request -> selectedModel:", selectedModel);
+      console.debug("GROQ request -> selectedModelInfo:", selectedModelInfo);
+      console.debug("GROQ request -> prompt length:", prompt.length);
+      console.debug("GROQ request -> requestBody (truncated):", {
+        ...requestBody,
+        messages: requestBody.messages.map((m) => ({
+          ...m,
+          content:
+            m.content.slice(0, 1000) +
+            (m.content.length > 1000 ? "...(truncated)" : ""),
+        })),
+      });
+
       // Enviar a solicitação para a API GROQ
       const response = await fetch(apiUrl, {
         method: "POST",
@@ -257,42 +358,53 @@ export const generateQuestionsWithGroq = async (
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [
-            {
-              role: "system",
-              content:
-                "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.",
-            },
-            {
-              role: "user",
-              content: prompt,
-            },
-          ],
-          temperature: 0.2,
-          max_tokens: 4000,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      // Se não OK, tente ler o body de resposta para diagnóstico
       if (!response.ok) {
+        const respText = await response
+          .text()
+          .catch(() => "<unable to read response body>");
+        console.error("GROQ resposta não OK:", response.status, respText);
+
         if (response.status === 401) {
-          throw new Error(
-            "A chave API GROQ fornecida é inválida ou expirou."
-          );
+          throw new Error("A chave API GROQ fornecida é inválida ou expirou.");
         } else if (response.status === 429) {
           throw new Error(
             "Limite de requisições da API GROQ excedido. Tente novamente mais tarde."
           );
+        } else if (response.status === 400) {
+          // Mensagem específica para 400 incluindo corpo para ajudar debug
+          throw new Error(
+            `Erro no serviço GROQ (código 400). Resposta: ${respText}`
+          );
         } else {
           throw new Error(
-            `Erro no serviço GROQ (código ${response.status}). Tente novamente mais tarde.`
+            `Erro no serviço GROQ (código ${response.status}). Resposta: ${respText}`
           );
         }
       }
 
-      const data = await response.json();
-      const content = data.choices[0].message.content;
+      // Tentar parsear como JSON, mas se falhar logar texto cru
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        const raw = await response
+          .text()
+          .catch(() => "<unable to read response body>");
+        console.error("Falha ao parsear JSON da GROQ. Body:", raw);
+        throw new Error("Resposta da GROQ não está em JSON válido.");
+      }
+
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) {
+        console.error("Resposta GROQ sem campo content:", data);
+        throw new Error(
+          "Resposta inesperada da API GROQ. Verifique logs para detalhes."
+        );
+      }
 
       // Processar a resposta para extrair as questões
       const parsedQuestions = parseGroqResponse(content);
@@ -345,19 +457,17 @@ export const generateQuestionsWithGroq = async (
       return finalQuestions.map((q, index) => ({
         ...q,
         id:
-          q.id ||
-          `pdf-gen-${Date.now()}-${index}-${uuidv4().substring(0, 8)}`,
+          q.id || `pdf-gen-${Date.now()}-${index}-${uuidv4().substring(0, 8)}`,
       }));
     } catch (fetchError) {
       console.error("Erro na comunicação com a API:", fetchError);
-      throw new Error(
-        fetchError.message ||
-          "Erro ao comunicar com a API GROQ. Verifique sua conexão."
-      );
+      // relança mensagem amigável ao usuário, mantendo o log técnico
+      throw new Error(formatFriendlyError(fetchError));
     }
   } catch (error) {
     console.error("Erro ao gerar questões:", error);
-    throw error;
+    // relança mensagem amigável ao usuário, mantendo o log técnico
+    throw new Error(formatFriendlyError(error));
   }
 };
 
@@ -380,11 +490,11 @@ export const processPdfAndGenerateQuestions = async (
   callbacks = {}
 ) => {
   const { onProgress, onProcessingStep } = callbacks;
-  
+
   try {
     // Extrair texto do PDF
     const text = await extractTextFromPdf(pdfFile, onProgress, selectedModel);
-    
+
     if (onProgress) {
       onProgress(50);
     }
@@ -398,17 +508,18 @@ export const processPdfAndGenerateQuestions = async (
       customPrompt,
       onProcessingStep
     );
-    
+
     if (onProgress) {
       onProgress(100);
     }
 
     return {
       text,
-      questions
+      questions,
     };
   } catch (error) {
     console.error("Erro ao processar PDF:", error);
-    throw error;
+    // relança mensagem amigável ao usuário
+    throw new Error(formatFriendlyError(error));
   }
 };
