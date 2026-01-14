@@ -57,7 +57,7 @@ export default function CourseAssessmentsTab() {
   const loadAssessments = async () => {
     setLoading(true);
     try {
-      const result = await assessmentService.fetchAssessments(courseId);
+      const result = await assessmentService.fetchAllAssessmentsByCourse(courseId);
       setAssessments(result);
     } catch (err) {
       setError(err.message || "Falha ao carregar avaliações");
@@ -142,6 +142,10 @@ export default function CourseAssessmentsTab() {
     navigate(
       `/course/grade-assignment?courseId=${courseId}&assessmentId=${assessment.id}`
     );
+  };
+
+  const navigateToGradesView = () => {
+    navigate(`/course/grades?courseId=${courseId}`);
   };
 
   const resetForm = () => {
@@ -342,6 +346,36 @@ export default function CourseAssessmentsTab() {
             Atenção: O total dos percentuais ({totalPercentage}%) excede 100%.
           </Alert>
         )}
+      </Paper>
+
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          mb: 3,
+          backgroundColor: "#ffffff",
+          borderRadius: "12px",
+          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+        }}
+      >
+        <Grid container spacing={2}>
+          <Grid item xs={12}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={navigateToGradesView}
+              disabled={assessments.length === 0}
+              sx={{
+                bgcolor: "#1976d2",
+                color: "#fff",
+                py: 1.5,
+                "&:hover": { bgcolor: "#1565c0" },
+              }}
+            >
+              Ver Notas Gerais da Turma
+            </Button>
+          </Grid>
+        </Grid>
       </Paper>
 
       <Paper

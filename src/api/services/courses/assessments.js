@@ -6,7 +6,7 @@ import { ref, push, set, get, update, remove } from 'firebase/database';
  * @param {string} courseId - The ID of the course
  * @returns {Promise<Array>} - List of assessments
  */
-export const fetchAssessments = async (courseId) => {
+export const fetchAllAssessmentsByCourse = async (courseId) => {
   if (!courseId) return [];
   
   try {

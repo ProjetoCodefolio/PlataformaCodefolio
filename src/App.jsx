@@ -16,6 +16,7 @@ import Projetos from "./app/pages/projetos";
 import HomePage from "./app/pages/homePage";
 import Cursos from "./app/pages/course/adminCourse";
 import GradeAssignmentPage from "./app/pages/course/adminCourse/GradeAssignment";
+import CourseGrades from "./app/pages/course/adminCourse/CourseGrades";
 import ListCursos from "./app/pages/course/list";
 import Classes from "./app/pages/course/classes";
 import StudentDashboard from "./app/pages/course/studentDashboard";
@@ -142,6 +143,17 @@ function App() {
                 <PrivateRoute>
                   <TeacherRoute>
                     <GradeAssignmentPage />
+                  </TeacherRoute>
+                </PrivateRoute>
+              }
+          />
+
+            <Route
+              path="/course/grades"
+              element={
+                <PrivateRoute>
+                  <TeacherRoute>
+                    <CourseGrades />
                   </TeacherRoute>
                 </PrivateRoute>
               }

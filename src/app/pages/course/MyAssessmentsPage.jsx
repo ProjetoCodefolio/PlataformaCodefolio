@@ -160,7 +160,7 @@ export default function MyAssessmentsPage() {
           const courseId = getCourseId(course);
           if (!courseId || courseAssessmentsMap[courseId]?.assessments) return;
           try {
-            const assessments = await assessmentService.fetchAssessments(
+            const assessments = await assessmentService.fetchAllAssessmentsByCourse(
               courseId
             );
             updates[courseId] = {
@@ -210,7 +210,7 @@ export default function MyAssessmentsPage() {
     try {
       const assessments =
         courseAssessmentsMap[courseId]?.assessments ||
-        (await assessmentService.fetchAssessments(courseId)) ||
+        (await assessmentService.fetchAllAssessmentsByCourse(courseId)) ||
         [];
 
       const withGrades = await Promise.all(

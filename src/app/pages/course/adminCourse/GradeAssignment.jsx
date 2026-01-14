@@ -81,7 +81,7 @@ export default function GradeAssignmentPage() {
         setCourseDetails(course);
 
         // Carregar avaliação
-        const assessments = await assessmentService.fetchAssessments(courseId);
+        const assessments = await assessmentService.fetchAllAssessmentsByCourse(courseId);
         const currentAssessment = assessments.find(
           (a) => a.id === assessmentId
         );
