@@ -3,8 +3,14 @@ import styled from 'styled-components';
 import Box from "@mui/material/Box";
 import Typography from '@mui/material/Typography';
 import quatroTelas from "$assets/img/4telas.svg";
-import Carousel from 'react-material-ui-carousel';
+// import Carousel from 'react-material-ui-carousel';
 import { Card, CardContent, CardActionArea } from '@mui/material';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation, Pagination } from 'swiper/modules';
+
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
 
 
 const artigos = [
@@ -60,142 +66,61 @@ const Section5 = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const renderCarouselItems = () => {
+  const renderSlides = () => {
     if (isMobile) {
-      // Lógica para exibir um card por vez em telas pequenas
       return artigos.map((artigo) => (
-        <Box
-          key={artigo.key}
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <Card
-            sx={{
-              width: '100%',
-              maxWidth: 300,
-              height: 250,
-              backgroundColor: '#7d2ead',
-              transition: 'transform 0.3s',
-              '&:hover': {
-                transform: 'scale(1.05)'
-              }
-            }}
-          >
-            <CardActionArea
-              href={artigo.link}
+        <SwiperSlide key={artigo.key}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+            <Card
               sx={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center'
+                width: { xs: '100%', md: 320 },
+                maxWidth: 320,
+                height: 250,
+                backgroundColor: '#5e1d83',
+                borderRadius: '8px',
+                boxShadow: '0 6px 18px rgba(0,0,0,0.25)',
+                transition: 'transform 0.3s',
+                '&:hover': { transform: 'translateY(-6px)' }
               }}
             >
-              <CardContent
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  padding: '20px'
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: 'white',
-                    fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}
-                >
-                  {artigo.titulo}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'white',
-                    fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-                    textAlign: 'center',
-                    marginTop: 'auto'
-                  }}
-                >
-                  {artigo.autor}
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        </Box>
+              <CardActionArea href={artigo.link} sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px' }}>
+                  <Typography variant="h6" sx={{ color: 'white', fontFamily: 'Arial Unicode MS, Arial, sans-serif', fontWeight: 'bold', textAlign: 'center' }}>
+                    {artigo.titulo}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'white', fontFamily: 'Arial Unicode MS, Arial, sans-serif', textAlign: 'center', marginTop: 'auto' }}>
+                    {artigo.autor}
+                  </Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          </Box>
+        </SwiperSlide>
       ));
     }
 
-    // Manter a lógica existente para telas maiores
-    return Array.from({ length: Math.ceil(artigos.length / 3) }, (_, index) => (
-      <Box
-        key={index}
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '20px',
-          padding: '20px'
-        }}
-      >
-        {artigos.slice(index * 3, index * 3 + 3).map((artigo) => (
-          <Card
-            key={artigo.key}
-            sx={{
-              width: 300,
-              height: 250,
-              backgroundColor: '#5e1d83',
-              transition: 'transform 0.3s',
-              '&:hover': {
-                transform: 'scale(1.05)'
-              }
-            }}
-          >
-            <CardActionArea
-              href={artigo.link}
-              sx={{
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center'
-              }}
-            >
-              <CardContent
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  padding: '20px'
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{
-                    color: 'white',
-                    fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}
-                >
-                  {artigo.titulo}
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: 'white',
-                    fontFamily: 'Arial Unicode MS, Arial, sans-serif',
-                    textAlign: 'center',
-                    marginTop: 'auto'
-                  }}
-                >
-                  {artigo.autor}
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        ))}
-      </Box>
+    // Agrupar 3 por slide em telas maiores
+    const groups = Array.from({ length: Math.ceil(artigos.length / 3) }, (_, index) => artigos.slice(index * 3, index * 3 + 3));
+
+    return groups.map((group, index) => (
+      <SwiperSlide key={`group-${index}`}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: '40px', padding: '20px 0' }}>
+          {group.map((artigo) => (
+            <Card key={artigo.key} sx={{ width: { xs: '100%', md: 320 }, maxWidth: 320, height: 250, backgroundColor: '#5e1d83', borderRadius: '8px', boxShadow: '0 6px 18px rgba(0,0,0,0.25)', transition: 'transform 0.3s', '&:hover': { transform: 'translateY(-6px)' } }}>
+              <CardActionArea href={artigo.link} sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '20px' }}>
+                  <Typography variant="h6" sx={{ color: 'white', fontFamily: 'Arial Unicode MS, Arial, sans-serif', fontWeight: 'bold', textAlign: 'center' }}>
+                    {artigo.titulo}
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: 'white', fontFamily: 'Arial Unicode MS, Arial, sans-serif', textAlign: 'center', marginTop: 'auto' }}>
+                    {artigo.autor}
+                  </Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          ))}
+        </Box>
+      </SwiperSlide>
     ));
   };
 
@@ -286,32 +211,80 @@ const Section5 = () => {
           alignItems: 'center'
         }}
       >
-        <Carousel
-          animation="slide"
-          navButtonsAlwaysVisible
-          autoPlay={false}
-          navButtonsProps={{
-            style: {
-              padding: isMobile ? '4px' : '8px',
-              margin: isMobile ? '0 -2 px' : '0',
-              transform: isMobile ? 'scale(0.8)' : 'scale(1)',
+
+        <Box
+          sx={{
+            width: '100%',
+            minHeight: '46vh',
+            padding: '40px 0',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#6A0DAD',
+            position: 'relative',
+            '& .swiper-button-next, & .swiper-button-prev': {
               backgroundColor: '#5e1d83',
               borderRadius: '50%',
-              width: isMobile ? '28px' : '40px',
-              height: isMobile ? '30px' : '40px',
+              color: '#fff',
+              width: isMobile ? '12px' : '24px',
+              height: isMobile ? '12px' : '24px',
               display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
-              alignItems: 'center'
-            }
-          }}
-          sx={{
-            width: '90%',
-            maxWidth: '1200px',
-            height: '100%'
+              boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              zIndex: 20,
+              position: 'absolute',
+              top: '50%',
+              transform: 'translateY(-50%)',
+            },
+            '& .swiper-button-prev': { left: '0px' },
+            '& .swiper-button-next': { right: '0px' },
+            '& .swiper-button-next:after, & .swiper-button-prev:after': {
+              fontSize: isMobile ? '14px' : '20px',
+              color: '#fff',
+            },
+            '& .swiper-button-disabled': { opacity: 0.4 },
+            '& .swiper-pagination': {
+              position: 'absolute',
+              bottom: '-1%',
+              left: 0,
+              right: 0,
+              textAlign: 'center',
+              zIndex: 20,
+            },
+            '& .swiper-pagination-bullet': {
+              width: '10px',
+              height: '10px',
+              background: '#cfcfcf',
+              opacity: 1,
+              margin: '0 6px',
+              display: 'inline-block',
+              borderRadius: '50%',
+            },
+            '& .swiper-pagination-bullet-active': {
+              background: '#394439ff',
+            },
           }}
         >
-          {renderCarouselItems()}
-        </Carousel>
+          <Swiper
+            modules={[Navigation, Pagination]}
+            navigation
+            pagination={{ clickable: true }}
+            spaceBetween={20}
+            slidesPerView={1}
+            slidesPerGroup={1}
+            style={{
+              width: '90%',
+              maxWidth: '1200px',
+              padding: '20px 0',
+            }}
+            keyboard={{ enabled: true }}
+            allowTouchMove
+          >
+            {renderSlides()}
+          </Swiper>
+        </Box>
+
       </Box>
     </>
   );
