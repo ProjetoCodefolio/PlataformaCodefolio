@@ -287,18 +287,18 @@ const MyCourses = () => {
             {selectedTab === 0 && (
               <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 {renderCourses(
-                  filteredAvailableCourses,
-                  "Começar",
-                  handleStartCourse
+                  filteredInProgressCourses,
+                  "Continuar",
+                  handleContinueCourse
                 )}
               </Box>
             )}
             {selectedTab === 1 && (
               <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 {renderCourses(
-                  filteredInProgressCourses,
-                  "Continuar",
-                  handleContinueCourse
+                  filteredAvailableCourses,
+                  "Começar",
+                  handleStartCourse
                 )}
               </Box>
             )}
