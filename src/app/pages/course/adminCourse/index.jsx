@@ -352,7 +352,7 @@ const CourseForm = () => {
                 value={courseTitle}
                 onChange={(e) => setCourseTitle(e.target.value)}
                 variant="outlined"
-                disabled={!!courseId}
+                // disabled={!!courseId}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { borderColor: "#666" },
@@ -375,7 +375,7 @@ const CourseForm = () => {
                 value={courseDescription}
                 onChange={(e) => setCourseDescription(e.target.value)}
                 variant="outlined"
-                disabled={!!courseId}
+                // disabled={!!courseId}
                 multiline
                 rows={3}
                 sx={{

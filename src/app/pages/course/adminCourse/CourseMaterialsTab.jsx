@@ -12,21 +12,19 @@ import {
     Modal,
     Typography,
 } from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
-import {
-    fetchCourseMaterials,
-    addCourseMaterial,
-    deleteCourseMaterial,
-    saveAllCourseMaterials
-} from "$api/services/courses/extraMaterials";
+import * as extraMaterialsService from "$api/services/courses/extraMaterials";
 
 const CourseMaterialsTab = forwardRef((props, ref) => {
     const [materials, setMaterials] = useState([]);
     const [materialName, setMaterialName] = useState("");
     const [materialUrl, setMaterialUrl] = useState("");
     const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingMaterialId, setEditingMaterialId] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [materialToDelete, setMaterialToDelete] = useState(null);
 
@@ -37,7 +35,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     // Busca materiais usando a API
     const loadCourseMaterials = async () => {
         try {
-            const materialsData = await fetchCourseMaterials(courseId);
+            const materialsData = await extraMaterialsService.fetchCourseMaterials(courseId);
             setMaterials(materialsData);
         } catch (error) {
             console.error("Erro ao buscar materiais:", error);
@@ -58,9 +56,9 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                 name: materialName,
                 url: materialUrl
             };
-            
-            const newMaterial = await addCourseMaterial(courseId, materialData);
-            
+
+            const newMaterial = await extraMaterialsService.addCourseMaterial(courseId, materialData);
+
             setMaterials((prev) => [...prev, newMaterial]);
             setMaterialName("");
             setMaterialUrl("");
@@ -68,6 +66,43 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
         } catch (error) {
             console.error("Erro ao adicionar material:", error);
             toast.error(error.message || "Erro ao adicionar material");
+        }
+    };
+
+    const handleEditMaterial = async (id) => {
+        setIsEditing(true);
+
+        const material = materials.find((m) => m.id === id);
+        if (material) {
+            setMaterialName(material.name);
+            setMaterialUrl(material.url);
+            setEditingMaterialId(id);
+        }
+    };
+
+    const handleUpdateMaterial = async () => {
+        if (!materialName.trim() || !materialUrl.trim()) {
+            toast.error("Preencha o nome e a URL do material");
+            return;
+        }
+        try {
+            const updatedMaterialData = {
+                name: materialName,
+                url: materialUrl
+            };
+            const updatedMaterial = await extraMaterialsService.updateCourseMaterial(courseId, editingMaterialId, updatedMaterialData);
+            setMaterials((prev) =>
+                prev.map((material) =>
+                    material.id === updatedMaterial.id ? updatedMaterial : material
+                )
+            );
+            setMaterialName("");
+            setMaterialUrl("");
+            setIsEditing(false);
+            toast.success("Material atualizado com sucesso!");
+        } catch (error) {
+            console.error("Erro ao atualizar material:", error);
+            toast.error(error.message || "Erro ao atualizar material");
         }
     };
 
@@ -85,16 +120,16 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             setMaterialToDelete(null);
             return;
         }
-        
+
         try {
-            await deleteCourseMaterial(courseId, materialToDelete.id);
+            await extraMaterialsService.deleteCourseMaterial(courseId, materialToDelete.id);
             setMaterials((prev) => prev.filter((material) => material.id !== materialToDelete.id));
             toast.success("Material excluído com sucesso!");
         } catch (error) {
             console.error("Erro ao excluir material:", error);
             toast.error(error.message || "Erro ao excluir o material");
         }
-        
+
         setShowDeleteModal(false);
         setMaterialToDelete(null);
     };
@@ -105,8 +140,8 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             try {
                 const targetCourseId = newCourseId || courseId;
                 if (!targetCourseId) throw new Error("ID do curso não disponível");
-                
-                return await saveAllCourseMaterials(targetCourseId, materials);
+
+                return await extraMaterialsService.saveAllCourseMaterials(targetCourseId, materials);
             } catch (error) {
                 console.error("Erro ao salvar materiais:", error);
                 throw error;
@@ -169,9 +204,9 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                             backgroundColor: "#9041c1",
                             '&:hover': { backgroundColor: "#7d37a7" },
                         }}
-                        onClick={handleAddMaterial}
+                        onClick={isEditing ? handleUpdateMaterial : handleAddMaterial}
                     >
-                        Adicionar Material
+                        {isEditing ? "Editar Material" : "Adicionar Material"}
                     </Button>
                 </Grid>
             </Grid>
@@ -192,12 +227,22 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                             '&:hover': { backgroundColor: "rgba(144, 65, 193, 0.04)" },
                         }}
                         secondaryAction={
-                            <IconButton
-                                edge="end"
-                                onClick={() => handleRemoveMaterial(material.id)}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <IconButton
+                                    edge="end"
+                                    onClick={() => handleEditMaterial(material.id)}
+                                    sx={{ color: "#9041c1" }}
+                                >
+                                    <EditIcon />
+                                </IconButton>
+                                <IconButton
+                                    edge="end"
+                                    onClick={() => handleRemoveMaterial(material.id)}
+                                    sx={{ color: "#d32f2f" }}
+                                >
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Box>
                         }
                     >
                         <ListItemText

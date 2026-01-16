@@ -1,5 +1,6 @@
-import { ref, get, set, push, remove } from "firebase/database";
+import { toast } from "react-toastify";
 import { database } from "../../config/firebase";
+import { ref, get, set, push, remove } from "firebase/database";
 
 /**
  * Busca materiais extras de um curso específico
@@ -14,11 +15,11 @@ export const fetchCourseMaterials = async (courseId) => {
 
     const materialsRef = ref(database, `courseMaterials/${courseId}`);
     const snapshot = await get(materialsRef);
-    
+
     if (!snapshot.exists()) {
       return [];
     }
-    
+
     const courseMaterials = snapshot.val();
     const materialsArray = Object.entries(courseMaterials).map(([key, material]) => ({
       id: key,
@@ -26,7 +27,7 @@ export const fetchCourseMaterials = async (courseId) => {
       url: material.url || "",
       courseId: material.courseId,
     }));
-    
+
     return materialsArray;
   } catch (error) {
     console.error("Erro ao buscar materiais extras:", error);
@@ -45,24 +46,56 @@ export const addCourseMaterial = async (courseId, materialData) => {
     if (!courseId) {
       throw new Error("ID do curso é necessário");
     }
-    
+
     if (!materialData.name?.trim() || !materialData.url?.trim()) {
       throw new Error("Nome e URL do material são obrigatórios");
     }
-    
+
     const material = {
       name: materialData.name.trim(),
       url: materialData.url.trim(),
       courseId: courseId
     };
-    
+
     const courseMaterialsRef = ref(database, `courseMaterials/${courseId}`);
     const newMaterialRef = push(courseMaterialsRef);
     await set(newMaterialRef, material);
-    
+
     return { ...material, id: newMaterialRef.key };
   } catch (error) {
     console.error("Erro ao adicionar material:", error);
+    throw error;
+  }
+};
+
+/**
+ * Atualiza um material do curso
+ * @param {string} courseId - ID do curso
+ * @param {string} materialId - ID do material
+ * @param {Object} materialData - Dados atualizados do material
+ * @returns {Promise<Object>} - Material atualizado
+ */
+export const updateCourseMaterial = async (courseId, materialId, materialData) => {
+  try {
+    if (!courseId || !materialId) {
+      throw new Error("ID do curso e do material são necessários");
+    }
+
+    if (!materialData.name?.trim() || !materialData.url?.trim()) {
+      throw new Error("Nome e URL do material são obrigatórios");
+    }
+    const materialRef = ref(database, `courseMaterials/${courseId}/${materialId}`);
+    const updatedMaterial = {
+      courseId: courseId,
+      name: materialData.name.trim(),
+      url: materialData.url.trim()
+    };
+    await set(materialRef, updatedMaterial);
+    toast.success("Material atualizado com sucesso!");
+    return { ...updatedMaterial, id: materialId };
+  } catch (error) {
+    console.error("Erro ao atualizar material:", error);
+    toast.error("Erro ao atualizar material: " + error.message);
     throw error;
   }
 };
@@ -78,13 +111,14 @@ export const deleteCourseMaterial = async (courseId, materialId) => {
     if (!courseId || !materialId) {
       throw new Error("ID do curso e do material são necessários");
     }
-    
+
     const materialRef = ref(database, `courseMaterials/${courseId}/${materialId}`);
     await remove(materialRef);
-    
+
     return true;
   } catch (error) {
     console.error("Erro ao excluir material:", error);
+    toast.error("Erro ao excluir material: " + error.message);
     throw error;
   }
 };
@@ -100,25 +134,25 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
     if (!courseId) {
       throw new Error("ID do curso não disponível");
     }
-    
+
     // Buscar materiais existentes
     const courseMaterialsRef = ref(database, `courseMaterials/${courseId}`);
     const snapshot = await get(courseMaterialsRef);
     const existingMaterials = snapshot.val() || {};
-    
+
     // Criar conjuntos para facilitar a comparação
     const existingMaterialIds = new Set(Object.keys(existingMaterials));
     const currentMaterialIds = new Set(
       materials.map((material) => material.id).filter((id) => id)
     );
-    
+
     // Remover materiais que não estão mais na lista
     for (const id of existingMaterialIds) {
       if (!currentMaterialIds.has(id)) {
         await remove(ref(database, `courseMaterials/${courseId}/${id}`));
       }
     }
-    
+
     // Adicionar ou atualizar materiais
     for (const material of materials) {
       const materialData = {
@@ -126,7 +160,7 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
         name: material.name,
         url: material.url,
       };
-      
+
       if (material.id && existingMaterialIds.has(material.id)) {
         // Atualizar material existente
         await set(
@@ -140,10 +174,11 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
         material.id = newMaterialRef.key;
       }
     }
-    
+
     return true;
   } catch (error) {
     console.error("Erro ao salvar materiais:", error);
+    toast.error("Erro ao salvar materiais: " + error.message);
     throw error;
   }
 };
