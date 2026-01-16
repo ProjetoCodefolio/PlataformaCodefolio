@@ -37,7 +37,7 @@ import CustomQuizRanking from "./components/CustomQuizRanking";
 import { useQuizData } from "./hooks/useQuizData";
 import { useStudentData } from "./hooks/useStudentData";
 import { useCustomQuestion } from "./hooks/useCustomQuestion";
-import ReportModal from "../../common/ReportModal";
+import ReportModal from "../../common/reportModal";
 
 const QuizGigi = ({ onClose, quizData, courseId }) => {
   const contentContainerRef = useRef(null);

@@ -20,6 +20,7 @@ import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import ReportIcon from "@mui/icons-material/Report";
+import EditIcon from "@mui/icons-material/Edit";
 import { handleGoogleSignIn } from "$api/services/auth";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
@@ -28,7 +29,7 @@ import { useAuth } from "$context/AuthContext";
 import { fetchVideoProgress } from "$api/services/courses/videoProgress";
 import { isVideoLocked } from "$api/utils/videoUtils";
 import { toast } from "react-toastify";
-import ReportModal from "../../common/ReportModal";
+import ReportModal from "$components/common/reportModal";
 import { prepareSlideUrl } from "$api/services/courses/slides";
 
 export const styles = `
@@ -426,6 +427,22 @@ export const VideoPlayer = forwardRef(
       checkForSlideQuiz();
     }, [isSlide, video]);
 
+    const handleEditCourse = () => {
+      navigate(`/adm-cursos?courseId=${courseId}`);
+    };
+
+    const canEditCourse = () => {
+      if (!userDetails) return false;
+
+      // Verifica se é admin
+      if (userDetails.role === "admin") return true;
+
+      // Verifica se é o dono do curso
+      if (userDetails.userId === courseOwnerUid) return true;
+
+      return false;
+    };
+
     if (!video || !video.url) {
       return (
         <Box
@@ -604,6 +621,24 @@ export const VideoPlayer = forwardRef(
                   </IconButton>
                 )}
               </>
+            )}
+
+            {canEditCourse() && (
+              <IconButton
+                onClick={handleEditCourse}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "#9041c1",
+                  mr: 1,
+                  p: 0.8,
+                  "&:hover": {
+                    bgcolor: "#7a35a3",
+                  },
+                }}
+                title="Editar curso"
+              >
+                <EditIcon sx={{ fontSize: "18px" }} />
+              </IconButton>
             )}
 
             <IconButton

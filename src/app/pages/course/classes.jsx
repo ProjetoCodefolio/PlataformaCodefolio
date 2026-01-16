@@ -40,7 +40,7 @@ import {
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
-import AdvancedSettingsModal from "../../components/courses/advancedSettingsModal";
+import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 
 const Classes = () => {
   const [videos, setVideos] = useState([]);
@@ -55,10 +55,10 @@ const Classes = () => {
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
   const videoPlayerRef = useRef({
-    pause: () => {},
+    pause: () => { },
     getCurrentTime: () => 0,
     getDuration: () => 0,
-    seekTo: () => {},
+    seekTo: () => { },
   });
   const [loadingVideos, setLoadingVideos] = useState(false);
   const navigate = useNavigate();
@@ -351,26 +351,26 @@ const Classes = () => {
     try {
       // Garantir que isPassed seja um booleano
       const wasApproved = Boolean(isPassed);
-      
+
       // Identifica se é um slide ou um vídeo que estamos atualizando
       const contentId = videoId || currentVideoId;
-      
+
       // Immediately update attempts for the UI - we'll do this regardless of pass/fail
       // to ensure the "Limite Atingido" message appears right away
       if (userDetails?.userId) {
         // Create a synthetic attempt update that will be replaced by the real one later
         const updatedAttempts = { ...userAttempts };
         const quizIdForAttempts = contentId.includes("/") ? contentId.split("/")[1] : contentId;
-        
+
         if (!updatedAttempts[quizIdForAttempts]) {
           updatedAttempts[quizIdForAttempts] = { attemptCount: 1 };
         } else {
-          updatedAttempts[quizIdForAttempts] = { 
-            ...updatedAttempts[quizIdForAttempts], 
-            attemptCount: (updatedAttempts[quizIdForAttempts].attemptCount || 0) + 1 
+          updatedAttempts[quizIdForAttempts] = {
+            ...updatedAttempts[quizIdForAttempts],
+            attemptCount: (updatedAttempts[quizIdForAttempts].attemptCount || 0) + 1
           };
         }
-        
+
         // Update the attempts immediately to trigger UI changes
         setUserAttempts(updatedAttempts);
       }
@@ -392,8 +392,8 @@ const Classes = () => {
           const duration =
             quizSource === "video" && videoPlayerRef.current
               ? videoPlayerRef.current.getDuration?.() ||
-                currentVideo?.watchedTime ||
-                0
+              currentVideo?.watchedTime ||
+              0
               : 1; // Para slides, usamos 1 como duração padrão
 
           // Processa conclusão no serviço
