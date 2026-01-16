@@ -270,8 +270,8 @@ const MyCourses = () => {
             "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
           }}
         >
-          <Tab label="Disponíveis" />
           <Tab label="Em Andamento" />
+          <Tab label="Disponíveis" />
           <Tab label="Concluídos" />
         </Tabs>
 
