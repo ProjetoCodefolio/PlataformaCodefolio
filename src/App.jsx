@@ -28,7 +28,8 @@ import NotFound from "$pages/NotFound";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
-import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage"; // <-- adicionado
+import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage";
+import TeacherAssessmentsPage from "./app/pages/course/TeacherAssessmentsPage";
 
 function App() {
   return (
@@ -56,6 +57,18 @@ function App() {
               element={
                 <PrivateRoute>
                   <MyAssessmentsPage />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Rota específica para professores gerenciarem avaliações */}
+            <Route
+              path="/teacher-assessments"
+              element={
+                <PrivateRoute>
+                  <TeacherRoute>
+                    <TeacherAssessmentsPage />
+                  </TeacherRoute>
                 </PrivateRoute>
               }
             />
