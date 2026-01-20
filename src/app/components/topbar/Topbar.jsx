@@ -103,6 +103,12 @@ export default function Topbar({ onSearch, hideSearch = false }) {
     handleMobileMenuClose();
   };
 
+  const handleManageAssessmentsClick = () => {
+    navigate("/teacher-assessments");
+    handleClose();
+    handleMobileMenuClose();
+  };
+
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
     onSearch(event.target.value); // já está correto!
@@ -348,6 +354,14 @@ export default function Topbar({ onSearch, hideSearch = false }) {
                       <VideoSettingsIcon fontSize="small" />
                     </ListItemIcon>
                     Gerenciamento de Cursos
+                  </MenuItem>
+                )}
+                {canManageCourses && (
+                  <MenuItem onClick={handleManageAssessmentsClick}>
+                    <ListItemIcon>
+                      <AssignmentIcon fontSize="small" />
+                    </ListItemIcon>
+                    Gerenciamento de Avaliações
                   </MenuItem>
                 )}
                 <MenuItem onClick={handleProfileClick}>

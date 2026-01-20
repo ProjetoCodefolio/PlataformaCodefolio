@@ -42,7 +42,8 @@ import * as assessmentService from "$api/services/courses/assessments";
 import * as studentService from "$api/services/courses/students";
 import * as courseService from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
-import { toast } from "react-toastify"; // Adicione esta linha
+import { toast } from "react-toastify";
+import { canAssignGrades } from "$api/utils/permissions";
 
 // Função para formatar nomes com capitalização adequada - igual ao CourseStudentsTab
 const capitalizeWords = (name) => {
@@ -82,8 +83,8 @@ export default function GradeAssignmentPage() {
 
   const { currentUser, userDetails } = useAuth();
   
-  // Verificar se o usuário é dono do curso
-  const isCourseOwner = currentUser?.uid === courseDetails?.createdBy || userDetails?.role === "admin";
+  // Verificar se o usuário é dono do curso ou admin
+  const isCourseOwner = canAssignGrades(userDetails, courseDetails?.userId);
 
   // Carregar dados necessários ao iniciar
   useEffect(() => {

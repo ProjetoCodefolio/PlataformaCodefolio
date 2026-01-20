@@ -23,10 +23,10 @@ import AddIcon from "@mui/icons-material/Add";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { useNavigate, useLocation } from "react-router-dom";
 import * as assessmentService from "$api/services/courses/assessments";
-import { checkUserCourseRole } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
+import { canManageAssessments } from "$api/utils/permissions";
 
 export default function CourseAssessmentsTab() {
   const navigate = useNavigate();
@@ -41,7 +41,7 @@ export default function CourseAssessmentsTab() {
   const [loading, setLoading] = useState(false);
   const [courseDetails, setCourseDetails] = useState({});
   const [isCourseOwner, setIsCourseOwner] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, userDetails } = useAuth();
 
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
@@ -186,8 +186,9 @@ export default function CourseAssessmentsTab() {
     try {
       if (!currentUser || !courseDetails.userId) return;
 
-      const isCourseOwner = currentUser.uid === courseDetails.userId;
-      setIsCourseOwner(isCourseOwner);
+      // Usar função de permissão que inclui admin
+      const canManage = canManageAssessments(userDetails, courseDetails.userId);
+      setIsCourseOwner(canManage);
     } catch (error) {
       console.error("Erro ao verificar papel do usuário:", error);
       setIsCourseOwner(false);
