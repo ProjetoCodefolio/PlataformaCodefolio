@@ -9,6 +9,7 @@ import {
   IconButton,
   Button,
   Collapse,
+  Chip,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import EditIcon from "@mui/icons-material/Edit";
@@ -83,6 +84,18 @@ const QuizList = ({
                 <Typography variant="body2" sx={{ color: "#666" }}>
                   Questões: {quiz.questions.length}
                 </Typography>
+                {quiz.isDiagnostic && (
+                  <Chip
+                    label="Diagnóstico"
+                    size="small"
+                    sx={{
+                      mt: 1,
+                      backgroundColor: "#2196f3",
+                      color: "#fff",
+                      fontWeight: 500,
+                    }}
+                  />
+                )}
               </Box>
               <Box>
                 <IconButton

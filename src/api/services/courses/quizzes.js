@@ -274,13 +274,12 @@ export const fetchQuizStudentResults = async (courseId, quizId) => {
  * @param {number} minPercentage - Porcentagem mínima para aprovação
  * @returns {Promise<Object>} - Novo quiz criado
  */
-export const addQuiz = async (courseId, videoId, minPercentage = 0) => {
+export const addQuiz = async (courseId, videoId, minPercentage = 0, isDiagnostic = false) => {
   try {
     if (!courseId || !videoId) {
       throw new Error("IDs de curso e vídeo são obrigatórios");
     }
 
-    // Verificar se já existe um quiz para este vídeo
     const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
     const snapshot = await get(quizRef);
 
@@ -291,7 +290,9 @@ export const addQuiz = async (courseId, videoId, minPercentage = 0) => {
     const newQuiz = {
       videoId,
       minPercentage,
+      isDiagnostic,
       questions: [],
+      courseId,
     };
 
     await set(quizRef, newQuiz);
@@ -513,6 +514,37 @@ export const updateQuizMinPercentage = async (
   }
 };
 
+
+/**
+ * Atualiza o status de quiz diagnóstico
+ * @param {string} courseId - ID do curso
+ * @param {Object} quiz - Quiz para atualizar
+ * @param {boolean} isDiagnostic - Se o quiz é diagnóstico
+ * @returns {Promise<Object>} - Quiz atualizado
+ */
+export const updateQuizDiagnosticStatus = async (courseId, quiz, isDiagnostic) => {
+  try {
+    if (!courseId || !quiz) {
+      throw new Error("Parâmetros inválidos para atualizar status diagnóstico");
+    }
+
+    const { videoId } = quiz;
+
+    const updatedQuiz = {
+      ...quiz,
+      isDiagnostic,
+    };
+
+    // Atualizar no Firebase
+    const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
+    await update(quizRef, { isDiagnostic });
+
+    return updatedQuiz;
+  } catch (error) {
+    console.error("Erro ao atualizar status diagnóstico:", error);
+    throw error;
+  }
+};
 /**
  * Adiciona múltiplas questões de uma vez ao quiz
  * @param {string} courseId - ID do curso

@@ -9,7 +9,11 @@ import {
   FormHelperText,
   Button,
   Typography,
+  FormControlLabel,
+  Checkbox,
+  Box,
 } from "@mui/material";
+import InfoIcon from "@mui/icons-material/Info";
 import { toast } from "react-toastify";
 
 const QuizForm = ({
@@ -18,9 +22,12 @@ const QuizForm = ({
   setNewQuizVideoId,
   newQuizMinPercentage,
   setNewQuizMinPercentage,
+  newQuizIsDiagnostic,
+  setNewQuizIsDiagnostic,
   editQuiz,
   handleAddQuiz,
   handleBlurSaveMinPercentage,
+  handleBlurSaveDiagnosticStatus,
   questionFormRef,
 }) => {
   return (
@@ -39,16 +46,19 @@ const QuizForm = ({
               sx={{
                 color: "#666",
                 "&.Mui-focused": { color: "#9041c1" },
-                top: "-6px",
               }}
             >
-              Vídeo Associado
+              Vídeo
             </InputLabel>
             <Select
               value={newQuizVideoId}
               onChange={(e) => setNewQuizVideoId(e.target.value)}
+              label="Vídeo"
+              disabled={!!editQuiz}
               sx={{
-                "& .MuiOutlinedInput-notchedOutline": { borderColor: "#666" },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#666",
+                },
                 "&:hover .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#9041c1",
                 },
@@ -56,15 +66,18 @@ const QuizForm = ({
                   borderColor: "#9041c1",
                 },
               }}
-              disabled={!!editQuiz}
             >
-              {videos.map((video, index) => (
+              {videos.map((video) => (
                 <MenuItem key={video.id} value={video.id}>
-                  {`${index + 1}. ${video.title}`}
+                  {video.title}
                 </MenuItem>
               ))}
             </Select>
-            <FormHelperText>Selecione o vídeo para este quiz</FormHelperText>
+            <FormHelperText>
+              {editQuiz
+                ? "Não é possível alterar o vídeo de um quiz existente"
+                : "Selecione o vídeo para este quiz"}
+            </FormHelperText>
           </FormControl>
         </Grid>
 
@@ -98,6 +111,57 @@ const QuizForm = ({
             helperText="0 a 100%. Se 0, o quiz não será obrigatório."
             ref={questionFormRef}
           />
+        </Grid>
+
+        <Grid item xs={12}>
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 1,
+              backgroundColor: newQuizIsDiagnostic
+                ? "rgba(33, 150, 243, 0.08)"
+                : "transparent",
+              border: "1px solid",
+              borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newQuizIsDiagnostic}
+                  onChange={(e) => setNewQuizIsDiagnostic(e.target.checked)}
+                  onBlur={handleBlurSaveDiagnosticStatus}
+                  sx={{
+                    color: "#9041c1",
+                    "&.Mui-checked": {
+                      color: "#2196f3",
+                    },
+                  }}
+                />
+              }
+              label={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography sx={{ fontWeight: 500 }}>
+                    Quiz Diagnóstico
+                  </Typography>
+                  <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
+                </Box>
+              }
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                ml: 4,
+                color: "#666",
+                mt: 0.5,
+              }}
+            >
+              Quizzes diagnósticos registram a nota do aluno, mas não são
+              considerados em somatórios de avaliação do curso.
+            </Typography>
+          </Box>
         </Grid>
 
         {!editQuiz && (

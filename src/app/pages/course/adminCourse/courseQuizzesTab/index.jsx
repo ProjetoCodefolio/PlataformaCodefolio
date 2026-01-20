@@ -39,7 +39,7 @@ import {
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 
-const CourseQuizzesTab = forwardRef((props, ref) => {
+const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   // Estados existentes
   const [newQuizVideoId, setNewQuizVideoId] = useState("");
   const [newQuizMinPercentage, setNewQuizMinPercentage] = useState(0);
@@ -48,12 +48,10 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
 
   const [quizzes, setQuizzes] = useState([]);
-  const [videos, setVideos] = useState([]);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
 
   // Novos estados para gerenciar slides e quizzes de slides
   const [activeTab, setActiveTab] = useState(0); // 0 = Videos, 1 = Slides
-  const [slides, setSlides] = useState([]);
   const [newQuizSlideId, setNewQuizSlideId] = useState("");
   const [slideQuizzes, setSlideQuizzes] = useState([]);
 
@@ -66,10 +64,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
   const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState(null);
   const [draftQuestionId, setDraftQuestionId] = useState(null);
-
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const courseId = params.get("courseId");
+  const [newQuizIsDiagnostic, setNewQuizIsDiagnostic] = useState(false);
 
   // Refs existentes
   const questionFormRef = useRef(null);
@@ -201,37 +196,39 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         const newQuiz = await addQuiz(
           courseId,
           newQuizVideoId,
-          newQuizMinPercentage
+          newQuizMinPercentage,
+          newQuizIsDiagnostic
         );
 
         setQuizzes((prev) => [...prev, newQuiz]);
         setNewQuizVideoId(videos[0]?.id || "");
         setNewQuizMinPercentage(0);
+        setNewQuizIsDiagnostic(false);
         setShowAddQuizModal(true);
         toast.success("Quiz adicionado com sucesso!");
       } catch (error) {
         console.error("Erro ao adicionar quiz:", error);
         toast.error(error.message || "Erro ao adicionar o quiz");
       }
-    } else {
+    } else if (activeTab === 1) {
       // Quiz para slide
       if (!newQuizSlideId) {
         toast.error("Selecione um slide para o quiz");
         return;
       }
 
-      const slidePrefix = `slide_${newQuizSlideId}`;
-      if (slideQuizzes.some((quiz) => quiz.videoId === slidePrefix)) {
+      if (slideQuizzes.some((quiz) => quiz.slideId === newQuizSlideId)) {
         toast.error("Já existe um quiz associado a este slide");
         return;
       }
 
       try {
-        // Usar o prefixo "slide_" para diferenciar quizzes de slides
+        const slidePrefix = `slide_${newQuizSlideId}`;
         const newQuiz = await addQuiz(
           courseId,
           slidePrefix,
-          newQuizMinPercentage
+          newQuizMinPercentage,
+          newQuizIsDiagnostic
         );
 
         newQuiz.isSlideQuiz = true;
@@ -240,6 +237,7 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
         setSlideQuizzes((prev) => [...prev, newQuiz]);
         setNewQuizSlideId(slides[0]?.id || "");
         setNewQuizMinPercentage(0);
+        setNewQuizIsDiagnostic(false);
         setShowAddQuizModal(true);
         toast.success("Quiz do slide adicionado com sucesso!");
       } catch (error) {
@@ -301,13 +299,14 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
 
     if (quiz.isSlideQuiz) {
       setNewQuizSlideId(quiz.slideId);
-      setActiveTab(1); // Mudar para a aba de slides
+      setActiveTab(1);
     } else {
       setNewQuizVideoId(quiz.videoId);
-      setActiveTab(0); // Mudar para a aba de vídeos
+      setActiveTab(0);
     }
 
     setNewQuizMinPercentage(quiz.minPercentage);
+    setNewQuizIsDiagnostic(quiz.isDiagnostic || false);
   };
 
   const handleRemoveQuiz = (quiz) => {
@@ -643,9 +642,12 @@ const CourseQuizzesTab = forwardRef((props, ref) => {
             setNewQuizVideoId={setNewQuizVideoId}
             newQuizMinPercentage={newQuizMinPercentage}
             setNewQuizMinPercentage={setNewQuizMinPercentage}
+            newQuizIsDiagnostic={newQuizIsDiagnostic}
+            setNewQuizIsDiagnostic={setNewQuizIsDiagnostic}
             editQuiz={editQuiz && !editQuiz.isSlideQuiz ? editQuiz : null}
             handleAddQuiz={handleAddQuiz}
             handleBlurSaveMinPercentage={handleBlurSaveMinPercentage}
+            handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
             questionFormRef={questionFormRef}
             entityType="vídeo"
           />
