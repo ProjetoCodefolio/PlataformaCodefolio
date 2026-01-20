@@ -31,6 +31,7 @@ import { isVideoLocked } from "$api/utils/videoUtils";
 import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
 import { prepareSlideUrl } from "$api/services/courses/slides";
+import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
 
 export const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -585,7 +586,7 @@ export const VideoPlayer = forwardRef(
               </IconButton>
             )}
 
-            {userDetails?.userId === courseOwnerUid && video.quizId && (
+            {canViewQuizResults(userDetails, courseOwnerUid) && video.quizId && (
               <>
                 <IconButton
                   onClick={handleViewStudents}
@@ -623,7 +624,7 @@ export const VideoPlayer = forwardRef(
               </>
             )}
 
-            {canEditCourse() && (
+            {canEditCourse(userDetails, courseOwnerUid) && (
               <IconButton
                 onClick={handleEditCourse}
                 sx={{

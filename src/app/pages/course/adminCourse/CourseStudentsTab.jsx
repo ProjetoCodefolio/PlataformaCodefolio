@@ -45,6 +45,7 @@ import {
 } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
+import { canManageStudents } from "$api/utils/permissions";
 
 // Função para formatar nomes com capitalização adequada
 const capitalizeWords = (name) => {
@@ -68,7 +69,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState(null);
     const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
-    const { currentUser } = useAuth();
+    const { currentUser, userDetails } = useAuth();
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
@@ -266,8 +267,10 @@ const CourseStudentsTab = forwardRef((props, ref) => {
         try {
             if (!currentUser || !courseId || !courseDetails.userId) return;
 
-            const isTeacher = await checkUserCourseRole(currentUser.uid, courseId, courseDetails.userId);
-            setIsCurrentUserTeacher(isTeacher);
+            // Verificar se é admin ou owner (pode gerenciar)
+            const canManage = canManageStudents(userDetails, courseDetails.userId);
+            // Se não pode gerenciar, é apenas professor
+            setIsCurrentUserTeacher(!canManage);
         } catch (error) {
             console.error("Erro ao verificar papel do usuário:", error);
             setIsCurrentUserTeacher(false);

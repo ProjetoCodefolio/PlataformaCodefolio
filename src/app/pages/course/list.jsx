@@ -24,7 +24,7 @@ import {
 } from "$api/services/courses/list";
 
 const MyCourses = () => {
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(0); // Tab 0 = Em Andamento agora
   const [availableCourses, setAvailableCourses] = useState([]);
   const [inProgressCourses, setInProgressCourses] = useState([]);
   const [completedCourses, setCompletedCourses] = useState([]);
@@ -284,16 +284,8 @@ const MyCourses = () => {
           </Box>
         ) : (
           <>
+            {/* Tab 0: Em Andamento */}
             {selectedTab === 0 && (
-              <Box sx={{ p: { xs: 1, sm: 2 } }}>
-                {renderCourses(
-                  filteredAvailableCourses,
-                  "Começar",
-                  handleStartCourse
-                )}
-              </Box>
-            )}
-            {selectedTab === 1 && (
               <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 {renderCourses(
                   filteredInProgressCourses,
@@ -302,6 +294,17 @@ const MyCourses = () => {
                 )}
               </Box>
             )}
+            {/* Tab 1: Disponíveis */}
+            {selectedTab === 1 && (
+              <Box sx={{ p: { xs: 1, sm: 2 } }}>
+                {renderCourses(
+                  filteredAvailableCourses,
+                  "Começar",
+                  handleStartCourse
+                )}
+              </Box>
+            )}
+            {/* Tab 2: Concluídos */}
             {selectedTab === 2 && (
               <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 {renderCourses(
