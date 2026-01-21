@@ -56,6 +56,8 @@ const TeacherAssessmentsPage = () => {
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
+  console.log("userDetails:", userDetails);
+
   // Carregar cursos do professor
   useEffect(() => {
     const loadCourses = async () => {
@@ -66,7 +68,7 @@ const TeacherAssessmentsPage = () => {
           
           // Se for admin, buscar todos os cursos
           if (userDetails.role === "admin") {
-            const allCourses = await courseService.fetchAllCourses();
+            const allCourses = await courseService.fetchCourses();
             teacherCourses = allCourses;
           } else {
             // Se for professor, buscar apenas seus cursos

@@ -6,7 +6,7 @@
     "courseAssessments": {
       "$courseId": {
         "$assessmentId": {
-          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
         }
       }
@@ -16,7 +16,7 @@
       "$courseId": {
         ".read": true,
         "$materialId": {
-          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },
@@ -25,7 +25,7 @@
       "$courseId": {
         ".read": true,
         "$quizId": {
-          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },
@@ -34,7 +34,7 @@
       "$courseId": {
         ".read": true,
         "$slideId": {
-          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },
@@ -43,7 +43,7 @@
       "$courseId": {
         ".read": true,
         "$videoId": {
-          ".write": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },

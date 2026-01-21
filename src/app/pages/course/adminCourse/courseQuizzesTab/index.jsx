@@ -47,6 +47,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
 
+  const [videosState, setVideos] = useState(videos || []);
+  const [slidesState, setSlides] = useState(slides || []);
+
   const [quizzes, setQuizzes] = useState([]);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
 
@@ -201,7 +204,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         );
 
         setQuizzes((prev) => [...prev, newQuiz]);
-        setNewQuizVideoId(videos[0]?.id || "");
+        setNewQuizVideoId(videosState[0]?.id || "");
         setNewQuizMinPercentage(0);
         setNewQuizIsDiagnostic(false);
         setShowAddQuizModal(true);
@@ -455,6 +458,33 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   };
 
+  const handleBlurSaveDiagnosticStatus = async () => {
+    if (!editQuiz) return;
+    try {
+      const updatedQuiz = await updateQuizMinPercentage(
+        courseId,
+        editQuiz,
+        editQuiz.minPercentage,
+        newQuizIsDiagnostic
+      );
+      // Atualiza o quiz na lista correta (vídeos ou slides)
+      if (editQuiz.isSlideQuiz) {
+        setSlideQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      } else {
+        setQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      }
+      setEditQuiz(updatedQuiz);
+      toast.success("Status de diagnóstico atualizado!");
+    } catch (error) {
+      console.error("Erro ao atualizar status de diagnóstico:", error);
+      toast.error("Erro ao salvar o status de diagnóstico");
+    }
+  };
+
   // Adicione esta função ao componente CourseQuizzesTab (antes do return)
   const handleBlurSave = async (field) => {
     if (!editQuiz || !editQuestion) return;
@@ -637,7 +667,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         <>
           {/* Formulário para criar quiz para vídeo */}
           <QuizForm
-            videos={videos}
+            videos={videosState}
             newQuizVideoId={newQuizVideoId}
             setNewQuizVideoId={setNewQuizVideoId}
             newQuizMinPercentage={newQuizMinPercentage}
@@ -655,7 +685,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           {/* Lista de quizzes de vídeos */}
           <QuizList
             quizzes={quizzes}
-            videos={videos}
+            videos={videosState}
             expandedQuiz={expandedQuiz}
             setExpandedQuiz={setExpandedQuiz}
             handleEditQuiz={handleEditQuiz}
@@ -666,7 +696,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleRemoveQuestion={handleRemoveQuestion}
             quizzesListEndRef={quizzesListEndRef}
             entityType="vídeo"
-            entityItems={videos}
+            entityItems={videosState}
           />
         </>
       )}
@@ -776,10 +806,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             Editar Questões -{" "}
             {editQuiz.isSlideQuiz ? "Quiz do Slide" : "Quiz do Vídeo"}{" "}
             {editQuiz.isSlideQuiz
-              ? slides.find((s) => s.id === editQuiz.slideId)?.title ||
-                editQuiz.slideId
-              : videos.find((v) => v.id === editQuiz.videoId)?.title ||
-                editQuiz.videoId}
+              ? slidesState.find((s) => s.id === editQuiz.slideId)?.title ||
+              editQuiz.slideId
+              : videosState.find((v) => v.id === editQuiz.videoId)?.title ||
+              editQuiz.videoId}
           </Typography>
 
           <PdfQuizGenerator
@@ -828,9 +858,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             behavior: "smooth",
           });
         }}
-        title={`Quiz ${
-          activeTab === 0 ? "do vídeo" : "do slide"
-        } adicionado com sucesso!`}
+        title={`Quiz ${activeTab === 0 ? "do vídeo" : "do slide"
+          } adicionado com sucesso!`}
       />
 
       <ConfirmationModal
@@ -839,14 +868,12 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         onConfirm={confirmRemoveQuiz}
         title={
           quizToDelete?.isSlideQuiz
-            ? `Tem certeza que deseja excluir o quiz do slide "${
-                slides.find((s) => s.id === quizToDelete?.slideId)?.title ||
-                "selecionado"
-              }?"`
-            : `Tem certeza que deseja excluir o quiz do vídeo "${
-                videos.find((v) => v.id === quizToDelete?.videoId)?.title ||
-                "selecionado"
-              }?"`
+            ? `Tem certeza que deseja excluir o quiz do slide "${slidesState.find((s) => s.id === quizToDelete?.slideId)?.title ||
+            "selecionado"
+            }?"`
+            : `Tem certeza que deseja excluir o quiz do vídeo "${videosState.find((v) => v.id === quizToDelete?.videoId)?.title ||
+            "selecionado"
+            }?"`
         }
       />
 
@@ -854,11 +881,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         open={showDeleteQuestionModal}
         onClose={() => setShowDeleteQuestionModal(false)}
         onConfirm={confirmRemoveQuestion}
-        title={`Tem certeza que deseja excluir a questão "${
-          questionToDelete?.quiz?.questions.find(
-            (q) => q.id === questionToDelete?.id
-          )?.question || "selecionada"
-        }?"`}
+        title={`Tem certeza que deseja excluir a questão "${questionToDelete?.quiz?.questions.find(
+          (q) => q.id === questionToDelete?.id
+        )?.question || "selecionada"
+          }?"`}
       />
     </Box>
   );
