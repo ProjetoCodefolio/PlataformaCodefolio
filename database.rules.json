@@ -105,8 +105,9 @@
     },
 
     "reports": {
-      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+      ".write": false,
       "$reportId": {
+        ".read": true,
         ".write": true
       }
     },

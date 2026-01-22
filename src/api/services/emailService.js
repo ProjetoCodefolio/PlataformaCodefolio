@@ -36,11 +36,19 @@ export const sendReportEmail = async (reportData) => {
     // Gera um link curto para visualizar a imagem no app (evita 413 por payload grande)
     const computedReportId = `report-${reportData.reportNumber}`;
     
-    // URL da página para ver e copiar o link Base64
-    const origin = typeof window !== 'undefined' && window.location?.origin
-      ? window.location.origin
+    // Usar localhost em desenvolvimento, produção em deploy
+    const isDev = typeof window !== 'undefined' && window.location?.hostname === 'localhost';
+    const baseUrl = isDev 
+      ? `http://localhost:${window.location?.port || 5173}`
       : 'https://plataformacodefolio.web.app';
-    const imageViewerUrl = reportData.hasImage ? `${origin}/reporte-imagem/${computedReportId}` : '';
+    
+    // Verificar se tem imagem (pode vir como hasImage ou imageUrl)
+    const hasImage = reportData.hasImage || !!reportData.imageUrl;
+    
+    // URL da página para ver e copiar o link Base64
+    const imageViewerUrl = hasImage ? `${baseUrl}/reporte-imagem/${computedReportId}` : '';
+    
+    console.log('📧 Enviando email com:', { hasImage, imageViewerUrl, reportId: computedReportId, isDev });
 
     // Prepara os dados do template
     const templateParams = {
@@ -69,7 +77,7 @@ export const sendReportEmail = async (reportData) => {
       screen_resolution: reportData.screenResolution || 'N/A',
 
       // Imagem anexada
-      has_image: reportData.hasImage || false,
+      has_image: hasImage,
       report_id: computedReportId,
       // URL da página para ver a imagem e copiar o link Base64
       image_viewer_url: imageViewerUrl,
