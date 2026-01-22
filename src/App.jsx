@@ -25,6 +25,7 @@ import AdminPanel from "$pages/adminPowers/adminPanel";
 import AdminUsers from "$pages/adminPowers/adminUsers";
 import AdminCourses from "$pages/adminPowers/adminCourses";
 import NotFound from "$pages/NotFound";
+import ReportImage from "$pages/reportImage/ReportImage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
@@ -41,6 +42,8 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
             <Route path="/about" element={<HomePage />} />
+            {/* Rota pública para visualizar imagem de reporte */}
+            <Route path="/reporte-imagem/:reportId" element={<ReportImage />} />
 
             <Route
               path="/dashboard"

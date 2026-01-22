@@ -1,40 +1,71 @@
 import { database } from "../../config/firebase";
-import { ref, push, serverTimestamp, set, get } from "firebase/database";
+import { ref, serverTimestamp, set, get } from "firebase/database";
+import { sendReportEmail } from "../emailService";
 
 /**
- * Obtém o próximo número de reporte de forma simples
- * @returns {Promise<number>} - Próximo número para o reporte
+ * Obtém o próximo número de reporte
+ * @returns {Promise<number>} - Próximo número sequencial
  */
 const getNextReportNumber = async () => {
   try {
     const reportsRef = ref(database, "reports");
     const snapshot = await get(reportsRef);
 
-    // Se não existirem reportes, começamos do 1
     if (!snapshot.exists()) return 1;
 
-    // Conta o número de reportes existentes e adiciona 1
-    return Object.keys(snapshot.val()).length + 1;
+    const reports = snapshot.val();
+    const numbers = Object.values(reports)
+      .map(report => report.reportNumber || 0)
+      .filter(num => num > 0);
+
+    return numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
   } catch (error) {
     console.error("Erro ao obter número do reporte:", error);
-    // Fallback: timestamp como número
     return Date.now();
   }
 };
 
 /**
- * Busca informações adicionais do vídeo ou quiz
- * @param {string} type - Tipo de conteúdo (video ou quiz)
+ * Busca informações do curso
+ * @param {string} courseId - ID do curso
+ * @returns {Promise<object>} - Dados do curso
+ */
+const fetchCourseDetails = async (courseId) => {
+  try {
+    if (!courseId) return {};
+
+    const courseRef = ref(database, `courses/${courseId}`);
+    const snapshot = await get(courseRef);
+
+    if (snapshot.exists()) {
+      const course = snapshot.val();
+      return {
+        courseTitle: course.title || "Curso sem título",
+        courseDescription: course.description || "",
+        courseOwner: course.userId || null,
+      };
+    }
+
+    return {};
+  } catch (error) {
+    console.error("Erro ao buscar detalhes do curso:", error);
+    return {};
+  }
+};
+
+/**
+ * Busca informações do vídeo ou quiz
+ * @param {string} type - Tipo (video/quiz/slide)
  * @param {string} itemId - ID do item
  * @param {string} courseId - ID do curso
- * @returns {Promise<object>} - Informações do conteúdo
+ * @returns {Promise<object>} - Dados do conteúdo
  */
 const fetchContentDetails = async (type, itemId, courseId) => {
   try {
     if (!itemId || !courseId) return {};
 
     if (type === "video") {
-      const videoRef = ref(database, `courses/${courseId}/videos/${itemId}`);
+      const videoRef = ref(database, `courseVideos/${courseId}/${itemId}`);
       const snapshot = await get(videoRef);
 
       if (snapshot.exists()) {
@@ -45,117 +76,54 @@ const fetchContentDetails = async (type, itemId, courseId) => {
         };
       }
     } else if (type === "quiz") {
-      const quizRef = ref(database, `courses/${courseId}/quizzes/${itemId}`);
+      // Buscar quiz em courseQuizzes
+      const quizRef = ref(database, `courseQuizzes/${courseId}`);
       const snapshot = await get(quizRef);
 
       if (snapshot.exists()) {
-        const quizData = snapshot.val();
-        return {
-          contentTitle: quizData.title || "Quiz sem título",
-          questionCount: quizData.questions?.length || 0,
-        };
-      }
-    }
-
-    return {};
-  } catch (error) {
-    console.error(`Erro ao buscar detalhes do ${type}:`, error);
-    return {};
-  }
-};
-
-/**
- * Busca informações do curso e do progresso do usuário
- * @param {string} courseId - ID do curso
- * @param {string} userId - ID do usuário
- * @returns {Promise<object>} - Informações do curso e progresso
- */
-const fetchCourseAndProgress = async (courseId, userId) => {
-  try {
-    if (!courseId) return {};
-
-    // Informações do curso
-    const courseData = {};
-    const courseRef = ref(database, `courses/${courseId}`);
-    const courseSnapshot = await get(courseRef);
-
-    if (courseSnapshot.exists()) {
-      const course = courseSnapshot.val();
-      courseData.courseName = course.title || "Curso sem título";
-      courseData.courseInstructor =
-        course.ownerName || "Instrutor desconhecido";
-    }
-
-    // Progresso do usuário no curso
-    if (userId && userId !== "anonymous") {
-      const progressRef = ref(database, `courseProgress/${courseId}/${userId}`);
-      const progressSnapshot = await get(progressRef);
-
-      if (progressSnapshot.exists()) {
-        const progress = progressSnapshot.val();
-
-        // Calcular o status do curso baseado no progresso
-        let courseStatus = "não iniciado";
-        let percentComplete = 0;
-
-        if (progress.totalVideos && progress.watchedVideos) {
-          percentComplete = Math.round(
-            (progress.watchedVideos / progress.totalVideos) * 100
-          );
-
-          if (percentComplete === 0) courseStatus = "não iniciado";
-          else if (percentComplete === 100) courseStatus = "concluído";
-          else courseStatus = "em andamento";
+        const quizzes = snapshot.val();
+        // Procurar o quiz específico
+        for (const quizId in quizzes) {
+          const quiz = quizzes[quizId];
+          if (quiz.id === itemId || quizId === itemId) {
+            return {
+              contentTitle: quiz.title || "Quiz sem título",
+              questionCount: quiz.questions?.length || 0,
+            };
+          }
         }
+      }
+    } else if (type === "slide") {
+      const slideRef = ref(database, `courseSlides/${courseId}/${itemId}`);
+      const snapshot = await get(slideRef);
 
-        courseData.userProgress = {
-          percentComplete,
-          status: courseStatus,
-          videosWatched: progress.watchedVideos || 0,
-          totalVideos: progress.totalVideos || 0,
-          lastActivity: progress.lastActivity || null,
-        };
-      } else {
-        courseData.userProgress = {
-          percentComplete: 0,
-          status: "não iniciado",
+      if (snapshot.exists()) {
+        const slideData = snapshot.val();
+        return {
+          contentTitle: slideData.title || "Slide sem título",
+          contentUrl: slideData.url || null,
         };
       }
     }
 
-    return courseData;
+    return {};
   } catch (error) {
-    console.error("Erro ao buscar detalhes do curso:", error);
+    console.error("Erro ao buscar detalhes do conteúdo:", error);
     return {};
   }
 };
 
 /**
- * Remove propriedades undefined ou null de um objeto
- * @param {object} obj - Objeto a ser sanitizado
- * @returns {object} - Objeto limpo
- */
-const sanitizeForFirebase = (obj) => {
-  const sanitized = {};
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined && value !== null) {
-      sanitized[key] = value;
-    }
-  }
-
-  return sanitized;
-};
-
-/**
- * Busca informações adicionais do usuário
+ * Busca informações do usuário
  * @param {string} userId - ID do usuário
- * @returns {Promise<object>} - Dados complementares do usuário
+ * @returns {Promise<object>} - Dados do usuário
  */
 const fetchUserDetails = async (userId) => {
   try {
     if (!userId || userId === "anonymous") {
       return {
+        userEmail: "Anônimo",
+        userName: "Usuário Anônimo",
         userType: "anônimo",
       };
     }
@@ -166,18 +134,40 @@ const fetchUserDetails = async (userId) => {
     if (snapshot.exists()) {
       const userData = snapshot.val();
       return {
-        userEmail: userData.email || null,
+        userEmail: userData.email || "Email não disponível",
+        userName: userData.displayName || 
+                  `${userData.firstName || ""} ${userData.lastName || ""}`.trim() || 
+                  "Usuário sem nome",
         userPhotoURL: userData.photoURL || null,
-        userType: userData.type || "estudante",
-        userCreatedAt: userData.createdAt || null,
+        userType: userData.role || "estudante",
       };
     }
 
-    return {};
+    return {
+      userEmail: "Email não disponível",
+      userName: "Usuário não encontrado",
+    };
   } catch (error) {
     console.error("Erro ao buscar detalhes do usuário:", error);
     return {};
   }
+};
+
+/**
+ * Remove propriedades undefined ou null
+ * @param {object} obj - Objeto a ser sanitizado
+ * @returns {object} - Objeto limpo
+ */
+const sanitizeForFirebase = (obj) => {
+  const sanitized = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined && value !== null && value !== "") {
+      sanitized[key] = value;
+    }
+  }
+
+  return sanitized;
 };
 
 /**
@@ -187,58 +177,63 @@ const fetchUserDetails = async (userId) => {
  */
 export const sendReport = async (reportData) => {
   try {
-    if (!reportData.message || !reportData.type) {
+    // Validação básica
+    if (!reportData.reportName || !reportData.message) {
       return {
         success: false,
-        message: "Dados incompletos. Mensagem e tipo são obrigatórios.",
+        message: "Nome e descrição do reporte são obrigatórios.",
       };
     }
 
-    // Obter número simples para o reporte
+    // Obter número sequencial
     const reportNumber = await getNextReportNumber();
 
-    // Dados sanitizados do reporte original
-    const sanitizedReportData = sanitizeForFirebase(reportData);
-
-    // Buscar dados adicionais
+    // Buscar informações adicionais
+    const courseDetails = await fetchCourseDetails(reportData.courseId);
     const contentDetails = await fetchContentDetails(
       reportData.type,
       reportData.itemId,
       reportData.courseId
     );
-
-    const courseDetails = await fetchCourseAndProgress(
-      reportData.courseId,
-      reportData.userId
-    );
-
     const userDetails = await fetchUserDetails(reportData.userId);
 
-    // Detalhes específicos da questão (para quiz)
-    let questionDetails = {};
-    if (
-      reportData.type === "quiz" &&
-      reportData.currentQuestionIndex !== undefined &&
-      reportData.currentQuestionIndex !== null
-    ) {
-      questionDetails = {
-        questionNumber: parseInt(reportData.currentQuestionIndex) + 1,
-        questionTitle: reportData.questionTitle || "Questão sem título",
-      };
-    }
+    // Criar reporte completo com ID organizado
+    const reportKey = `report-${reportNumber}`;
+    const newReportRef = ref(database, `reports/${reportKey}`);
 
-    // Criar o reporte completo com um nome simples
-    const reportsRef = ref(database, "reports");
-    const newReportRef = push(reportsRef);
-
-    // Montar o objeto final, sanitizado
     const report = sanitizeForFirebase({
-      ...sanitizedReportData,
-      ...contentDetails,
+      // Dados principais
+      reportNumber,
+      reportName: reportData.reportName.trim(),
+      message: reportData.message.trim(),
+      type: reportData.type || "geral",
+      
+      // Dados do curso
+      courseId: reportData.courseId,
       ...courseDetails,
+      
+      // Dados do conteúdo
+      itemId: reportData.itemId,
+      ...contentDetails,
+      
+      // Dados do usuário
+      userId: reportData.userId,
       ...userDetails,
-      ...questionDetails,
-      reportName: `Reporte ${reportNumber}`,
+      
+      // Dados técnicos
+      userAgent: reportData.userAgent,
+      screenResolution: reportData.screenResolution,
+      
+      // Dados específicos (se aplicável)
+      currentQuestionIndex: reportData.currentQuestionIndex,
+      questionTitle: reportData.questionTitle,
+      currentTime: reportData.currentTime,
+      
+      // Imagem anexada (se houver)
+      imageUrl: reportData.imageUrl,
+      hasImage: !!reportData.imageUrl,
+      
+      // Metadados
       status: "pendente",
       createdAt: serverTimestamp(),
       readableDate: new Date().toISOString(),
@@ -247,17 +242,84 @@ export const sendReport = async (reportData) => {
     // Salvar no banco
     await set(newReportRef, report);
 
+    console.log(`✅ Reporte #${reportNumber} salvo com sucesso!`, report);
+
+    // Enviar email de notificação (não bloqueia se falhar)
+    sendReportEmail({
+      ...report,
+      reportNumber,
+    }).catch((error) => {
+      console.error('⚠️ Erro ao enviar email de notificação:', error);
+    });
 
     return {
       success: true,
-      reportNumber: reportNumber,
-      key: newReportRef.key,
+      reportId: reportNumber,
+      reportKey: reportKey,
+      message: "Reporte enviado com sucesso!",
     };
   } catch (error) {
-    console.error("Erro ao enviar reporte:", error);
+    console.error("❌ Erro ao enviar reporte:", error);
+    
+    let errorMessage = "Erro ao enviar reporte. Tente novamente mais tarde.";
+    
+    if (error.code === "PERMISSION_DENIED") {
+      errorMessage = "Você não tem permissão para enviar reportes. Tente fazer login novamente.";
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
     return {
       success: false,
-      message: "Erro ao enviar reporte. Tente novamente mais tarde.",
+      message: errorMessage,
+      error: error.code || error.message,
     };
+  }
+};
+
+/**
+ * Busca todos os reportes
+ * @returns {Promise<Array>} - Lista de reportes
+ */
+export const fetchAllReports = async () => {
+  try {
+    const reportsRef = ref(database, "reports");
+    const snapshot = await get(reportsRef);
+
+    if (!snapshot.exists()) return [];
+
+    const reports = [];
+    snapshot.forEach((childSnapshot) => {
+      reports.push({
+        id: childSnapshot.key,
+        ...childSnapshot.val(),
+      });
+    });
+
+    // Ordenar por número de reporte (mais recente primeiro)
+    return reports.sort((a, b) => (b.reportNumber || 0) - (a.reportNumber || 0));
+  } catch (error) {
+    console.error("Erro ao buscar reportes:", error);
+    return [];
+  }
+};
+
+/**
+ * Atualiza o status de um reporte
+ * @param {string} reportId - ID do reporte
+ * @param {string} status - Novo status
+ * @returns {Promise<boolean>} - Sucesso da operação
+ */
+export const updateReportStatus = async (reportId, status) => {
+  try {
+    const reportRef = ref(database, `reports/${reportId}`);
+    await set(reportRef, {
+      status,
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  } catch (error) {
+    console.error("Erro ao atualizar status do reporte:", error);
+    return false;
   }
 };
