@@ -410,8 +410,7 @@ export default function MyAssessmentsPage() {
                                         <Box
                                           sx={{
                                             display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "space-between",
+                                            flexDirection: "column",
                                             py: 1.5,
                                             px: 2,
                                             bgcolor: "#f5f8ff",
@@ -419,49 +418,77 @@ export default function MyAssessmentsPage() {
                                             mb: 1.5,
                                           }}
                                         >
-                                          <Box>
-                                            <Typography
-                                              sx={{ fontWeight: 700 }}
-                                            >
-                                              {a.name}
-                                            </Typography>
-                                            <Typography
-                                              variant="caption"
-                                              color="text.secondary"
-                                            >
-                                              Percentual:{" "}
-                                              {Number(
-                                                a?.percentage ?? a?.weight ?? 0
-                                              )}
-                                              %
-                                            </Typography>
+                                          <Box
+                                            sx={{
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "space-between",
+                                              mb: a.description ? 1 : 0,
+                                            }}
+                                          >
+                                            <Box>
+                                              <Typography
+                                                sx={{ fontWeight: 700 }}
+                                              >
+                                                {a.name}
+                                              </Typography>
+                                              <Typography
+                                                variant="caption"
+                                                color="text.secondary"
+                                              >
+                                                Percentual:{" "}
+                                                {Number(
+                                                  a?.percentage ?? a?.weight ?? 0
+                                                )}
+                                                %
+                                              </Typography>
+                                            </Box>
+                                            <Box sx={{ textAlign: "right" }}>
+                                              <Chip
+                                                label={
+                                                  a?.userGrade != null
+                                                    ? a.userGrade
+                                                    : "Sem nota"
+                                                }
+                                                color={
+                                                  a?.userGrade != null
+                                                    ? "success"
+                                                    : "default"
+                                                }
+                                                size="small"
+                                                sx={{
+                                                  backgroundColor:
+                                                    a?.userGrade != null
+                                                      ? "#e6f4ea"
+                                                      : undefined,
+                                                  color:
+                                                    a?.userGrade != null
+                                                      ? "#2e7d32"
+                                                      : undefined,
+                                                  fontWeight: 800,
+                                                }}
+                                              />
+                                            </Box>
                                           </Box>
-                                          <Box sx={{ textAlign: "right" }}>
-                                            <Chip
-                                              label={
-                                                a?.userGrade != null
-                                                  ? a.userGrade
-                                                  : "Sem nota"
-                                              }
-                                              color={
-                                                a?.userGrade != null
-                                                  ? "success"
-                                                  : "default"
-                                              }
-                                              size="small"
+                                          {a.description && (
+                                            <Box
                                               sx={{
-                                                backgroundColor:
-                                                  a?.userGrade != null
-                                                    ? "#e6f4ea"
-                                                    : undefined,
-                                                color:
-                                                  a?.userGrade != null
-                                                    ? "#2e7d32"
-                                                    : undefined,
-                                                fontWeight: 800,
+                                                mt: 1,
+                                                pt: 1,
+                                                borderTop: "1px solid #e3eafc",
                                               }}
-                                            />
-                                          </Box>
+                                            >
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  color: "#666",
+                                                  whiteSpace: "pre-wrap",
+                                                }}
+                                              >
+                                                {a.description}
+                                              </Typography>
+                                            </Box>
+                                          )}
                                         </Box>
                                       </React.Fragment>
                                     ))}

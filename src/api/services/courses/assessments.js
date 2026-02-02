@@ -44,6 +44,7 @@ export const createAssessment = async (courseId, assessment) => {
     await set(newAssessmentRef, {
       name: assessment.name,
       percentage: assessment.percentage,
+      description: assessment.description || "",
       createdAt: new Date().toISOString(),
       courseId: courseId
     });
@@ -69,6 +70,7 @@ export const updateAssessment = async (courseId, assessmentId, updatedData) => {
     
     await update(assessmentRef, {
       ...updatedData,
+      description: updatedData.description || "",
       updatedAt: new Date().toISOString()
     });
   } catch (error) {

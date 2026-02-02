@@ -33,6 +33,7 @@ export default function CourseAssessmentsTab() {
   const location = useLocation();
   const [assessmentName, setAssessmentName] = useState("");
   const [assessmentPercentage, setAssessmentPercentage] = useState("");
+  const [assessmentDescription, setAssessmentDescription] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [currentAssessmentId, setCurrentAssessmentId] = useState(null);
   const [error, setError] = useState(null);
@@ -95,6 +96,7 @@ export default function CourseAssessmentsTab() {
           {
             name: assessmentName,
             percentage: Number(assessmentPercentage),
+            description: assessmentDescription,
           }
         );
 
@@ -102,6 +104,7 @@ export default function CourseAssessmentsTab() {
         await assessmentService.createAssessment(courseId, {
           name: assessmentName,
           percentage: Number(assessmentPercentage),
+          description: assessmentDescription,
         });
 
         toast.success("Avaliação criada com sucesso!"); // <-- Toast de sucesso ao cadastrar
@@ -120,6 +123,7 @@ export default function CourseAssessmentsTab() {
   const handleEditAssessment = (assessment) => {
     setAssessmentName(assessment.name);
     setAssessmentPercentage(assessment.percentage.toString());
+    setAssessmentDescription(assessment.description || "");
     setCurrentAssessmentId(assessment.id);
     setIsEditing(true);
   };
@@ -151,6 +155,7 @@ export default function CourseAssessmentsTab() {
   const resetForm = () => {
     setAssessmentName("");
     setAssessmentPercentage("");
+    setAssessmentDescription("");
     setCurrentAssessmentId(null);
     setIsEditing(false);
   };
@@ -285,6 +290,29 @@ export default function CourseAssessmentsTab() {
                   max: 100,
                   step: 1,
                 }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                  },
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Enunciado da Avaliação"
+                fullWidth
+                multiline
+                rows={4}
+                value={assessmentDescription}
+                onChange={(e) => setAssessmentDescription(e.target.value)}
+                placeholder="Descreva o que será avaliado, instruções, critérios, etc."
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { borderColor: "#666" },

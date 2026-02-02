@@ -52,6 +52,7 @@ const TeacherAssessmentsPage = () => {
   const [currentAssessmentId, setCurrentAssessmentId] = useState(null);
   const [assessmentName, setAssessmentName] = useState("");
   const [assessmentPercentage, setAssessmentPercentage] = useState("");
+  const [assessmentDescription, setAssessmentDescription] = useState("");
 
   const { userDetails } = useAuth();
   const navigate = useNavigate();
@@ -139,6 +140,7 @@ const TeacherAssessmentsPage = () => {
     setIsEditing(false);
     setAssessmentName("");
     setAssessmentPercentage("");
+    setAssessmentDescription("");
     setCurrentAssessmentId(null);
     setShowAssessmentDialog(true);
   };
@@ -148,6 +150,7 @@ const TeacherAssessmentsPage = () => {
     setIsEditing(true);
     setAssessmentName(assessment.name);
     setAssessmentPercentage(assessment.percentage.toString());
+    setAssessmentDescription(assessment.description || "");
     setCurrentAssessmentId(assessment.id);
     setShowAssessmentDialog(true);
   };
@@ -177,6 +180,7 @@ const TeacherAssessmentsPage = () => {
           {
             name: assessmentName,
             percentage: Number(assessmentPercentage),
+            description: assessmentDescription,
           }
         );
         toast.success("Avaliação atualizada com sucesso!");
@@ -184,6 +188,7 @@ const TeacherAssessmentsPage = () => {
         await assessmentService.createAssessment(selectedCourse.courseId, {
           name: assessmentName,
           percentage: Number(assessmentPercentage),
+          description: assessmentDescription,
         });
         toast.success("Avaliação criada com sucesso!");
       }
@@ -599,6 +604,16 @@ const TeacherAssessmentsPage = () => {
                 max: 100,
                 step: 1,
               }}
+              sx={{ mb: 3 }}
+            />
+            <TextField
+              fullWidth
+              label="Enunciado da Avaliação"
+              multiline
+              rows={4}
+              value={assessmentDescription}
+              onChange={(e) => setAssessmentDescription(e.target.value)}
+              placeholder="Descreva o que será avaliado, instruções, critérios, etc."
             />
           </Box>
         </DialogContent>
