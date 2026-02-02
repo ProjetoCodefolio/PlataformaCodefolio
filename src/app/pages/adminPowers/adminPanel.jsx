@@ -41,6 +41,12 @@ const AdminPanel = () => {
         },
         {
             id: 3,
+            name: "Gerenciamento de Reportes",
+            description: "Visualize e gerencie todos os reportes enviados",
+            path: "/admin-reports"
+        },
+        {
+            id: 4,
             name: "Gerenciamento de Posts",
             description: "Gerencie os posts feitos pelos usuários",
             path: "/admin-posts"

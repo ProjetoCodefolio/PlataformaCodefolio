@@ -24,6 +24,7 @@ import ManageMyCourses from "./app/pages/course/ManageMyCourses";
 import AdminPanel from "$pages/adminPowers/adminPanel";
 import AdminUsers from "$pages/adminPowers/adminUsers";
 import AdminCourses from "$pages/adminPowers/adminCourses";
+import AdminReports from "$pages/adminPowers/adminReports";
 import NotFound from "$pages/NotFound";
 import ReportImage from "$pages/reportImage/ReportImage";
 import { ToastContainer } from "react-toastify";
@@ -214,6 +215,17 @@ function App() {
                 <PrivateRoute>
                   <AdminRoute>
                     <AdminCourses />
+                  </AdminRoute>
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/admin-reports"
+              element={
+                <PrivateRoute>
+                  <AdminRoute>
+                    <AdminReports />
                   </AdminRoute>
                 </PrivateRoute>
               }

@@ -313,13 +313,25 @@ export const fetchAllReports = async () => {
 export const updateReportStatus = async (reportId, status) => {
   try {
     const reportRef = ref(database, `reports/${reportId}`);
+    
+    // Buscar dados existentes
+    const snapshot = await get(reportRef);
+    if (!snapshot.exists()) {
+      throw new Error("Reporte não encontrado");
+    }
+    
+    const existingData = snapshot.val();
+    
+    // Atualizar apenas o status
     await set(reportRef, {
+      ...existingData,
       status,
       updatedAt: serverTimestamp(),
     });
+    
     return true;
   } catch (error) {
     console.error("Erro ao atualizar status do reporte:", error);
-    return false;
+    throw error;
   }
 };
