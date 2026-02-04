@@ -42,6 +42,7 @@ import {
   formatFriendlyError,
   processPdfAndGenerateQuestions
 } from "$api/services/courses/quizGenerator";
+import { fetchAllLlmModels } from "$api/services/courses/llmModels";
 
 const PdfQuizGenerator = ({
   onQuestionsGenerated,
@@ -69,7 +70,24 @@ const PdfQuizGenerator = ({
   const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const [customApiKey, setCustomApiKey] = useState("");
   const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("llama3-70b-8192");
+  const [models, setModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState("meta-llama/llama-4-maverick-17b");
+
+  useEffect(() => {
+    // Buscar modelos LLM disponíveis
+    const loadModels = async () => {
+      try {
+        const fetchedModels = await fetchAllLlmModels();
+        const modelsArray = Object.values(fetchedModels);
+        const activeModels = modelsArray.filter((model) => model.isActive);
+        setModels(activeModels);
+      } catch (err) {
+        console.error("Erro ao buscar modelos LLM:", err);
+      }
+    };
+
+    loadModels();
+  }, []);
 
   // Recuperar configurações salvas
   useEffect(() => {
@@ -79,9 +97,9 @@ const PdfQuizGenerator = ({
 
     if (savedApiKey) setCustomApiKey(savedApiKey);
     if (usingCustomKey) setUsingCustomApiKey(usingCustomKey === "true");
-    if (savedModel && GROQ_MODELS.some((m) => m.id === savedModel))
+    if (savedModel && models.some((m) => m.modelId === savedModel))
       setSelectedModel(savedModel);
-  }, []);
+  }, [models]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -185,7 +203,7 @@ const PdfQuizGenerator = ({
     setSelectedModel(newModel);
     localStorage.setItem("groq_selected_model", newModel);
 
-    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === newModel);
+    const selectedModelInfo = models.find((m) => m.modelId === newModel);
     toast.info(`Modelo alterado para: ${selectedModelInfo?.name || newModel}`);
   };
 
@@ -363,14 +381,14 @@ const PdfQuizGenerator = ({
                 label="Modelo IA"
                 sx={{ bgcolor: "#f9f9ff" }}
               >
-                {GROQ_MODELS.map((model) => (
-                  <MenuItem key={model.id} value={model.id}>
+                {models.map((model) => (
+                  <MenuItem key={model.modelId} value={model.modelId}>
                     {model.name}
                   </MenuItem>
                 ))}
               </Select>
               <FormHelperText>
-                {selectedModel === "llama3-70b-8192"
+                {selectedModel === "meta-llama/llama-4-maverick-17b"
                   ? "Modelo recomendado para melhor qualidade"
                   : selectedModel === "mixtral-8x7b-32768"
                   ? "Melhor para PDFs maiores"
@@ -487,7 +505,7 @@ const PdfQuizGenerator = ({
                 }}
               >
                 Gerar {numQuestions} Questões com{" "}
-                {GROQ_MODELS.find((m) => m.id === selectedModel)?.name}
+                {models.find((m) => m.modelId === selectedModel)?.name}
               </Button>
             )}
           </Box>
