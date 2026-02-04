@@ -16,7 +16,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Button,
 } from "@mui/material";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
@@ -34,6 +36,7 @@ import {
   updateQuizQuestion,
   removeQuizQuestion,
   updateQuizMinPercentage,
+  updateQuizDiagnosticStatus,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
 } from "$api/services/courses/quizzes";
@@ -461,12 +464,12 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   const handleBlurSaveDiagnosticStatus = async () => {
     if (!editQuiz) return;
     try {
-      const updatedQuiz = await updateQuizMinPercentage(
+      const updatedQuiz = await updateQuizDiagnosticStatus(
         courseId,
         editQuiz,
-        editQuiz.minPercentage,
         newQuizIsDiagnostic
       );
+      
       // Atualiza o quiz na lista correta (vídeos ou slides)
       if (editQuiz.isSlideQuiz) {
         setSlideQuizzes((prev) =>
@@ -640,6 +643,30 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   };
 
+  // Função para navegar para visão geral de notas
+  const handleViewQuizGradesOverview = () => {
+    navigate(`/quiz-grades-overview?courseId=${courseId}`);
+  };
+
+  // Botão de visão geral de notas
+  const gradesOverviewButton = (
+    <Button
+      variant="outlined"
+      startIcon={<TrendingUpIcon />}
+      onClick={handleViewQuizGradesOverview}
+      sx={{
+        borderColor: "#9041c1",
+        color: "#9041c1",
+        "&:hover": {
+          borderColor: "#7a35a3",
+          backgroundColor: "#f5f0fa",
+        },
+      }}
+    >
+      Visão Geral de Notas
+    </Button>
+  );
+
   // Interface modificada com tabs para separar quizzes de vídeos e slides
   return (
     <Box
@@ -680,6 +707,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
             questionFormRef={questionFormRef}
             entityType="vídeo"
+            additionalButtons={gradesOverviewButton}
           />
 
           {/* Lista de quizzes de vídeos */}
@@ -759,7 +787,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
 
               {/* Botão para adicionar o quiz */}
               {!editQuiz && (
-                <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                   <button
                     onClick={handleAddQuiz}
                     style={{
@@ -774,6 +802,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                   >
                     Adicionar Quiz
                   </button>
+                  {gradesOverviewButton}
                 </Box>
               )}
             </Box>
