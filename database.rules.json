@@ -77,6 +77,13 @@
       }
     },
 
+    "llmModels": {
+      "$modelId": {
+        ".read": true,
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+
     "post": {
       "$postId": {
         ".read": true,

@@ -47,6 +47,12 @@ const AdminPanel = () => {
         },
         {
             id: 4,
+            name: "Gerenciamento de Modelos de LLM",
+            description: "Visualize e gerencie todos os modelos de LLM disponíveis",
+            path: "/admin-llm-models"
+        },
+        {
+            id: 5,
             name: "Gerenciamento de Posts",
             description: "Gerencie os posts feitos pelos usuários",
             path: "/admin-posts"
