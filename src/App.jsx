@@ -33,6 +33,7 @@ import "react-toastify/dist/ReactToastify.css";
 import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
 import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage";
 import TeacherAssessmentsPage from "./app/pages/course/TeacherAssessmentsPage";
+import QuizGradesOverview from "./app/pages/course/adminCourse/QuizGradesOverview";
 
 function App() {
   return (
@@ -172,6 +173,17 @@ function App() {
                 <PrivateRoute>
                   <TeacherRoute>
                     <CourseGrades />
+                  </TeacherRoute>
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/quiz-grades-overview"
+              element={
+                <PrivateRoute>
+                  <TeacherRoute>
+                    <QuizGradesOverview />
                   </TeacherRoute>
                 </PrivateRoute>
               }

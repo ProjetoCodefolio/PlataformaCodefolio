@@ -383,6 +383,7 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
+      isDiagnostic: quiz.isDiagnostic || false,
       courseId: courseId,
       videoId: videoId,
     });
@@ -430,6 +431,7 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
+      isDiagnostic: quiz.isDiagnostic || false,
       courseId: courseId,
       videoId: videoId,
     });
@@ -468,6 +470,7 @@ export const removeQuizQuestion = async (courseId, quiz, questionId) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
+      isDiagnostic: quiz.isDiagnostic || false,
       courseId: courseId,
       videoId: videoId,
     });
@@ -578,6 +581,7 @@ export const addMultipleQuestionsToQuiz = async (courseId, quiz, questions) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
+      isDiagnostic: quiz.isDiagnostic || false,
       courseId: courseId,
       videoId: videoId,
     });
@@ -639,6 +643,7 @@ export const saveQuiz = async (courseId, videoId, quizData) => {
     await set(quizRef, {
       questions: quizData.questions,
       minPercentage: quizData.minPercentage,
+      isDiagnostic: quizData.isDiagnostic || false,
       courseId: courseId,
       videoId: videoId,
     });

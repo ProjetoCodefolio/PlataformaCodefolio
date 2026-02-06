@@ -609,7 +609,7 @@ export default function AdminReports() {
                 </Paper>
               )}
 
-              {/* Descrição */}
+              {/* Descrição */} 
               <Paper sx={{ p: 2, mb: 2, bgcolor: "#f9f9f9" }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: "bold", mb: 1 }}>
                   💬 Descrição do Problema

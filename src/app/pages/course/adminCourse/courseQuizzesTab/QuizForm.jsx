@@ -29,6 +29,8 @@ const QuizForm = ({
   handleBlurSaveMinPercentage,
   handleBlurSaveDiagnosticStatus,
   questionFormRef,
+  entityType,
+  additionalButtons,
 }) => {
   return (
     <>
@@ -166,21 +168,24 @@ const QuizForm = ({
 
         {!editQuiz && (
           <Grid item xs={12}>
-            <Button
-              variant="contained"
-              onClick={handleAddQuiz}
-              disabled={!newQuizVideoId}
-              sx={{
-                backgroundColor: "#9041c1",
-                "&:hover": { backgroundColor: "#7d37a7" },
-                "&.Mui-disabled": {
-                  backgroundColor: "rgba(0, 0, 0, 0.12)",
-                  color: "rgba(0, 0, 0, 0.26)",
-                },
-              }}
-            >
-              Adicionar Quiz
-            </Button>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+              <Button
+                variant="contained"
+                onClick={handleAddQuiz}
+                disabled={!newQuizVideoId}
+                sx={{
+                  backgroundColor: "#9041c1",
+                  "&:hover": { backgroundColor: "#7d37a7" },
+                  "&.Mui-disabled": {
+                    backgroundColor: "rgba(0, 0, 0, 0.12)",
+                    color: "rgba(0, 0, 0, 0.26)",
+                  },
+                }}
+              >
+                Adicionar Quiz
+              </Button>
+              {additionalButtons}
+            </Box>
           </Grid>
         )}
       </Grid>
