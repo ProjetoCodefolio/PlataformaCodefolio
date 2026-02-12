@@ -157,48 +157,57 @@ const QuestionForm = ({
       </Grid>
 
       <Grid item xs={12}>
-        <Button
-          variant="contained"
-          onClick={editQuestion ? handleSaveEditQuestion : handleAddQuestion}
-          ref={saveButtonRef}
-          onKeyDown={(e) => handleKeyDown(e, cancelButtonRef)}
-          startIcon={<AddIcon />}
+        <Box
           sx={{
-            mr: 2,
-            backgroundColor: "#9041c1",
-            "&:hover": { backgroundColor: "#7d37a7" },
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            gap: 2,
           }}
         >
-          {editQuestion ? "Salvar Edição" : "Salvar Questão"}
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            setEditQuiz(null);
-            setEditQuestion(null);
-            setNewQuizQuestion("");
-            setNewQuizOptions(["", ""]);
-            setNewQuizCorrectOption(0);
-          }}
-          ref={cancelButtonRef}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
+          <Button
+            variant="contained"
+            onClick={editQuestion ? handleSaveEditQuestion : handleAddQuestion}
+            ref={saveButtonRef}
+            onKeyDown={(e) => handleKeyDown(e, cancelButtonRef)}
+            startIcon={<AddIcon />}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+              width: { xs: "100%", sm: "auto" },
+            }}
+          >
+            {editQuestion ? "Salvar Edição" : "Salvar Questão"}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => {
               setEditQuiz(null);
               setEditQuestion(null);
               setNewQuizQuestion("");
               setNewQuizOptions(["", ""]);
               setNewQuizCorrectOption(0);
-            }
-          }}
-          sx={{
-            color: "#9041c1",
-            borderColor: "#9041c1",
-            "&:hover": { borderColor: "#7d37a7" },
-          }}
-        >
-          Cancelar
-        </Button>
+            }}
+            ref={cancelButtonRef}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                setEditQuiz(null);
+                setEditQuestion(null);
+                setNewQuizQuestion("");
+                setNewQuizOptions(["", ""]);
+                setNewQuizCorrectOption(0);
+              }
+            }}
+            sx={{
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": { borderColor: "#7d37a7" },
+              width: { xs: "100%", sm: "auto" },
+            }}
+          >
+            Cancelar
+          </Button>
+        </Box>
       </Grid>
     </Grid>
   );

@@ -167,13 +167,13 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   }));
 
   return (
-    <Box sx={{ mt: 4 }}>
-      <Typography variant="h6" gutterBottom>
+    <Box sx={{ mt: 4, px: { xs: 0, sm: 0 } }}>
+      <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
         Gerenciar Slides
       </Typography>
 
-      <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
-        <Typography variant="subtitle1" sx={{ mb: 2 }}>
+      <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
+        <Typography variant="subtitle1" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.1rem' } }}>
           {isEditing ? "Editar Slide" : "Adicionar Novo Slide"}
         </Typography>
 
@@ -186,6 +186,14 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
               onChange={(e) => setSlideTitle(e.target.value)}
               required
               size="small"
+              sx={{
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
             />
           </Grid>
 
@@ -199,6 +207,17 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
               size="small"
               placeholder="https://docs.google.com/presentation/d/..."
               helperText="Cole o link de incorporação do Google Apresentações"
+              sx={{
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                "& .MuiFormHelperText-root": {
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }
+              }}
             />
           </Grid>
 
@@ -211,39 +230,58 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
               multiline
               rows={2}
               size="small"
+              sx={{
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                },
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: '0.875rem', sm: '1rem' }
+                }
+              }}
             />
           </Grid>
 
           <Grid item xs={12}>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleSlide}
-              disabled={!slideTitle.trim() || !slideUrl.trim()}
-            >
-              {isEditing ? "Salvar Alterações" : "Adicionar Slide"}
-            </Button>
-
-            {isEditing && (
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <Button
-                variant="outlined"
-                sx={{ ml: 2 }}
-                onClick={() => {
-                  setIsEditing(false);
-                  setSlideTitle("");
-                  setSlideUrl("");
-                  setSlideDescription("");
-                  setSlideToEdit(null);
+                variant="contained"
+                color="primary"
+                onClick={handleSlide}
+                disabled={!slideTitle.trim() || !slideUrl.trim()}
+                fullWidth={false}
+                sx={{
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  minWidth: { xs: '100%', sm: 'auto' }
                 }}
               >
-                Cancelar
+                {isEditing ? "Salvar Alterações" : "Adicionar Slide"}
               </Button>
-            )}
+
+              {isEditing && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setSlideTitle("");
+                    setSlideUrl("");
+                    setSlideDescription("");
+                    setSlideToEdit(null);
+                  }}
+                  fullWidth={false}
+                  sx={{
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    minWidth: { xs: '100%', sm: 'auto' }
+                  }}
+                >
+                  Cancelar
+                </Button>
+              )}
+            </Box>
           </Grid>
         </Grid>
       </Paper>
 
-      <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
+      <Typography variant="h6" gutterBottom sx={{ mt: 4, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
         Slides Cadastrados
       </Typography>
 
@@ -259,16 +297,31 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
                   display: "flex",
                   flexDirection: "column",
                   position: "relative",
+                  minHeight: { xs: '100px', sm: '120px' }
                 }}
               >
-                <Typography variant="subtitle1" fontWeight="bold">
+                <Typography variant="subtitle1" fontWeight="bold" sx={{ 
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  pr: { xs: 7, sm: 8 },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
                   {slide.title}
                 </Typography>
 
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{ mb: 1 }}
+                  sx={{ 
+                    mb: 1,
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical'
+                  }}
                 >
                   {slide.description || "Sem descrição"}
                 </Typography>

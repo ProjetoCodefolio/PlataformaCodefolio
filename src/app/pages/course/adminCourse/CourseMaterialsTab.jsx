@@ -158,7 +158,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     return (
         <Box>
             <Grid container spacing={2}>
-                <Grid item xs={8}>
+                <Grid item xs={12} sm={8}>
                     <TextField
                         label="Nome do Material"
                         fullWidth
@@ -174,10 +174,16 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                             '& .MuiInputLabel-root.Mui-focused': {
                                 color: '#9041c1',
                             },
+                            "& .MuiInputLabel-root": {
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                            },
+                            "& .MuiInputBase-input": {
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                            }
                         }}
                     />
                 </Grid>
-                <Grid item xs={8}>
+                <Grid item xs={12} sm={8}>
                     <TextField
                         label="URL do Material"
                         fullWidth
@@ -193,16 +199,24 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                             '& .MuiInputLabel-root.Mui-focused': {
                                 color: '#9041c1',
                             },
+                            "& .MuiInputLabel-root": {
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                            },
+                            "& .MuiInputBase-input": {
+                                fontSize: { xs: '0.875rem', sm: '1rem' }
+                            }
                         }}
                     />
                 </Grid>
-                <Grid item xs={4}>
+                <Grid item xs={12} sm={4}>
                     <Button
                         variant="contained"
+                        fullWidth
                         sx={{
                             height: "100%",
                             backgroundColor: "#9041c1",
                             '&:hover': { backgroundColor: "#7d37a7" },
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
                         }}
                         onClick={isEditing ? handleUpdateMaterial : handleAddMaterial}
                     >
@@ -211,36 +225,40 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                 </Grid>
             </Grid>
 
-            <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}>
+            <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
                 Materiais Adicionados
             </Typography>
 
             <List sx={{ mt: 4 }}>
                 {materials.map((material) => (
                     <ListItem
-                        key={material.id || material.name} // Usa name como fallback se id ainda não existir
+                        key={material.id || material.name}
                         sx={{
-                            p: 2,
+                            p: { xs: 1.5, sm: 2 },
                             border: "1px solid #ddd",
                             borderRadius: "8px",
                             mb: 2,
                             '&:hover': { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+                            flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                            alignItems: 'flex-start'
                         }}
                         secondaryAction={
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 } }}>
                                 <IconButton
                                     edge="end"
                                     onClick={() => handleEditMaterial(material.id)}
-                                    sx={{ color: "#9041c1" }}
+                                    sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
+                                    size="small"
                                 >
-                                    <EditIcon />
+                                    <EditIcon fontSize="small" />
                                 </IconButton>
                                 <IconButton
                                     edge="end"
                                     onClick={() => handleRemoveMaterial(material.id)}
-                                    sx={{ color: "#d32f2f" }}
+                                    sx={{ color: "#d32f2f", p: { xs: 0.5, sm: 1 } }}
+                                    size="small"
                                 >
-                                    <DeleteIcon />
+                                    <DeleteIcon fontSize="small" />
                                 </IconButton>
                             </Box>
                         }
@@ -248,11 +266,35 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                         <ListItemText
                             primary={material.name}
                             secondary={`URL: ${material.url}`}
+                            primaryTypographyProps={{
+                                sx: {
+                                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: { xs: '180px', sm: '400px', md: '600px' },
+                                    display: 'block'
+                                }
+                            }}
+                            secondaryTypographyProps={{
+                                sx: {
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    maxWidth: { xs: '180px', sm: '400px', md: '600px' },
+                                    display: 'block'
+                                }
+                            }}
+                            sx={{
+                                maxWidth: { xs: 'calc(100% - 80px)', sm: 'calc(100% - 96px)' },
+                                pr: 1
+                            }}
                         />
                     </ListItem>
                 ))}
                 {materials.length === 0 && (
-                    <Typography variant="body2" color="textSecondary">
+                    <Typography variant="body2" color="textSecondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                         Nenhum material adicionado.
                     </Typography>
                 )}
@@ -269,21 +311,26 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: 400,
+                    width: { xs: '90%', sm: 400 },
+                    maxWidth: 400,
                     bgcolor: 'background.paper',
                     borderRadius: 2,
                     boxShadow: 24,
-                    p: 4,
+                    p: { xs: 3, sm: 4 },
                     textAlign: 'center',
                 }}>
-                    <CheckCircleOutlineIcon sx={{ fontSize: 60, color: '#4caf50', mb: 2 }} />
-                    <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
+                    <CheckCircleOutlineIcon sx={{ fontSize: { xs: 50, sm: 60 }, color: '#4caf50', mb: 2 }} />
+                    <Typography id="success-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         Material adicionado com sucesso!
                     </Typography>
                     <Button
                         variant="contained"
                         onClick={() => setShowSuccessModal(false)}
-                        sx={{ backgroundColor: "#9041c1", '&:hover': { backgroundColor: "#7d37a7" } }}
+                        sx={{ 
+                            backgroundColor: "#9041c1", 
+                            '&:hover': { backgroundColor: "#7d37a7" },
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }}
                     >
                         OK
                     </Button>
@@ -301,27 +348,38 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                     top: '50%',
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
-                    width: 400,
+                    width: { xs: '90%', sm: 400 },
+                    maxWidth: 400,
                     bgcolor: 'background.paper',
                     borderRadius: 2,
                     boxShadow: 24,
-                    p: 4,
+                    p: { xs: 3, sm: 4 },
                     textAlign: 'center',
                 }}>
-                    <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2 }}>
+                    <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                         Tem certeza que deseja excluir "{materialToDelete?.name}"?
                     </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center', gap: 2 }}>
                         <Button
                             variant="contained"
                             color="error"
                             onClick={confirmRemoveMaterial}
+                            fullWidth={false}
+                            sx={{
+                                fontSize: { xs: '0.875rem', sm: '1rem' },
+                                minWidth: { xs: '100%', sm: 'auto' }
+                            }}
                         >
                             Sim, Excluir
                         </Button>
                         <Button
                             variant="outlined"
                             onClick={() => setShowDeleteModal(false)}
+                            fullWidth={false}
+                            sx={{
+                                fontSize: { xs: '0.875rem', sm: '1rem' },
+                                minWidth: { xs: '100%', sm: 'auto' }
+                            }}
                         >
                             Cancelar
                         </Button>
