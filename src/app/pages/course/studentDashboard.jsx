@@ -25,7 +25,10 @@ import {
   TextField,
   Tabs,
   Tab,
+  Divider,
+  Chip,
 } from "@mui/material";
+import { useTheme, useMediaQuery } from '@mui/material';
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -44,6 +47,8 @@ const StudentDashboard = () => {
   const params = new URLSearchParams(location.search);
   const quizId = params.get("quizId");
   const { userDetails } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Estados para armazenar dados
   const [quiz, setQuiz] = useState(null);
@@ -205,7 +210,13 @@ const StudentDashboard = () => {
             <IconButton onClick={handleGoBack} sx={{ mr: 1, color: "#9041c1" }}>
               <ArrowBackIcon />
             </IconButton>
-            <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: "bold",
+                fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2.125rem' }
+              }}
+            >
               Dashboard de Estudantes
             </Typography>
           </Box>
@@ -216,14 +227,25 @@ const StudentDashboard = () => {
                 <CardContent>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                    sx={{ 
+                      fontWeight: "bold", 
+                      mb: 1, 
+                      color: "#9041c1",
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                    }}
                   >
                     Informações do Curso
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Curso:</strong> {courseData.title}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Descrição:</strong>{" "}
                     {courseData.description || "Sem descrição"}
                   </Typography>
@@ -236,18 +258,32 @@ const StudentDashboard = () => {
                 <CardContent>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                    sx={{ 
+                      fontWeight: "bold", 
+                      mb: 1, 
+                      color: "#9041c1",
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                    }}
                   >
                     Informações do Quiz
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Vídeo:</strong>{" "}
                     {videoData?.title || "Video não encontrado"}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Nota Mínima:</strong> {quiz.minPercentage || 0}%
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Total de Questões:</strong>{" "}
                     {quiz.questions?.length || 0}
                   </Typography>
@@ -298,24 +334,35 @@ const StudentDashboard = () => {
             <Box
               sx={{
                 display: "flex",
+                flexDirection: { xs: 'column', sm: 'row' },
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 2, sm: 0 },
                 mb: 2,
               }}
             >
               <Typography
                 variant="h5"
-                sx={{ fontWeight: "bold", color: "#333" }}
+                sx={{ 
+                  fontWeight: "bold", 
+                  color: "#333",
+                  fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
+                }}
               >
                 Resultados dos Estudantes
               </Typography>
 
-              <Stack direction="row" spacing={2} alignItems="center">
-                <SortIcon sx={{ color: "#9041c1" }} />
+              <Stack 
+                direction="row" 
+                spacing={2} 
+                alignItems="center"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                <SortIcon sx={{ color: "#9041c1", display: { xs: 'none', sm: 'block' } }} />
                 <FormControl
                   variant="outlined"
                   size="small"
-                  sx={{ minWidth: 200 }}
+                  sx={{ minWidth: { xs: '100%', sm: 200 } }}
                 >
                   <InputLabel id="sort-select-label">Ordenar por</InputLabel>
                   <Select
@@ -368,11 +415,13 @@ const StudentDashboard = () => {
             />
           </Box>
 
-          {/* Tabela de Quiz Regular */}
+          {/* Tabela de Quiz Regular - Desktop */}
           {activeTab === 0 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -690,21 +739,170 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <Typography variant="h6" color="textSecondary">
-                    Nenhum estudante realizou este quiz ainda
-                  </Typography>
+
+                {/* Mobile Cards */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => (
+                      <Card
+                        key={student.userId}
+                        sx={{
+                          borderRadius: 2,
+                          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                        }}
+                      >
+                        <CardContent sx={{ p: 2 }}>
+                          {/* Cabeçalho */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Avatar
+                              src={student.photoURL}
+                              alt={student.name}
+                              sx={{
+                                width: 50,
+                                height: 50,
+                                backgroundColor: "#9041c1",
+                              }}
+                            >
+                              {student.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {capitalizeWords(student.name)}
+                              </Typography>
+                              <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  display: 'block'
+                                }}
+                              >
+                                {student.email}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={
+                                quiz.minPercentage === 0
+                                  ? "N/A"
+                                  : student.onlyLiveQuiz ||
+                                    student.onlyCustomQuiz ||
+                                    student.lastAttemptDate === "Não realizou o quiz"
+                                  ? "Pendente"
+                                  : student.passed
+                                  ? "Aprovado"
+                                  : "Reprovado"
+                              }
+                              color={
+                                quiz.minPercentage === 0
+                                  ? "default"
+                                  : student.passed
+                                  ? "success"
+                                  : student.onlyLiveQuiz ||
+                                    student.onlyCustomQuiz ||
+                                    student.lastAttemptDate === "Não realizou o quiz"
+                                  ? "warning"
+                                  : "error"
+                              }
+                              size="small"
+                              sx={{ fontWeight: "bold" }}
+                            />
+                          </Box>
+
+                          <Divider sx={{ my: 1.5 }} />
+
+                          {/* Informações */}
+                          <Grid container spacing={1.5}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Nota
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                                {typeof student.score === "number" ? student.score.toFixed(2) : "0.00"}%
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Acertos
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  fontSize: '1.1rem',
+                                  color:
+                                    quiz.minPercentage === 0
+                                      ? "#000"
+                                      : student.passed
+                                      ? "#2e7d32"
+                                      : "#c62828",
+                                }}
+                              >
+                                {student.correctAnswers !== null && student.correctAnswers !== undefined
+                                  ? student.correctAnswers
+                                  : 0}
+                                /{student.totalQuestions || (quiz.questions ? quiz.questions.length : 0)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Tentativas
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {student.attemptCount}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Acertos Totais
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500, color: "#9041c1" }}>
+                                {(student.correctAnswers || 0) +
+                                  (liveQuizResults[student.userId]?.correctAnswers || 0) +
+                                  (customQuizResults[student.userId]?.correctAnswers || 0)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="caption" color="text.secondary">
+                                Última Tentativa
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {student.lastAttemptDate}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Stack>
                 </Box>
-              )}
-            </>
-          )}
+              </>
+            ) : (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography variant="h6" color="textSecondary">
+                  Nenhum estudante realizou este quiz ainda
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
 
           {/* Tabela de Live Quiz */}
           {activeTab === 1 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -864,6 +1062,74 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+
+                {/* Mobile Cards - Live Quiz */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => {
+                      const studentLiveData = liveQuizResults[student.userId] || {};
+                      const correctAnswers = studentLiveData.correctAnswers || 0;
+                      const wrongAnswers = studentLiveData.wrongAnswers || 0;
+                      const totalAnswered = correctAnswers + wrongAnswers;
+                      const successRate = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0;
+                      const totalCorrectAnswers = (liveQuizResults[student.userId]?.correctAnswers || 0) + (customQuizResults[student.userId]?.correctAnswers || 0);
+
+                      return (
+                        <Card
+                          key={student.userId}
+                          sx={{ borderRadius: 2, boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <Avatar src={student.photoURL} alt={student.name} sx={{ width: 50, height: 50, backgroundColor: "#9041c1" }}>
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                  {student.email}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Acertos</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#2e7d32' }}>{correctAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Erros</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#c62828' }}>{wrongAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Vezes Sorteado</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: studentLiveData.timesDraw > 0 ? '#ff9800' : 'inherit' }}>
+                                  {studentLiveData.timesDraw || 0}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Taxa de Acerto</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, color: successRate > 50 ? '#2e7d32' : '#c62828' }}>{successRate}%</Typography>
+                                  <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: 'rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate > 50 ? '#2e7d32' : '#c62828' }} />
+                                  </Box>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="text.secondary">Acertos Totais (Live + Custom)</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '1.1rem' }}>{totalCorrectAnswers}</Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              </>
               ) : (
                 <Box sx={{ textAlign: "center", py: 4 }}>
                   <Typography variant="h6" color="textSecondary">
@@ -871,14 +1137,16 @@ const StudentDashboard = () => {
                   </Typography>
                 </Box>
               )}
-            </>
+            </Box>
           )}
 
           {/* Tabela de Custom Quiz */}
           {activeTab === 2 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -1036,6 +1304,74 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+
+                {/* Mobile Cards - Custom Quiz */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => {
+                      const studentCustomData = customQuizResults[student.userId] || {};
+                      const correctAnswers = studentCustomData.correctAnswers || 0;
+                      const wrongAnswers = studentCustomData.wrongAnswers || 0;
+                      const totalAnswered = correctAnswers + wrongAnswers;
+                      const successRate = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0;
+                      const totalCorrectAnswers = (liveQuizResults[student.userId]?.correctAnswers || 0) + (customQuizResults[student.userId]?.correctAnswers || 0);
+
+                      return (
+                        <Card
+                          key={student.userId}
+                          sx={{ borderRadius: 2, boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <Avatar src={student.photoURL} alt={student.name} sx={{ width: 50, height: 50, backgroundColor: "#9041c1" }}>
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                  {student.email}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Acertos</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#2e7d32' }}>{correctAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Erros</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#c62828' }}>{wrongAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Vezes Sorteado</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: studentCustomData.timesDraw > 0 ? '#ff9800' : 'inherit' }}>
+                                  {studentCustomData.timesDraw || 0}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Taxa de Acerto</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{successRate}%</Typography>
+                                  <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: '#f0f0f0', overflow: 'hidden' }}>
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate >= 80 ? '#2e7d32' : successRate >= 50 ? '#ff9800' : '#c62828' }} />
+                                  </Box>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="text.secondary">Acertos Totais (Live + Custom)</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '1.1rem' }}>{totalCorrectAnswers}</Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              </>
               ) : (
                 <Box sx={{ textAlign: "center", py: 4 }}>
                   <Typography variant="h6" color="textSecondary">
@@ -1043,7 +1379,7 @@ const StudentDashboard = () => {
                   </Typography>
                 </Box>
               )}
-            </>
+            </Box>
           )}
         </Paper>
       </Box>

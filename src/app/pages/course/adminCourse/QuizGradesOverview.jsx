@@ -31,7 +31,9 @@ import {
   Divider,
   LinearProgress,
   Badge,
+  Stack,
 } from "@mui/material";
+import { useTheme, useMediaQuery } from '@mui/material';
 import DownloadIcon from "@mui/icons-material/Download";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import QuizIcon from "@mui/icons-material/Quiz";
@@ -56,6 +58,8 @@ export default function QuizGradesOverview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get("courseId");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
@@ -276,90 +280,152 @@ export default function QuizGradesOverview() {
         {/* Título */}
         <Typography
           variant="h4"
-          sx={{ fontWeight: "bold", mb: 3, color: "#333" }}
+          sx={{ 
+            fontWeight: "bold", 
+            mb: 3, 
+            color: "#333",
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+          }}
         >
           Visão Geral de Notas dos Quizzes
         </Typography>
 
         {/* Cards de estatísticas */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <TrendingUpIcon sx={{ color: "#9041c1" }} />
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <TrendingUpIcon sx={{ color: "#9041c1", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                  <Typography 
+                    variant="subtitle2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                  >
                     Média Geral da Turma
                   </Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: "bold",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
+                >
                   {fmt(data.summary.averageClassGrade)}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                >
                   {data.summary.averageClassGrade >= 7
-                    ? "Excelente desempenho!"
+                    ? "Excelente!"
                     : data.summary.averageClassGrade >= 5
-                    ? "Desempenho regular"
+                    ? "Regular"
                     : "Necessita atenção"}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <QuizIcon sx={{ color: "#2196f3" }} />
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <QuizIcon sx={{ color: "#2196f3", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                  <Typography 
+                    variant="subtitle2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                  >
                     Total de Quizzes
                   </Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: "bold",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
+                >
                   {data.summary.totalQuizzes}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {data.summary.totalEvaluativeQuizzes} avaliativos, {data.summary.totalDiagnosticQuizzes} diagnósticos
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                >
+                  {data.summary.totalEvaluativeQuizzes} avaliativos
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <PeopleIcon sx={{ color: "#ff9800" }} />
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <PeopleIcon sx={{ color: "#ff9800", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                  <Typography 
+                    variant="subtitle2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                  >
                     Total de Estudantes
                   </Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: "bold",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
+                >
                   {data.summary.totalStudents}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  matriculados no curso
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                >
+                  matriculados
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                  <CheckCircleIcon sx={{ color: "#4caf50" }} />
-                  <Typography variant="subtitle2" color="text.secondary">
+                  <CheckCircleIcon sx={{ color: "#4caf50", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                  <Typography 
+                    variant="subtitle2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                  >
                     Conclusão Completa
                   </Typography>
                 </Box>
-                <Typography variant="h4" sx={{ fontWeight: "bold", color: "#4caf50" }}>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: "bold", 
+                    color: "#4caf50",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
+                >
                   {data.summary.studentsWithAllQuizzes}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography 
+                  variant="caption" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                >
                   {data.summary.totalStudents > 0
-                    ? `${Math.round((data.summary.studentsWithAllQuizzes / data.summary.totalStudents) * 100)}% da turma`
-                    : "0% da turma"}
+                    ? `${Math.round((data.summary.studentsWithAllQuizzes / data.summary.totalStudents) * 100)}%`
+                    : "0%"} da turma
                 </Typography>
               </CardContent>
             </Card>
@@ -419,10 +485,11 @@ export default function QuizGradesOverview() {
           </Grid>
         </Paper>
 
-        {/* Tabela */}
+        {/* Tabela - Desktop */}
         <Paper
           elevation={0}
           sx={{
+            display: { xs: 'none', md: 'block' },
             borderRadius: "12px",
             backgroundColor: "#fff",
             boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
@@ -548,12 +615,145 @@ export default function QuizGradesOverview() {
 
           {filteredStudents.length > 0 && (
             <Box sx={{ p: 2, textAlign: "right", backgroundColor: "#f5f5f5" }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
+              >
                 Exibindo {filteredStudents.length} de {data.students.length} estudante(s)
               </Typography>
             </Box>
           )}
         </Paper>
+
+        {/* Cards - Mobile */}
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          {filteredStudents.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body1" color="textSecondary">
+                Nenhum estudante encontrado
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={2}>
+              {filteredStudents.map((student) => (
+                <Card
+                  key={student.userId}
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  <CardContent sx={{ p: 2 }}>
+                    {/* Cabeçalho do Card */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Avatar
+                        src={student.photoURL}
+                        alt={student.name}
+                        sx={{
+                          width: 50,
+                          height: 50,
+                          backgroundColor: "#9041c1",
+                        }}
+                      >
+                        {student.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {student.name}
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block'
+                          }}
+                        >
+                          {student.email}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={fmt(student.averageGrade)}
+                        color={
+                          student.averageGrade >= 7
+                            ? "success"
+                            : student.averageGrade >= 5
+                            ? "warning"
+                            : "error"
+                        }
+                        sx={{ fontWeight: "bold" }}
+                      />
+                    </Box>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {/* Informações */}
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={6}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Quizzes Realizados
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {student.attemptedQuizzes} / {student.totalQuizzes}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Taxa de Conclusão
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {student.completionRate}%
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box>
+                          <Typography variant="caption" color="text.secondary">
+                            Aprovados
+                          </Typography>
+                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {student.passedQuizzes} / {student.totalEvaluative}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', height: '100%' }}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleOpenDetails(student)}
+                            sx={{
+                              borderColor: "#9041c1",
+                              color: "#9041c1",
+                              fontSize: '0.75rem',
+                              px: 1.5,
+                            }}
+                          >
+                            Detalhes
+                          </Button>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
 
         {/* Modal de Detalhes do Estudante */}
         <Dialog
@@ -561,21 +761,42 @@ export default function QuizGradesOverview() {
           onClose={handleCloseDetails}
           maxWidth="md"
           fullWidth
+          fullScreen={isMobile}
         >
           {selectedStudent && (
             <>
-              <DialogTitle sx={{ bgcolor: "#9041c1", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <DialogTitle sx={{ bgcolor: "#9041c1", color: "white", display: "flex", alignItems: "center", justifyContent: "space-between", p: { xs: 2, sm: 3 } }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1.5, sm: 2 }, flex: 1, minWidth: 0 }}>
                   <Avatar
                     src={selectedStudent.photoURL}
                     alt={selectedStudent.name}
-                    sx={{ width: 50, height: 50 }}
+                    sx={{ width: { xs: 40, sm: 50 }, height: { xs: 40, sm: 50 } }}
                   >
                     {selectedStudent.name.charAt(0).toUpperCase()}
                   </Avatar>
-                  <Box>
-                    <Typography variant="h6">{selectedStudent.name}</Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        fontSize: { xs: '1rem', sm: '1.25rem' },
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {selectedStudent.name}
+                    </Typography>
+                    <Typography 
+                      variant="caption" 
+                      sx={{ 
+                        opacity: 0.9,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                        display: 'block',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
                       {selectedStudent.email}
                     </Typography>
                   </Box>
@@ -587,49 +808,98 @@ export default function QuizGradesOverview() {
                   <CloseIcon />
                 </IconButton>
               </DialogTitle>
-              <DialogContent sx={{ mt: 2 }}>
+              <DialogContent sx={{ mt: 2, p: { xs: 2, sm: 3 } }}>
                 {/* Resumo Geral */}
                 <Box sx={{ mb: 3 }}>
-                  <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      mb: 2, 
+                      fontWeight: "bold",
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                    }}
+                  >
                     Resumo Geral
                   </Typography>
-                  <Grid container spacing={2}>
-                    <Grid item xs={6} sm={3}>
-                      <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography variant="h4" sx={{ fontWeight: "bold", color: "#9041c1" }}>
+                  <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                    <Grid item xs={6} sm={6} md={3}>
+                      <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: "bold", 
+                            color: "#9041c1",
+                            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                          }}
+                        >
                           {fmt(selectedStudent.averageGrade)}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                        >
                           Média Geral
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                    <Grid item xs={6} sm={6} md={3}>
+                      <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: "bold",
+                            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                          }}
+                        >
                           {selectedStudent.attemptedQuizzes}/{selectedStudent.totalQuizzes}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                        >
                           Quizzes Feitos
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography variant="h4" sx={{ fontWeight: "bold", color: "#4caf50" }}>
+                    <Grid item xs={6} sm={6} md={3}>
+                      <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: "bold", 
+                            color: "#4caf50",
+                            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                          }}
+                        >
                           {selectedStudent.passedQuizzes}/{selectedStudent.totalEvaluative}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                        >
                           Aprovados
                         </Typography>
                       </Paper>
                     </Grid>
-                    <Grid item xs={6} sm={3}>
-                      <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+                    <Grid item xs={6} sm={6} md={3}>
+                      <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
+                        <Typography 
+                          variant="h4" 
+                          sx={{ 
+                            fontWeight: "bold",
+                            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                          }}
+                        >
                           {selectedStudent.completionRate}%
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
+                        >
                           Conclusão
                         </Typography>
                       </Paper>
@@ -640,7 +910,14 @@ export default function QuizGradesOverview() {
                 <Divider sx={{ my: 3 }} />
 
                 {/* Detalhes por Quiz */}
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: "bold" }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    mb: 2, 
+                    fontWeight: "bold",
+                    fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                  }}
+                >
                   Detalhes por Quiz
                 </Typography>
 
