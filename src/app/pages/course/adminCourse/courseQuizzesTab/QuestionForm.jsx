@@ -5,6 +5,10 @@ import {
   Box,
   Button,
   IconButton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -18,6 +22,8 @@ const QuestionForm = ({
   setNewQuizOptions,
   newQuizCorrectOption,
   setNewQuizCorrectOption,
+  newQuestionType,
+  setNewQuestionType,
   handleBlurSave,
   handleKeyDown,
   questionRef,
@@ -35,8 +41,37 @@ const QuestionForm = ({
 }) => {
   if (!editQuiz) return null;
 
+  const isOpenEnded = newQuestionType === 'open-ended';
+
   return (
     <Grid container spacing={2} sx={{ mt: 2 }}>
+      {/* Tipo de Questão */}
+      <Grid item xs={12}>
+        <FormControl fullWidth size="small">
+          <InputLabel>Tipo de Questão</InputLabel>
+          <Select
+            value={newQuestionType || 'multiple-choice'}
+            onChange={(e) => setNewQuestionType(e.target.value)}
+            label="Tipo de Questão"
+            sx={{
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#666",
+              },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#9041c1",
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#9041c1",
+              },
+            }}
+          >
+            <MenuItem value="multiple-choice">Múltipla Escolha</MenuItem>
+            <MenuItem value="open-ended">Questão Aberta</MenuItem>
+          </Select>
+        </FormControl>
+      </Grid>
+
+      {/* Pergunta */}
       <Grid item xs={12}>
         <TextField
           label="Pergunta"
@@ -61,7 +96,8 @@ const QuestionForm = ({
         />
       </Grid>
       
-      {newQuizOptions.map((option, index) => (
+      {/* Campos específicos para questões de múltipla escolha */}
+      {!isOpenEnded && newQuizOptions.map((option, index) => (
         <Grid item xs={12} key={index}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <TextField
@@ -136,25 +172,30 @@ const QuestionForm = ({
         </Grid>
       ))}
 
-      <Grid item xs={12}>
-        <Button
-          variant="outlined"
-          onClick={handleAddQuizOption}
-          disabled={newQuizOptions.length >= 5}
-          ref={addOptionButtonRef}
-          onKeyDown={(e) => handleKeyDown(e, saveButtonRef)}
-          sx={{
-            color: "#9041c1",
-            borderColor: "#9041c1",
-            "&:hover": {
-              borderColor: "#7d37a7",
-              backgroundColor: "rgba(144, 65, 193, 0.04)",
-            },
-          }}
-        >
-          Adicionar Opção
-        </Button>
-      </Grid>
+      {/* Botão para adicionar opção (apenas para múltipla escolha) */}
+      {!isOpenEnded && (
+        <Grid item xs={12}>
+          <Button
+            variant="outlined"
+            onClick={handleAddQuizOption}
+            disabled={newQuizOptions.length >= 5}
+            ref={addOptionButtonRef}
+            onKeyDown={(e) => handleKeyDown(e, saveButtonRef)}
+            sx={{
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": {
+                borderColor: "#7d37a7",
+                backgroundColor: "rgba(144, 65, 193, 0.04)",
+              },
+            }}
+          >
+            Adicionar Opção
+          </Button>
+        </Grid>
+      )}
+
+
 
       <Grid item xs={12}>
         <Box
@@ -186,6 +227,7 @@ const QuestionForm = ({
               setNewQuizQuestion("");
               setNewQuizOptions(["", ""]);
               setNewQuizCorrectOption(0);
+              setNewQuestionType('multiple-choice');
             }}
             ref={cancelButtonRef}
             onKeyDown={(e) => {
@@ -196,6 +238,7 @@ const QuestionForm = ({
                 setNewQuizQuestion("");
                 setNewQuizOptions(["", ""]);
                 setNewQuizCorrectOption(0);
+                setNewQuestionType('multiple-choice');
               }
             }}
             sx={{

@@ -170,7 +170,16 @@ const fetchCustomQuizResult = async (userId, courseId, quizId) => {
  * @returns {Promise<Object>} - Nota calculada e detalhes
  */
 const calculateQuizGrade = async (quiz, userId, courseId) => {
-  const totalQuestions = quiz.questions.length;
+  // Filtrar apenas questões de múltipla escolha para o cálculo da nota
+  const multipleChoiceQuestions = quiz.questions.filter(
+    q => q.questionType !== 'open-ended'
+  );
+  const openEndedQuestions = quiz.questions.filter(
+    q => q.questionType === 'open-ended'
+  );
+  
+  const totalQuestions = multipleChoiceQuestions.length; // Apenas múltipla escolha
+  const totalOpenEnded = openEndedQuestions.length;
   
   // Buscar resultados de todos os tipos de quiz
   const [regularResult, liveResult, customResult] = await Promise.all([
@@ -214,7 +223,8 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
     quizName: quiz.videoId,
     isSlideQuiz: quiz.isSlideQuiz,
     isDiagnostic: quiz.isDiagnostic,
-    totalQuestions,
+    totalQuestions, // Apenas questões de múltipla escolha
+    totalOpenEnded, // Número de questões abertas (apenas informativo)
     totalCorrect,
     basePercentage: Math.round(basePercentage * 10) / 10,
     totalPercentage: Math.round(totalPercentage * 10) / 10,
@@ -396,7 +406,14 @@ export const exportQuizGradesToCSV = (students, quizzes, videoNames = {}, slideN
     const prefix = quiz.isDiagnostic ? "📋 " : "";
     const type = quiz.isSlideQuiz ? " [Slide]" : " [Vídeo]";
     
-    quizHeaders.push(`${prefix}${quizName}${type} - Nota Final`);
+    // Informar sobre questões abertas no cabeçalho
+    const multipleChoiceCount = quiz.questions.filter(q => q.questionType !== 'open-ended').length;
+    const openEndedCount = quiz.questions.filter(q => q.questionType === 'open-ended').length;
+    const questionInfo = openEndedCount > 0 
+      ? ` (${multipleChoiceCount} múltipla escolha, ${openEndedCount} aberta${openEndedCount > 1 ? 's' : ''})`
+      : ` (${multipleChoiceCount} questões)`;
+    
+    quizHeaders.push(`${prefix}${quizName}${type}${questionInfo} - Nota Final`);
     quizHeaders.push(`${prefix}${quizName}${type} - Regular`);
     quizHeaders.push(`${prefix}${quizName}${type} - Live Bonus`);
     quizHeaders.push(`${prefix}${quizName}${type} - Custom Bonus`);

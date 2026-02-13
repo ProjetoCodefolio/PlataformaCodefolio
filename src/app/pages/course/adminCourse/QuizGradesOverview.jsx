@@ -991,6 +991,13 @@ export default function QuizGradesOverview() {
                               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                                 <Typography variant="caption" color="text.secondary">
                                   Quiz Regular: {quiz.details.regular} de {quiz.totalQuestions} questões
+                                  {quiz.totalOpenEnded > 0 && (
+                                    <Tooltip title="Questões abertas não afetam a nota final">
+                                      <span style={{ color: '#9c27b0', marginLeft: '8px', fontWeight: 'bold' }}>
+                                        (+{quiz.totalOpenEnded} aberta{quiz.totalOpenEnded > 1 ? 's' : ''} 📝)
+                                      </span>
+                                    </Tooltip>
+                                  )}
                                 </Typography>
                                 <Typography variant="caption" sx={{ fontWeight: "bold" }}>
                                   {quiz.basePercentage.toFixed(1)}%

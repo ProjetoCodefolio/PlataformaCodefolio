@@ -130,7 +130,7 @@ const CourseForm = () => {
           if (courseData) {
             setCourseTitle(courseData.title || "");
             setCourseDescription(courseData.description || "");
-            setPinRequired(courseData.pinEnabled);
+            setPinRequired(!!courseData.pinEnabled);
             
             // Se tiver pin habilitado e estiver retornando apenas o hash
             if (courseData.pinEnabled) {
