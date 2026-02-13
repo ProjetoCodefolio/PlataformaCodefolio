@@ -34,6 +34,7 @@ const QuizList = ({
   quizzesListEndRef,
   entityType,
   entityItems,
+  courseId,
 }) => {
   const navigate = useNavigate();
 
@@ -46,7 +47,7 @@ const QuizList = ({
     <>
       <Typography
         variant="h6"
-        sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}
+        sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
       >
         Quizzes Criados
       </Typography>
@@ -64,12 +65,22 @@ const QuizList = ({
             <CardContent
               sx={{
                 display: "flex",
+                flexDirection: { xs: 'column', sm: 'row' },
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 1, sm: 0 },
+                pb: { xs: 1, sm: 2 }
               }}
             >
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+              <Box sx={{ flex: 1, minWidth: 0, mb: { xs: 1, sm: 0 } }}>
+                <Typography variant="subtitle1" sx={{ 
+                  fontWeight: 500,
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: { xs: '250px', sm: '400px', md: '600px' }
+                }}>
                   Quiz para:{" "}
                   {entityType === "slide"
                     ? entityItems.find((item) => item.id === quiz.slideId)
@@ -78,10 +89,10 @@ const QuizList = ({
                     : videos.find((v) => v.id === quiz.videoId)?.title ||
                       "Vídeo não encontrado"}
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#666" }}>
+                <Typography variant="body2" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Nota mínima: {quiz.minPercentage}%
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#666" }}>
+                <Typography variant="body2" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Questões: {quiz.questions.length}
                 </Typography>
                 {quiz.isDiagnostic && (
@@ -93,20 +104,22 @@ const QuizList = ({
                       backgroundColor: "#2196f3",
                       color: "#fff",
                       fontWeight: 500,
+                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
                     }}
                   />
                 )}
               </Box>
-              <Box>
+              <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
                 <IconButton
                   onClick={() =>
                     setExpandedQuiz(
                       expandedQuiz === quiz.videoId ? null : quiz.videoId
                     )
                   }
-                  sx={{ color: "#9041c1" }}
+                  sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
+                  size="small"
                 >
-                  <ExpandMoreIcon />
+                  <ExpandMoreIcon fontSize="small" />
                 </IconButton>
                 <IconButton
                   onClick={() => {
@@ -115,22 +128,25 @@ const QuizList = ({
                       behavior: "smooth",
                     });
                   }}
-                  sx={{ color: "#9041c1" }}
+                  sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
+                  size="small"
                 >
-                  <EditIcon />
+                  <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
                   onClick={() => handleStudentDashboard(quiz.videoId)}
-                  sx={{ color: "#9041c1" }}
+                  sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
+                  size="small"
                   title="Ver estudantes"
                 >
-                  <PersonIcon />
+                  <PersonIcon fontSize="small" />
                 </IconButton>
                 <IconButton
                   onClick={() => handleRemoveQuiz(quiz)}
-                  sx={{ color: "#d32f2f" }}
+                  sx={{ color: "#d32f2f", p: { xs: 0.5, sm: 1 } }}
+                  size="small"
                 >
-                  <DeleteIcon />
+                  <DeleteIcon fontSize="small" />
                 </IconButton>
               </Box>
             </CardContent>
@@ -145,8 +161,9 @@ const QuizList = ({
                   handleEditQuestion={handleEditQuestion}
                   handleRemoveQuestion={handleRemoveQuestion}
                   questionFormRef={questionFormRef}
+                  courseId={courseId}
                 />
-                <CardActions>
+                <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 1, sm: 2 } }}>
                   <Button
                     variant="contained"
                     onClick={() => {
@@ -156,9 +173,12 @@ const QuizList = ({
                       });
                     }}
                     startIcon={<AddIcon />}
+                    fullWidth={false}
                     sx={{
                       backgroundColor: "#9041c1",
                       "&:hover": { backgroundColor: "#7d37a7" },
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                      minWidth: { xs: '100%', sm: 'auto' }
                     }}
                   >
                     Adicionar Questão

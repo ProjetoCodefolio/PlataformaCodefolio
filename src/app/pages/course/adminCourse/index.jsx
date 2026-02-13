@@ -130,7 +130,7 @@ const CourseForm = () => {
           if (courseData) {
             setCourseTitle(courseData.title || "");
             setCourseDescription(courseData.description || "");
-            setPinRequired(courseData.pinEnabled);
+            setPinRequired(!!courseData.pinEnabled);
             
             // Se tiver pin habilitado e estiver retornando apenas o hash
             if (courseData.pinEnabled) {
@@ -290,9 +290,9 @@ const CourseForm = () => {
       <Topbar hideSearch={true} />
       <Box
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 3, md: 4 },
           maxWidth: "1200px",
-          margin: "64px auto 0",
+          margin: { xs: "56px auto 0", sm: "64px auto 0" },
           backgroundColor: "#f9f9f9",
           borderRadius: "12px",
           boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.1)",
@@ -302,7 +302,7 @@ const CourseForm = () => {
 
         <Paper
           sx={{
-            p: 4,
+            p: { xs: 2, sm: 3, md: 4 },
             mb: 4,
             backgroundColor: "#ffffff",
             borderRadius: "12px",
@@ -313,15 +313,17 @@ const CourseForm = () => {
           <Box
             sx={{
               display: "flex",
+              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: { xs: 'flex-start', sm: 'center' },
               mb: 3,
+              gap: { xs: 2, sm: 0 }
             }}
           >
             <Typography
               variant="h4"
               component="h1"
-              sx={{ fontWeight: 700, color: "#333" }}
+              sx={{ fontWeight: 700, color: "#333", fontSize: { xs: '1.5rem', sm: '2rem' } }}
             >
               Gerenciar Curso
             </Typography>
@@ -329,8 +331,9 @@ const CourseForm = () => {
             {/* Botão de três pontos */}
             <IconButton
               aria-label="configurações avançadas"
-              onClick={handleAdvancedSettingsClick} // Alterado para chamar a função direta
-              sx={{ color: "#9041c1" }}
+              onClick={handleAdvancedSettingsClick}
+              sx={{ color: "#9041c1", alignSelf: { xs: 'flex-end', sm: 'center' } }}
+              size="small"
             >
               <MoreVertIcon />
             </IconButton>
@@ -338,7 +341,7 @@ const CourseForm = () => {
 
           <Typography
             variant="h5"
-            sx={{ mb: 3, fontWeight: "bold", color: "#333" }}
+            sx={{ mb: 3, fontWeight: "bold", color: "#333", fontSize: { xs: '1.25rem', sm: '1.5rem' } }}
           >
             {courseId ? "Gerenciar Curso" : "Criar Novo Curso"}
           </Typography>
@@ -352,7 +355,6 @@ const CourseForm = () => {
                 value={courseTitle}
                 onChange={(e) => setCourseTitle(e.target.value)}
                 variant="outlined"
-                // disabled={!!courseId}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { borderColor: "#666" },
@@ -362,7 +364,11 @@ const CourseForm = () => {
                   "& .MuiInputLabel-root": {
                     color: "#666",
                     "&.Mui-focused": { color: "#9041c1" },
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
                   },
+                  "& .MuiInputBase-input": {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
                 }}
               />
             </Grid>
@@ -375,7 +381,6 @@ const CourseForm = () => {
                 value={courseDescription}
                 onChange={(e) => setCourseDescription(e.target.value)}
                 variant="outlined"
-                // disabled={!!courseId}
                 multiline
                 rows={3}
                 sx={{
@@ -387,12 +392,16 @@ const CourseForm = () => {
                   "& .MuiInputLabel-root": {
                     color: "#666",
                     "&.Mui-focused": { color: "#9041c1" },
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
                   },
+                  "& .MuiInputBase-input": {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
                 }}
               />
             </Grid>
 
-            <Grid item xs={6}>
+            <Grid item xs={12} sm={6}>
               <FormControlLabel
                 control={
                   <Switch
@@ -422,12 +431,17 @@ const CourseForm = () => {
                   />
                 }
                 label="Criar PIN para acesso ao curso"
-                sx={{ color: "#666" }}
+                sx={{ 
+                  color: "#666",
+                  '& .MuiFormControlLabel-label': {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
               />
             </Grid>
 
             {(pinRequired || courseId) && (
-              <Grid item xs={4} sx={{ ml: -30, mt: -1 }}>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   label="PIN de Acesso"
                   fullWidth
@@ -450,7 +464,14 @@ const CourseForm = () => {
                     "& .MuiInputLabel-root": {
                       color: "#666",
                       "&.Mui-focused": { color: "#9041c1" },
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
                     },
+                    "& .MuiFormHelperText-root": {
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                    },
+                    "& .MuiInputBase-input": {
+                      fontSize: { xs: '0.875rem', sm: '1rem' }
+                    }
                   }}
                 />
               </Grid>
@@ -544,14 +565,17 @@ const CourseForm = () => {
         </Paper>
 
         {!isCurrentUserTeacher && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, justifyContent: "flex-end", gap: 2 }}>
             <Button
               variant="outlined"
               onClick={() => navigate("/manage-courses")}
+              fullWidth={false}
               sx={{
                 color: "#9041c1",
                 borderColor: "#9041c1",
                 "&:hover": { borderColor: "#7d37a7" },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
               }}
             >
               Cancelar
@@ -560,6 +584,7 @@ const CourseForm = () => {
               variant="contained"
               onClick={handleSubmit}
               disabled={!isFormValid()}
+              fullWidth={false}
               sx={{
                 backgroundColor: "#9041c1",
                 "&:hover": { backgroundColor: "#7d37a7" },
@@ -567,6 +592,8 @@ const CourseForm = () => {
                   backgroundColor: "rgba(0, 0, 0, 0.12)",
                   color: "rgba(0, 0, 0, 0.26)",
                 },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
               }}
             >
               Salvar Curso
@@ -583,18 +610,19 @@ const CourseForm = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
             bgcolor: "background.paper",
             borderRadius: 2,
             boxShadow: 24,
-            p: 4,
+            p: { xs: 3, sm: 4 },
             textAlign: "center",
           }}
         >
           <CheckCircleOutlineIcon
-            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+            sx={{ fontSize: { xs: 50, sm: 60 }, color: "#4caf50", mb: 2 }}
           />
-          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
+          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Curso criado com sucesso!
           </Typography>
           <Button
@@ -607,6 +635,7 @@ const CourseForm = () => {
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
             }}
           >
             OK!
@@ -621,18 +650,19 @@ const CourseForm = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
             bgcolor: "background.paper",
             borderRadius: 2,
             boxShadow: 24,
-            p: 4,
+            p: { xs: 3, sm: 4 },
             textAlign: "center",
           }}
         >
           <CheckCircleOutlineIcon
-            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+            sx={{ fontSize: { xs: 50, sm: 60 }, color: "#4caf50", mb: 2 }}
           />
-          <Typography id="update-modal-title" variant="h6" sx={{ mb: 2 }}>
+          <Typography id="update-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Curso atualizado com sucesso!
           </Typography>
           <Button
@@ -644,6 +674,7 @@ const CourseForm = () => {
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
             }}
           >
             OK!

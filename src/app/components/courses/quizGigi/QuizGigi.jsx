@@ -441,13 +441,13 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
         <Box
           sx={{
             position: "absolute",
-            top: 16,
+            top: { xs: 12, sm: 16 },
             display: "flex",
             justifyContent: "center",
             width: "100%",
           }}
         >
-          <img src={logo} alt="Codefolio Logo" style={{ height: "50px" }} />
+          <img src={logo} alt="Codefolio Logo" style={{ height: "40px", maxHeight: "50px" }} />
         </Box>
 
         {currentQuestion &&
@@ -563,9 +563,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 sx={{
                   fontWeight: 600,
                   textAlign: "center",
-                  my: 3,
+                  my: { xs: 2, sm: 3 },
                   color: "white",
                   textShadow: "0px 2px 4px rgba(0,0,0,0.3)",
+                  fontSize: { xs: '1.2rem', sm: '1.4rem', md: '1.5rem' },
                 }}
               >
                 Pergunta personalizada para {selectedStudent?.name || "..."}
@@ -573,10 +574,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
               <Grid
                 container
-                spacing={4}
+                spacing={{ xs: 2, sm: 3, md: 4 }}
                 justifyContent="center"
                 alignItems="center"
-                sx={{ mb: 4 }}
+                sx={{ mb: { xs: 2, sm: 3, md: 4 } }}
               >
                 <Grid item xs={6} sm={5} md={5} lg={4}>
                   <Box
@@ -588,8 +589,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       backgroundColor: correctFeedback
                         ? "rgba(76, 175, 80, 0.5)"
                         : "rgba(255, 255, 255, 0.15)",
-                      borderRadius: "16px",
-                      p: 3,
+                      borderRadius: { xs: "12px", sm: "16px" },
+                      p: { xs: 1.5, sm: 2, md: 3 },
                       cursor: buttonsDisabled ? "default" : "pointer",
                       pointerEvents: buttonsDisabled ? "none" : "auto",
                       transition: "all 0.2s ease",
@@ -613,7 +614,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   >
                     <CheckCircleIcon
                       sx={{
-                        fontSize: { xs: 60, sm: 80, md: 100 },
+                        fontSize: { xs: 50, sm: 70, md: 90, lg: 100 },
                         color: correctFeedback ? "#ffffff" : "#4caf50",
                         filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.3))",
                         transition: "all 0.2s ease",
@@ -622,9 +623,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                     <Typography
                       variant="h5"
                       sx={{
-                        mt: 2,
+                        mt: { xs: 1, sm: 1.5, md: 2 },
                         fontWeight: 600,
                         color: "white",
+                        fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
                       }}
                     >
                       {correctFeedback ? "ACERTOU!" : "Correto"}
@@ -644,8 +646,8 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                       backgroundColor: incorrectFeedback
                         ? "rgba(244, 67, 54, 0.5)"
                         : "rgba(255, 255, 255, 0.15)",
-                      borderRadius: "16px",
-                      p: 3,
+                      borderRadius: { xs: "12px", sm: "16px" },
+                      p: { xs: 1.5, sm: 2, md: 3 },
                       cursor: buttonsDisabled ? "default" : "pointer",
                       pointerEvents: buttonsDisabled ? "none" : "auto",
                       transition: "all 0.2s ease",
@@ -669,7 +671,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                   >
                     <CancelIcon
                       sx={{
-                        fontSize: { xs: 60, sm: 80, md: 100 },
+                        fontSize: { xs: 50, sm: 70, md: 90, lg: 100 },
                         color: incorrectFeedback ? "#ffffff" : "#f44336",
                         filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.3))",
                         transition: "all 0.2s ease",
@@ -678,9 +680,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                     <Typography
                       variant="h5"
                       sx={{
-                        mt: 2,
+                        mt: { xs: 1, sm: 1.5, md: 2 },
                         fontWeight: 600,
                         color: "white",
+                        fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' },
                       }}
                     >
                       {incorrectFeedback ? "ERROU!" : "Incorreto"}

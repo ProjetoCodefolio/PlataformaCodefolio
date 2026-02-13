@@ -266,7 +266,7 @@ const QuizSummary = ({
     <Box
       sx={{
         width: "100%",
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderRadius: 2,
         backgroundColor: "rgba(255, 255, 255, 0.15)",
         border: "1px solid rgba(255, 255, 255, 0.25)",
@@ -279,7 +279,7 @@ const QuizSummary = ({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          mb: 2,
+          mb: { xs: 1, sm: 2 },
         }}
       >
         <Box />
@@ -293,6 +293,9 @@ const QuizSummary = ({
               borderColor: "#fff",
               backgroundColor: "rgba(255, 255, 255, 0.1)",
             },
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            py: { xs: 0.5, sm: 0.75 },
+            px: { xs: 1.5, sm: 2 },
           }}
         >
           Voltar
@@ -304,15 +307,17 @@ const QuizSummary = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          mb: 3,
+          mb: { xs: 2, sm: 3 },
           animation: `${bounce} 1.5s ease`,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 0.5, sm: 0 },
         }}
       >
         <EmojiEventsIcon
           sx={{
-            fontSize: 40,
+            fontSize: { xs: 32, sm: 40 },
             color: "#FFD700",
-            mr: 1,
+            mr: { xs: 0, sm: 1 },
             animation: `${gentlePulse} 2s infinite ease-in-out`,
           }}
         />
@@ -321,6 +326,7 @@ const QuizSummary = ({
           sx={{
             color: "#fff",
             fontWeight: 600,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
             backgroundImage:
               "linear-gradient(90deg, rgba(255,255,255,0.5) 0%, rgba(255,215,0,1) 25%, rgba(255,255,255,0.8) 50%, rgba(255,215,0,1) 75%, rgba(255,255,255,0.5) 100%)",
             backgroundSize: "200% auto",
@@ -339,10 +345,11 @@ const QuizSummary = ({
           sx={{
             display: "flex",
             justifyContent: "center",
-            mb: 4,
+            mb: { xs: 2, sm: 4 },
             flexWrap: "wrap",
             position: "relative",
-            minHeight: "220px",
+            minHeight: { xs: "180px", sm: "220px" },
+            gap: { xs: 1, sm: 0 },
           }}
         >
           {/* 2º Lugar */}
@@ -352,8 +359,8 @@ const QuizSummary = ({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                mx: 2,
-                mt: 2,
+                mx: { xs: 1, sm: 2 },
+                mt: { xs: 1, sm: 2 },
                 opacity: 0,
                 animation: showSecondPlace
                   ? `${fadeIn} 0.8s ease forwards`
@@ -363,8 +370,8 @@ const QuizSummary = ({
               <Avatar
                 src={podio[1].photoURL}
                 sx={{
-                  width: 70,
-                  height: 70,
+                  width: { xs: 50, sm: 70 },
+                  height: { xs: 50, sm: 70 },
                   bgcolor: "#C0C0C0",
                   mb: 1,
                   border: "2px solid #C0C0C0",
@@ -380,21 +387,21 @@ const QuizSummary = ({
                   justifyContent: "center",
                   bgcolor: "rgba(192, 192, 192, 0.3)",
                   borderRadius: "12px",
-                  px: 2,
+                  px: { xs: 1, sm: 2 },
                   py: 0.5,
                   backdropFilter: "blur(5px)",
                   maxWidth: "100%",
                 }}
               >
-                <MilitaryTechIcon sx={{ color: "#C0C0C0", mr: 0.5 }} />
+                <MilitaryTechIcon sx={{ color: "#C0C0C0", mr: 0.5, fontSize: { xs: '1rem', sm: '1.5rem' } }} />
                 <Typography
                   variant="body2"
-                  sx={{ color: "#fff", fontWeight: 500 }}
+                  sx={{ color: "#fff", fontWeight: 500, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                 >
                   {podio[1].nome}
                 </Typography>
               </Box>
-              <Typography variant="body2" sx={{ color: "#C0C0C0", mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: "#C0C0C0", mt: 0.5, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                 {podio[1].acertosTotal}{" "}
                 {podio[1].acertosTotal === 1 ? "acerto" : "acertos"}
               </Typography>
@@ -408,7 +415,7 @@ const QuizSummary = ({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                mx: 2,
+                mx: { xs: 1, sm: 2 },
                 zIndex: 1,
                 opacity: 0,
                 animation: showFirstPlace
@@ -419,8 +426,8 @@ const QuizSummary = ({
               <Avatar
                 src={podio[0].photoURL}
                 sx={{
-                  width: 90,
-                  height: 90,
+                  width: { xs: 70, sm: 90 },
+                  height: { xs: 70, sm: 90 },
                   bgcolor: "#FFD700",
                   mb: 1,
                   border: "3px solid #FFD700",
@@ -437,24 +444,24 @@ const QuizSummary = ({
                   justifyContent: "center",
                   bgcolor: "rgba(255, 215, 0, 0.3)",
                   borderRadius: "12px",
-                  px: 2,
+                  px: { xs: 1.5, sm: 2 },
                   py: 0.5,
                   backdropFilter: "blur(5px)",
                   position: "relative",
                   overflow: "hidden",
                 }}
               >
-                <MilitaryTechIcon sx={{ color: "#FFD700", mr: 0.5 }} />
+                <MilitaryTechIcon sx={{ color: "#FFD700", mr: 0.5, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                 <Typography
                   variant="body1"
-                  sx={{ color: "#fff", fontWeight: 600 }}
+                  sx={{ color: "#fff", fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem' } }}
                 >
                   {podio[0].nome}
                 </Typography>
               </Box>
               <Typography
                 variant="body1"
-                sx={{ color: "#FFD700", mt: 0.5, fontWeight: 600 }}
+                sx={{ color: "#FFD700", mt: 0.5, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem' } }}
               >
                 {podio[0].acertosTotal}{" "}
                 {podio[0].acertosTotal === 1 ? "acerto" : "acertos"}
@@ -469,8 +476,8 @@ const QuizSummary = ({
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                mx: 2,
-                mt: 3,
+                mx: { xs: 1, sm: 2 },
+                mt: { xs: 2, sm: 3 },
                 opacity: 0,
                 animation: showThirdPlace
                   ? `${fadeIn} 0.8s ease forwards`
@@ -480,8 +487,8 @@ const QuizSummary = ({
               <Avatar
                 src={podio[2].photoURL}
                 sx={{
-                  width: 60,
-                  height: 60,
+                  width: { xs: 45, sm: 60 },
+                  height: { xs: 45, sm: 60 },
                   bgcolor: "#CD7F32",
                   mb: 1,
                   border: "2px solid #CD7F32",
@@ -496,20 +503,20 @@ const QuizSummary = ({
                   justifyContent: "center",
                   bgcolor: "rgba(205, 127, 50, 0.3)",
                   borderRadius: "12px",
-                  px: 2,
+                  px: { xs: 1, sm: 2 },
                   py: 0.5,
                   backdropFilter: "blur(5px)",
                 }}
               >
-                <MilitaryTechIcon sx={{ color: "#CD7F32", mr: 0.5 }} />
+                <MilitaryTechIcon sx={{ color: "#CD7F32", mr: 0.5, fontSize: { xs: '0.9rem', sm: '1.5rem' } }} />
                 <Typography
                   variant="body2"
-                  sx={{ color: "#fff", fontWeight: 500 }}
+                  sx={{ color: "#fff", fontWeight: 500, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                 >
                   {podio[2].nome}
                 </Typography>
               </Box>
-              <Typography variant="body2" sx={{ color: "#CD7F32", mt: 0.5 }}>
+              <Typography variant="body2" sx={{ color: "#CD7F32", mt: 0.5, fontSize: { xs: '0.65rem', sm: '0.875rem' } }}>
                 {podio[2].acertosTotal}{" "}
                 {podio[2].acertosTotal === 1 ? "acerto" : "acertos"}
               </Typography>

@@ -8,6 +8,7 @@ import {
   Radio,
   LinearProgress,
   FormControl,
+  TextField,
 } from "@mui/material";
 import {
   fetchQuizQuestions,
@@ -38,7 +39,9 @@ const Quiz = ({
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [openEndedAnswer, setOpenEndedAnswer] = useState('');
   const [userAnswers, setUserAnswers] = useState({});
+  const [openEndedAnswers, setOpenEndedAnswers] = useState({});
   const [loading, setLoading] = useState(true);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [quizMinPercentage, setQuizMinPercentage] = useState(70);
@@ -81,89 +84,161 @@ const Quiz = ({
   }, [quizId]);
 
   const currentQuestion = questions[currentQuestionIndex];
+  const isOpenEnded = currentQuestion?.questionType === 'open-ended';
 
   const handleNext = () => {
-    if (selectedOption === null) {
-      toast.warn("Por favor, selecione uma opção.");
-      return;
+    if (isOpenEnded) {
+      if (!openEndedAnswer.trim()) {
+        toast.warn("Por favor, escreva sua resposta.");
+        return;
+      }
+    } else {
+      if (selectedOption === null) {
+        toast.warn("Por favor, selecione uma opção.");
+        return;
+      }
     }
 
-    const updatedAnswers = {
-      ...userAnswers,
-      [currentQuestion.id]: selectedOption,
-    };
+    const updatedAnswers = isOpenEnded
+      ? { ...openEndedAnswers, [currentQuestion.id]: openEndedAnswer }
+      : { ...userAnswers, [currentQuestion.id]: selectedOption };
 
-    setUserAnswers(updatedAnswers);
+    if (isOpenEnded) {
+      setOpenEndedAnswers(updatedAnswers);
+    } else {
+      setUserAnswers(updatedAnswers);
+    }
 
     if (currentQuestionIndex === questions.length - 1) {
       setTimeout(() => {
-        handleSubmitAnswers(updatedAnswers);
+        handleSubmitAnswers(isOpenEnded ? userAnswers : updatedAnswers, isOpenEnded ? updatedAnswers : openEndedAnswers);
       }, 100);
     } else {
       setCurrentQuestionIndex((prev) => prev + 1);
-      setSelectedOption(
-        userAnswers[questions[currentQuestionIndex + 1]?.id]?.toString() || null
-      );
+      
+      const nextQuestion = questions[currentQuestionIndex + 1];
+      if (nextQuestion?.questionType === 'open-ended') {
+        setOpenEndedAnswer(openEndedAnswers[nextQuestion.id] || '');
+        setSelectedOption(null);
+      } else {
+        setSelectedOption(userAnswers[nextQuestion.id]?.toString() || null);
+        setOpenEndedAnswer('');
+      }
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex((prev) => prev - 1);
-      setSelectedOption(
-        userAnswers[questions[currentQuestionIndex - 1]?.id]?.toString() || null
-      );
+      
+      const prevQuestion = questions[currentQuestionIndex - 1];
+      if (prevQuestion?.questionType === 'open-ended') {
+        setOpenEndedAnswer(openEndedAnswers[prevQuestion.id] || '');
+        setSelectedOption(null);
+      } else {
+        setSelectedOption(userAnswers[prevQuestion.id]?.toString() || null);
+        setOpenEndedAnswer('');
+      }
     } else {
       handleFinish();
     }
   };
 
   const handleSubmit = () => {
-    if (selectedOption === null) {
-      toast.warn("Por favor, selecione uma resposta antes de continuar.");
-      return;
+    if (isOpenEnded) {
+      if (!openEndedAnswer.trim()) {
+        toast.warn("Por favor, escreva sua resposta antes de continuar.");
+        return;
+      }
+
+      const updatedAnswers = {
+        ...openEndedAnswers,
+        [currentQuestion.id]: openEndedAnswer,
+      };
+
+      setOpenEndedAnswers(updatedAnswers);
+      handleSubmitAnswers(userAnswers, updatedAnswers);
+    } else {
+      if (selectedOption === null) {
+        toast.warn("Por favor, selecione uma resposta antes de continuar.");
+        return;
+      }
+
+      const updatedAnswers = {
+        ...userAnswers,
+        [currentQuestion.id]: selectedOption,
+      };
+
+      setUserAnswers(updatedAnswers);
+      handleSubmitAnswers(updatedAnswers, openEndedAnswers);
     }
-
-    const updatedAnswers = {
-      ...userAnswers,
-      [currentQuestion.id]: selectedOption,
-    };
-
-    setUserAnswers(updatedAnswers);
-    handleSubmitAnswers(updatedAnswers);
   };
 
-  const handleSubmitAnswers = async (answersToSubmit) => {
+  const handleSubmitAnswers = async (multipleChoiceAnswers, openAnswers) => {
     try {
       setLoading(true);
-      const finalAnswers = answersToSubmit || userAnswers;
+      const finalMultipleChoiceAnswers = multipleChoiceAnswers || userAnswers;
+      const finalOpenEndedAnswers = openAnswers || openEndedAnswers;
 
       let earnedPoints = 0;
-      const totalPoints = questions.length;
+      let totalMultipleChoice = 0;
       const answersDetails = [];
 
-      questions.forEach((question) => {
-        const userAnswer = String(finalAnswers[question.id] || "");
-        const correctOption = String(question.correctOption);
+      const userId = authUserDetails?.userId || userDetails?.userId;
 
-        const isCorrect = userAnswer === correctOption;
+      if (!userId) {
+        console.error("Erro: Nenhum ID de usuário disponível");
+        toast.error("Não foi possível salvar seus resultados. Por favor, faça login.");
+        return;
+      }
 
-        if (isCorrect) {
-          earnedPoints++;
+      // Processar questões
+      for (const question of questions) {
+        if (question.questionType === 'open-ended') {
+          // Adicionar resposta aberta aos detalhes (será salva junto com o resultado do quiz)
+          const answer = finalOpenEndedAnswers[question.id] || '';
+          console.log('📝 Preparando resposta aberta para salvar:', { 
+            userId, 
+            courseId, 
+            quizId, 
+            questionId: question.id,
+            answerLength: answer.length,
+            answerPreview: answer.substring(0, 50) + (answer.length > 50 ? '...' : '')
+          });
+          
+          answersDetails.push({
+            questionId: question.id,
+            question: question.question,
+            questionType: 'open-ended',
+            answer: answer,
+            isCorrect: null, // Não aplicável para questões abertas
+          });
+        } else {
+          // Processar resposta de múltipla escolha (afeta a nota)
+          totalMultipleChoice++;
+          const userAnswer = Number(finalMultipleChoiceAnswers[question.id] || 0);
+          const correctOption = Number(question.correctOption);
+          const isCorrect = userAnswer === correctOption;
+
+          if (isCorrect) {
+            earnedPoints++;
+          }
+
+          answersDetails.push({
+            questionId: question.id,
+            question: question.question,
+            questionType: 'multiple-choice',
+            options: question.options,
+            correctOption: correctOption,
+            userOption: userAnswer,
+            isCorrect: isCorrect,
+          });
         }
+      }
 
-        answersDetails.push({
-          questionId: question.id,
-          question: question.question,
-          options: question.options,
-          correctOption: correctOption,
-          userOption: userAnswer,
-          isCorrect: isCorrect,
-        });
-      });
-
+      // Calcular porcentagem baseada APENAS em questões de múltipla escolha
       const calculatedPercentage =
-        totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+        totalMultipleChoice > 0 ? (earnedPoints / totalMultipleChoice) * 100 : 100;
 
       const userScore = Number(calculatedPercentage);
       const minRequired = Number(quizMinPercentage);
@@ -175,27 +250,23 @@ const Quiz = ({
         scorePercentage: calculatedPercentage,
         minPercentage: minRequired,
         earnedPoints,
-        totalPoints,
+        totalPoints: totalMultipleChoice,
+        hasOpenEnded: Object.keys(finalOpenEndedAnswers).length > 0,
         answersDetails,
       });
 
       setQuizCompleted(true);
 
-      // IMPORTANTE: Obter o userId do contexto de autenticação
-      const userId = authUserDetails?.userId || userDetails?.userId;
+      // Salvar resultados (apenas das questões de múltipla escolha)
+      // Filtrar apenas as questões e respostas de múltipla escolha
+      const multipleChoiceQuestions = questions.filter(q => q.questionType !== 'open-ended');
+      const filteredMultipleChoiceAnswers = {};
+      multipleChoiceQuestions.forEach(q => {
+        if (finalMultipleChoiceAnswers[q.id] !== undefined) {
+          filteredMultipleChoiceAnswers[q.id] = finalMultipleChoiceAnswers[q.id];
+        }
+      });
 
-      // Verificar se temos userId válido
-      if (!userId) {
-        console.error(
-          "Erro: Nenhum ID de usuário disponível para salvar resultados"
-        );
-        toast.error(
-          "Não foi possível salvar seus resultados. Por favor, faça login."
-        );
-        return;
-      }
-
-      // Garantir que todos os parâmetros obrigatórios sejam passados
       const result = await saveQuizResults(
         userId,
         courseId,
@@ -204,11 +275,12 @@ const Quiz = ({
           isPassed,
           scorePercentage: calculatedPercentage,
           earnedPoints,
-          totalPoints,
+          totalPoints: totalMultipleChoice,
           minPercentage: quizMinPercentage,
         },
-        finalAnswers, // Certifique-se de que estamos passando as respostas corretas
-        questions
+        filteredMultipleChoiceAnswers,
+        multipleChoiceQuestions,
+        answersDetails // Passar todas as respostas detalhadas (múltipla escolha + abertas)
       );
 
       // Verificar e exibir o resultado
@@ -224,7 +296,7 @@ const Quiz = ({
       }
 
       if (onSubmit) {
-        await onSubmit(userAnswers, isPassed);
+        await onSubmit(finalMultipleChoiceAnswers, isPassed);
       }
     } catch (error) {
       console.error("❌ ERRO AO SALVAR QUIZ:", error);
@@ -252,8 +324,10 @@ const Quiz = ({
     setQuizCompleted(false);
     setResult(null);
     setUserAnswers({});
+    setOpenEndedAnswers({});
     setCurrentQuestionIndex(0);
     setSelectedOption(null);
+    setOpenEndedAnswer('');
 
     const loadQuizAgain = async () => {
       try {
@@ -416,68 +490,135 @@ const Quiz = ({
               >
                 Revisão das questões
               </Typography>
-              {result.answersDetails?.map((answer, index) => (
-                <Box
-                  key={answer.questionId}
-                  sx={{
-                    mb: 4,
-                    p: 3,
-                    borderRadius: 2,
-                    bgcolor: "#f9f9f9",
-                    border: `1px solid ${
-                      answer.isCorrect ? "#4caf50" : "#f44336"
-                    }`,
-                  }}
-                >
+              {result.answersDetails?.map((answer, index) => {
+                const isOpenEndedQuestion = answer.questionType === 'open-ended';
+                
+                return (
                   <Box
+                    key={answer.questionId}
                     sx={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 1,
-                      mb: 2,
+                      mb: 4,
+                      p: 3,
+                      borderRadius: 2,
+                      bgcolor: "#f9f9f9",
+                      border: `1px solid ${
+                        isOpenEndedQuestion ? "#9041c1" : (answer.isCorrect ? "#4caf50" : "#f44336")
+                      }`,
                     }}
                   >
-                    <Typography
-                      variant="subtitle1"
-                      sx={{
-                        fontWeight: 600,
-                        flex: 1,
-                      }}
-                    >
-                      Questão {index + 1}: {answer.question}
-                    </Typography>
-
                     <Box
                       sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        px: 1.5,
-                        py: 0.5,
-                        borderRadius: 5,
-                        bgcolor: answer.isCorrect
-                          ? "rgba(76, 175, 80, 0.1)"
-                          : "rgba(244, 67, 54, 0.1)",
-                        color: answer.isCorrect ? "#2e7d32" : "#d32f2f",
-                        fontWeight: 600,
-                        fontSize: "0.875rem",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 1,
+                        mb: 2,
+                        flexWrap: "wrap",
                       }}
                     >
-                      {answer.isCorrect ? (
-                        <>
-                          <CheckCircleIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          Correto
-                        </>
+                      <Typography
+                        variant="subtitle1"
+                        sx={{
+                          fontWeight: 600,
+                          flex: 1,
+                          minWidth: "200px",
+                        }}
+                      >
+                        Questão {index + 1}: {answer.question}
+                      </Typography>
+
+                      {isOpenEndedQuestion ? (
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 5,
+                            bgcolor: "rgba(144, 65, 193, 0.1)",
+                            color: "#9041c1",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          Questão Aberta
+                        </Box>
                       ) : (
-                        <>
-                          <CancelIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          Incorreto
-                        </>
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 5,
+                            bgcolor: answer.isCorrect
+                              ? "rgba(76, 175, 80, 0.1)"
+                              : "rgba(244, 67, 54, 0.1)",
+                            color: answer.isCorrect ? "#2e7d32" : "#d32f2f",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          {answer.isCorrect ? (
+                            <>
+                              <CheckCircleIcon fontSize="small" sx={{ mr: 0.5 }} />
+                              Correto
+                            </>
+                          ) : (
+                            <>
+                              <CancelIcon fontSize="small" sx={{ mr: 0.5 }} />
+                              Incorreto
+                            </>
+                          )}
+                        </Box>
                       )}
                     </Box>
-                  </Box>
 
-                  {/* Apenas mostra a opção que o usuário selecionou e a correta (se forem diferentes) */}
-                  <Box sx={{ pl: 2 }}>
+                    {/* Renderizar resposta baseada no tipo de questão */}
+                    {isOpenEndedQuestion ? (
+                      <Box sx={{ pl: 2 }}>
+                        <Box
+                          sx={{
+                            p: 2,
+                            borderRadius: 1,
+                            bgcolor: "rgba(144, 65, 193, 0.05)",
+                            border: "1px solid rgba(144, 65, 193, 0.2)",
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#666",
+                              fontWeight: 600,
+                              display: "block",
+                              mb: 1,
+                            }}
+                          >
+                            Sua resposta:
+                          </Typography>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                            }}
+                          >
+                            {answer.answer || "(Nenhuma resposta fornecida)"}
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            mt: 1,
+                            color: "#666",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          Esta questão não afeta sua nota final e será avaliada pelo professor.
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Box sx={{ pl: 2 }}>
                     {/* Opção selecionada pelo usuário */}
                     <Box
                       sx={{
@@ -501,10 +642,8 @@ const Quiz = ({
                           color: answer.isCorrect ? "#2e7d32" : "#d32f2f",
                         }}
                       >
-                        {String.fromCharCode(
-                          65 + parseInt(answer.userOption, 10)
-                        )}
-                        ) {answer.options[answer.userOption]}
+                        {String.fromCharCode(65 + Number(answer.userOption))}
+                        ) {answer.options[Number(answer.userOption)] || "Resposta não encontrada"}
                       </Typography>
                       <Box
                         sx={{
@@ -548,10 +687,8 @@ const Quiz = ({
                             color: "#2e7d32",
                           }}
                         >
-                          {String.fromCharCode(
-                            65 + parseInt(answer.correctOption, 10)
-                          )}
-                          ) {answer.options[answer.correctOption]}
+                          {String.fromCharCode(65 + Number(answer.correctOption))}
+                          ) {answer.options[Number(answer.correctOption)] || "Resposta não encontrada"}
                         </Typography>
                         <Box
                           sx={{
@@ -574,8 +711,10 @@ const Quiz = ({
                       </Box>
                     )}
                   </Box>
-                </Box>
-              ))}
+                    )}
+                  </Box>
+                );
+              })}
             </Box>
           )}
 
@@ -727,55 +866,79 @@ const Quiz = ({
         >
           {currentQuestion?.question || "Pergunta indisponível"}
         </Typography>
-        <RadioGroup
-          value={selectedOption}
-          onChange={(e) => setSelectedOption(e.target.value)}
-          sx={{ mb: { xs: 2, sm: 4 } }}
-        >
-          {currentQuestion?.options.map((option, index) => (
-            <FormControlLabel
-              key={index}
-              value={index.toString()}
-              control={
-                <Radio
-                  sx={{
-                    color: "#9041c1",
-                    "&.Mui-checked": { color: "#9041c1" },
-                    fontSize: { xs: "0.9rem", sm: "1rem" },
-                  }}
-                />
-              }
-              label={
-                <Box
-                  sx={{
-                    wordWrap: "break-word",
-                    overflowWrap: "break-word",
-                    whiteSpace: "normal",
-                    width: "93%",
-                  }}
-                >
-                  {option}
-                </Box>
-              }
+
+        {/* Renderizar campo apropriado baseado no tipo de questão */}
+        {isOpenEnded ? (
+          <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+            <TextField
+              multiline
+              minRows={6}
+              maxRows={20}
+              fullWidth
+              value={openEndedAnswer}
+              onChange={(e) => setOpenEndedAnswer(e.target.value)}
+              placeholder="Digite sua resposta aqui..."
               sx={{
-                display: "flex",
-                backgroundColor: "#F5F5FA",
-                borderRadius: "8px",
-                mb: { xs: 0.5, sm: 1 },
-                p: { xs: 0.5, sm: 1 },
-                width: "100%",
-                "&:hover": {
-                  backgroundColor: "#f0f0f0",
-                },
-                "& .MuiFormControlLabel-label": {
-                  fontSize: { xs: "0.9rem", sm: "1rem" },
-                  width: "100%",
-                  display: "flex",
+                "& .MuiOutlinedInput-root": {
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#9041c1",
+                  },
                 },
               }}
             />
-          ))}
-        </RadioGroup>
+          </Box>
+        ) : (
+          <RadioGroup
+            value={selectedOption}
+            onChange={(e) => setSelectedOption(e.target.value)}
+            sx={{ mb: { xs: 2, sm: 4 } }}
+          >
+            {currentQuestion?.options.map((option, index) => (
+              <FormControlLabel
+                key={index}
+                value={index.toString()}
+                control={
+                  <Radio
+                    sx={{
+                      color: "#9041c1",
+                      "&.Mui-checked": { color: "#9041c1" },
+                      fontSize: { xs: "0.9rem", sm: "1rem" },
+                    }}
+                  />
+                }
+                label={
+                  <Box
+                    sx={{
+                      wordWrap: "break-word",
+                      overflowWrap: "break-word",
+                      whiteSpace: "normal",
+                      width: "93%",
+                    }}
+                  >
+                    {option}
+                  </Box>
+                }
+                sx={{
+                  display: "flex",
+                  backgroundColor: "#F5F5FA",
+                  borderRadius: "8px",
+                  mb: { xs: 0.5, sm: 1 },
+                  p: { xs: 0.5, sm: 1 },
+                  width: "100%",
+                  "&:hover": {
+                    backgroundColor: "#f0f0f0",
+                  },
+                  "& .MuiFormControlLabel-label": {
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    width: "100%",
+                    display: "flex",
+                  },
+                }}
+              />
+            ))}
+          </RadioGroup>
+        )}
+
         <Box
           sx={{
             display: "flex",

@@ -50,6 +50,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
 
+  // Novos estados para questões abertas
+  const [newQuestionType, setNewQuestionType] = useState('multiple-choice');
+
   const [videosState, setVideos] = useState(videos || []);
   const [slidesState, setSlides] = useState(slides || []);
 
@@ -97,7 +100,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       const videosData = await fetchCourseVideosForQuiz(courseId);
       setVideos(videosData);
 
-      if (videosData.length > 0 && !newQuizVideoId && activeTab === 0) {
+      if (videosData.length > 0 && !newQuizVideoId) {
         setNewQuizVideoId(videosData[0].id);
       }
     } catch (error) {
@@ -113,7 +116,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       const slidesData = await fetchCourseSlides(courseId);
       setSlides(slidesData);
 
-      if (slidesData.length > 0 && !newQuizSlideId && activeTab === 1) {
+      if (slidesData && slidesData.length > 0 && !newQuizSlideId) {
         setNewQuizSlideId(slidesData[0].id);
       }
     } catch (error) {
@@ -168,9 +171,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   };
 
   useEffect(() => {
-    loadVideos();
-    loadSlides();
-    loadQuizzes();
+    if (courseId) {
+      loadVideos();
+      loadSlides();
+      loadQuizzes();
+    }
   }, [courseId]);
 
   useEffect(() => {
@@ -241,7 +246,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         newQuiz.slideId = newQuizSlideId;
 
         setSlideQuizzes((prev) => [...prev, newQuiz]);
-        setNewQuizSlideId(slides[0]?.id || "");
+        setNewQuizSlideId(slidesState[0]?.id || "");
         setNewQuizMinPercentage(0);
         setNewQuizIsDiagnostic(false);
         setShowAddQuizModal(true);
@@ -258,8 +263,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     setEditQuiz(quiz);
     setEditQuestion(question);
     setNewQuizQuestion(question.question);
-    setNewQuizOptions([...question.options]);
-    setNewQuizCorrectOption(question.correctOption);
+    setNewQuestionType(question.questionType || 'multiple-choice');
+    
+    if (question.questionType === 'open-ended') {
+      setNewQuizOptions(["", ""]);
+      setNewQuizCorrectOption(0);
+    } else {
+      setNewQuizOptions([...question.options]);
+      setNewQuizCorrectOption(question.correctOption);
+    }
   };
 
   const handleRemoveQuestion = (quiz, questionId) => {
@@ -391,6 +403,13 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     // Limpar estado de edição ao mudar de aba
     setEditQuiz(null);
     setEditQuestion(null);
+    
+    // Inicializar seleções quando mudar de aba
+    if (newValue === 0 && videosState.length > 0 && !newQuizVideoId) {
+      setNewQuizVideoId(videosState[0].id);
+    } else if (newValue === 1 && slidesState.length > 0 && !newQuizSlideId) {
+      setNewQuizSlideId(slidesState[0].id);
+    }
   };
 
   // Função para adicionar questões de PDF (permanece inalterada)
@@ -547,7 +566,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       return;
     }
 
-    if (newQuizOptions.some((opt) => !opt.trim())) {
+    const isOpenEnded = newQuestionType === 'open-ended';
+
+    if (!isOpenEnded && newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Todas as opções devem ser preenchidas");
       return;
     }
@@ -556,9 +577,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       const questionData = {
         id: editQuestion.id,
         question: newQuizQuestion.trim(),
-        options: newQuizOptions.map((opt) => opt.trim()),
-        correctOption: newQuizCorrectOption,
+        questionType: newQuestionType,
       };
+
+      if (isOpenEnded) {
+        // Questão aberta não precisa de campos extras
+      } else {
+        questionData.options = newQuizOptions.map((opt) => opt.trim());
+        questionData.correctOption = newQuizCorrectOption;
+      }
 
       // Atualizar a questão no quiz
       const updatedQuiz = await updateQuizQuestion(
@@ -583,6 +610,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuestionType('multiple-choice');
 
       toast.success("Questão atualizada com sucesso!");
     } catch (error) {
@@ -600,7 +628,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       return;
     }
 
-    if (newQuizOptions.some((opt) => !opt.trim())) {
+    const isOpenEnded = newQuestionType === 'open-ended';
+
+    if (!isOpenEnded && newQuizOptions.some((opt) => !opt.trim())) {
       toast.error("Todas as opções devem ser preenchidas");
       return;
     }
@@ -609,9 +639,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       const questionData = {
         id: generateUUID(), // Gera um ID único para a nova questão
         question: newQuizQuestion.trim(),
-        options: newQuizOptions.map((opt) => opt.trim()),
-        correctOption: newQuizCorrectOption,
+        questionType: newQuestionType,
       };
+
+      if (isOpenEnded) {
+        // Questão aberta não precisa de campos extras
+      } else {
+        questionData.options = newQuizOptions.map((opt) => opt.trim());
+        questionData.correctOption = newQuizCorrectOption;
+      }
 
       // Adicionar a questão ao quiz
       const updatedQuiz = await addQuestionToQuiz(
@@ -635,6 +671,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuestionType('multiple-choice');
 
       toast.success("Questão adicionada com sucesso!");
     } catch (error) {
@@ -725,6 +762,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             quizzesListEndRef={quizzesListEndRef}
             entityType="vídeo"
             entityItems={videosState}
+            courseId={courseId}
           />
         </>
       )}
@@ -732,13 +770,21 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       {/* Conteúdo da tab de quizzes de slides */}
       {activeTab === 1 && (
         <>
-          {/* Formulário para criar quiz para slide */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-              {editQuiz && editQuiz.isSlideQuiz
-                ? "Editar Quiz do Slide"
-                : "Novo Quiz para Slide"}
-            </Typography>
+          {!slidesState || slidesState.length === 0 ? (
+            <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2 }}>
+              <Typography variant="body1" color="text.secondary">
+                Nenhum slide cadastrado ainda. Cadastre slides na aba "Slides" para criar quizzes.
+              </Typography>
+            </Box>
+          ) : (
+            <>
+              {/* Formulário para criar quiz para slide */}
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
+                  {editQuiz && editQuiz.isSlideQuiz
+                    ? "Editar Quiz do Slide"
+                    : "Novo Quiz para Slide"}
+                </Typography>
 
             <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
               {/* Dropdown para seleção do slide */}
@@ -750,13 +796,13 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                   label="Slide"
                   disabled={editQuiz && editQuiz.isSlideQuiz}
                 >
-                  {slides.length === 0 && (
+                  {(!slidesState || slidesState.length === 0) && (
                     <MenuItem value="" disabled>
                       Nenhum slide disponível
                     </MenuItem>
                   )}
-                  {slides.length > 0 &&
-                    slides.map((slide) => (
+                  {slidesState && slidesState.length > 0 &&
+                    slidesState.map((slide) => (
                       <MenuItem key={slide.id} value={slide.id}>
                         {slide.title || `Slide ${slide.id.substring(0, 6)}`}
                       </MenuItem>
@@ -810,8 +856,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
 
           {/* Lista de quizzes de slides */}
           <QuizList
-            quizzes={slideQuizzes}
-            videos={slides}
+            quizzes={slideQuizzes || []}
+            videos={slidesState || []}
             expandedQuiz={expandedQuiz}
             setExpandedQuiz={setExpandedQuiz}
             handleEditQuiz={handleEditQuiz}
@@ -822,8 +868,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleRemoveQuestion={handleRemoveQuestion}
             quizzesListEndRef={quizzesListEndRef}
             entityType="slide"
-            entityItems={slides}
-          />
+            entityItems={slidesState || []}            courseId={courseId}          />
+            </>
+          )}
         </>
       )}
 
@@ -858,6 +905,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
               setNewQuizOptions={setNewQuizOptions}
               newQuizCorrectOption={newQuizCorrectOption}
               setNewQuizCorrectOption={setNewQuizCorrectOption}
+              newQuestionType={newQuestionType}
+              setNewQuestionType={setNewQuestionType}
               handleBlurSave={handleBlurSave}
               handleKeyDown={handleKeyDown}
               questionRef={questionRef}

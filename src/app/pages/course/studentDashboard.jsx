@@ -25,7 +25,10 @@ import {
   TextField,
   Tabs,
   Tab,
+  Divider,
+  Chip,
 } from "@mui/material";
+import { useTheme, useMediaQuery } from '@mui/material';
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -44,6 +47,8 @@ const StudentDashboard = () => {
   const params = new URLSearchParams(location.search);
   const quizId = params.get("quizId");
   const { userDetails } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Estados para armazenar dados
   const [quiz, setQuiz] = useState(null);
@@ -205,7 +210,13 @@ const StudentDashboard = () => {
             <IconButton onClick={handleGoBack} sx={{ mr: 1, color: "#9041c1" }}>
               <ArrowBackIcon />
             </IconButton>
-            <Typography variant="h4" sx={{ fontWeight: "bold" }}>
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: "bold",
+                fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2.125rem' }
+              }}
+            >
               Dashboard de Estudantes
             </Typography>
           </Box>
@@ -216,14 +227,25 @@ const StudentDashboard = () => {
                 <CardContent>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                    sx={{ 
+                      fontWeight: "bold", 
+                      mb: 1, 
+                      color: "#9041c1",
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                    }}
                   >
                     Informações do Curso
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Curso:</strong> {courseData.title}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Descrição:</strong>{" "}
                     {courseData.description || "Sem descrição"}
                   </Typography>
@@ -236,18 +258,32 @@ const StudentDashboard = () => {
                 <CardContent>
                   <Typography
                     variant="h6"
-                    sx={{ fontWeight: "bold", mb: 1, color: "#9041c1" }}
+                    sx={{ 
+                      fontWeight: "bold", 
+                      mb: 1, 
+                      color: "#9041c1",
+                      fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
+                    }}
                   >
                     Informações do Quiz
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Vídeo:</strong>{" "}
                     {videoData?.title || "Video não encontrado"}
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Nota Mínima:</strong> {quiz.minPercentage || 0}%
                   </Typography>
-                  <Typography variant="body1">
+                  <Typography 
+                    variant="body1"
+                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
+                  >
                     <strong>Total de Questões:</strong>{" "}
                     {quiz.questions?.length || 0}
                   </Typography>
@@ -298,24 +334,35 @@ const StudentDashboard = () => {
             <Box
               sx={{
                 display: "flex",
+                flexDirection: { xs: 'column', sm: 'row' },
                 justifyContent: "space-between",
-                alignItems: "center",
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                gap: { xs: 2, sm: 0 },
                 mb: 2,
               }}
             >
               <Typography
                 variant="h5"
-                sx={{ fontWeight: "bold", color: "#333" }}
+                sx={{ 
+                  fontWeight: "bold", 
+                  color: "#333",
+                  fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
+                }}
               >
                 Resultados dos Estudantes
               </Typography>
 
-              <Stack direction="row" spacing={2} alignItems="center">
-                <SortIcon sx={{ color: "#9041c1" }} />
+              <Stack 
+                direction="row" 
+                spacing={2} 
+                alignItems="center"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+              >
+                <SortIcon sx={{ color: "#9041c1", display: { xs: 'none', sm: 'block' } }} />
                 <FormControl
                   variant="outlined"
                   size="small"
-                  sx={{ minWidth: 200 }}
+                  sx={{ minWidth: { xs: '100%', sm: 200 } }}
                 >
                   <InputLabel id="sort-select-label">Ordenar por</InputLabel>
                   <Select
@@ -368,11 +415,13 @@ const StudentDashboard = () => {
             />
           </Box>
 
-          {/* Tabela de Quiz Regular */}
+          {/* Tabela de Quiz Regular - Desktop */}
           {activeTab === 0 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -573,7 +622,10 @@ const StudentDashboard = () => {
                                           // If numbers are the same or not available, sort alphabetically
                                           return keyA.localeCompare(keyB);
                                         })
-                                        .map(([questionId, detail], index) => (
+                                        .map(([questionId, detail], index) => {
+                                          const isOpenEnded = detail.questionType === 'open-ended';
+                                          
+                                          return (
                                           <Box
                                             key={questionId}
                                             sx={{
@@ -581,71 +633,101 @@ const StudentDashboard = () => {
                                               p: 1.5,
                                               bgcolor: "white",
                                               borderRadius: 1,
-                                              border: "1px solid #e0e0e0",
+                                              border: isOpenEnded ? "1px solid #9041c1" : "1px solid #e0e0e0",
                                             }}
                                           >
-                                            <Typography
-                                              variant="subtitle1"
-                                              sx={{ fontWeight: 500 }}
-                                            >
-                                              {index + 1}. {detail.question}
-                                            </Typography>
-
-                                            <Box
-                                              sx={{
-                                                mt: 1,
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                gap: 1.5,
-                                              }}
-                                            >
-                                              <Box
-                                                sx={{
-                                                  p: 1.5,
-                                                  borderRadius: 1,
-                                                  // Check if the answer text matches the correct option text to determine true correctness
-                                                  backgroundColor: 
-                                                    detail.userAnswerText === detail.correctOptionText
-                                                      ? "rgba(76, 175, 80, 0.15)"
-                                                      : "rgba(211, 47, 47, 0.12)",
-                                                  border: `1px solid ${
-                                                    detail.userAnswerText === detail.correctOptionText
-                                                      ? "rgba(76, 175, 80, 0.5)"
-                                                      : "rgba(211, 47, 47, 0.5)"
-                                                  }`,
-                                                }}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                                              <Typography
+                                                variant="subtitle1"
+                                                sx={{ fontWeight: 500, flex: 1 }}
                                               >
-                                                <Typography
-                                                  variant="body2"
+                                                {index + 1}. {detail.question}
+                                              </Typography>
+                                              {isOpenEnded && (
+                                                <Box
                                                   sx={{
-                                                    fontWeight: 500,
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 0.5,
-                                                    color: detail.userAnswerText === detail.correctOptionText
-                                                      ? "#2e7d32"
-                                                      : "#c62828",
+                                                    px: 1.5,
+                                                    py: 0.5,
+                                                    borderRadius: 5,
+                                                    bgcolor: 'rgba(144, 65, 193, 0.1)',
+                                                    color: '#9041c1',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: 600,
                                                   }}
                                                 >
-                                                  {detail.userAnswerText === detail.correctOptionText ? "✓" : "✗"}{" "}
-                                                  Resposta do aluno:{" "}
-                                                  <Box
-                                                    component="span"
-                                                    sx={{ fontWeight: 600 }}
-                                                  >
-                                                    {detail.userAnswerText}
-                                                  </Box>
-                                                </Typography>
-                                              </Box>
+                                                  Questão Aberta
+                                                </Box>
+                                              )}
+                                            </Box>
 
-                                              {/* Only show the correct answer section if user's answer doesn't match the correct answer */}
-                                              {detail.userAnswerText !== detail.correctOptionText && (
+                                            {isOpenEnded ? (
+                                              // Renderização para questões abertas
+                                              <Box sx={{ mt: 1 }}>
                                                 <Box
                                                   sx={{
                                                     p: 1.5,
                                                     borderRadius: 1,
-                                                    backgroundColor: "rgba(76, 175, 80, 0.12)",
-                                                    border: "1px solid rgba(76, 175, 80, 0.5)",
+                                                    backgroundColor: "rgba(144, 65, 193, 0.08)",
+                                                    border: "1px solid rgba(144, 65, 193, 0.3)",
+                                                  }}
+                                                >
+                                                  <Typography
+                                                    variant="caption"
+                                                    sx={{
+                                                      fontWeight: 600,
+                                                      color: "#9041c1",
+                                                      display: "block",
+                                                      mb: 1,
+                                                    }}
+                                                  >
+                                                    Resposta do aluno:
+                                                  </Typography>
+                                                  <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                      whiteSpace: "pre-wrap",
+                                                      wordBreak: "break-word",
+                                                      color: "#333",
+                                                    }}
+                                                  >
+                                                    {detail.answer || detail.userAnswer || "(Nenhuma resposta fornecida)"}
+                                                  </Typography>
+                                                </Box>
+                                                <Typography
+                                                  variant="caption"
+                                                  sx={{
+                                                    display: "block",
+                                                    mt: 1,
+                                                    color: "#666",
+                                                    fontStyle: "italic",
+                                                  }}
+                                                >
+                                                  Esta questão não afeta a nota final e será avaliada pelo professor.
+                                                </Typography>
+                                              </Box>
+                                            ) : (
+                                              // Renderização para múltipla escolha
+                                              <Box
+                                                sx={{
+                                                  mt: 1,
+                                                  display: "flex",
+                                                  flexDirection: "column",
+                                                  gap: 1.5,
+                                                }}
+                                              >
+                                                <Box
+                                                  sx={{
+                                                    p: 1.5,
+                                                    borderRadius: 1,
+                                                    backgroundColor: 
+                                                      detail.userAnswerText === detail.correctOptionText
+                                                        ? "rgba(76, 175, 80, 0.15)"
+                                                        : "rgba(211, 47, 47, 0.12)",
+                                                    border: `1px solid ${
+                                                      detail.userAnswerText === detail.correctOptionText
+                                                        ? "rgba(76, 175, 80, 0.5)"
+                                                        : "rgba(211, 47, 47, 0.5)"
+                                                    }`,
                                                   }}
                                                 >
                                                   <Typography
@@ -655,22 +737,56 @@ const StudentDashboard = () => {
                                                       display: "flex",
                                                       alignItems: "center",
                                                       gap: 0.5,
-                                                      color: "#2e7d32",
+                                                      color: detail.userAnswerText === detail.correctOptionText
+                                                        ? "#2e7d32"
+                                                        : "#c62828",
                                                     }}
                                                   >
-                                                    ✓ Resposta correta:{" "}
+                                                    {detail.userAnswerText === detail.correctOptionText ? "✓" : "✗"}{" "}
+                                                    Resposta do aluno:{" "}
                                                     <Box
                                                       component="span"
                                                       sx={{ fontWeight: 600 }}
                                                     >
-                                                      {detail.correctOptionText}
+                                                      {detail.userAnswerText}
                                                     </Box>
                                                   </Typography>
                                                 </Box>
-                                              )}
-                                            </Box>
+
+                                                {detail.userAnswerText !== detail.correctOptionText && (
+                                                  <Box
+                                                    sx={{
+                                                      p: 1.5,
+                                                      borderRadius: 1,
+                                                      backgroundColor: "rgba(76, 175, 80, 0.12)",
+                                                      border: "1px solid rgba(76, 175, 80, 0.5)",
+                                                    }}
+                                                  >
+                                                    <Typography
+                                                      variant="body2"
+                                                      sx={{
+                                                        fontWeight: 500,
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        gap: 0.5,
+                                                        color: "#2e7d32",
+                                                      }}
+                                                    >
+                                                      ✓ Resposta correta:{" "}
+                                                      <Box
+                                                        component="span"
+                                                        sx={{ fontWeight: 600 }}
+                                                      >
+                                                        {detail.correctOptionText}
+                                                      </Box>
+                                                    </Typography>
+                                                  </Box>
+                                                )}
+                                              </Box>
+                                            )}
                                           </Box>
-                                        ))}
+                                        );
+                                        })}
                                     </Box>
                                   ) : (
                                     <Typography
@@ -690,21 +806,170 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              ) : (
-                <Box sx={{ textAlign: "center", py: 4 }}>
-                  <Typography variant="h6" color="textSecondary">
-                    Nenhum estudante realizou este quiz ainda
-                  </Typography>
+
+                {/* Mobile Cards */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => (
+                      <Card
+                        key={student.userId}
+                        sx={{
+                          borderRadius: 2,
+                          boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                        }}
+                      >
+                        <CardContent sx={{ p: 2 }}>
+                          {/* Cabeçalho */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                            <Avatar
+                              src={student.photoURL}
+                              alt={student.name}
+                              sx={{
+                                width: 50,
+                                height: 50,
+                                backgroundColor: "#9041c1",
+                              }}
+                            >
+                              {student.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography 
+                                variant="body1" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap'
+                                }}
+                              >
+                                {capitalizeWords(student.name)}
+                              </Typography>
+                              <Typography 
+                                variant="caption" 
+                                color="text.secondary"
+                                sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  display: 'block'
+                                }}
+                              >
+                                {student.email}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={
+                                quiz.minPercentage === 0
+                                  ? "N/A"
+                                  : student.onlyLiveQuiz ||
+                                    student.onlyCustomQuiz ||
+                                    student.lastAttemptDate === "Não realizou o quiz"
+                                  ? "Pendente"
+                                  : student.passed
+                                  ? "Aprovado"
+                                  : "Reprovado"
+                              }
+                              color={
+                                quiz.minPercentage === 0
+                                  ? "default"
+                                  : student.passed
+                                  ? "success"
+                                  : student.onlyLiveQuiz ||
+                                    student.onlyCustomQuiz ||
+                                    student.lastAttemptDate === "Não realizou o quiz"
+                                  ? "warning"
+                                  : "error"
+                              }
+                              size="small"
+                              sx={{ fontWeight: "bold" }}
+                            />
+                          </Box>
+
+                          <Divider sx={{ my: 1.5 }} />
+
+                          {/* Informações */}
+                          <Grid container spacing={1.5}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Nota
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                                {typeof student.score === "number" ? student.score.toFixed(2) : "0.00"}%
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Acertos
+                              </Typography>
+                              <Typography 
+                                variant="body2" 
+                                sx={{ 
+                                  fontWeight: 600,
+                                  fontSize: '1.1rem',
+                                  color:
+                                    quiz.minPercentage === 0
+                                      ? "#000"
+                                      : student.passed
+                                      ? "#2e7d32"
+                                      : "#c62828",
+                                }}
+                              >
+                                {student.correctAnswers !== null && student.correctAnswers !== undefined
+                                  ? student.correctAnswers
+                                  : 0}
+                                /{student.totalQuestions || (quiz.questions ? quiz.questions.length : 0)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Tentativas
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {student.attemptCount}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="text.secondary">
+                                Acertos Totais
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500, color: "#9041c1" }}>
+                                {(student.correctAnswers || 0) +
+                                  (liveQuizResults[student.userId]?.correctAnswers || 0) +
+                                  (customQuizResults[student.userId]?.correctAnswers || 0)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="caption" color="text.secondary">
+                                Última Tentativa
+                              </Typography>
+                              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                {student.lastAttemptDate}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Stack>
                 </Box>
-              )}
-            </>
-          )}
+              </>
+            ) : (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography variant="h6" color="textSecondary">
+                  Nenhum estudante realizou este quiz ainda
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
 
           {/* Tabela de Live Quiz */}
           {activeTab === 1 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -864,6 +1129,74 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+
+                {/* Mobile Cards - Live Quiz */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => {
+                      const studentLiveData = liveQuizResults[student.userId] || {};
+                      const correctAnswers = studentLiveData.correctAnswers || 0;
+                      const wrongAnswers = studentLiveData.wrongAnswers || 0;
+                      const totalAnswered = correctAnswers + wrongAnswers;
+                      const successRate = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0;
+                      const totalCorrectAnswers = (liveQuizResults[student.userId]?.correctAnswers || 0) + (customQuizResults[student.userId]?.correctAnswers || 0);
+
+                      return (
+                        <Card
+                          key={student.userId}
+                          sx={{ borderRadius: 2, boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <Avatar src={student.photoURL} alt={student.name} sx={{ width: 50, height: 50, backgroundColor: "#9041c1" }}>
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                  {student.email}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Acertos</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#2e7d32' }}>{correctAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Erros</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#c62828' }}>{wrongAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Vezes Sorteado</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: studentLiveData.timesDraw > 0 ? '#ff9800' : 'inherit' }}>
+                                  {studentLiveData.timesDraw || 0}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Taxa de Acerto</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600, color: successRate > 50 ? '#2e7d32' : '#c62828' }}>{successRate}%</Typography>
+                                  <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: 'rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate > 50 ? '#2e7d32' : '#c62828' }} />
+                                  </Box>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="text.secondary">Acertos Totais (Live + Custom)</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '1.1rem' }}>{totalCorrectAnswers}</Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              </>
               ) : (
                 <Box sx={{ textAlign: "center", py: 4 }}>
                   <Typography variant="h6" color="textSecondary">
@@ -871,14 +1204,16 @@ const StudentDashboard = () => {
                   </Typography>
                 </Box>
               )}
-            </>
+            </Box>
           )}
 
           {/* Tabela de Custom Quiz */}
           {activeTab === 2 && (
-            <>
+            <Box>
               {studentResults.length > 0 ? (
-                <TableContainer>
+                <>
+                  {/* Desktop Table */}
+                  <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -1036,6 +1371,74 @@ const StudentDashboard = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
+
+                {/* Mobile Cards - Custom Quiz */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                  <Stack spacing={2}>
+                    {getSortedResults().map((student) => {
+                      const studentCustomData = customQuizResults[student.userId] || {};
+                      const correctAnswers = studentCustomData.correctAnswers || 0;
+                      const wrongAnswers = studentCustomData.wrongAnswers || 0;
+                      const totalAnswered = correctAnswers + wrongAnswers;
+                      const successRate = totalAnswered > 0 ? Math.round((correctAnswers / totalAnswered) * 100) : 0;
+                      const totalCorrectAnswers = (liveQuizResults[student.userId]?.correctAnswers || 0) + (customQuizResults[student.userId]?.correctAnswers || 0);
+
+                      return (
+                        <Card
+                          key={student.userId}
+                          sx={{ borderRadius: 2, boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)" }}
+                        >
+                          <CardContent sx={{ p: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                              <Avatar src={student.photoURL} alt={student.name} sx={{ width: 50, height: 50, backgroundColor: "#9041c1" }}>
+                                {student.name.charAt(0).toUpperCase()}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {capitalizeWords(student.name)}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                  {student.email}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Grid container spacing={1.5}>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Acertos</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#2e7d32' }}>{correctAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Erros</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '1.1rem', color: '#c62828' }}>{wrongAnswers}</Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Vezes Sorteado</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: studentCustomData.timesDraw > 0 ? '#ff9800' : 'inherit' }}>
+                                  {studentCustomData.timesDraw || 0}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={6}>
+                                <Typography variant="caption" color="text.secondary">Taxa de Acerto</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{successRate}%</Typography>
+                                  <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: '#f0f0f0', overflow: 'hidden' }}>
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate >= 80 ? '#2e7d32' : successRate >= 50 ? '#ff9800' : '#c62828' }} />
+                                  </Box>
+                                </Box>
+                              </Grid>
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="text.secondary">Acertos Totais (Live + Custom)</Typography>
+                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#2e7d32', fontSize: '1.1rem' }}>{totalCorrectAnswers}</Typography>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </Stack>
+                </Box>
+              </>
               ) : (
                 <Box sx={{ textAlign: "center", py: 4 }}>
                   <Typography variant="h6" color="textSecondary">
@@ -1043,7 +1446,7 @@ const StudentDashboard = () => {
                   </Typography>
                 </Box>
               )}
-            </>
+            </Box>
           )}
         </Paper>
       </Box>
@@ -1054,74 +1457,116 @@ const StudentDashboard = () => {
 // Substitua o componente de exibição de resposta detalhada pelo seguinte:
 
 const QuestionAnswer = ({ question, userAnswer, index }) => {
-  const { id, question: questionText, options, correctOption, userAnswer: userChoice, isCorrect } = question;
+  const { 
+    id, 
+    question: questionText, 
+    questionType,
+    options, 
+    correctOption, 
+    userAnswer: userChoice, 
+    isCorrect 
+  } = question;
+  
+  // Verificar se é uma questão aberta
+  const isOpenEnded = questionType === 'open-ended';
   
   return (
     <div className="question-container mb-6 p-4 border rounded-lg bg-white shadow-sm">
-      <h3 className="text-lg font-medium mb-2">
-        {index + 1}. {questionText}
-      </h3>
-      
-      <div className="options-list mt-3">
-        {Object.entries(options).map(([optionKey, optionText]) => {
-          const isUserChoice = userChoice === optionKey || userAnswer === optionKey;
-          const isCorrectOption = correctOption === optionKey;
-          
-          // Define as classes CSS para cada opção
-          let optionClass = "flex items-start p-2 rounded-md mb-2";
-          
-          if (isUserChoice) {
-            optionClass += isCorrect 
-              ? " bg-green-100 border border-green-300" 
-              : " bg-red-100 border border-red-300";
-          } else if (isCorrectOption) {
-            optionClass += " border border-green-300";
-          } else {
-            optionClass += " border border-gray-200";
-          }
-          
-          return (
-            <div key={optionKey} className={optionClass}>
-              <div className="flex-shrink-0 mr-2 mt-0.5">
-                {isUserChoice ? (
-                  isCorrect ? (
-                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                  )
-                ) : (
-                  <div className="w-5 h-5 border border-gray-300 rounded-full"></div>
-                )}
-              </div>
-              <div className="flex-grow">
-                <p className={`${isUserChoice && isCorrect ? "text-green-700" : isUserChoice ? "text-red-700" : ""}`}>
-                  {optionText}
-                </p>
-                {isUserChoice && !isCorrect && isCorrectOption && (
-                  <p className="text-sm text-red-600 mt-1">
-                    Resposta incorreta
-                  </p>
-                )}
-                {isCorrectOption && !isUserChoice && (
-                  <p className="text-sm text-green-600 mt-1">
-                    Resposta correta
-                  </p>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      <div className="flex items-start gap-2 mb-3">
+        <h3 className="text-lg font-medium flex-grow">
+          {index + 1}. {questionText}
+        </h3>
+        {isOpenEnded && (
+          <span className="px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full">
+            Questão Aberta
+          </span>
+        )}
       </div>
       
-      <div className="mt-2">
-        <p className={`text-sm font-medium ${isCorrect ? "text-green-600" : "text-red-600"}`}>
-          {isCorrect ? "✓ Você acertou esta questão" : "✗ Você errou esta questão"}
-        </p>
-      </div>
+      {isOpenEnded ? (
+        // Renderização para questões abertas
+        <div className="mt-3">
+          <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <p className="text-sm font-medium text-purple-900 mb-2">Sua resposta:</p>
+            <p className="text-gray-700 whitespace-pre-wrap">{userChoice || question.answer || "(Nenhuma resposta fornecida)"}</p>
+          </div>
+          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Nota:</strong> Esta questão não afeta sua nota final do quiz. 
+              Ela será avaliada pelo professor e você receberá um feedback posteriormente.
+            </p>
+          </div>
+        </div>
+      ) : (
+        // Renderização para questões de múltipla escolha
+        <>
+          <div className="options-list mt-3">
+            {options && (Array.isArray(options) ? options : Object.values(options)).map((optionText, optionIndex) => {
+              // Converter índices para comparação consistente
+              const currentOptionIndex = optionIndex;
+              const userChoiceIndex = Number(userChoice);
+              const correctOptionIndex = Number(correctOption);
+              
+              const isUserChoice = userChoiceIndex === currentOptionIndex;
+              const isCorrectOption = correctOptionIndex === currentOptionIndex;
+              
+              // Define as classes CSS para cada opção
+              let optionClass = "flex items-start p-2 rounded-md mb-2";
+              
+              if (isUserChoice) {
+                optionClass += isCorrect 
+                  ? " bg-green-100 border border-green-300" 
+                  : " bg-red-100 border border-red-300";
+              } else if (isCorrectOption) {
+                optionClass += " border border-green-300";
+              } else {
+                optionClass += " border border-gray-200";
+              }
+              
+              return (
+                <div key={optionIndex} className={optionClass}>
+                  <div className="flex-shrink-0 mr-2 mt-0.5">
+                    {isUserChoice ? (
+                      isCorrect ? (
+                        <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      )
+                    ) : (
+                      <div className="w-5 h-5 border border-gray-300 rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="flex-grow">
+                    <p className={`${isUserChoice && isCorrect ? "text-green-700" : isUserChoice ? "text-red-700" : ""}`}>
+                      {String.fromCharCode(65 + optionIndex)}) {optionText}
+                    </p>
+                    {isUserChoice && !isCorrect && (
+                      <p className="text-sm text-red-600 mt-1">
+                        Sua resposta (incorreta)
+                      </p>
+                    )}
+                    {isCorrectOption && (
+                      <p className="text-sm text-green-600 mt-1">
+                        Resposta correta
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="mt-2">
+            <p className={`text-sm font-medium ${isCorrect ? "text-green-600" : "text-red-600"}`}>
+              {isCorrect ? "✓ Você acertou esta questão" : "✗ Você errou esta questão"}
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 };

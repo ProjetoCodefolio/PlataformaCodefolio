@@ -58,7 +58,7 @@ const capitalizeWords = (name) => {
 
 const CourseStudentsTab = forwardRef((props, ref) => {
     const [students, setStudents] = useState([]);
-    const [courseDetails, setCourseDetails] = useState([])
+    const [courseDetails, setCourseDetails] = useState({})
     const [loading, setLoading] = useState(true);
     const [sortType, setSortType] = useState("name-asc");
     const [searchTerm, setSearchTerm] = useState("");
@@ -265,7 +265,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
     const checkCurrentUserRole = async () => {
         try {
-            if (!currentUser || !courseId || !courseDetails.userId) return;
+            if (!currentUser || !courseId || !courseDetails?.userId) return;
 
             // Verificar se é admin ou owner (pode gerenciar)
             const canManage = canManageStudents(userDetails, courseDetails.userId);
@@ -278,14 +278,14 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     };
 
     useEffect(() => {
-        if (courseId && currentUser && courseDetails.userId) {
+        if (courseId && currentUser && courseDetails?.userId) {
             checkCurrentUserRole();
         }
-    }, [courseId, currentUser, courseDetails]);
+    }, [courseId, currentUser, courseDetails?.userId]);
 
     return (
-        <Box sx={{ padding: 2 }}>
-            <Typography variant="h4" gutterBottom>
+        <Box sx={{ padding: { xs: 1, sm: 2 } }}>
+            <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                 Estudantes do Curso
             </Typography>
 
@@ -306,15 +306,18 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                             "&:hover fieldset": { borderColor: "#7d37a7" },
                             "&.Mui-focused fieldset": { borderColor: "#9041c1" },
                         },
+                        "& .MuiInputBase-input": {
+                            fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }
                     }}
                 />
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
                     {/* Opções de ordenação */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <SortIcon sx={{ color: "#9041c1" }} />
-                        <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="sort-select-label">Ordenar por</InputLabel>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <SortIcon sx={{ color: "#9041c1", display: { xs: 'none', sm: 'block' } }} />
+                        <FormControl variant="outlined" size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+                            <InputLabel id="sort-select-label" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Ordenar por</InputLabel>
                             <Select
                                 labelId="sort-select-label"
                                 id="sort-select"
@@ -326,19 +329,20 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                     "& .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
                                     "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#7d37a7" },
                                     "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }}
                             >
-                                <MenuItem value="name-asc">Nome (A-Z)</MenuItem>
-                                <MenuItem value="name-desc">Nome (Z-A)</MenuItem>
+                                <MenuItem value="name-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nome (A-Z)</MenuItem>
+                                <MenuItem value="name-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nome (Z-A)</MenuItem>
                             </Select>
                         </FormControl>
                     </Stack>
 
                     {/* Filtro de progresso */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <FilterListIcon sx={{ color: progressFilter !== "all" ? "#9041c1" : "text.secondary" }} />
-                        <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel id="progress-filter-label">Filtrar por progresso</InputLabel>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <FilterListIcon sx={{ color: progressFilter !== "all" ? "#9041c1" : "text.secondary", display: { xs: 'none', sm: 'block' } }} />
+                        <FormControl variant="outlined" size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
+                            <InputLabel id="progress-filter-label" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Filtrar por progresso</InputLabel>
                             <Select
                                 labelId="progress-filter-label"
                                 id="progress-filter"
@@ -351,22 +355,23 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                         borderColor: progressFilter !== "all" ? "#9041c1" : "rgba(0, 0, 0, 0.23)"
                                     },
                                     "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }}
                             >
-                                <MenuItem value="all">Todos</MenuItem>
-                                <MenuItem value="completed">Concluído (100%)</MenuItem>
-                                <MenuItem value="high">Avançado (75-99%)</MenuItem>
-                                <MenuItem value="medium">Intermediário (25-74%)</MenuItem>
-                                <MenuItem value="low">Iniciante (0-24%)</MenuItem>
+                                <MenuItem value="all" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Todos</MenuItem>
+                                <MenuItem value="completed" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Concluído (100%)</MenuItem>
+                                <MenuItem value="high" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Avançado (75-99%)</MenuItem>
+                                <MenuItem value="medium" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Intermediário (25-74%)</MenuItem>
+                                <MenuItem value="low" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Iniciante (0-24%)</MenuItem>
                             </Select>
                         </FormControl>
                     </Stack>
 
                     {/* Filtro de roles */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <FilterListIcon sx={{ color: roleFilter !== "all" ? "#9041c1" : "text.secondary" }} />
-                        <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
-                            <InputLabel id="role-filter-label">Filtrar por role</InputLabel>
+                    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <FilterListIcon sx={{ color: roleFilter !== "all" ? "#9041c1" : "text.secondary", display: { xs: 'none', sm: 'block' } }} />
+                        <FormControl variant="outlined" size="small" sx={{ minWidth: { xs: '100%', sm: 140 } }}>
+                            <InputLabel id="role-filter-label" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Filtrar por role</InputLabel>
                             <Select
                                 labelId="role-filter-label"
                                 id="role-filter"
@@ -379,12 +384,13 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                         borderColor: roleFilter !== "all" ? "#9041c1" : "rgba(0, 0, 0, 0.23)"
                                     },
                                     "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#9041c1" },
+                                    fontSize: { xs: '0.875rem', sm: '1rem' }
                                 }}
                             >
-                                <MenuItem value="all">Todos</MenuItem>
-                                <MenuItem value="student">Estudante</MenuItem>
-                                <MenuItem value="teacher">Professor</MenuItem>
-                                <MenuItem value="admin">Admin</MenuItem>
+                                <MenuItem value="all" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Todos</MenuItem>
+                                <MenuItem value="student" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Estudante</MenuItem>
+                                <MenuItem value="teacher" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Professor</MenuItem>
+                                <MenuItem value="admin" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Admin</MenuItem>
                             </Select>
                         </FormControl>
                     </Stack>
@@ -416,53 +422,235 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             ) : (
                 <Box>
                     {/* Estatística de contagem de estudantes */}
-                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                    <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Exibindo {getSortedStudents().length} de {students.length} estudantes
                     </Typography>
 
                     {students.length > 0 ? (
                         getSortedStudents().length > 0 ? (
-                            <TableContainer component={Paper} sx={{ boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)' }}>
-                                <Table sx={{ minWidth: 650 }}>
-                                    <TableHead>
-                                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Estudante</TableCell>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Progresso</TableCell>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
-                                            <TableCell sx={{ fontWeight: "bold" }}>Ações</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {getSortedStudents().map((student) => (
-                                            <TableRow key={student.id} hover>
-                                                <TableCell component="th" scope="row">
-                                                    <Stack direction="row" alignItems="center" spacing={2}>
-                                                        <Avatar
-                                                            alt={student.name}
-                                                            src={student.photoURL}
+                            <>
+                                {/* Tabela para desktop */}
+                                <TableContainer component={Paper} sx={{ boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)', display: { xs: 'none', md: 'block' } }}>
+                                    <Table sx={{ minWidth: 650 }}>
+                                        <TableHead>
+                                            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Estudante</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Progresso</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
+                                                <TableCell sx={{ fontWeight: "bold" }}>Ações</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {getSortedStudents().map((student) => (
+                                                <TableRow key={student.id} hover>
+                                                    <TableCell component="th" scope="row">
+                                                        <Stack direction="row" alignItems="center" spacing={2}>
+                                                            <Avatar
+                                                                alt={student.name}
+                                                                src={student.photoURL}
+                                                                sx={{
+                                                                    width: 40,
+                                                                    height: 40,
+                                                                    backgroundColor: "#9041c1",
+                                                                    color: "white",
+                                                                    fontWeight: "bold",
+                                                                }}
+                                                            >
+                                                                {student.name?.charAt(0).toUpperCase()}
+                                                            </Avatar>
+                                                            <Typography variant="body1" sx={{ 
+                                                                maxWidth: '150px',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                {capitalizeWords(student.name)}
+                                                            </Typography>
+                                                        </Stack>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Typography variant="body2" sx={{ 
+                                                            maxWidth: '200px',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {student.email}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                            <Box
+                                                                sx={{
+                                                                    width: 100,
+                                                                    mr: 1,
+                                                                    height: 8,
+                                                                    borderRadius: 4,
+                                                                    bgcolor: '#f0f0f0',
+                                                                    overflow: 'hidden',
+                                                                }}
+                                                            >
+                                                                <Box
+                                                                    sx={{
+                                                                        height: '100%',
+                                                                        width: `${parseInt(student.progress || 0)}%`,
+                                                                        bgcolor: getProgressColor(parseInt(student.progress || 0)),
+                                                                        borderRadius: 4,
+                                                                    }}
+                                                                />
+                                                            </Box>
+                                                            {parseInt(student.progress || 0)}%
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Box
                                                             sx={{
-                                                                width: 40,
-                                                                height: 40,
-                                                                backgroundColor: "#9041c1",
-                                                                color: "white",
+                                                                backgroundColor: student.status === "completed" ? "#e8f5e9" : "#f5f5f5",
+                                                                color: student.status === "completed" ? "#2e7d32" : "#666",
+                                                                borderRadius: 1,
+                                                                px: 1,
+                                                                py: 0.5,
+                                                                display: "inline-block",
                                                                 fontWeight: "bold",
                                                             }}
                                                         >
-                                                            {student.name?.charAt(0).toUpperCase()}
-                                                        </Avatar>
-                                                        <Typography variant="body1">
+                                                            {student.status === "completed" ? "Concluído" : "Em Progresso"}
+                                                        </Box>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <FormControl
+                                                            fullWidth
+                                                            size="small"
+                                                            disabled={courseDetails.userId !== currentUser.uid ||
+                                                                updatingRole === student.userId ||
+                                                                courseDetails.userId === student.userId ||
+                                                                isCurrentUserTeacher}
+                                                        >
+                                                            <Select
+                                                                value={courseDetails.userId === student.userId ? "admin" : student.role || "student"}
+                                                                onChange={(e) => handleRoleChange(student.userId, student.name, e.target.value)}
+                                                                variant="outlined"
+                                                                sx={{
+                                                                    borderRadius: 1,
+                                                                    backgroundColor:
+                                                                        student.role === "teacher" ? "#bbdefb" :
+                                                                            courseDetails.userId === student.userId ? "#ffccbc" : "#e0e0e0",
+                                                                    "& .MuiOutlinedInput-notchedOutline": {
+                                                                        borderColor: "transparent"
+                                                                    },
+                                                                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                                                                        borderColor: "#9041c1"
+                                                                    },
+                                                                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                                                                        borderColor: "#9041c1"
+                                                                    },
+                                                                    "& .MuiSelect-select": {
+                                                                        fontWeight: "medium",
+                                                                        py: 0.5,
+                                                                        fontSize: "0.875rem"
+                                                                    }
+                                                                }}
+                                                                MenuProps={{
+                                                                    PaperProps: {
+                                                                        sx: {
+                                                                            maxHeight: 200,
+                                                                            mt: 0.5
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <MenuItem value="student">Estudante</MenuItem>
+                                                                <MenuItem value="teacher">Professor</MenuItem>
+                                                                {courseDetails.userId === student.userId && (
+                                                                    <MenuItem value="admin">Admin</MenuItem>
+                                                                )}
+                                                            </Select>
+                                                        </FormControl>
+                                                        {updatingRole === student.userId && (
+                                                            <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
+                                                                <CircularProgress size={20} sx={{ color: "#9041c1" }} />
+                                                            </Box>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <IconButton
+                                                            disabled={isCurrentUserTeacher ||
+                                                                courseDetails.userId !== currentUser.uid
+                                                            }
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={() => handleDeleteClick(student)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+
+                                {/* Cards para mobile */}
+                                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                    {getSortedStudents().map((student) => (
+                                        <Card key={student.id} sx={{ mb: 2, boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' }}>
+                                            <CardContent>
+                                                <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
+                                                    <Avatar
+                                                        alt={student.name}
+                                                        src={student.photoURL}
+                                                        sx={{
+                                                            width: 50,
+                                                            height: 50,
+                                                            backgroundColor: "#9041c1",
+                                                            color: "white",
+                                                            fontWeight: "bold",
+                                                        }}
+                                                    >
+                                                        {student.name?.charAt(0).toUpperCase()}
+                                                    </Avatar>
+                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                        <Typography variant="h6" sx={{ 
+                                                            fontSize: '1rem',
+                                                            fontWeight: 'bold',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
                                                             {capitalizeWords(student.name)}
                                                         </Typography>
-                                                    </Stack>
-                                                </TableCell>
-                                                <TableCell>{student.email}</TableCell>
-                                                <TableCell>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ 
+                                                            fontSize: '0.75rem',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                            {student.email}
+                                                        </Typography>
+                                                    </Box>
+                                                    {!isCurrentUserTeacher && courseDetails.userId === currentUser.uid && (
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={() => handleDeleteClick(student)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                </Stack>
+                                                
+                                                <Divider sx={{ my: 1.5 }} />
+                                                
+                                                <Box sx={{ mb: 1.5 }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                                                        Progresso
+                                                    </Typography>
                                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                                         <Box
                                                             sx={{
-                                                                width: 100,
+                                                                flex: 1,
                                                                 mr: 1,
                                                                 height: 8,
                                                                 borderRadius: 4,
@@ -479,10 +667,16 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                                 }}
                                                             />
                                                         </Box>
-                                                        {parseInt(student.progress || 0)}%
+                                                        <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>
+                                                            {parseInt(student.progress || 0)}%
+                                                        </Typography>
                                                     </Box>
-                                                </TableCell>
-                                                <TableCell>
+                                                </Box>
+
+                                                <Box sx={{ mb: 1.5 }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                                                        Status
+                                                    </Typography>
                                                     <Box
                                                         sx={{
                                                             backgroundColor: student.status === "completed" ? "#e8f5e9" : "#f5f5f5",
@@ -492,12 +686,17 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                             py: 0.5,
                                                             display: "inline-block",
                                                             fontWeight: "bold",
+                                                            fontSize: '0.75rem'
                                                         }}
                                                     >
                                                         {student.status === "completed" ? "Concluído" : "Em Progresso"}
                                                     </Box>
-                                                </TableCell>
-                                                <TableCell>
+                                                </Box>
+
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                                                        Função
+                                                    </Typography>
                                                     <FormControl
                                                         fullWidth
                                                         size="small"
@@ -530,19 +729,11 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                                     fontSize: "0.875rem"
                                                                 }
                                                             }}
-                                                            MenuProps={{
-                                                                PaperProps: {
-                                                                    sx: {
-                                                                        maxHeight: 200,
-                                                                        mt: 0.5
-                                                                    }
-                                                                }
-                                                            }}
                                                         >
-                                                            <MenuItem value="student">Estudante</MenuItem>
-                                                            <MenuItem value="teacher">Professor</MenuItem>
+                                                            <MenuItem value="student" sx={{ fontSize: '0.875rem' }}>Estudante</MenuItem>
+                                                            <MenuItem value="teacher" sx={{ fontSize: '0.875rem' }}>Professor</MenuItem>
                                                             {courseDetails.userId === student.userId && (
-                                                                <MenuItem value="admin">Admin</MenuItem>
+                                                                <MenuItem value="admin" sx={{ fontSize: '0.875rem' }}>Admin</MenuItem>
                                                             )}
                                                         </Select>
                                                     </FormControl>
@@ -551,26 +742,12 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                             <CircularProgress size={20} sx={{ color: "#9041c1" }} />
                                                         </Box>
                                                     )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <IconButton
-                                                        disabled={isCurrentUserTeacher ||
-                                                            courseDetails.userId !== currentUser.uid
-                                                        }
-                                                        size="small"
-                                                        color="error"
-                                                        // onClick={() => handleRemoveStudent(student.userId, student.name)}
-                                                        // onClick={() => console.log(`Removendo o aluno ${student.userId}`)}
-                                                        onClick={() => handleDeleteClick(student)}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            </>
                         ) : (
                             <Box
                                 sx={{

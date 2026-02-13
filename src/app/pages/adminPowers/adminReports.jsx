@@ -30,7 +30,9 @@ import {
   CardContent,
   InputAdornment,
   Stack,
+  Divider,
 } from "@mui/material";
+import { useTheme, useMediaQuery } from '@mui/material';
 import {
   Visibility,
   Image as ImageIcon,
@@ -63,6 +65,8 @@ const TYPE_LABELS = {
 export default function AdminReports() {
   const { userDetails } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   const [reports, setReports] = useState([]);
   const [filteredReports, setFilteredReports] = useState([]);
@@ -215,64 +219,107 @@ export default function AdminReports() {
         {/* Título */}
         <Typography
           variant="h4"
-          sx={{ fontWeight: "bold", mb: 3, color: "#333" }}
+          sx={{ 
+            fontWeight: "bold", 
+            mb: 3, 
+            color: "#333",
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+          }}
         >
           Gerenciamento de Reportes
         </Typography>
 
         {/* Cards de Estatísticas */}
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Total de Reportes
                 </Typography>
-                <Typography variant="h4" sx={{ fontWeight: "bold", mt: 1 }}>
+                <Typography 
+                  variant="h4" 
+                  sx={{ 
+                    fontWeight: "bold", 
+                    mt: 1,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
+                >
                   {stats.total}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Pendentes
                 </Typography>
                 <Typography
                   variant="h4"
-                  sx={{ fontWeight: "bold", mt: 1, color: "#ff9800" }}
+                  sx={{ 
+                    fontWeight: "bold", 
+                    mt: 1, 
+                    color: "#ff9800",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
                 >
                   {stats.pendente}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Em Andamento
                 </Typography>
                 <Typography
                   variant="h4"
-                  sx={{ fontWeight: "bold", mt: 1, color: "#2196f3" }}
+                  sx={{ 
+                    fontWeight: "bold", 
+                    mt: 1, 
+                    color: "#2196f3",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
                 >
                   {stats.trabalhando}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
-            <Card sx={{ borderRadius: 2 }}>
-              <CardContent>
-                <Typography variant="subtitle2" color="text.secondary">
+          <Grid item xs={6} sm={6} md={3}>
+            <Card sx={{ borderRadius: 2, height: '100%' }}>
+              <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                <Typography 
+                  variant="subtitle2" 
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                >
                   Resolvidos
                 </Typography>
                 <Typography
                   variant="h4"
-                  sx={{ fontWeight: "bold", mt: 1, color: "#4caf50" }}
+                  sx={{ 
+                    fontWeight: "bold", 
+                    mt: 1, 
+                    color: "#4caf50",
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                  }}
                 >
                   {stats.resolvido}
                 </Typography>
@@ -363,7 +410,7 @@ export default function AdminReports() {
           </Stack>
         </Paper>
 
-        {/* Tabela de Reportes */}
+        {/* Tabela de Reportes - Desktop */}
         {filteredReports.length === 0 ? (
           <Paper
             elevation={0}
@@ -381,14 +428,16 @@ export default function AdminReports() {
             </Typography>
           </Paper>
         ) : (
-          <TableContainer
-            component={Paper}
-            elevation={0}
-            sx={{
-              borderRadius: "12px",
-              boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-            }}
-          >
+          <>
+            <TableContainer
+              component={Paper}
+              elevation={0}
+              sx={{
+                display: { xs: 'none', md: 'block' },
+                borderRadius: "12px",
+                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+              }}
+            >
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
@@ -474,6 +523,129 @@ export default function AdminReports() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Cards Mobile */}
+          <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+            <Stack spacing={2}>
+              {filteredReports.map((report) => (
+                <Card
+                  key={report.id}
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  <CardContent sx={{ p: 2 }}>
+                    {/* Cabeçalho */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Chip
+                        label={`#${report.reportNumber || "N/A"}`}
+                        size="small"
+                        sx={{
+                          bgcolor: "#9041c1",
+                          color: "white",
+                          fontWeight: "bold",
+                        }}
+                      />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {report.reportName || "Sem nome"}
+                        </Typography>
+                        <Chip
+                          label={TYPE_LABELS[report.type] || report.type}
+                          size="small"
+                          variant="outlined"
+                          sx={{ mt: 0.5 }}
+                        />
+                      </Box>
+                      {getStatusChip(report.status)}
+                    </Box>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {/* Usuário */}
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Usuário
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                        <Avatar
+                          src={report.userPhotoURL}
+                          alt={report.userName}
+                          sx={{ width: 30, height: 30 }}
+                        >
+                          {report.userName?.charAt(0)}
+                        </Avatar>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography 
+                            variant="body2"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {report.userName || "Anônimo"}
+                          </Typography>
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              display: 'block'
+                            }}
+                          >
+                            {report.userEmail || "Email não disponível"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    {/* Data */}
+                    <Box sx={{ mb: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        Data
+                      </Typography>
+                      <Typography variant="body2">
+                        {formatDate(report.createdAt)}
+                      </Typography>
+                    </Box>
+
+                    {/* Botão de Ações */}
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      size="small"
+                      startIcon={<Visibility />}
+                      onClick={() => handleViewDetails(report)}
+                      sx={{
+                        mt: 1,
+                        borderColor: "#9041c1",
+                        color: "#9041c1",
+                        "&:hover": {
+                          borderColor: "#7d37a7",
+                          backgroundColor: "rgba(144, 65, 193, 0.04)",
+                        },
+                      }}
+                    >
+                      Ver Detalhes
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          </Box>
+          </>
         )}
       </Box>
 
@@ -483,6 +655,7 @@ export default function AdminReports() {
         onClose={handleCloseDetails}
         maxWidth="md"
         fullWidth
+        fullScreen={isMobile}
         PaperProps={{
           sx: {
             borderRadius: "12px",

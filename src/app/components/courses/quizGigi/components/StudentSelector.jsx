@@ -131,25 +131,26 @@ const StudentSelector = ({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                p: 1.5,
+                p: { xs: 1, sm: 1.5 },
                 backgroundColor: "rgba(255, 255, 255, 0.2)",
                 borderRadius: 2,
                 width: "100%",
                 border: "1px solid rgba(255, 255, 255, 0.3)",
               }}
             >
-              <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Box sx={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
                 <Avatar
                   src={selectedStudent.photoURL}
                   alt={selectedStudent.name}
                   sx={{
                     bgcolor: "rgba(255, 255, 255, 0.3)",
                     color: "#fff",
-                    width: 45,
-                    height: 45,
-                    mr: 2,
-                    fontSize: 18,
+                    width: { xs: 35, sm: 45 },
+                    height: { xs: 35, sm: 45 },
+                    mr: { xs: 1, sm: 2 },
+                    fontSize: { xs: 14, sm: 18 },
                     border: "1px solid rgba(255, 255, 255, 0.5)",
+                    flexShrink: 0,
                   }}
                 >
                   {selectedStudent.initials}
@@ -157,19 +158,20 @@ const StudentSelector = ({
                 <Typography
                   sx={{
                     color: "#fff",
-                    fontSize: "1.15rem",
+                    fontSize: { xs: "0.95rem", sm: "1.15rem" },
                     fontWeight: 500,
                     textShadow: "0px 1px 2px rgba(0,0,0,0.2)",
-                    maxWidth: "300px",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
+                    flex: 1,
+                    minWidth: 0,
                   }}
                 >
                   {selectedStudent.name}
                 </Typography>
               </Box>
-              <Box>
+              <Box sx={{ display: "flex", flexShrink: 0 }}>
                 <IconButton
                   onClick={handleSortStudent}
                   sx={{ color: "#fff" }}
@@ -274,8 +276,9 @@ const StudentSelector = ({
         <Paper
           ref={popperRef}
           sx={{
-            width: "300px",
-            maxHeight: "400px",
+            width: { xs: "calc(100vw - 32px)", sm: "300px" },
+            maxWidth: "300px",
+            maxHeight: { xs: "350px", sm: "400px" },
             display: "flex",
             flexDirection: "column",
             boxShadow: "0 4px 20px rgba(0,0,0,0.25)",

@@ -40,8 +40,8 @@ const AnswerButton = ({
         : isSelected
         ? "rgba(255, 255, 255, 0.4)"
         : "rgba(255, 255, 255, 0.15)",
-      borderRadius: "16px",
-      p: 3,
+      borderRadius: { xs: "12px", sm: "16px" },
+      p: { xs: 2, sm: 3 },
       cursor: disabled ? "default" : "pointer",
       pointerEvents: disabled ? "none" : "auto",
       transition: "all 0.2s ease",
@@ -61,9 +61,9 @@ const AnswerButton = ({
     }}
   >
     {isCorrect ? (
-      <CheckIcon sx={{ fontSize: 64, color: "#4caf50", mb: 1 }} />
+      <CheckIcon sx={{ fontSize: { xs: 48, sm: 56, md: 64 }, color: "#4caf50", mb: 1 }} />
     ) : (
-      <CloseIcon sx={{ fontSize: 64, color: "#ff5722", mb: 1 }} />
+      <CloseIcon sx={{ fontSize: { xs: 48, sm: 56, md: 64 }, color: "#ff5722", mb: 1 }} />
     )}
     <Typography
       variant="h6"
@@ -72,6 +72,7 @@ const AnswerButton = ({
         textAlign: "center",
         fontWeight: 500,
         mt: 1,
+        fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
       }}
     >
       {isCorrect ? "Resposta Correta" : "Resposta Incorreta"}
@@ -91,17 +92,17 @@ const FeedbackOverlay = ({ show, wasCorrect, studentName }) => (
         backgroundColor: wasCorrect
           ? "rgba(76, 175, 80, 0.85)"
           : "rgba(255, 87, 34, 0.85)",
-        p: 3,
+        p: { xs: 2, sm: 3 },
         borderRadius: 2,
         textAlign: "center",
         zIndex: 10,
-        minWidth: 250,
+        minWidth: { xs: 200, sm: 250 },
       }}
     >
-      <Typography variant="h6" sx={{ color: "#fff", mb: 1, fontWeight: 600 }}>
+      <Typography variant="h6" sx={{ color: "#fff", mb: 1, fontWeight: 600, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
         {wasCorrect ? "ACERTO!" : "ERRO!"}
       </Typography>
-      <Typography variant="body1" sx={{ color: "#fff" }}>
+      <Typography variant="body1" sx={{ color: "#fff", fontSize: { xs: '0.9rem', sm: '1rem' } }}>
         {wasCorrect
           ? `${studentName} respondeu corretamente!`
           : `${studentName} errou a resposta.`}
@@ -229,7 +230,7 @@ const CustomQuestion = ({
         alignItems: "center",
         width: "100%",
         position: "relative",
-        padding: 2,
+        padding: { xs: 1, sm: 2 },
       }}
     >
       <Button
@@ -242,6 +243,8 @@ const CustomQuestion = ({
           color: "rgba(255,255,255,0.8)",
           textTransform: "none",
           "&:hover": { backgroundColor: "rgba(255,255,255,0.1)" },
+          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+          px: { xs: 1, sm: 2 },
         }}
       >
         Voltar ao Quiz
@@ -287,7 +290,7 @@ const CustomQuestion = ({
       <Paper
         elevation={3}
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 3, md: 4 },
           mt: 2,
           borderRadius: 2,
           backgroundColor: "rgba(255, 255, 255, 0.1)",
@@ -297,7 +300,7 @@ const CustomQuestion = ({
           overflow: "hidden",
         }}
       >
-        <Typography variant="h5" sx={{ mb: 3, color: "#fff", fontWeight: 600 }}>
+        <Typography variant="h5" sx={{ mb: { xs: 2, sm: 3 }, color: "#fff", fontWeight: 600, fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' } }}>
           {selectedStudent ? (
             <>
               Resposta de{" "}
@@ -312,10 +315,11 @@ const CustomQuestion = ({
           sx={{
             display: "flex",
             justifyContent: "center",
-            gap: 3,
+            gap: { xs: 2, sm: 3 },
             mt: 2,
             position: "relative",
             zIndex: 1,
+            flexWrap: { xs: 'wrap', sm: 'nowrap' },
           }}
         >
           <Grow in={!showFeedback}>

@@ -504,13 +504,25 @@ export default function GradeAssignmentPage() {
         {/* Título */}
         <Typography
           variant="h4"
-          sx={{ fontWeight: "bold", mb: 1, color: "#333" }}
+          sx={{
+            fontWeight: "bold",
+            mb: 1,
+            color: "#333",
+            fontSize: { xs: "1.5rem", sm: "2rem" },
+          }}
         >
           Atribuir Notas
         </Typography>
 
         {assessmentDetails && (
-          <Typography variant="body1" sx={{ mb: 3, color: "#666" }}>
+          <Typography
+            variant="body1"
+            sx={{
+              mb: 3,
+              color: "#666",
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+            }}
+          >
             {assessmentDetails.name} ({assessmentDetails.percentage}% da nota
             final)
           </Typography>
@@ -539,7 +551,14 @@ export default function GradeAssignmentPage() {
             <>
               {/* Instruções */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="body1" sx={{ color: "#666", mb: 2 }}>
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: "#666",
+                    mb: 2,
+                    fontSize: { xs: "0.875rem", sm: "1rem" },
+                  }}
+                >
                   Digite as notas diretamente nos campos abaixo. As notas são
                   salvas automaticamente quando você sai do campo.
                 </Typography>
@@ -576,9 +595,13 @@ export default function GradeAssignmentPage() {
                       sx={{
                         "& .MuiOutlinedInput-root": {
                           borderRadius: 2,
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
                           "& fieldset": { borderColor: "#9041c1" },
                           "&:hover fieldset": { borderColor: "#7d37a7" },
                           "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                        },
+                        "& .MuiInputLabel-root": {
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
                         },
                       }}
                     />
@@ -594,6 +617,7 @@ export default function GradeAssignmentPage() {
                         onChange={(e) => setFilterStatus(e.target.value)}
                         sx={{
                           borderRadius: 2,
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
                           "& .MuiOutlinedInput-notchedOutline": {
                             borderColor:
                               filterStatus !== "all" ? "#9041c1" : "rgba(0, 0, 0, 0.23)",
@@ -603,6 +627,9 @@ export default function GradeAssignmentPage() {
                           },
                           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                             borderColor: "#9041c1",
+                          },
+                          "& .MuiSelect-select": {
+                            fontSize: { xs: "0.875rem", sm: "1rem" },
                           },
                         }}
                       >
@@ -616,15 +643,26 @@ export default function GradeAssignmentPage() {
                 </Grid>
 
                 {/* Botões de ação */}
-                <Box sx={{ display: 'flex', gap: 2, mt: 3, justifyContent: 'flex-end' }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: 2,
+                    mt: 3,
+                    justifyContent: 'flex-end',
+                  }}
+                >
                   <Button
                     variant="outlined"
-                    startIcon={<DownloadIcon />}
+                    startIcon={<DownloadIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                     onClick={handleExportCSV}
                     disabled={filteredStudents.length === 0}
+                    fullWidth={window.innerWidth < 600}
                     sx={{
                       borderColor: '#9041c1',
                       color: '#9041c1',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      py: { xs: 1, sm: 0.75 },
                       '&:hover': {
                         borderColor: '#7d37a7',
                         bgcolor: 'rgba(144, 65, 193, 0.04)',
@@ -635,11 +673,14 @@ export default function GradeAssignmentPage() {
                   </Button>
                   <Button
                     variant="contained"
-                    startIcon={<SaveIcon />}
+                    startIcon={<SaveIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                     onClick={handleSaveAll}
                     disabled={!isCourseOwner || filteredStudents.length === 0}
+                    fullWidth={window.innerWidth < 600}
                     sx={{
                       bgcolor: '#9041c1',
+                      fontSize: { xs: '0.875rem', sm: '1rem' },
+                      py: { xs: 1, sm: 0.75 },
                       '&:hover': {
                         bgcolor: '#7d37a7',
                       },
@@ -650,8 +691,8 @@ export default function GradeAssignmentPage() {
                 </Box>
               </Paper>
 
-              {/* Tabela de Notas */}
-              <TableContainer>
+              {/* Tabela de Notas - Desktop */}
+              <TableContainer sx={{ display: { xs: "none", md: "block" } }}>
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -788,10 +829,168 @@ export default function GradeAssignmentPage() {
                 </Table>
               </TableContainer>
 
+              {/* Cards de Notas - Mobile */}
+              <Box sx={{ display: { xs: "block", md: "none" } }}>
+                {filteredStudents.length === 0 ? (
+                  <Box sx={{ py: 3, textAlign: "center" }}>
+                    <Typography variant="body1" color="textSecondary">
+                      Nenhum estudante encontrado.
+                    </Typography>
+                  </Box>
+                ) : (
+                  filteredStudents.map((student, index) => {
+                    const studentId = student.userId || student.id;
+                    const isInvalid = !!invalidStatus[studentId];
+                    const isSaving = !!saving[studentId];
+                    const isSaved = !!saveStatus[studentId];
+                    const studentStatus = getStudentStatus(studentId);
+
+                    return (
+                      <Paper
+                        key={studentId}
+                        elevation={1}
+                        sx={{
+                          p: 2,
+                          mb: 2,
+                          borderRadius: 2,
+                          position: "relative",
+                          backgroundColor: "#fff",
+                          border: "1px solid #e0e0e0",
+                        }}
+                      >
+                        {/* Status no canto superior direito */}
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 16,
+                            right: 16,
+                          }}
+                        >
+                          <Tooltip title={getStatusLabel(studentStatus)}>
+                            {getStatusIcon(studentStatus)}
+                          </Tooltip>
+                        </Box>
+
+                        {/* Nome com Avatar */}
+                        <Stack
+                          direction="row"
+                          alignItems="center"
+                          spacing={2}
+                          sx={{ mb: 2, pr: 5 }}
+                        >
+                          <Avatar
+                            alt={student.name}
+                            src={student.photoURL}
+                            sx={{
+                              width: 40,
+                              height: 40,
+                              backgroundColor: "#9041c1",
+                              color: "white",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {student.name?.charAt(0).toUpperCase()}
+                          </Avatar>
+                          <Typography
+                            variant="body1"
+                            sx={{
+                              fontWeight: 600,
+                              fontSize: "0.938rem",
+                            }}
+                          >
+                            {capitalizeWords(student.name)}
+                          </Typography>
+                        </Stack>
+
+                        {/* Email */}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#666",
+                            mb: 2,
+                            fontSize: "0.875rem",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {student.email}
+                        </Typography>
+
+                        {/* Campo de Nota */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <TextField
+                            value={grades[studentId] || ""}
+                            disabled={!isCourseOwner}
+                            onChange={(e) =>
+                              handleGradeChange(studentId, e.target.value)
+                            }
+                            onBlur={(e) =>
+                              handleSaveGrade(studentId, e.target.value)
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, index)}
+                            inputRef={(el) => (inputRefs.current[index] = el)}
+                            error={isInvalid}
+                            helperText={
+                              isInvalid ? "Nota inválida (0-10)" : ""
+                            }
+                            label="Nota (0-10)"
+                            size="small"
+                            type="number"
+                            inputProps={{
+                              min: 0,
+                              max: 10,
+                              step: 0.1,
+                            }}
+                            sx={{
+                              flex: 1,
+                              "& .MuiOutlinedInput-root": {
+                                "& fieldset": {
+                                  borderColor: isInvalid
+                                    ? "#f44336"
+                                    : isSaved
+                                    ? "#4caf50"
+                                    : "#666",
+                                },
+                                "&:hover fieldset": {
+                                  borderColor: isInvalid
+                                    ? "#f44336"
+                                    : "#9041c1",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  borderColor: isInvalid
+                                    ? "#f44336"
+                                    : "#9041c1",
+                                },
+                              },
+                            }}
+                          />
+                          {isSaving ? (
+                            <CircularProgress size={20} />
+                          ) : isSaved ? (
+                            <CheckCircleIcon
+                              sx={{ color: "#4caf50", fontSize: 20 }}
+                            />
+                          ) : null}
+                        </Box>
+                      </Paper>
+                    );
+                  })
+                )}
+              </Box>
+
               {/* Rodapé com contagem */}
               {filteredStudents.length > 0 && (
                 <Box sx={{ mt: 2, p: 2, textAlign: "right" }}>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
+                  >
                     Exibindo {filteredStudents.length} de {students.length} estudante(s)
                   </Typography>
                 </Box>

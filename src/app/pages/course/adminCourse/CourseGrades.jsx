@@ -25,7 +25,9 @@ import {
   Select,
   MenuItem,
   InputAdornment,
+  Divider,
 } from "@mui/material";
+import { useTheme, useMediaQuery } from '@mui/material';
 import DownloadIcon from "@mui/icons-material/Download";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -50,6 +52,8 @@ export default function CourseGrades() {
   const location = useLocation();
   const navigate = useNavigate();
   const { userDetails, currentUser } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
@@ -306,41 +310,73 @@ export default function CourseGrades() {
         {/* Título */}
         <Typography
           variant="h4"
-          sx={{ fontWeight: "bold", mb: 3, color: "#333" }}
+          sx={{ 
+            fontWeight: "bold", 
+            mb: 3, 
+            color: "#333",
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+          }}
         >
           Notas do Curso
         </Typography>
 
         {/* Cards de estatísticas */}
         {statistics && (
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2 }}>
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
+          <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 3 }}>
+            <Grid item xs={6} sm={6} md={3}>
+              <Card sx={{ borderRadius: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                  <Typography 
+                    variant="subtitle2" 
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                  >
                     Média da Turma
                   </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: "bold", mt: 1 }}>
+                  <Typography 
+                    variant="h4" 
+                    sx={{ 
+                      fontWeight: "bold", 
+                      mt: 1,
+                      fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                    }}
+                  >
                     {fmt(statistics.average)}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mt: 0.5, 
+                      display: "block",
+                      fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                    }}
+                  >
                     (de {statistics.totalStudents - statistics.pendingCount} com notas completas)
                   </Typography>
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2 }}>
-                <CardContent>
+            <Grid item xs={6} sm={6} md={3}>
+              <Card sx={{ borderRadius: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <CheckCircleIcon sx={{ color: "#4caf50" }} />
+                    <CheckCircleIcon sx={{ color: "#4caf50", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography 
+                        variant="subtitle2" 
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                      >
                         Aprovados
                       </Typography>
                       <Typography
                         variant="h4"
-                        sx={{ fontWeight: "bold", color: "#4caf50" }}
+                        sx={{ 
+                          fontWeight: "bold", 
+                          color: "#4caf50",
+                          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                        }}
                       >
                         {statistics.approvedCount}
                       </Typography>
@@ -349,18 +385,26 @@ export default function CourseGrades() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2 }}>
-                <CardContent>
+            <Grid item xs={6} sm={6} md={3}>
+              <Card sx={{ borderRadius: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <CancelIcon sx={{ color: "#f44336" }} />
+                    <CancelIcon sx={{ color: "#f44336", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography 
+                        variant="subtitle2" 
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                      >
                         Reprovados
                       </Typography>
                       <Typography
                         variant="h4"
-                        sx={{ fontWeight: "bold", color: "#f44336" }}
+                        sx={{ 
+                          fontWeight: "bold", 
+                          color: "#f44336",
+                          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                        }}
                       >
                         {statistics.failedCount}
                       </Typography>
@@ -369,18 +413,26 @@ export default function CourseGrades() {
                 </CardContent>
               </Card>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card sx={{ borderRadius: 2 }}>
-                <CardContent>
+            <Grid item xs={6} sm={6} md={3}>
+              <Card sx={{ borderRadius: 2, height: '100%' }}>
+                <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <PendingIcon sx={{ color: "#9e9e9e" }} />
+                    <PendingIcon sx={{ color: "#9e9e9e", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
-                      <Typography variant="subtitle2" color="text.secondary">
+                      <Typography 
+                        variant="subtitle2" 
+                        color="text.secondary"
+                        sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
+                      >
                         Pendentes
                       </Typography>
                       <Typography
                         variant="h4"
-                        sx={{ fontWeight: "bold", color: "#9e9e9e" }}
+                        sx={{ 
+                          fontWeight: "bold", 
+                          color: "#9e9e9e",
+                          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+                        }}
                       >
                         {statistics.pendingCount}
                       </Typography>
@@ -491,10 +543,11 @@ export default function CourseGrades() {
           </Alert>
         )}
 
-        {/* Tabela de notas */}
+        {/* Tabela de notas - Desktop */}
         <Paper
           elevation={0}
           sx={{
+            display: { xs: 'none', md: 'block' },
             backgroundColor: "#ffffff",
             borderRadius: "12px",
             boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
@@ -638,6 +691,164 @@ export default function CourseGrades() {
             </TableContainer>
           )}
         </Paper>
+
+        {/* Cards - Mobile */}
+        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress sx={{ color: "#9041c1" }} />
+            </Box>
+          ) : filteredAndSortedStudents.length === 0 ? (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="h6" color="textSecondary">
+                Nenhum estudante encontrado.
+              </Typography>
+            </Paper>
+          ) : (
+            <Stack spacing={2}>
+              {filteredAndSortedStudents.map((student) => (
+                <Card
+                  key={student.userId}
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                  }}
+                >
+                  <CardContent sx={{ p: 2 }}>
+                    {/* Cabeçalho do Card */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Avatar
+                        src={student.photoURL}
+                        alt={student.name}
+                        sx={{
+                          width: 50,
+                          height: 50,
+                          backgroundColor: "#9041c1",
+                        }}
+                      >
+                        {student.name.charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography 
+                          variant="body1" 
+                          sx={{ 
+                            fontWeight: 600,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {student.name}
+                        </Typography>
+                        <Typography 
+                          variant="caption" 
+                          color="text.secondary"
+                          sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            display: 'block'
+                          }}
+                        >
+                          {student.email}
+                        </Typography>
+                      </Box>
+                      <Tooltip title={getStatusLabel(student.status)}>
+                        {getStatusIcon(student.status)}
+                      </Tooltip>
+                    </Box>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {/* Notas das Avaliações */}
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, mb: 1, display: 'block' }}>
+                        Avaliações
+                      </Typography>
+                      <Stack spacing={1}>
+                        {assessments.map((assessment) => {
+                          const gradeData = student.grades[assessment.id];
+                          const gradeColor = gradeData?.grade !== null 
+                            ? gradesService.getGradeDifferentialColor(gradeData?.grade)
+                            : GRADE_COLORS.PENDING;
+                          
+                          return (
+                            <Box 
+                              key={assessment.id}
+                              sx={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                py: 0.5
+                              }}
+                            >
+                              <Box>
+                                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                  {assessment.name}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {assessment.percentage}% da nota final
+                                </Typography>
+                              </Box>
+                              {gradeData && gradeData.grade !== null ? (
+                                <Chip
+                                  label={fmt(gradeData.grade)}
+                                  size="small"
+                                  sx={{
+                                    fontWeight: "bold",
+                                    backgroundColor: gradeColor,
+                                    color: "#fff",
+                                  }}
+                                />
+                              ) : (
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  —
+                                </Typography>
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+
+                    <Divider sx={{ my: 1.5 }} />
+
+                    {/* Nota Final */}
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        bgcolor: '#f9f9f9',
+                        p: 1.5,
+                        borderRadius: 1
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        Nota Final
+                      </Typography>
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          fontWeight: "bold",
+                          color: gradesService.getGradeColor(
+                            student.finalGrade,
+                            student.hasAnyGradeRecorded
+                          ),
+                        }}
+                      >
+                        {fmt(student.finalGrade)}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          )}
+        </Box>
 
         {/* Rodapé com contagem */}
         {!loading && studentsGrades.length > 0 && (

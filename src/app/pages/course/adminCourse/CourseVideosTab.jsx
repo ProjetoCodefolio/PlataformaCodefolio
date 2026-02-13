@@ -236,13 +236,13 @@ const CourseVideosTab = forwardRef((props, ref) => {
     <Box sx={{ mt: 4 }} ref={videosTabRef}>
       <Typography
         variant="h6"
-        sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+        sx={{ mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
       >
         {isEditing ? "Editar Vídeo" : "Adicionar Vídeo"}
       </Typography>
 
       <Grid container spacing={2}>
-        <Grid item xs={6}>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="Título do Vídeo"
             fullWidth
@@ -258,12 +258,16 @@ const CourseVideosTab = forwardRef((props, ref) => {
               "& .MuiInputLabel-root": {
                 color: "#666",
                 "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }
             }}
           />
         </Grid>
 
-        <Grid item xs={6}>
+        <Grid item xs={12} sm={6}>
           <TextField
             label="URL do Vídeo"
             fullWidth
@@ -289,7 +293,14 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 "&.Mui-focused": {
                   color: videoUrlError ? "#d32f2f" : "#9041c1",
                 },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiFormHelperText-root": {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+              }
             }}
           />
         </Grid>
@@ -350,46 +361,51 @@ const CourseVideosTab = forwardRef((props, ref) => {
         </Grid>
       </Grid>
 
-      <Button
-        variant="contained"
-        onClick={handleVideo}
-        sx={{
-          mt: 3,
-          p: 1.5,
-          fontWeight: "bold",
-          backgroundColor: "#9041c1",
-          "&:hover": { backgroundColor: "#7d37a7" },
-        }}
-      >
-        {isEditing ? "Editar Vídeo" : "Adicionar Vídeo"}
-      </Button>
-
-      {isEditing && (
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mt: 3 }}>
         <Button
-          variant="outlined"
-          onClick={() => {
-            setVideoTitle("");
-            setVideoUrl("");
-            setVideoDescription("");
-            setIsEditing(false);
-          }}
+          variant="contained"
+          onClick={handleVideo}
+          fullWidth={false}
           sx={{
-            mt: 3,
-            ml: 2,
             p: 1.5,
             fontWeight: "bold",
-            color: "#9041c1",
-            borderColor: "#9041c1",
-            "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+            backgroundColor: "#9041c1",
+            "&:hover": { backgroundColor: "#7d37a7" },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minWidth: { xs: '100%', sm: 'auto' }
           }}
         >
-          Cancelar
+          {isEditing ? "Editar Vídeo" : "Adicionar Vídeo"}
         </Button>
-      )}
+
+        {isEditing && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setVideoTitle("");
+              setVideoUrl("");
+              setVideoDescription("");
+              setIsEditing(false);
+            }}
+            fullWidth={false}
+            sx={{
+              p: 1.5,
+              fontWeight: "bold",
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              minWidth: { xs: '100%', sm: 'auto' }
+            }}
+          >
+            Cancelar
+          </Button>
+        )}
+      </Box>
 
       <Typography
         variant="h6"
-        sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333" }}
+        sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
       >
         Vídeos do Curso
       </Typography>
@@ -399,12 +415,14 @@ const CourseVideosTab = forwardRef((props, ref) => {
           <ListItem
             key={video.id}
             sx={{
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               border: "1px solid #ddd",
               borderRadius: "8px",
               mb: 2,
               backgroundColor: "white",
               "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              alignItems: 'flex-start'
             }}
             secondaryAction={
               <>
@@ -444,7 +462,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
             <ListItemText
               primary={video.title}
               secondary={
-                <Typography component="span" sx={{ color: "#666" }}>
+                <Typography component="span" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   {`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"
                     }`}{" "}
                   <br />
@@ -452,7 +470,20 @@ const CourseVideosTab = forwardRef((props, ref) => {
                 </Typography>
               }
               primaryTypographyProps={{
-                sx: { fontWeight: 500, color: "#333" },
+                sx: { 
+                  fontWeight: 500, 
+                  color: "#333",
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  maxWidth: { xs: '180px', sm: '400px', md: '600px' },
+                  display: 'block'
+                },
+              }}
+              sx={{
+                maxWidth: { xs: 'calc(100% - 96px)', sm: 'calc(100% - 96px)' },
+                pr: 1
               }}
             />
           </ListItem>
@@ -470,18 +501,19 @@ const CourseVideosTab = forwardRef((props, ref) => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
             bgcolor: "background.paper",
             borderRadius: 2,
             boxShadow: 24,
-            p: 4,
+            p: { xs: 3, sm: 4 },
             textAlign: "center",
           }}
         >
           <CheckCircleOutlineIcon
-            sx={{ fontSize: 60, color: "#4caf50", mb: 2 }}
+            sx={{ fontSize: { xs: 50, sm: 60 }, color: "#4caf50", mb: 2 }}
           />
-          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2 }}>
+          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             {`Vídeo ${lastAction === "edit" ? "editado" : "adicionado"
               } com sucesso!`}
           </Typography>
@@ -491,6 +523,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
             }}
           >
             OK
@@ -509,28 +542,39 @@ const CourseVideosTab = forwardRef((props, ref) => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
             bgcolor: "background.paper",
             borderRadius: 2,
             boxShadow: 24,
-            p: 4,
+            p: { xs: 3, sm: 4 },
             textAlign: "center",
           }}
         >
-          <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2 }}>
+          <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Tem certeza que deseja excluir "{videoToDelete?.title}"?
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, justifyContent: "center", gap: 2 }}>
             <Button
               variant="contained"
               color="error"
               onClick={confirmRemoveVideo}
+              fullWidth={false}
+              sx={{
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
             >
               Sim, Excluir
             </Button>
             <Button
               variant="outlined"
               onClick={() => setShowDeleteModal(false)}
+              fullWidth={false}
+              sx={{
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
             >
               Cancelar
             </Button>

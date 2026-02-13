@@ -311,31 +311,43 @@ export default function MyAssessmentsPage() {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            px: 3,
-                            pt: 3,
+                            px: { xs: 2, sm: 3 },
+                            pt: { xs: 2, sm: 3 },
                             pb: 1,
                             borderBottom: "1px solid #e3eafc",
+                            flexDirection: { xs: "column", sm: "row" },
+                            gap: { xs: 1, sm: 0 },
                           }}
                         >
-                          <Box>
+                          <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
                             <Typography
                               variant="h5"
-                              sx={{ fontWeight: 900, color: "#964bd0ff" }}
+                              sx={{
+                                fontWeight: 900,
+                                color: "#964bd0ff",
+                                fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                              }}
                             >
                               {getCourseTitle(course)}
                             </Typography>
                           </Box>
-                          <Box sx={{ textAlign: "right" }}>
+                          <Box sx={{ textAlign: { xs: "center", sm: "right" } }}>
                             <Typography
                               variant="caption"
                               color="text.secondary"
-                              sx={{ fontWeight: 600 }}
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                              }}
                             >
                               Aluno
                             </Typography>
                             <Typography
                               variant="body1"
-                              sx={{ fontWeight: 700 }}
+                              sx={{
+                                fontWeight: 700,
+                                fontSize: { xs: "0.875rem", sm: "1rem" },
+                              }}
                             >
                               {userName || "—"}
                             </Typography>
@@ -355,15 +367,20 @@ export default function MyAssessmentsPage() {
                             <AccordionSummary
                               expandIcon={<ExpandMoreIcon />}
                               sx={{
-                                px: 3,
-                                py: 2,
+                                px: { xs: 2, sm: 3 },
+                                py: { xs: 1.5, sm: 2 },
                                 bgcolor: "#faf8fca7",
                                 borderBottom: "1px solid #e3eafc",
                                 borderRadius: 0,
                                 minHeight: 0,
                               }}
                             >
-                              <Typography sx={{ fontWeight: 700 }}>
+                              <Typography
+                                sx={{
+                                  fontWeight: 700,
+                                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                                }}
+                              >
                                 Avaliações do curso
                               </Typography>
                               <Chip
@@ -376,14 +393,19 @@ export default function MyAssessmentsPage() {
                                 }
                                 size="small"
                                 sx={{
-                                  ml: 2,
+                                  ml: { xs: 1, sm: 2 },
                                   bgcolor: "#e3e4e9ff",
                                   fontWeight: 700,
+                                  fontSize: { xs: "0.688rem", sm: "0.75rem" },
                                 }}
                               />
                             </AccordionSummary>
                             <AccordionDetails
-                              sx={{ px: 3, py: 2, bgcolor: "#fafdff" }}
+                              sx={{
+                                px: { xs: 2, sm: 3 },
+                                py: { xs: 1.5, sm: 2 },
+                                bgcolor: "#fafdff",
+                              }}
                             >
                               {mapEntry.loading ? (
                                 <Box
@@ -411,8 +433,8 @@ export default function MyAssessmentsPage() {
                                           sx={{
                                             display: "flex",
                                             flexDirection: "column",
-                                            py: 1.5,
-                                            px: 2,
+                                            py: { xs: 1.2, sm: 1.5 },
+                                            px: { xs: 1.5, sm: 2 },
                                             bgcolor: "#f5f8ff",
                                             borderRadius: 2,
                                             mb: 1.5,
@@ -424,17 +446,25 @@ export default function MyAssessmentsPage() {
                                               alignItems: "center",
                                               justifyContent: "space-between",
                                               mb: a.description ? 1 : 0,
+                                              flexDirection: { xs: "column", sm: "row" },
+                                              gap: { xs: 1, sm: 0 },
                                             }}
                                           >
-                                            <Box>
+                                            <Box sx={{ width: { xs: "100%", sm: "auto" } }}>
                                               <Typography
-                                                sx={{ fontWeight: 700 }}
+                                                sx={{
+                                                  fontWeight: 700,
+                                                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                                                }}
                                               >
                                                 {a.name}
                                               </Typography>
                                               <Typography
                                                 variant="caption"
                                                 color="text.secondary"
+                                                sx={{
+                                                  fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                                                }}
                                               >
                                                 Percentual:{" "}
                                                 {Number(
@@ -443,7 +473,12 @@ export default function MyAssessmentsPage() {
                                                 %
                                               </Typography>
                                             </Box>
-                                            <Box sx={{ textAlign: "right" }}>
+                                            <Box
+                                              sx={{
+                                                textAlign: { xs: "center", sm: "right" },
+                                                width: { xs: "100%", sm: "auto" },
+                                              }}
+                                            >
                                               <Chip
                                                 label={
                                                   a?.userGrade != null
@@ -466,6 +501,7 @@ export default function MyAssessmentsPage() {
                                                       ? "#2e7d32"
                                                       : undefined,
                                                   fontWeight: 800,
+                                                  fontSize: { xs: "0.75rem", sm: "0.813rem" },
                                                 }}
                                               />
                                             </Box>
@@ -497,19 +533,19 @@ export default function MyAssessmentsPage() {
                                   <Box
                                     sx={{
                                       display: "flex",
-                                      justifyContent: "flex-end",
+                                      justifyContent: { xs: "center", sm: "flex-end" },
                                       alignItems: "center",
                                     }}
                                   >
                                     <Card
                                       variant="outlined"
                                       sx={{
-                                        px: 3,
-                                        py: 2,
+                                        px: { xs: 2, sm: 3 },
+                                        py: { xs: 1.5, sm: 2 },
                                         borderRadius: 2,
                                         bgcolor: "#f5f8ff",
                                         borderColor: "#b362c7ff",
-                                        minWidth: 180,
+                                        minWidth: { xs: "100%", sm: 180 },
                                         boxShadow: "none",
                                       }}
                                     >
@@ -517,15 +553,17 @@ export default function MyAssessmentsPage() {
                                         sx={{
                                           display: "flex",
                                           alignItems: "center",
-                                          gap: 2,
+                                          gap: { xs: 1.5, sm: 2 },
+                                          justifyContent: "space-between",
                                         }}
                                       >
-                                        <Box sx={{ textAlign: "right" }}>
+                                        <Box sx={{ textAlign: { xs: "left", sm: "right" }, flex: 1 }}>
                                           <Typography
                                             variant="caption"
                                             sx={{
                                               color: "text.secondary",
                                               fontWeight: 700,
+                                              fontSize: { xs: "0.75rem", sm: "0.813rem" },
                                             }}
                                           >
                                             Nota total
@@ -533,7 +571,10 @@ export default function MyAssessmentsPage() {
                                           <Tooltip title="Soma das notas ponderadas: nota × (percentual/100)">
                                             <Typography
                                               variant="h5"
-                                              sx={{ fontWeight: 900 }}
+                                              sx={{
+                                                fontWeight: 900,
+                                                fontSize: { xs: "1.5rem", sm: "1.75rem" },
+                                              }}
                                             >
                                               {fmt(totalWeightedCapped)}
                                             </Typography>
@@ -541,6 +582,9 @@ export default function MyAssessmentsPage() {
                                           <Typography
                                             variant="caption"
                                             color="text.secondary"
+                                            sx={{
+                                              fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                                            }}
                                           >
                                             de 10,00
                                           </Typography>
@@ -548,7 +592,7 @@ export default function MyAssessmentsPage() {
                                         <CircularProgress
                                           variant="determinate"
                                           value={progressValue}
-                                          size={54}
+                                          size={window.innerWidth < 600 ? 44 : 54}
                                           thickness={5}
                                           sx={{
                                             color: "#a84fd4ff",

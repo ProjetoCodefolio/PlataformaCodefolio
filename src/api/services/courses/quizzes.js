@@ -353,9 +353,16 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
     const newQuestion = {
       id: questionId,
       question: questionData.question,
-      options: questionData.options,
-      correctOption: questionData.correctOption,
+      questionType: questionData.questionType || 'multiple-choice', // 'multiple-choice' ou 'open-ended'
     };
+
+    // Adicionar campos específicos baseado no tipo de questão
+    if (questionData.questionType === 'open-ended') {
+      // Questão aberta não precisa de campos extras
+    } else {
+      newQuestion.options = questionData.options;
+      newQuestion.correctOption = questionData.correctOption;
+    }
 
     // Verificar se a questão já existe
     const existingQuestionIndex = quiz.questions.findIndex(
@@ -410,16 +417,29 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
 
     const { videoId } = quiz;
 
-    const updatedQuestions = quiz.questions.map((q) =>
-      q.id === questionData.id
-        ? {
-            ...q,
-            question: questionData.question,
-            options: questionData.options,
-            correctOption: questionData.correctOption,
-          }
-        : q
-    );
+    const updatedQuestions = quiz.questions.map((q) => {
+      if (q.id === questionData.id) {
+        const updatedQuestion = {
+          ...q,
+          question: questionData.question,
+          questionType: questionData.questionType || q.questionType || 'multiple-choice',
+        };
+
+        // Atualizar campos específicos baseado no tipo de questão
+        if (questionData.questionType === 'open-ended') {
+          // Questão aberta não precisa de campos extras
+          // Remover campos de múltipla escolha se existirem
+          delete updatedQuestion.options;
+          delete updatedQuestion.correctOption;
+        } else {
+          updatedQuestion.options = questionData.options;
+          updatedQuestion.correctOption = questionData.correctOption;
+        }
+
+        return updatedQuestion;
+      }
+      return q;
+    });
 
     const updatedQuiz = {
       ...quiz,
@@ -814,7 +834,8 @@ export const saveQuizResults = async (
   videoId,
   quizData,
   userAnswers,
-  questions
+  questions,
+  answersDetails = null
 ) => {
 
   try {
@@ -849,21 +870,49 @@ export const saveQuizResults = async (
       ? (existingResult.attemptCount || 1) + 1
       : 1;
 
-    // Criar objeto detailedAnswers para armazenar informações de cada pergunta
-    const detailedAnswers = {};
-    questions.forEach((q) => {
-      const userAnswer = userAnswers[q.id];
-      const isCorrect = userAnswer === q.correctOption;
+    // Usar answersDetails se fornecido, caso contrário criar detailedAnswers
+    let detailedAnswers = {};
+    
+    if (answersDetails && Array.isArray(answersDetails)) {
+      // Converter array de answersDetails para objeto indexado por questionId
+      answersDetails.forEach((detail) => {
+        detailedAnswers[detail.questionId] = {
+          question: detail.question,
+          questionType: detail.questionType || 'multiple-choice',
+          ...(detail.questionType === 'open-ended' 
+            ? {
+                answer: detail.answer,
+                userAnswer: detail.answer,
+              }
+            : {
+                userAnswer: Number(detail.userOption),
+                correctOption: Number(detail.correctOption),
+                userAnswerText: detail.options[detail.userOption] || "Não respondida",
+                correctOptionText: detail.options[detail.correctOption],
+                options: detail.options,
+                isCorrect: detail.isCorrect,
+              }
+          )
+        };
+      });
+    } else {
+      // Fallback: criar detailedAnswers apenas com questões de múltipla escolha
+      questions.forEach((q) => {
+        const userAnswer = userAnswers[q.id];
+        const isCorrect = Number(userAnswer) === Number(q.correctOption);
 
-      detailedAnswers[q.id] = {
-        question: q.question,
-        userAnswer,
-        correctOption: q.correctOption,
-        userAnswerText: q.options[userAnswer] || "Não respondida",
-        correctOptionText: q.options[q.correctOption],
-        isCorrect,
-      };
-    });
+        detailedAnswers[q.id] = {
+          question: q.question,
+          questionType: q.questionType || 'multiple-choice',
+          userAnswer: Number(userAnswer),
+          correctOption: Number(q.correctOption),
+          userAnswerText: q.options[userAnswer] || "Não respondida",
+          correctOptionText: q.options[q.correctOption],
+          options: q.options,
+          isCorrect,
+        };
+      });
+    }
 
     const currentDate = new Date().toISOString();
 
@@ -968,4 +1017,142 @@ export const isQuizLocked = (video) => {
 
   // Quiz está bloqueado se o vídeo não foi assistido
   return !video.watched;
+};
+
+/**
+ * ==============================
+ * FUNÇÕES DE QUESTÕES ABERTAS
+ * ==============================
+ */
+
+/**
+ * Salva resposta de questão aberta
+ * @param {string} userId - ID do usuário
+ * @param {string} courseId - ID do curso
+ * @param {string} quizId - ID do quiz
+ * @param {string} questionId - ID da questão
+ * @param {string} answer - Resposta do aluno
+ * @returns {Promise<boolean>}
+ */
+export const saveOpenEndedAnswer = async (userId, courseId, quizId, questionId, answer) => {
+  try {
+    if (!userId || !courseId || !quizId || !questionId) {
+      throw new Error("Parâmetros obrigatórios não fornecidos");
+    }
+
+    const path = `openEndedAnswers/${courseId}/${quizId}/${questionId}/${userId}`;
+    console.log('💾 Salvando no caminho Firebase:', path);
+
+    const answerRef = ref(database, path);
+
+    const answerData = {
+      userId,
+      answer,
+      submittedAt: new Date().toISOString(),
+      graded: false,
+      grade: null,
+      feedback: null,
+    };
+
+    console.log('📝 Dados para salvar:', { 
+      userId, 
+      answerPreview: answer.substring(0, 50) + (answer.length > 50 ? '...' : ''),
+      submittedAt: answerData.submittedAt 
+    });
+
+    await set(answerRef, answerData);
+    console.log('✅ Resposta aberta salva com sucesso no Firebase!');
+    return true;
+  } catch (error) {
+    console.error("❌ Erro ao salvar resposta aberta:", error);
+    throw error;
+  }
+};
+
+/**
+ * Busca respostas de questões abertas de um quiz
+ * @param {string} courseId - ID do curso
+ * @param {string} quizId - ID do quiz
+ * @returns {Promise<Object>}
+ */
+export const fetchOpenEndedAnswers = async (courseId, quizId) => {
+  try {
+    const answersRef = ref(database, `openEndedAnswers/${courseId}/${quizId}`);
+    const snapshot = await get(answersRef);
+
+    if (!snapshot.exists()) {
+      console.log('Nenhuma resposta aberta encontrada em:', `openEndedAnswers/${courseId}/${quizId}`);
+      return {};
+    }
+
+    const data = snapshot.val();
+    console.log('✅ Respostas abertas carregadas com sucesso');
+    return data;
+  } catch (error) {
+    console.error("❌ Erro ao buscar respostas abertas:", error);
+    return {};
+  }
+};
+
+/**
+ * Avalia uma resposta de questão aberta
+ * @param {string} courseId - ID do curso
+ * @param {string} quizId - ID do quiz
+ * @param {string} questionId - ID da questão
+ * @param {string} userId - ID do usuário
+ * @param {number} grade - Nota (0-100)
+ * @param {string} feedback - Feedback do professor
+ * @returns {Promise<boolean>}
+ */
+export const gradeOpenEndedAnswer = async (
+  courseId,
+  quizId,
+  questionId,
+  userId,
+  grade,
+  feedback
+) => {
+  try {
+    // Tentar atualizar em liveQuizResults
+    const liveResultRef = ref(
+      database,
+      `liveQuizResults/${courseId}/${quizId}/${userId}/detailedAnswers/${questionId}`
+    );
+    const liveSnapshot = await get(liveResultRef);
+    
+    if (liveSnapshot.exists()) {
+      await update(liveResultRef, {
+        graded: true,
+        grade,
+        feedback,
+        gradedAt: new Date().toISOString(),
+      });
+      console.log('✅ Nota salva em liveQuizResults');
+      return true;
+    }
+    
+    // Se não estiver em live, tentar em customQuizResults
+    const customResultRef = ref(
+      database,
+      `customQuizResults/${courseId}/${quizId}/${userId}/detailedAnswers/${questionId}`
+    );
+    const customSnapshot = await get(customResultRef);
+    
+    if (customSnapshot.exists()) {
+      await update(customResultRef, {
+        graded: true,
+        grade,
+        feedback,
+        gradedAt: new Date().toISOString(),
+      });
+      console.log('✅ Nota salva em customQuizResults');
+      return true;
+    }
+    
+    console.warn('⚠️ Resposta não encontrada em liveQuizResults nem customQuizResults');
+    return false;
+  } catch (error) {
+    console.error("Erro ao avaliar resposta aberta:", error);
+    throw error;
+  }
 };

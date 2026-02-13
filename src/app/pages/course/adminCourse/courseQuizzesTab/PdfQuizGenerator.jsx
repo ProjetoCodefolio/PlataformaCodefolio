@@ -309,13 +309,22 @@ const PdfQuizGenerator = ({
           justifyContent: "space-between",
           alignItems: "center",
           mb: 2,
+          flexDirection: { xs: "column", sm: "row" },
+          gap: 1,
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333" }}>
+        <Typography
+          variant="h6"
+          sx={{
+            fontWeight: "bold",
+            color: "#333",
+            fontSize: { xs: "1rem", sm: "1.25rem" },
+          }}
+        >
           Gerar Questões a partir de PDF
         </Typography>
 
-        <Box>
+        <Box sx={{ display: "flex", gap: 0.5 }}>
           <Tooltip title="Configurar chave API GROQ">
             <IconButton
               onClick={handleOpenApiKeyDialog}
@@ -429,11 +438,31 @@ const PdfQuizGenerator = ({
               py: 4,
             }}
           >
-            <CloudUploadIcon sx={{ fontSize: 48, color: "#9041c1", mb: 2 }} />
-            <Typography variant="h6" color="#333" sx={{ mb: 1 }}>
+            <CloudUploadIcon
+              sx={{
+                fontSize: { xs: 40, sm: 48 },
+                color: "#9041c1",
+                mb: 2,
+              }}
+            />
+            <Typography
+              variant="h6"
+              color="#333"
+              sx={{
+                mb: 1,
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+              }}
+            >
               Arraste e solte um PDF aqui
             </Typography>
-            <Typography variant="body2" color="#666" sx={{ mb: 2 }}>
+            <Typography
+              variant="body2"
+              color="#666"
+              sx={{
+                mb: 2,
+                fontSize: { xs: "0.813rem", sm: "0.875rem" },
+              }}
+            >
               ou
             </Typography>
             <Button
@@ -442,6 +471,8 @@ const PdfQuizGenerator = ({
               sx={{
                 backgroundColor: "#9041c1",
                 "&:hover": { backgroundColor: "#7d37a7" },
+                fontSize: { xs: "0.813rem", sm: "0.875rem" },
+                px: { xs: 2, sm: 3 },
               }}
             >
               Selecionar arquivo PDF
@@ -449,17 +480,47 @@ const PdfQuizGenerator = ({
           </Box>
         ) : (
           <Box>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <PictureAsPdfIcon sx={{ color: "#f44336", mr: 1 }} />
-              <Typography variant="body1" sx={{ flexGrow: 1 }}>
-                {pdfFile.name}
-              </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                mb: 2,
+                flexDirection: { xs: "column", sm: "row" },
+                gap: 1,
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  flex: 1,
+                  width: { xs: "100%", sm: "auto" },
+                }}
+              >
+                <PictureAsPdfIcon sx={{ color: "#f44336", mr: 1 }} />
+                <Typography
+                  variant="body1"
+                  sx={{
+                    flexGrow: 1,
+                    fontSize: { xs: "0.875rem", sm: "1rem" },
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {pdfFile.name}
+                </Typography>
+              </Box>
               <Button
                 variant="outlined"
                 color="secondary"
                 size="small"
                 onClick={() => setPdfFile(null)}
                 disabled={loading}
+                sx={{
+                  fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                  width: { xs: "100%", sm: "auto" },
+                }}
               >
                 Alterar
               </Button>
@@ -467,7 +528,13 @@ const PdfQuizGenerator = ({
 
             {loading ? (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    mb: 1,
+                    fontSize: { xs: "0.813rem", sm: "0.875rem" },
+                  }}
+                >
                   {processingStep}
                 </Typography>
                 <LinearProgress
@@ -485,7 +552,12 @@ const PdfQuizGenerator = ({
                 {numQuestions > 20 && (
                   <Typography
                     variant="caption"
-                    sx={{ display: "block", mt: 1, color: "text.secondary" }}
+                    sx={{
+                      display: "block",
+                      mt: 1,
+                      color: "text.secondary",
+                      fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                    }}
                   >
                     Gerando {numQuestions} questões. Isso pode levar mais
                     tempo...
@@ -502,6 +574,8 @@ const PdfQuizGenerator = ({
                   mt: 1,
                   backgroundColor: "#9041c1",
                   "&:hover": { backgroundColor: "#7d37a7" },
+                  fontSize: { xs: "0.813rem", sm: "0.875rem" },
+                  py: { xs: 1, sm: 1.5 },
                 }}
               >
                 Gerar {numQuestions} Questões com{" "}
@@ -522,7 +596,11 @@ const PdfQuizGenerator = ({
         <Box sx={{ mt: 3 }}>
           <Typography
             variant="h6"
-            sx={{ display: "flex", alignItems: "center" }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: { xs: "1rem", sm: "1.25rem" },
+            }}
           >
             <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
             {generatedQuestions.length} questões geradas
@@ -533,7 +611,7 @@ const PdfQuizGenerator = ({
               mt: 2,
               bgcolor: "#f5f5fa",
               borderRadius: 2,
-              p: 2,
+              p: { xs: 1, sm: 2 },
               maxHeight: "500px",
               overflow: "auto",
             }}
@@ -541,7 +619,15 @@ const PdfQuizGenerator = ({
             {generatedQuestions.map((question, index) => (
               <ListItem
                 key={index}
-                sx={{ backgroundColor: "white", mb: 1, borderRadius: 1 }}
+                sx={{
+                  backgroundColor: "white",
+                  mb: 1,
+                  borderRadius: 1,
+                  flexDirection: { xs: "column", sm: "row" },
+                  alignItems: { xs: "flex-start", sm: "center" },
+                  py: { xs: 2, sm: 1 },
+                  px: { xs: 1.5, sm: 2 },
+                }}
               >
                 <ListItemText
                   primary={`${index + 1}. ${question.question}`}
@@ -563,6 +649,7 @@ const PdfQuizGenerator = ({
                                 i === question.correctOption
                                   ? "green"
                                   : "inherit",
+                              fontSize: "0.875rem",
                             }}
                           >
                             {String.fromCharCode(65 + i)}) {opt}
@@ -571,13 +658,36 @@ const PdfQuizGenerator = ({
                       ))}
                     </Box>
                   }
+                  primaryTypographyProps={{
+                    sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
+                  }}
+                  secondaryTypographyProps={{
+                    sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
+                  }}
+                  sx={{ pr: { xs: 0, sm: 10 } }}
                 />
-                <ListItemSecondaryAction>
+                <ListItemSecondaryAction
+                  sx={{
+                    position: { xs: "relative", sm: "absolute" },
+                    right: { xs: "auto", sm: 16 },
+                    top: { xs: "auto", sm: "50%" },
+                    transform: { xs: "none", sm: "translateY(-50%)" },
+                    display: "flex",
+                    gap: 0.5,
+                    mt: { xs: 1, sm: 0 },
+                    width: { xs: "100%", sm: "auto" },
+                    justifyContent: { xs: "flex-end", sm: "flex-start" },
+                  }}
+                >
                   <Tooltip title="Editar questão">
                     <IconButton
                       edge="end"
                       onClick={() => handleEditQuestion(question)}
-                      sx={{ color: "#9041c1", mr: 1 }}
+                      sx={{
+                        color: "#9041c1",
+                        mr: { xs: 0, sm: 1 },
+                      }}
+                      size="small"
                     >
                       <EditIcon />
                     </IconButton>
@@ -587,6 +697,7 @@ const PdfQuizGenerator = ({
                       edge="end"
                       onClick={() => handleDeleteQuestion(index)}
                       sx={{ color: "#d32f2f" }}
+                      size="small"
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -600,10 +711,13 @@ const PdfQuizGenerator = ({
             variant="contained"
             color="primary"
             onClick={handleAddToQuiz}
+            fullWidth
             sx={{
               mt: 2,
               backgroundColor: "#4caf50",
               "&:hover": { backgroundColor: "#388e3c" },
+              fontSize: { xs: "0.813rem", sm: "0.875rem" },
+              py: { xs: 1, sm: 1.5 },
             }}
           >
             Adicionar {generatedQuestions.length} Questões ao Quiz
@@ -617,12 +731,30 @@ const PdfQuizGenerator = ({
         onClose={handleCloseSettings}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            width: { xs: "95%", sm: "90%", md: "100%" },
+            maxHeight: { xs: "90vh", sm: "85vh" },
+          },
+        }}
       >
-        <DialogTitle sx={{ bgcolor: "#f5f5fa" }}>
+        <DialogTitle
+          sx={{
+            bgcolor: "#f5f5fa",
+            fontSize: { xs: "1rem", sm: "1.25rem" },
+            py: { xs: 1.5, sm: 2 },
+            px: { xs: 2, sm: 3 },
+          }}
+        >
           Configurações do Gerador de Questões
         </DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" gutterBottom>
+        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            gutterBottom
+            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
+          >
             Personalize o prompt usado para gerar questões. As instruções de
             formato JSON serão adicionadas automaticamente ao final do seu
             prompt.
@@ -630,17 +762,28 @@ const PdfQuizGenerator = ({
 
           <Box
             sx={{
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               mb: 2,
               bgcolor: "rgba(25, 118, 210, 0.08)",
               borderLeft: "4px solid #1976d2",
               borderRadius: 1,
             }}
           >
-            <Typography variant="subtitle2" color="primary">
+            <Typography
+              variant="subtitle2"
+              color="primary"
+              sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+            >
               Formato obrigatório (não editável)
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 1,
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
               O sistema adicionará automaticamente as seguintes instruções para
               garantir que as questões sejam retornadas no formato correto:
             </Typography>
@@ -653,11 +796,16 @@ const PdfQuizGenerator = ({
                 p: 1,
                 bgcolor: "rgba(0, 0, 0, 0.04)",
                 color: "#555",
+                fontSize: { xs: "0.688rem", sm: "0.75rem" },
               }}
             >
               <pre style={{ margin: 0 }}>{JSON_FORMAT_INSTRUCTION.trim()}</pre>
             </Box>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: { xs: "0.688rem", sm: "0.75rem" } }}
+            >
               Esta parte será sempre adicionada ao seu prompt personalizado para
               garantir a compatibilidade do formato.
             </Typography>
@@ -666,7 +814,7 @@ const PdfQuizGenerator = ({
           <TextField
             label="Prompt personalizado"
             multiline
-            rows={15}
+            rows={window.innerWidth < 600 ? 8 : 15}
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             fullWidth
@@ -678,32 +826,58 @@ const PdfQuizGenerator = ({
                 "& fieldset": { borderColor: "#666" },
                 "&:hover fieldset": { borderColor: "#9041c1" },
                 "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                fontSize: { xs: "0.813rem", sm: "0.875rem" },
               },
               fontFamily: "monospace",
+            }}
+            InputLabelProps={{
+              sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
             }}
           />
 
           <Box sx={{ mt: 2 }}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontSize: { xs: "0.75rem", sm: "0.813rem" } }}
+            >
               O texto do PDF será anexado após as instruções de formato.
               Certifique-se de incluir uma referência a ele em suas instruções
               personalizadas.
             </Typography>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleResetPrompt} color="secondary">
+        <DialogActions
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 0 },
+          }}
+        >
+          <Button
+            onClick={handleResetPrompt}
+            color="secondary"
+            fullWidth={window.innerWidth < 600}
+            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
+          >
             Restaurar Padrão
           </Button>
-          <Button onClick={handleCloseSettings} color="inherit">
+          <Button
+            onClick={handleCloseSettings}
+            color="inherit"
+            fullWidth={window.innerWidth < 600}
+            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleSaveSettings}
             variant="contained"
+            fullWidth={window.innerWidth < 600}
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: "0.813rem", sm: "0.875rem" },
             }}
           >
             Salvar Configurações
@@ -717,16 +891,32 @@ const PdfQuizGenerator = ({
         onClose={handleCloseApiKeyDialog}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            width: { xs: "95%", sm: "90%", md: "100%" },
+            maxHeight: { xs: "90vh", sm: "85vh" },
+          },
+        }}
       >
-        <DialogTitle sx={{ bgcolor: "#f5f5fa" }}>
+        <DialogTitle
+          sx={{
+            bgcolor: "#f5f5fa",
+            fontSize: { xs: "1rem", sm: "1.25rem" },
+            py: { xs: 1.5, sm: 2 },
+            px: { xs: 2, sm: 3 },
+          }}
+        >
           Configurar Chave API GROQ
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
           <Typography
             variant="body2"
             color="text.secondary"
             gutterBottom
-            sx={{ mb: 2 }}
+            sx={{
+              mb: 2,
+              fontSize: { xs: "0.813rem", sm: "0.875rem" },
+            }}
           >
             Você pode usar sua própria chave API do GROQ para gerar questões.
             Caso não forneça uma chave, será utilizada a chave padrão do
@@ -747,29 +937,48 @@ const PdfQuizGenerator = ({
                 "& fieldset": { borderColor: "#666" },
                 "&:hover fieldset": { borderColor: "#4caf50" },
                 "&.Mui-focused fieldset": { borderColor: "#4caf50" },
+                fontSize: { xs: "0.813rem", sm: "0.875rem" },
               },
             }}
+            InputLabelProps={{
+              sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
+            }}
             helperText="Sua chave API será armazenada apenas no seu navegador e nunca enviada para nossos servidores."
+            FormHelperTextProps={{
+              sx: { fontSize: { xs: "0.688rem", sm: "0.75rem" } },
+            }}
           />
 
           <Box
             sx={{
               mt: 3,
               bgcolor: "rgba(76, 175, 80, 0.08)",
-              p: 2,
+              p: { xs: 1.5, sm: 2 },
               borderRadius: 1,
               borderLeft: "4px solid #4caf50",
             }}
           >
-            <Typography variant="subtitle2" color="primary.main">
+            <Typography
+              variant="subtitle2"
+              color="primary.main"
+              sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+            >
               Como obter uma chave API GROQ?
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                mt: 1,
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
+              }}
+            >
               1. Acesse{" "}
               <a
                 href="https://console.groq.com/keys"
                 target="_blank"
                 rel="noopener noreferrer"
+                style={{ wordBreak: "break-all" }}
               >
                 console.groq.com/keys
               </a>
@@ -792,18 +1001,36 @@ const PdfQuizGenerator = ({
               />
             }
             label="Usar chave padrão do sistema"
+            componentsProps={{
+              typography: {
+                sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
+              },
+            }}
           />
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={handleCloseApiKeyDialog} color="inherit">
+        <DialogActions
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 0 },
+          }}
+        >
+          <Button
+            onClick={handleCloseApiKeyDialog}
+            color="inherit"
+            fullWidth={window.innerWidth < 600}
+            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
+          >
             Cancelar
           </Button>
           <Button
             onClick={handleSaveApiKey}
             variant="contained"
+            fullWidth={window.innerWidth < 600}
             sx={{
               backgroundColor: "#4caf50",
               "&:hover": { backgroundColor: "#388e3c" },
+              fontSize: { xs: "0.813rem", sm: "0.875rem" },
             }}
           >
             Salvar Configurações

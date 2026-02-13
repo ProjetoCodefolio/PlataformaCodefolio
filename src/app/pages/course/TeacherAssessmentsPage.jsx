@@ -576,11 +576,24 @@ const TeacherAssessmentsPage = () => {
         onClose={() => setShowAssessmentDialog(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            width: { xs: "95%", sm: "90%", md: "100%" },
+            maxHeight: { xs: "90vh", sm: "85vh" },
+            m: { xs: 1, sm: 2 },
+          },
+        }}
       >
-        <DialogTitle>
+        <DialogTitle
+          sx={{
+            fontSize: { xs: "1.125rem", sm: "1.25rem" },
+            py: { xs: 1.5, sm: 2 },
+            px: { xs: 2, sm: 3 },
+          }}
+        >
           {isEditing ? "Editar Avaliação" : "Nova Avaliação"}
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
           <Box sx={{ pt: 2 }}>
             <TextField
               fullWidth
@@ -588,7 +601,15 @@ const TeacherAssessmentsPage = () => {
               value={assessmentName}
               onChange={(e) => setAssessmentName(e.target.value)}
               placeholder="Ex: T1, A1, Projeto Final"
-              sx={{ mb: 3 }}
+              sx={{
+                mb: 3,
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -604,7 +625,15 @@ const TeacherAssessmentsPage = () => {
                 max: 100,
                 step: 1,
               }}
-              sx={{ mb: 3 }}
+              sx={{
+                mb: 3,
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+              }}
             />
             <TextField
               fullWidth
@@ -614,19 +643,39 @@ const TeacherAssessmentsPage = () => {
               value={assessmentDescription}
               onChange={(e) => setAssessmentDescription(e.target.value)}
               placeholder="Descreva o que será avaliado, instruções, critérios, etc."
+              sx={{
+                "& .MuiInputBase-input": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: { xs: "0.875rem", sm: "1rem" },
+                },
+              }}
             />
           </Box>
         </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setShowAssessmentDialog(false)}>
+        <DialogActions
+          sx={{
+            p: { xs: 1.5, sm: 2 },
+            flexDirection: { xs: "column", sm: "row" },
+            gap: { xs: 1, sm: 0 },
+          }}
+        >
+          <Button
+            onClick={() => setShowAssessmentDialog(false)}
+            fullWidth={window.innerWidth < 600}
+            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+          >
             Cancelar
           </Button>
           <Button
             variant="contained"
             onClick={handleSaveAssessment}
+            fullWidth={window.innerWidth < 600}
             sx={{
               backgroundColor: "#9041c1",
               "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: "0.875rem", sm: "1rem" },
             }}
           >
             {isEditing ? "Atualizar" : "Criar"}

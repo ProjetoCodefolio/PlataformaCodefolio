@@ -36,7 +36,7 @@ const QuizForm = ({
     <>
       <Typography
         variant="h6"
-        sx={{ mb: 2, fontWeight: "bold", color: "#333" }}
+        sx={{ mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
       >
         {editQuiz ? "Editar Quiz" : "Criar Novo Quiz"}
       </Typography>
@@ -48,6 +48,7 @@ const QuizForm = ({
               sx={{
                 color: "#666",
                 "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
               Vídeo
@@ -67,15 +68,16 @@ const QuizForm = ({
                 "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#9041c1",
                 },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
               {videos.map((video) => (
-                <MenuItem key={video.id} value={video.id}>
+                <MenuItem key={video.id} value={video.id} sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
                   {video.title}
                 </MenuItem>
               ))}
             </Select>
-            <FormHelperText>
+            <FormHelperText sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               {editQuiz
                 ? "Não é possível alterar o vídeo de um quiz existente"
                 : "Selecione o vídeo para este quiz"}
@@ -108,7 +110,14 @@ const QuizForm = ({
               "& .MuiInputLabel-root": {
                 color: "#666",
                 "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiFormHelperText-root": {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+              }
             }}
             helperText="0 a 100%. Se 0, o quiz não será obrigatório."
             ref={questionFormRef}
@@ -158,6 +167,7 @@ const QuizForm = ({
                 ml: 4,
                 color: "#666",
                 mt: 0.5,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
               }}
             >
               Quizzes diagnósticos registram a nota do aluno, mas não são
@@ -168,11 +178,12 @@ const QuizForm = ({
 
         {!editQuiz && (
           <Grid item xs={12}>
-            <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+            <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'stretch', sm: 'center' } }}>
               <Button
                 variant="contained"
                 onClick={handleAddQuiz}
                 disabled={!newQuizVideoId}
+                fullWidth={false}
                 sx={{
                   backgroundColor: "#9041c1",
                   "&:hover": { backgroundColor: "#7d37a7" },
@@ -180,6 +191,8 @@ const QuizForm = ({
                     backgroundColor: "rgba(0, 0, 0, 0.12)",
                     color: "rgba(0, 0, 0, 0.26)",
                   },
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  minWidth: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Adicionar Quiz

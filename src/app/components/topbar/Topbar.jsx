@@ -256,6 +256,14 @@ export default function Topbar({ onSearch, hideSearch = false }) {
                 Gerenciamento de Cursos
               </MenuItem>
             )}
+            {canManageCourses && (
+              <MenuItem onClick={handleManageAssessmentsClick}>
+                <ListItemIcon>
+                  <AssignmentIcon fontSize="small" />
+                </ListItemIcon>
+                Gerenciamento de Avaliações
+              </MenuItem>
+            )}
             {userDetails && (
               <>
                 <Divider />
