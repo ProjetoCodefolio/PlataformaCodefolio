@@ -15,7 +15,7 @@ import {
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
-import SlideshowIcon from "@mui/icons-material/Slideshow"; // Adicionado para slides
+import ViewCarouselIcon from "@mui/icons-material/ViewCarousel"; // Ícone para slides/apresentações
 import LockIcon from "@mui/icons-material/Lock";
 import ReplayIcon from "@mui/icons-material/Replay";
 import QuizIcon from "@mui/icons-material/Quiz";
@@ -234,7 +234,7 @@ const VideoList = ({
                   />
                 )}
                 {isSlide && (
-                  <SlideshowIcon
+                  <ViewCarouselIcon
                     sx={{
                       color: "#9041c1",
                       fontSize: { xs: 20, sm: 24 },
@@ -276,7 +276,7 @@ const VideoList = ({
                         "&:hover": { color: "#7d37a7" },
                       }}
                     >
-                      <SlideshowIcon sx={{ fontSize: { xs: 24 } }} />
+                      <ViewCarouselIcon sx={{ fontSize: { xs: 24 } }} />
                     </IconButton>
                   </Tooltip>
                 ) : !locked ? (
@@ -389,7 +389,7 @@ const VideoList = ({
                       variant="contained"
                       onClick={() => handleVideoClick(video)}
                       startIcon={
-                        <SlideshowIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                        <ViewCarouselIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                       }
                       sx={{
                         backgroundColor: "#9041c1",
@@ -598,7 +598,7 @@ const VideoList = ({
                   onClick={() => handleVideoClick(slide)}
                 >
                   <ListItemIcon>
-                    <SlideshowIcon />
+                    <ViewCarouselIcon />
                   </ListItemIcon>
                   <ListItemText
                     primary={
