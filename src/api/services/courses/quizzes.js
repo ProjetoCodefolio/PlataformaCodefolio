@@ -983,7 +983,7 @@ export const saveQuizResults = async (
 export const hasUserReachedQuizAttemptLimit = (
   userQuizAttempts,
   quizId,
-  maxAttempts = 1
+  maxAttempts = Infinity // Por padrão, sem limite de tentativas
 ) => {
   if (!userQuizAttempts || !quizId) return false;
 

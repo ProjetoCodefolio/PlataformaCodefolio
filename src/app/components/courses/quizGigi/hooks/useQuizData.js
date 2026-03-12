@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import {
   initializeQuizMetadata,
   fetchQuizResults,
-  registerStudentAnswer,
-  updateStudentCorrectAnswer,
+  registerStudentAnswer as registerStudentAnswerService,
+  updateStudentCorrectAnswer as updateStudentCorrectAnswerService,
 } from "$api/services/courses/quizGigi";
 
 export const useQuizData = (courseId, quizData, selectedStudent) => {
@@ -15,8 +15,13 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [showSummary, setShowSummary] = useState(false);
 
-  // Pergunta atual
-  const currentQuestion = quizData?.questions?.[currentQuestionIndex];
+  // Filtrar questões abertas - não devem aparecer no QuizGigi
+  const filteredQuestions = quizData?.questions?.filter(
+    q => q.questionType !== 'open-ended'
+  ) || [];
+
+  // Pergunta atual (somente questões de múltipla escolha)
+  const currentQuestion = filteredQuestions[currentQuestionIndex];
 
   // Efeito para inicializar dados do quiz
   useEffect(() => {
@@ -42,7 +47,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   }, [quizData, courseId, courseTitle]);
 
   // Função para registrar resposta do estudante
-  const registerStudentAnswer = async (
+  const registerAnswer = async (
     isCorrect,
     selectedOption,
     isCustomMode = false
@@ -54,7 +59,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
         currentQuestion?.id || `question_${currentQuestionIndex}`;
 
       // Usa o serviço para registrar resposta
-      await registerStudentAnswer(
+      await registerStudentAnswerService(
         courseId,
         quizData.id,
         questionId,
@@ -101,12 +106,12 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
   };
 
   // Função para atualizar contador de acertos do estudante
-  const updateStudentCorrectAnswer = async (correct = true) => {
+  const updateStudentCorrectAnswerLocal = async (correct = true) => {
     if (!selectedStudent || !courseId || !quizData?.id) return;
 
     try {
       // Usa o serviço para atualizar contador
-      await updateStudentCorrectAnswer(
+      await updateStudentCorrectAnswerService(
         courseId,
         quizData.id,
         selectedStudent,
@@ -131,8 +136,8 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     const isCorrect = isCorrectAnswer(index);
 
     try {
-      await registerStudentAnswer(isCorrect, index, false);
-      await updateStudentCorrectAnswer(isCorrect);
+      await registerAnswer(isCorrect, index, false);
+      await updateStudentCorrectAnswerLocal(isCorrect);
 
       if (!isCorrect) {
         setTimeout(() => {
@@ -154,7 +159,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
   // Função para navegar para próxima questão
   const handleNextQuestion = () => {
-    if (currentQuestionIndex < (quizData?.questions?.length || 0) - 1) {
+    if (currentQuestionIndex < filteredQuestions.length - 1) {
       setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedAnswer(null);
       setShowFeedback(false);
@@ -176,7 +181,7 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
 
   return {
     quizResults,
-    setQuizResults,
+    customQuestionResults: {},
     courseTitle,
     quizTitle,
     selectedAnswer,
@@ -191,6 +196,8 @@ export const useQuizData = (courseId, quizData, selectedStudent) => {
     isCorrectAnswer,
     handleNextQuestion,
     handlePreviousQuestion,
+    totalQuestions: filteredQuestions.length,
+    filteredOpenEndedCount: (quizData?.questions?.length || 0) - filteredQuestions.length,
   };
 };
 

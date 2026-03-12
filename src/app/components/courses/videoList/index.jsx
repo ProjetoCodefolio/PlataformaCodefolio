@@ -32,7 +32,7 @@ const VideoList = ({
   onQuizStart,
   currentVideoId,
   userQuizAttempts = {},
-  maxAttempts = 1,
+  maxAttempts = Infinity, // Por padrão, sem limite de tentativas
   course,
   slideQuizzes,
   advancedSettings, // Adicione advancedSettings aos props do componente
@@ -119,6 +119,9 @@ const VideoList = ({
   return (
     <Box>
       {videos.map((video, index) => {
+        // Pegar o vídeo anterior para verificações de bloqueio
+        const previousVideo = index > 0 ? videos[index - 1] : null;
+        
         // Adicionamos logs e uma verificação explícita
         let locked = false;
         if (advancedSettings?.videos?.requirePreviousCompletion === false) {
