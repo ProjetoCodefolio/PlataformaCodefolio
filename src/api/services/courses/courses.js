@@ -264,6 +264,17 @@ export const deleteCourse = async (courseId) => {
       };
     }
 
+    // Deleta o curso da tabela courseAliases se houver
+    const courseData = ref(database, `courses/${courseId}`);
+    const courseSnapshot = await get(courseData);
+    if (courseSnapshot.exists()) {
+      const course = courseSnapshot.val();
+      console.log("Dados do curso para remoção de alias:", course);
+      if (course.alias) {
+        await remove(ref(database, `courseAliases/${course.alias}`));
+      }
+    }
+
     // Deleta o curso da tabela courses
     await remove(ref(database, `courses/${courseId}`));
 
