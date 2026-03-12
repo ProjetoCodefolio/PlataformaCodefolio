@@ -241,7 +241,16 @@ const PdfQuizGenerator = ({
 
       setExtractedText(result.text);
       setGeneratedQuestions(result.questions);
-      toast.success(`${result.questions.length} questões geradas com sucesso!`);
+      
+      // Notificar usuário se OCR foi usado
+      if (result.stats?.usedOcr) {
+        toast.success(
+          `${result.questions.length} questões geradas com sucesso!\n\n⚠️ Observação: O texto foi extraído usando OCR (reconhecimento óptico de caracteres) pois o PDF contém apenas imagens. A qualidade pode variar.`,
+          { autoClose: 7000 }
+        );
+      } else {
+        toast.success(`${result.questions.length} questões geradas com sucesso!`);
+      }
     } catch (err) {
       // Usar mensagens de erro mais amigáveis
       const friendlyError = formatFriendlyError(err);
@@ -551,7 +560,20 @@ const PdfQuizGenerator = ({
                     },
                   }}
                 />
-                {numQuestions > 20 && (
+                {processingStep.toLowerCase().includes('ocr') && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      display: "block",
+                      mt: 1,
+                      color: "warning.main",
+                      fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                    }}
+                  >
+                    🔍 Usando OCR para extrair texto de imagens. Isso pode levar mais tempo...
+                  </Typography>
+                )}
+                {numQuestions > 20 && !processingStep.toLowerCase().includes('ocr') && (
                   <Typography
                     variant="caption"
                     sx={{

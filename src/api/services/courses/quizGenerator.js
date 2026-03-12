@@ -316,13 +316,144 @@ export const formatFriendlyError = (error) => {
 };
 
 /**
+ * Extrai texto de imagens do PDF usando OCR (Tesseract.js)
+ * @param {File} file - Arquivo PDF
+ * @param {Function} onProgress - Callback para atualizar progresso
+ * @param {string} selectedModel - ID do modelo selecionado
+ * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
+ * @returns {Promise<{text: string, stats: Object, usedOcr: boolean}>}
+ */
+const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProcessingStep) => {
+  try {
+    if (onProcessingStep) {
+      onProcessingStep('Extraindo texto usando OCR (reconhecimento óptico)...');
+    }
+
+    // Importação dinâmica do Tesseract
+    const { createWorker } = await import('tesseract.js');
+    
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const numPages = pdf.numPages;
+
+    console.debug(`extractTextFromPdfWithOcr - Processando ${numPages} páginas com OCR`);
+
+    let fullText = "";
+    const pageTexts = [];
+
+    // Criar worker do Tesseract
+    const worker = await createWorker('por', 1, {
+      logger: (m) => {
+        if (m.status === 'loading tesseract core' && onProgress) {
+          onProgress(5);
+        }
+      }
+    });
+
+    for (let i = 1; i <= numPages; i++) {
+      try {
+        const page = await pdf.getPage(i);
+        
+        // Renderizar página como imagem com escala maior para melhor OCR
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+
+        if (onProgress) {
+          // 5-40% para renderização e OCR
+          onProgress(5 + Math.round((i / numPages) * 35));
+        }
+
+        // Executar OCR na imagem do canvas
+        const { data: { text } } = await worker.recognize(canvas);
+
+        pageTexts.push({
+          pageNum: i,
+          text: text,
+          charCount: text.length
+        });
+
+        fullText += text + "\n\n";
+        
+        console.debug(`extractTextFromPdfWithOcr - Página ${i}/${numPages}: ${text.length} caracteres extraídos`);
+      } catch (pageError) {
+        console.warn(`extractTextFromPdfWithOcr - Erro na página ${i}:`, pageError.message);
+      }
+    }
+
+    // Encerrar worker
+    await worker.terminate();
+
+    if (onProgress) {
+      onProgress(45);
+    }
+
+    // Aplicar pré-processamento
+    const { text: processedText, stats: preprocessStats } = preprocessPdfText(fullText);
+
+    if (onProgress) {
+      onProgress(50);
+    }
+
+    // Ajustar o tamanho máximo com base no modelo selecionado
+    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
+    const maxContextSize = selectedModelInfo ? selectedModelInfo.maxContext : 8192;
+    const maxLength = Math.floor(maxContextSize * 0.5 * 4);
+
+    let finalText = processedText;
+    let wasTruncated = false;
+
+    if (processedText.length > maxLength) {
+      finalText = processedText.substring(0, maxLength);
+      const lastParagraph = finalText.lastIndexOf('\n\n');
+      if (lastParagraph > maxLength * 0.8) {
+        finalText = finalText.substring(0, lastParagraph);
+      }
+      finalText += '\n\n[Texto truncado devido ao tamanho. Partes finais do documento não foram incluídas.]';
+      wasTruncated = true;
+    }
+
+    return {
+      text: finalText,
+      stats: {
+        ...preprocessStats,
+        numPages,
+        usedOcr: true,
+        wasTruncated,
+        finalLength: finalText.length,
+        maxAllowed: maxLength,
+        pageStats: pageTexts.map(p => ({ page: p.pageNum, chars: p.charCount }))
+      }
+    };
+  } catch (error) {
+    console.error("Erro ao extrair texto com OCR:", error);
+    throw createDetailedError(
+      ErrorTypes.PDF_CORRUPT,
+      'Não foi possível extrair texto do PDF usando OCR.',
+      { originalError: error.message }
+    );
+  }
+};
+
+/**
  * Extrai texto de um arquivo PDF com pré-processamento
+ * Tenta extração normal primeiro, depois OCR se falhar
  * @param {File} file - Arquivo PDF
  * @param {Function} onProgress - Callback para atualizar progresso (0-50)
  * @param {string} selectedModel - ID do modelo selecionado
+ * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
  * @returns {Promise<{text: string, stats: Object}>} - Texto extraído e estatísticas
  */
-export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
+export const extractTextFromPdf = async (file, onProgress, selectedModel, onProcessingStep) => {
   try {
     // Defina o worker para o pdfjs
     pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -420,18 +551,43 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
       reduçãoPercent: preprocessStats.reduction
     });
 
-    // Verificar se há texto suficiente
+    // **PLANO B: Se não extraiu texto suficiente, tentar OCR**
     if (!processedText.trim() || processedText.trim().length < 50) {
+      console.warn('extractTextFromPdf - Texto insuficiente detectado. Iniciando OCR...');
+      
+      if (onProgress) {
+        onProgress(0); // Reset progresso para OCR
+      }
+
+      // Tentar OCR
+      try {
+        const ocrResult = await extractTextFromPdfWithOcr(file, onProgress, selectedModel, onProcessingStep);
+        
+        if (ocrResult.text.trim().length >= 50) {
+          console.debug('extractTextFromPdf - OCR bem-sucedido! Texto extraído:', ocrResult.text.length, 'caracteres');
+          return ocrResult;
+        } else {
+          console.warn('extractTextFromPdf - OCR retornou texto insuficiente:', ocrResult.text.length, 'caracteres');
+        }
+      } catch (ocrError) {
+        console.error('extractTextFromPdf - OCR também falhou:', ocrError);
+        // Continuar para lançar erro original abaixo
+      }
+
+      // Se OCR também falhou ou retornou texto insuficiente, lançar erro
       throw createDetailedError(
         ErrorTypes.PDF_EMPTY,
-        'O PDF não contém texto suficiente para gerar questões.',
+        'O PDF não contém texto suficiente para gerar questões.\n\nTentamos extrair texto usando OCR (reconhecimento óptico de caracteres), mas não foi possível obter conteúdo legível suficiente.\n\nPossíveis causas:\n• As imagens no PDF têm baixa qualidade/resolução\n• O texto é muito pequeno ou ilegível\n• O PDF está realmente vazio ou corrompido\n\nSugestão: Use um PDF com texto selecionável ou imagens em alta resolução.',
         {
           extractedLength: processedText.length,
           numPages,
-          pageStats: pageTexts.map(p => ({ page: p.pageNum, chars: p.charCount }))
+          pageStats: pageTexts.map(p => ({ page: p.pageNum, chars: p.charCount })),
+          ocrAttempted: true
         }
       );
     }
+
+    // Verificar se há texto suficiente (código removido, já verificamos acima)
 
     // Ajustar o tamanho máximo com base no modelo selecionado
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
@@ -464,7 +620,8 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
         numPages,
         wasTruncated,
         finalLength: finalText.length,
-        maxAllowed: maxLength
+        maxAllowed: maxLength,
+        usedOcr: false
       }
     };
   } catch (error) {
@@ -936,7 +1093,7 @@ export const processPdfAndGenerateQuestions = async (
     }
 
     // Extrair texto do PDF (agora retorna objeto com text e stats)
-    const extractResult = await extractTextFromPdf(pdfFile, onProgress, selectedModel);
+    const extractResult = await extractTextFromPdf(pdfFile, onProgress, selectedModel, onProcessingStep);
     const { text, stats } = extractResult;
 
     // Log das estatísticas de extração
