@@ -71,7 +71,7 @@ const PdfQuizGenerator = ({
   const [customApiKey, setCustomApiKey] = useState("");
   const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
   const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("meta-llama/llama-4-maverick-17b");
+  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
 
   useEffect(() => {
     // Buscar modelos LLM disponíveis
@@ -397,10 +397,12 @@ const PdfQuizGenerator = ({
                 ))}
               </Select>
               <FormHelperText>
-                {selectedModel === "meta-llama/llama-4-maverick-17b"
+                {selectedModel === "llama-3.3-70b-versatile"
                   ? "Modelo recomendado para melhor qualidade"
                   : selectedModel === "mixtral-8x7b-32768"
                   ? "Melhor para PDFs maiores"
+                  : selectedModel === "llama-3.1-8b-instant"
+                  ? "Modelo mais rápido"
                   : ""}
               </FormHelperText>
             </FormControl>
@@ -586,7 +588,15 @@ const PdfQuizGenerator = ({
         )}
 
         {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mt: 2,
+              '& .MuiAlert-message': {
+                whiteSpace: 'pre-line' // Permite quebras de linha nas mensagens
+              }
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -632,11 +642,11 @@ const PdfQuizGenerator = ({
                 <ListItemText
                   primary={`${index + 1}. ${question.question}`}
                   secondary={
-                    <Box component="div" sx={{ mt: 1 }}>
+                    <Box component="span" sx={{ mt: 1, display: 'block' }}>
                       {question.options.map((opt, i) => (
                         <Box
                           key={i}
-                          component="div"
+                          component="span"
                           sx={{ display: "block", my: 0.5 }}
                         >
                           <span
@@ -662,6 +672,7 @@ const PdfQuizGenerator = ({
                     sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
                   }}
                   secondaryTypographyProps={{
+                    component: 'div',
                     sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
                   }}
                   sx={{ pr: { xs: 0, sm: 10 } }}

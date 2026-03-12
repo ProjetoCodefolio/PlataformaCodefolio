@@ -1,77 +1,60 @@
 import * as pdfjs from "pdfjs-dist";
 import { v4 as uuidv4 } from "uuid";
 
-// Modelos GROQ disponíveis
+// Modelos GROQ disponíveis (lista atualizada com modelos reais da API GROQ)
 export const GROQ_MODELS = [
-  // Alibaba / Qwen (ajustado)
-  { id: "qwen/qwen3-32b", name: "Qwen 3 32B (Recomendado)", maxContext: 65536 },
-
-  // OpenAI OSS builds (ajustados)
-  { id: "openai/gpt-oss-120b", name: "OpenAI GPT-OSS 120B", maxContext: 65536 },
-  { id: "openai/gpt-oss-20b", name: "OpenAI GPT-OSS 20B", maxContext: 32768 },
-
-  // Whisper (tts/transcrição — aumentados)
-  { id: "whisper-large-v3", name: "Whisper Large v3 (ASR)", maxContext: 8192 },
-  {
-    id: "whisper-large-v3-turbo",
-    name: "Whisper Large v3 Turbo (ASR)",
-    maxContext: 8192,
-  },
-
-  // PlayAI (TTS)
-  { id: "playai-tts", name: "PlayAI TTS", maxContext: 4096 },
-  { id: "playai-tts-arabic", name: "PlayAI TTS (Arabic)", maxContext: 4096 },
-
-  // Meta / LLaMA (aumentados onde aplicável)
-  {
-    id: "llama-3.1-8b-instant",
-    name: "Llama 3.1 8B Instant",
-    maxContext: 16384,
-  },
+  // Meta LLaMA - Modelos principais recomendados
   {
     id: "llama-3.3-70b-versatile",
-    name: "Llama 3.3 70B Versatile",
-    maxContext: 65536,
-  },
-  {
-    id: "meta-llama/llama-4-maverick-17b",
-    name: "Meta Llama 4 Maverick 17B",
-    maxContext: 65536,
-  },
-  {
-    id: "meta-llama/llama-4-scout-17b",
-    name: "Meta Llama 4 Scout 17B",
-    maxContext: 65536,
-  },
-  {
-    id: "meta-llama/llama-guard-4-12b",
-    name: "Meta Llama Guard 4 12B",
+    name: "Llama 3.3 70B Versatile (Recomendado)",
     maxContext: 32768,
   },
   {
-    id: "meta-llama/llama-prompt-guard-2-22m",
-    name: "Meta Llama Prompt Guard 2 (22M)",
+    id: "llama-3.1-70b-versatile",
+    name: "Llama 3.1 70B Versatile",
+    maxContext: 32768,
+  },
+  {
+    id: "llama-3.1-8b-instant",
+    name: "Llama 3.1 8B Instant (Rápido)",
     maxContext: 8192,
   },
   {
-    id: "meta-llama/llama-prompt-guard-2-86m",
-    name: "Meta Llama Prompt Guard 2 (86M)",
+    id: "llama3-70b-8192",
+    name: "Llama 3 70B",
+    maxContext: 8192,
+  },
+  {
+    id: "llama3-8b-8192",
+    name: "Llama 3 8B",
     maxContext: 8192,
   },
 
-  // DeepSeek / outros
+  // Mixtral - Bom para contextos grandes
+  {
+    id: "mixtral-8x7b-32768",
+    name: "Mixtral 8x7B (Contexto Grande)",
+    maxContext: 32768,
+  },
+
+  // Google Gemma
+  {
+    id: "gemma2-9b-it",
+    name: "Gemma 2 9B",
+    maxContext: 8192,
+  },
+  {
+    id: "gemma-7b-it",
+    name: "Gemma 7B",
+    maxContext: 8192,
+  },
+
+  // DeepSeek
   {
     id: "deepseek-r1-distill-llama-70b",
     name: "DeepSeek R1 Distill Llama 70B",
-    maxContext: 65536,
+    maxContext: 32768,
   },
-
-  // Google / Gemma
-  { id: "gemma2-9b-it", name: "Gemma 2 9B (IT)", maxContext: 16384 },
-
-  // Groq models
-  { id: "groq/compound", name: "Groq Compound", maxContext: 65536 },
-  { id: "groq/compound-mini", name: "Groq Compound Mini", maxContext: 32768 },
 ];
 
 // Prompt padrão movido para uma função separada que pode ser modificada
@@ -111,6 +94,107 @@ Qualquer outro formato não será processado corretamente.
 `;
 
 /**
+ * Pré-processa o texto extraído do PDF para melhorar a qualidade da entrada para o LLM
+ * @param {string} rawText - Texto bruto extraído do PDF
+ * @returns {{text: string, stats: Object}} - Texto processado e estatísticas
+ */
+export const preprocessPdfText = (rawText) => {
+  if (!rawText || typeof rawText !== 'string') {
+    return { text: '', stats: { original: 0, processed: 0, reduction: 0 } };
+  }
+
+  const originalLength = rawText.length;
+  let text = rawText;
+
+  // 1. Normalizar quebras de linha (converter \r\n para \n)
+  text = text.replace(/\r\n/g, '\n');
+
+  // 2. Remover múltiplas quebras de linha consecutivas (mais de 2)
+  text = text.replace(/(\n\s*){3,}/g, '\n\n');
+
+  // 3. Remover espaços múltiplos (manter apenas um)
+  text = text.replace(/[^\S\n]{2,}/g, ' ');
+
+  // 4. Remover padrões comuns de headers/footers de PDF
+  // Número de página isolado
+  text = text.replace(/^\s*\d+\s*$/gm, '');
+  // Padrões como "Página X de Y", "Page X"
+  text = text.replace(/\b(p[aá]gina|page)\s*\d+\s*(de|of)?\s*\d*\b/gi, '');
+  // Data/hora no formato comum
+  text = text.replace(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s*\d{1,2}:\d{2}/g, '');
+
+  // 5. Remover caracteres de controle e não-imprimíveis (exceto espaço e nova linha)
+  text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  // 6. Normalizar caracteres especiais problemáticos
+  text = text.replace(/[""]/g, '"');
+  text = text.replace(/['']/g, "'");
+  text = text.replace(/[–—]/g, '-');
+  text = text.replace(/…/g, '...');
+
+  // 7. Remover linhas que contêm apenas pontuação ou símbolos
+  text = text.replace(/^[\s\-_=*#.]+$/gm, '');
+
+  // 8. Limpar espaços no início e fim de cada linha
+  text = text.split('\n').map(line => line.trim()).join('\n');
+
+  // 9. Remover linhas vazias consecutivas novamente após processamento
+  text = text.replace(/(\n\s*){2,}/g, '\n\n');
+
+  // 10. Trim final
+  text = text.trim();
+
+  const processedLength = text.length;
+  const reduction = originalLength > 0 
+    ? Math.round((1 - processedLength / originalLength) * 100) 
+    : 0;
+
+  return {
+    text,
+    stats: {
+      original: originalLength,
+      processed: processedLength,
+      reduction
+    }
+  };
+};
+
+/**
+ * Tipos de erro para diagnóstico detalhado
+ */
+export const ErrorTypes = {
+  API_KEY_INVALID: 'API_KEY_INVALID',
+  API_KEY_MISSING: 'API_KEY_MISSING',
+  RATE_LIMIT: 'RATE_LIMIT',
+  SERVER_ERROR: 'SERVER_ERROR',
+  NETWORK_ERROR: 'NETWORK_ERROR',
+  PDF_EMPTY: 'PDF_EMPTY',
+  PDF_PROTECTED: 'PDF_PROTECTED',
+  PDF_CORRUPT: 'PDF_CORRUPT',
+  JSON_PARSE_ERROR: 'JSON_PARSE_ERROR',
+  INVALID_RESPONSE_FORMAT: 'INVALID_RESPONSE_FORMAT',
+  NO_VALID_QUESTIONS: 'NO_VALID_QUESTIONS',
+  CONTEXT_TOO_LARGE: 'CONTEXT_TOO_LARGE',
+  MODEL_NOT_FOUND: 'MODEL_NOT_FOUND',
+  UNKNOWN: 'UNKNOWN'
+};
+
+/**
+ * Cria um erro estruturado com tipo e detalhes
+ * @param {string} type - Tipo do erro (de ErrorTypes)
+ * @param {string} message - Mensagem para o usuário
+ * @param {Object} details - Detalhes técnicos adicionais
+ * @returns {Error} - Erro com propriedades adicionais
+ */
+export const createDetailedError = (type, message, details = {}) => {
+  const error = new Error(message);
+  error.errorType = type;
+  error.details = details;
+  error.timestamp = new Date().toISOString();
+  return error;
+};
+
+/**
  * Cria o prompt completo para a API
  * @param {string} pdfText - Texto extraído do PDF
  * @param {number} numQuestions - Número de questões a serem geradas
@@ -132,101 +216,268 @@ export const createPrompt = (pdfText, numQuestions, customPrompt) => {
 };
 
 /**
- * Função para formatar mensagens de erro amigáveis
+ * Função para formatar mensagens de erro amigáveis com detalhes específicos
  * @param {Error} error - Erro ocorrido
- * @returns {string} - Mensagem de erro formatada
+ * @returns {string} - Mensagem de erro formatada com sugestões
  */
 export const formatFriendlyError = (error) => {
-  const errorMsg =
-    (error && (error.message || String(error))) || "Erro desconhecido";
-
-  // Mensagens amigáveis para o usuário (curtas e acionáveis)
-  if (
-    errorMsg.includes("401") ||
-    errorMsg.toLowerCase().includes("chave api")
-  ) {
-    return "Erro de autenticação: verifique sua chave API nas configurações.";
-  } else if (errorMsg.includes("429")) {
-    return "Muito tráfego: limite de requisições atingido. Tente novamente daqui a alguns minutos.";
-  } else if (
-    errorMsg.includes("500") ||
-    errorMsg.includes("502") ||
-    errorMsg.includes("503")
-  ) {
-    return "Serviço temporariamente indisponível. Tente novamente mais tarde.";
-  } else if (errorMsg.toLowerCase().includes("json")) {
-    return "A IA retornou um formato inesperado. Tente gerar novamente ou experimente outro modelo.";
-  } else if (
-    errorMsg.toLowerCase().includes("texto") &&
-    errorMsg.includes("empty")
-  ) {
-    return "Não foi possível extrair texto do PDF. Verifique se o arquivo não está protegido ou contém apenas imagens.";
-  } else if (
-    errorMsg.includes("NetworkError") ||
-    errorMsg.includes("Failed to fetch")
-  ) {
-    return "Erro de conexão. Verifique sua internet e tente novamente.";
-  } else if (errorMsg.includes("400")) {
-    // incluir sugestão de ação para 400
-    return "Requisição inválida para o serviço de IA. Tente reduzir o tamanho do arquivo ou o número de questões, e tente novamente.";
+  // Se for um erro estruturado com tipo, usar mensagem formatada específica
+  if (error && error.errorType) {
+    const details = error.details || {};
+    
+    switch (error.errorType) {
+      case ErrorTypes.API_KEY_INVALID:
+        return `Chave API inválida ou expirada. Verifique suas configurações de API e tente novamente.`;
+      
+      case ErrorTypes.API_KEY_MISSING:
+        return `Nenhuma chave API configurada. Adicione sua chave API GROQ nas configurações.`;
+      
+      case ErrorTypes.RATE_LIMIT:
+        return `Limite de requisições atingido. Aguarde ${details.waitTime || 'alguns minutos'} e tente novamente.`;
+      
+      case ErrorTypes.SERVER_ERROR:
+        return `Serviço temporariamente indisponível (erro ${details.statusCode || 'do servidor'}). Tente novamente em alguns minutos.`;
+      
+      case ErrorTypes.NETWORK_ERROR:
+        return `Erro de conexão. Verifique sua internet e tente novamente.`;
+      
+      case ErrorTypes.PDF_EMPTY:
+        return `O PDF não contém texto extraível.\n\nPossíveis causas:\n• O arquivo contém apenas imagens (sem OCR)\n• O PDF está vazio\n• O texto está em formato de imagem\n\nSugestão: Use um PDF com texto selecionável.`;
+      
+      case ErrorTypes.PDF_PROTECTED:
+        return `O PDF está protegido contra leitura. Remova a proteção ou use outro arquivo.`;
+      
+      case ErrorTypes.PDF_CORRUPT:
+        return `O arquivo PDF parece estar corrompido ou em formato inválido. Tente outro arquivo.`;
+      
+      case ErrorTypes.JSON_PARSE_ERROR:
+        return `A IA retornou uma resposta em formato incorreto.\n\nDetalhes: ${details.parseError || 'Formato JSON inválido'}\n\nSugestões:\n• Tente novamente (às vezes a IA falha)\n• Reduza o número de questões\n• Experimente outro modelo de IA`;
+      
+      case ErrorTypes.INVALID_RESPONSE_FORMAT:
+        return `A resposta da IA não está no formato esperado.\n\nProblema: ${details.issue || 'Estrutura de dados incorreta'}\n\nSugestões:\n• Reduza o número de questões para 5-10\n• Tente o modelo "${details.suggestedModel || 'Llama 4 Maverick'}"\n• Verifique se o PDF tem conteúdo suficiente`;
+      
+      case ErrorTypes.NO_VALID_QUESTIONS:
+        return `Não foi possível gerar questões válidas.\n\nPossíveis causas:\n• O conteúdo do PDF é muito curto ou genérico\n• O texto não contém informações suficientes para criar questões\n\nSugestões:\n• Use um PDF com mais conteúdo educacional\n• Reduza o número de questões solicitadas`;
+      
+      case ErrorTypes.CONTEXT_TOO_LARGE:
+        return `O PDF é muito grande para o modelo selecionado.\n\nTamanho: ${details.textLength || '?'} caracteres\nLimite: ${details.maxLength || '?'} caracteres\n\nSugestões:\n• Use um modelo com contexto maior (ex: Llama 3.3 70B)\n• Divida o PDF em partes menores\n• Reduza o número de questões`;
+      
+      case ErrorTypes.MODEL_NOT_FOUND:
+        return `O modelo de IA selecionado não está disponível.\n\nModelo: ${details.modelId || 'desconhecido'}\n\nPossíveis causas:\n• O modelo foi descontinuado pela API\n• Você não tem acesso a este modelo\n• O nome do modelo está incorreto\n\nSugestão: Selecione outro modelo disponível (recomendamos "Llama 3.3 70B Versatile")`;
+      
+      default:
+        return error.message || 'Erro desconhecido. Tente novamente.';
+    }
   }
 
-  // Caso genérico curto
-  return "Ocorreu um erro. Tente novamente ou entre em contato com o suporte se o problema persistir.";
+  // Fallback para erros não estruturados
+  const errorMsg = (error && (error.message || String(error))) || "Erro desconhecido";
+
+  // Detectar tipo de erro pela mensagem
+  if (errorMsg.includes("401") || errorMsg.toLowerCase().includes("chave api") || errorMsg.toLowerCase().includes("invalid api")) {
+    return `Erro de autenticação: A chave API é inválida ou expirou.\n\nSugestão: Verifique sua chave API nas configurações.`;
+  } 
+  
+  if (errorMsg.includes("404") || errorMsg.toLowerCase().includes("model") && errorMsg.toLowerCase().includes("not found")) {
+    // Tentar extrair o nome do modelo
+    let modelName = 'selecionado';
+    const modelMatch = errorMsg.match(/[`']([^`']+)[`']/);
+    if (modelMatch) modelName = `"${modelMatch[1]}"`;
+    
+    return `Modelo ${modelName} não está disponível na API.\n\nPossíveis causas:\n• O modelo foi descontinuado\n• Você não tem acesso a este modelo\n\nSugestão: Selecione outro modelo (recomendamos "Llama 3.3 70B Versatile")`;
+  }
+  
+  if (errorMsg.includes("429")) {
+    return `Limite de requisições excedido.\n\nSugestão: Aguarde alguns minutos antes de tentar novamente.`;
+  } 
+  
+  if (errorMsg.includes("500") || errorMsg.includes("502") || errorMsg.includes("503")) {
+    return `O serviço de IA está temporariamente indisponível.\n\nSugestão: Tente novamente em alguns minutos.`;
+  } 
+  
+  if (errorMsg.toLowerCase().includes("json") || errorMsg.toLowerCase().includes("parse")) {
+    return `A IA retornou uma resposta em formato incorreto.\n\nSugestões:\n• Tente gerar novamente\n• Reduza o número de questões\n• Experimente outro modelo`;
+  } 
+  
+  if (errorMsg.toLowerCase().includes("texto") || errorMsg.toLowerCase().includes("extrair") || errorMsg.toLowerCase().includes("empty")) {
+    return `Não foi possível extrair texto do PDF.\n\nPossíveis causas:\n• O PDF contém apenas imagens\n• O arquivo está protegido\n• O PDF está vazio\n\nSugestão: Use um PDF com texto selecionável.`;
+  } 
+  
+  if (errorMsg.includes("NetworkError") || errorMsg.includes("Failed to fetch") || errorMsg.includes("fetch")) {
+    return `Erro de conexão com o serviço.\n\nSugestões:\n• Verifique sua conexão com a internet\n• Tente novamente em alguns segundos`;
+  } 
+  
+  if (errorMsg.includes("400")) {
+    return `Requisição inválida para o serviço de IA.\n\nSugestões:\n• Reduza o tamanho do PDF\n• Diminua o número de questões\n• Tente outro modelo`;
+  }
+
+  // Mensagem genérica com mais contexto
+  return `Ocorreu um erro inesperado.\n\nDetalhes técnicos: ${errorMsg.substring(0, 150)}${errorMsg.length > 150 ? '...' : ''}\n\nSugestões:\n• Tente novamente\n• Se o erro persistir, experimente outro modelo\n• Entre em contato com o suporte se necessário`;
 };
 
 /**
- * Extrai texto de um arquivo PDF
+ * Extrai texto de um arquivo PDF com pré-processamento
  * @param {File} file - Arquivo PDF
  * @param {Function} onProgress - Callback para atualizar progresso (0-50)
  * @param {string} selectedModel - ID do modelo selecionado
- * @returns {Promise<string>} - Texto extraído do PDF
+ * @returns {Promise<{text: string, stats: Object}>} - Texto extraído e estatísticas
  */
 export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
   try {
     // Defina o worker para o pdfjs
     pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    let arrayBuffer;
+    try {
+      arrayBuffer = await file.arrayBuffer();
+    } catch (bufferError) {
+      throw createDetailedError(
+        ErrorTypes.PDF_CORRUPT,
+        'Não foi possível ler o arquivo PDF.',
+        { originalError: bufferError.message }
+      );
+    }
+
+    let pdf;
+    try {
+      pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    } catch (pdfError) {
+      // Detectar se é erro de proteção
+      if (pdfError.message && pdfError.message.includes('password')) {
+        throw createDetailedError(
+          ErrorTypes.PDF_PROTECTED,
+          'O PDF está protegido por senha.',
+          { originalError: pdfError.message }
+        );
+      }
+      throw createDetailedError(
+        ErrorTypes.PDF_CORRUPT,
+        'Não foi possível processar o PDF. O arquivo pode estar corrompido.',
+        { originalError: pdfError.message }
+      );
+    }
+
     const numPages = pdf.numPages;
-    let text = "";
+    let rawText = "";
+    const pageTexts = [];
+
+    console.debug(`extractTextFromPdf - Processando ${numPages} páginas do PDF`);
 
     for (let i = 1; i <= numPages; i++) {
       if (onProgress) {
-        onProgress(Math.round((i / numPages) * 50)); // Primeira metade do progresso (0-50%)
+        onProgress(Math.round((i / numPages) * 40)); // 0-40% para extração
       }
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const pageText = content.items.map((item) => item.str).join(" ");
-      text += pageText + "\n";
+      
+      try {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        
+        // Extrair texto com melhor preservação de estrutura
+        let pageText = '';
+        let lastY = null;
+        
+        for (const item of content.items) {
+          // Detectar quebra de linha por mudança de posição Y
+          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
+            pageText += '\n';
+          }
+          pageText += item.str;
+          // Adicionar espaço se não terminar com espaço
+          if (item.str && !item.str.endsWith(' ')) {
+            pageText += ' ';
+          }
+          lastY = item.transform[5];
+        }
+        
+        pageTexts.push({
+          pageNum: i,
+          text: pageText,
+          charCount: pageText.length
+        });
+        
+        rawText += pageText + "\n\n";
+      } catch (pageError) {
+        console.warn(`extractTextFromPdf - Erro na página ${i}:`, pageError.message);
+        // Continuar com outras páginas
+      }
+    }
+
+    if (onProgress) {
+      onProgress(45); // 45% após extração
+    }
+
+    // Aplicar pré-processamento
+    const { text: processedText, stats: preprocessStats } = preprocessPdfText(rawText);
+
+    if (onProgress) {
+      onProgress(50); // 50% após pré-processamento
+    }
+
+    console.debug('extractTextFromPdf - Estatísticas:', {
+      páginas: numPages,
+      caracteresOriginais: preprocessStats.original,
+      caracteresProcessados: preprocessStats.processed,
+      reduçãoPercent: preprocessStats.reduction
+    });
+
+    // Verificar se há texto suficiente
+    if (!processedText.trim() || processedText.trim().length < 50) {
+      throw createDetailedError(
+        ErrorTypes.PDF_EMPTY,
+        'O PDF não contém texto suficiente para gerar questões.',
+        {
+          extractedLength: processedText.length,
+          numPages,
+          pageStats: pageTexts.map(p => ({ page: p.pageNum, chars: p.charCount }))
+        }
+      );
     }
 
     // Ajustar o tamanho máximo com base no modelo selecionado
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
-    const maxContextSize = selectedModelInfo
-      ? selectedModelInfo.maxContext
-      : 8192;
+    const maxContextSize = selectedModelInfo ? selectedModelInfo.maxContext : 8192;
 
     // Converter para tokens aproximados (1 token ~= 4 caracteres)
-    // Mantendo margem para o prompt e resposta
-    const maxLength = Math.floor(maxContextSize * 0.75 * 4);
+    // Mantendo margem para o prompt e resposta (50% do contexto para o texto)
+    const maxLength = Math.floor(maxContextSize * 0.5 * 4);
 
-    if (text.length > maxLength) {
-      text = text.substring(0, maxLength) + "...";
+    let finalText = processedText;
+    let wasTruncated = false;
+
+    if (processedText.length > maxLength) {
+      // Truncar de forma inteligente - tentar manter parágrafos completos
+      finalText = processedText.substring(0, maxLength);
+      const lastParagraph = finalText.lastIndexOf('\n\n');
+      if (lastParagraph > maxLength * 0.8) {
+        finalText = finalText.substring(0, lastParagraph);
+      }
+      finalText += '\n\n[Texto truncado devido ao tamanho. Partes finais do documento não foram incluídas.]';
+      wasTruncated = true;
+      
+      console.warn(`extractTextFromPdf - Texto truncado de ${processedText.length} para ${finalText.length} caracteres`);
     }
 
-    if (!text.trim()) {
-      throw new Error(
-        "Não foi possível extrair texto deste PDF. O arquivo pode estar protegido ou contém apenas imagens."
-      );
-    }
-
-    return text;
+    return {
+      text: finalText,
+      stats: {
+        ...preprocessStats,
+        numPages,
+        wasTruncated,
+        finalLength: finalText.length,
+        maxAllowed: maxLength
+      }
+    };
   } catch (error) {
+    // Se já é um erro estruturado, repassar
+    if (error.errorType) {
+      throw error;
+    }
+    
     console.error("Erro ao extrair texto do PDF:", error);
-    throw new Error(
-      "Não foi possível ler o texto do PDF. O arquivo pode estar danificado ou protegido."
+    throw createDetailedError(
+      ErrorTypes.PDF_CORRUPT,
+      'Não foi possível ler o texto do PDF.',
+      { originalError: error.message }
     );
   }
 };
@@ -237,25 +488,60 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel) => {
  * @returns {Array} - Array de questões analisadas
  */
 export const parseGroqResponse = (responseContent) => {
+  // Log para diagnóstico
+  console.debug('parseGroqResponse - Conteúdo recebido (primeiros 500 chars):', 
+    responseContent ? responseContent.substring(0, 500) : 'VAZIO');
+  
+  if (!responseContent || typeof responseContent !== 'string') {
+    throw createDetailedError(
+      ErrorTypes.INVALID_RESPONSE_FORMAT,
+      'A IA não retornou nenhum conteúdo.',
+      { issue: 'Resposta vazia ou nula' }
+    );
+  }
+
+  let parseError = null;
+  let parsedData = null;
+
   // Tentativa 1: Tentar analisar diretamente como JSON
   try {
-    const parsed = JSON.parse(responseContent);
-    if (Array.isArray(parsed)) {
-      return parsed;
+    parsedData = JSON.parse(responseContent);
+    if (Array.isArray(parsedData)) {
+      console.debug('parseGroqResponse - Sucesso na tentativa 1 (JSON direto)');
+      return validateParsedQuestions(parsedData);
+    } else if (parsedData && typeof parsedData === 'object') {
+      // Alguns modelos retornam { questions: [...] }
+      if (Array.isArray(parsedData.questions)) {
+        console.debug('parseGroqResponse - Sucesso na tentativa 1 (objeto com .questions)');
+        return validateParsedQuestions(parsedData.questions);
+      }
     }
   } catch (e) {
-    // Erro silencioso, tentaremos outro método
+    parseError = e.message;
+    console.debug('parseGroqResponse - Tentativa 1 falhou:', e.message);
   }
 
   // Tentativa 2: Procurar por array JSON na resposta
   try {
-    const jsonRegex = /\[\s*\{[\s\S]*\}\s*\]/g;
+    const jsonRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
     const matches = responseContent.match(jsonRegex);
     if (matches && matches.length > 0) {
-      return JSON.parse(matches[0]);
+      // Tentar cada match até encontrar um válido
+      for (const match of matches) {
+        try {
+          parsedData = JSON.parse(match);
+          if (Array.isArray(parsedData) && parsedData.length > 0) {
+            console.debug('parseGroqResponse - Sucesso na tentativa 2 (regex array)');
+            return validateParsedQuestions(parsedData);
+          }
+        } catch (innerE) {
+          continue;
+        }
+      }
     }
   } catch (e) {
-    // Erro silencioso, tentaremos outro método
+    parseError = parseError || e.message;
+    console.debug('parseGroqResponse - Tentativa 2 falhou:', e.message);
   }
 
   // Tentativa 3: Procurar por blocos de código markdown
@@ -263,17 +549,142 @@ export const parseGroqResponse = (responseContent) => {
     const markdownCodeRegex = /```(?:json)?([\s\S]*?)```/g;
     const codeMatches = [...responseContent.matchAll(markdownCodeRegex)];
     if (codeMatches && codeMatches.length > 0) {
-      const jsonContent = codeMatches[0][1].trim();
-      return JSON.parse(jsonContent);
+      for (const codeMatch of codeMatches) {
+        try {
+          const jsonContent = codeMatch[1].trim();
+          parsedData = JSON.parse(jsonContent);
+          if (Array.isArray(parsedData)) {
+            console.debug('parseGroqResponse - Sucesso na tentativa 3 (markdown code block)');
+            return validateParsedQuestions(parsedData);
+          }
+        } catch (innerE) {
+          continue;
+        }
+      }
     }
   } catch (e) {
-    // Erro silencioso, não há mais métodos
+    parseError = parseError || e.message;
+    console.debug('parseGroqResponse - Tentativa 3 falhou:', e.message);
+  }
+
+  // Tentativa 4: Tentar extrair JSON com correção de erros comuns
+  try {
+    let cleanedContent = responseContent
+      // Remover texto antes do primeiro [
+      .replace(/^[^\[]*/, '')
+      // Remover texto após o último ]
+      .replace(/\][^\]]*$/, ']')
+      // Corrigir vírgulas extras
+      .replace(/,\s*]/g, ']')
+      .replace(/,\s*}/g, '}')
+      // Corrigir aspas simples para duplas
+      .replace(/'/g, '"');
+    
+    parsedData = JSON.parse(cleanedContent);
+    if (Array.isArray(parsedData)) {
+      console.debug('parseGroqResponse - Sucesso na tentativa 4 (limpeza de JSON)');
+      return validateParsedQuestions(parsedData);
+    }
+  } catch (e) {
+    parseError = parseError || e.message;
+    console.debug('parseGroqResponse - Tentativa 4 falhou:', e.message);
   }
 
   // Se chegou aqui, não conseguimos extrair o JSON
-  throw new Error(
-    "A IA não retornou as questões no formato correto. Tente novamente ou escolha outro modelo."
+  // Criar erro detalhado com diagnóstico
+  const contentPreview = responseContent.substring(0, 200);
+  const hasJsonStart = responseContent.includes('[') || responseContent.includes('{');
+  const hasJsonEnd = responseContent.includes(']') || responseContent.includes('}');
+  
+  let diagnosticMessage = '';
+  if (!hasJsonStart && !hasJsonEnd) {
+    diagnosticMessage = 'A resposta não contém estrutura JSON. O modelo pode ter retornado texto puro.';
+  } else if (!hasJsonStart) {
+    diagnosticMessage = 'A resposta não começa com um array JSON válido.';
+  } else if (!hasJsonEnd) {
+    diagnosticMessage = 'A resposta JSON parece estar truncada (incompleta).';
+  } else {
+    diagnosticMessage = `Erro ao interpretar JSON: ${parseError || 'formato inválido'}`;
+  }
+
+  console.error('parseGroqResponse - Todas as tentativas falharam. Preview:', contentPreview);
+  
+  throw createDetailedError(
+    ErrorTypes.JSON_PARSE_ERROR,
+    'Não foi possível interpretar a resposta da IA.',
+    {
+      parseError: diagnosticMessage,
+      contentPreview,
+      hasJsonStart,
+      hasJsonEnd,
+      contentLength: responseContent.length
+    }
   );
+};
+
+/**
+ * Valida e filtra questões parseadas, retornando erro detalhado se inválidas
+ * @param {Array} questions - Array de questões parseadas
+ * @returns {Array} - Array de questões validadas
+ */
+const validateParsedQuestions = (questions) => {
+  if (!Array.isArray(questions) || questions.length === 0) {
+    throw createDetailedError(
+      ErrorTypes.NO_VALID_QUESTIONS,
+      'Nenhuma questão encontrada na resposta.',
+      { issue: 'Array vazio ou inválido' }
+    );
+  }
+
+  const validQuestions = [];
+  const invalidReasons = [];
+
+  questions.forEach((q, index) => {
+    const issues = [];
+    
+    if (!q || typeof q !== 'object') {
+      issues.push('não é um objeto');
+    } else {
+      if (!q.question || typeof q.question !== 'string') {
+        issues.push('campo "question" ausente ou inválido');
+      }
+      if (!Array.isArray(q.options)) {
+        issues.push('campo "options" não é um array');
+      } else if (q.options.length < 2) {
+        issues.push(`"options" tem apenas ${q.options.length} item(s), mínimo é 2`);
+      }
+      if (typeof q.correctOption !== 'number') {
+        issues.push('campo "correctOption" não é um número');
+      } else if (Array.isArray(q.options) && (q.correctOption < 0 || q.correctOption >= q.options.length)) {
+        issues.push(`"correctOption" (${q.correctOption}) fora do range de options`);
+      }
+    }
+
+    if (issues.length === 0) {
+      validQuestions.push(q);
+    } else {
+      invalidReasons.push(`Questão ${index + 1}: ${issues.join(', ')}`);
+    }
+  });
+
+  if (validQuestions.length === 0) {
+    throw createDetailedError(
+      ErrorTypes.NO_VALID_QUESTIONS,
+      'Nenhuma questão válida encontrada.',
+      {
+        issue: 'Todas as questões têm problemas de formato',
+        totalQuestions: questions.length,
+        invalidReasons: invalidReasons.slice(0, 5) // Mostrar até 5 razões
+      }
+    );
+  }
+
+  // Log de aviso se algumas questões foram descartadas
+  if (invalidReasons.length > 0) {
+    console.warn(`parseGroqResponse - ${invalidReasons.length} questão(ões) inválida(s) descartada(s):`, invalidReasons);
+  }
+
+  return validQuestions;
 };
 
 /**
@@ -369,19 +780,47 @@ export const generateQuestionsWithGroq = async (
         console.error("GROQ resposta não OK:", response.status, respText);
 
         if (response.status === 401) {
-          throw new Error("A chave API GROQ fornecida é inválida ou expirou.");
+          throw createDetailedError(
+            ErrorTypes.API_KEY_INVALID,
+            'A chave API GROQ fornecida é inválida ou expirou.',
+            { statusCode: 401, responseBody: respText }
+          );
+        } else if (response.status === 404) {
+          // Tentar extrair o nome do modelo da resposta
+          let modelId = selectedModel;
+          try {
+            const errorData = JSON.parse(respText);
+            if (errorData.error && errorData.error.message) {
+              // Extrair modelo da mensagem de erro se possível
+              const match = errorData.error.message.match(/model [`']([^`']+)[`']/i);
+              if (match) modelId = match[1];
+            }
+          } catch (e) {
+            // Ignorar erro de parse
+          }
+          throw createDetailedError(
+            ErrorTypes.MODEL_NOT_FOUND,
+            `O modelo "${modelId}" não está disponível.`,
+            { statusCode: 404, modelId, responseBody: respText }
+          );
         } else if (response.status === 429) {
-          throw new Error(
-            "Limite de requisições da API GROQ excedido. Tente novamente mais tarde."
+          throw createDetailedError(
+            ErrorTypes.RATE_LIMIT,
+            'Limite de requisições da API GROQ excedido.',
+            { statusCode: 429, responseBody: respText }
           );
         } else if (response.status === 400) {
           // Mensagem específica para 400 incluindo corpo para ajudar debug
-          throw new Error(
-            `Erro no serviço GROQ (código 400). Resposta: ${respText}`
+          throw createDetailedError(
+            ErrorTypes.SERVER_ERROR,
+            `Requisição inválida para o serviço GROQ.`,
+            { statusCode: 400, responseBody: respText }
           );
         } else {
-          throw new Error(
-            `Erro no serviço GROQ (código ${response.status}). Resposta: ${respText}`
+          throw createDetailedError(
+            ErrorTypes.SERVER_ERROR,
+            `Erro no serviço GROQ.`,
+            { statusCode: response.status, responseBody: respText }
           );
         }
       }
@@ -492,8 +931,25 @@ export const processPdfAndGenerateQuestions = async (
   const { onProgress, onProcessingStep } = callbacks;
 
   try {
-    // Extrair texto do PDF
-    const text = await extractTextFromPdf(pdfFile, onProgress, selectedModel);
+    if (onProcessingStep) {
+      onProcessingStep('Extraindo texto do PDF...');
+    }
+
+    // Extrair texto do PDF (agora retorna objeto com text e stats)
+    const extractResult = await extractTextFromPdf(pdfFile, onProgress, selectedModel);
+    const { text, stats } = extractResult;
+
+    // Log das estatísticas de extração
+    console.debug('processPdfAndGenerateQuestions - Extração concluída:', stats);
+
+    if (onProcessingStep) {
+      let stepMsg = 'Texto extraído. ';
+      if (stats.wasTruncated) {
+        stepMsg += `(Texto truncado de ${stats.original} para ${stats.finalLength} caracteres) `;
+      }
+      stepMsg += 'Preparando geração de questões...';
+      onProcessingStep(stepMsg);
+    }
 
     if (onProgress) {
       onProgress(50);
@@ -516,10 +972,21 @@ export const processPdfAndGenerateQuestions = async (
     return {
       text,
       questions,
+      stats // Incluir estatísticas no retorno para diagnóstico
     };
   } catch (error) {
     console.error("Erro ao processar PDF:", error);
-    // relança mensagem amigável ao usuário
+    
+    // Se já é um erro formatado/estruturado, usar diretamente
+    if (error.errorType) {
+      const friendlyMsg = formatFriendlyError(error);
+      const formattedError = new Error(friendlyMsg);
+      formattedError.errorType = error.errorType;
+      formattedError.details = error.details;
+      throw formattedError;
+    }
+    
+    // Para outros erros, formatar
     throw new Error(formatFriendlyError(error));
   }
 };
