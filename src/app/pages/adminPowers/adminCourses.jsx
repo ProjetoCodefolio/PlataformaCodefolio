@@ -531,7 +531,7 @@ const AdminCourses = () => {
                                 <Visibility fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Editar curso">
+                            <Tooltip title="Gerenciar curso">
                               <IconButton 
                                 size="small" 
                                 color="secondary"

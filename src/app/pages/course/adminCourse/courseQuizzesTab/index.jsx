@@ -441,9 +441,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       );
       setEditQuiz(updatedQuiz);
 
-      toast.success(
-        `${formattedQuestions.length} questões adicionadas com sucesso!`
-      );
     } catch (error) {
       console.error("Erro ao adicionar questões do PDF:", error);
       toast.error(error.message || "Erro ao salvar questões no banco de dados");
