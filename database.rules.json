@@ -47,6 +47,13 @@
         }
       }
     },
+    
+    "courseAliases": {
+      "$aliasId": {
+        ".read": true,
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (data.exists() && root.child('courses').child(data.child('courseId').val()).child('userId').val() === auth.uid) || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid))"
+      }
+    },
 
     "courses": {
       "$courseId": {

@@ -37,12 +37,13 @@ import {
   loadQuizData,
   recoverUnsavedProgress,
 } from "$api/services/courses/classes";
+import { getCourseIdByAlias } from "$api/services/courses/alias";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
 import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 
-const Classes = () => {
+const Classes = ({ alias = null }) => {
   const [videos, setVideos] = useState([]);
   const [currentVideoId, setCurrentVideoId] = useState(null);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -53,7 +54,7 @@ const Classes = () => {
   const { userDetails } = useAuth();
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const courseId = params.get("courseId");
+  const [courseId, setCourseId] = useState(params.get("courseId"));
   const videoPlayerRef = useRef({
     pause: () => { },
     getCurrentTime: () => 0,
@@ -99,10 +100,34 @@ const Classes = () => {
     }
   }, [showCompletionModal, showLogInModal]);
 
+  useEffect(() => {
+    if (alias) {
+      const courseIdFromAlias = async () => {
+        try {
+          const result = await getCourseIdByAlias(alias);
+          if (result.courseId) {
+            setCourseId(result.courseId);
+            console.log("encontrado", result.courseId);
+          } else {
+            toast.error("Curso não encontrado para o alias fornecido.");
+            navigate("/404");
+          }
+        } catch (error) {
+          console.error("Erro ao obter ID do curso por alias:", error);
+          toast.error("Houve um erro ao carregar o curso. Por favor, tente novamente.");
+          navigate("/404");
+        }
+      };
+      courseIdFromAlias();
+    }
+
+  }, [alias, navigate]);
+
   // Carrega os dados iniciais do curso
   useEffect(() => {
     const fetchData = async () => {
       setLoadingVideos(true);
+      console.log("Carregando dados do curso com ID:", courseId);
       try {
         // Carrega dados do curso usando o serviço
         const courseData = await loadCourseData(
