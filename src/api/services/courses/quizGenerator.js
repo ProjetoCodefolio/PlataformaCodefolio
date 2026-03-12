@@ -57,8 +57,16 @@ export const GROQ_MODELS = [
   },
 ];
 
-// Prompt padrão movido para uma função separada que pode ser modificada
-export const createDefaultPrompt = (numQuestions) => `
+/**
+ * Tipo de questão: 'multiple' para múltipla escolha, 'open' para questões abertas
+ */
+export const QUESTION_TYPES = {
+  MULTIPLE_CHOICE: 'multiple',
+  OPEN: 'open'
+};
+
+// Prompt para questões de múltipla escolha
+export const createMultipleChoicePrompt = (numQuestions) => `
 Você é um professor especializado em criar avaliações educacionais de alta qualidade.
 
 Com base exclusivamente no texto a seguir, crie ${numQuestions} questões de múltipla escolha que avaliem a compreensão dos conceitos principais e informações específicas contidas no texto.
@@ -77,7 +85,26 @@ Diretrizes para as alternativas:
 5. As alternativas devem ter comprimento e estilo semelhantes entre si.
 `;
 
-// Parte fixa do prompt que garantirá o formato correto das respostas
+// Prompt para questões abertas
+export const createOpenQuestionPrompt = (numQuestions) => `
+Você é um professor especializado em criar avaliações educacionais de alta qualidade.
+
+Com base exclusivamente no texto a seguir, crie ${numQuestions} questões discursivas (abertas) que avaliem a compreensão profunda dos conceitos principais e a capacidade de análise.
+
+Diretrizes para as questões:
+1. Foque exclusivamente no conteúdo fornecido, sem introduzir informações externas.
+2. Crie perguntas que testem diferentes níveis de compreensão (compreensão básica, análise, síntese, avaliação).
+3. As perguntas devem ser claras, desafiadoras e exigir resposta detalhada.
+4. Evite questões com respostas muito simples (sim/não).
+5. Procure por questões que permitam diferentes perspectivas de resposta, desde que fundamentadas no texto.
+
+Diretrizes para as respostas esperadas:
+1. Forneça um gabarito/resposta esperada que mostre os pontos principais que devem ser cobertos.
+2. A resposta esperada deve ter entre 3-5 linhas, cobrindo os conceitos-chave.
+3. Aceite respostas paráfrases do gabarito desde que cubram os pontos essenciais.
+`;
+
+// Parte fixa do prompt para questões de múltipla escolha
 export const JSON_FORMAT_INSTRUCTION = `
 IMPORTANTE: É necessário gerar EXATAMENTE o número de questões solicitado, nem mais nem menos.
 
@@ -92,6 +119,34 @@ A saída DEVE ser um array JSON com esta estrutura:
 
 Qualquer outro formato não será processado corretamente.
 `;
+
+// Parte fixa do prompt para questões abertas
+export const JSON_FORMAT_INSTRUCTION_OPEN = `
+IMPORTANTE: É necessário gerar EXATAMENTE o número de questões solicitado, nem mais nem menos.
+
+A saída DEVE ser um array JSON com esta estrutura:
+[
+  {
+    "question": "Pergunta discursiva baseada no texto?",
+    "expectedAnswer": "Resposta esperada/gabarito com os pontos-chave que devem ser cobertos"
+  }
+]
+
+Qualquer outro formato não será processado corretamente.
+`;
+
+/**
+ * Cria o prompt padrão baseado no tipo de questão
+ * @param {number} numQuestions - Número de questões
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
+ * @returns {string} - Prompt para o tipo de questão
+ */
+export const createDefaultPrompt = (numQuestions, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) => {
+  if (questionType === QUESTION_TYPES.OPEN) {
+    return createOpenQuestionPrompt(numQuestions);
+  }
+  return createMultipleChoicePrompt(numQuestions);
+};
 
 /**
  * Pré-processa o texto extraído do PDF para melhorar a qualidade da entrada para o LLM
@@ -195,21 +250,27 @@ export const createDetailedError = (type, message, details = {}) => {
 };
 
 /**
- * Cria o prompt completo para a API
+ * Cria o prompt completo para a API baseado no tipo de questão
  * @param {string} pdfText - Texto extraído do PDF
  * @param {number} numQuestions - Número de questões a serem geradas
  * @param {string} customPrompt - Prompt personalizado (opcional)
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
  * @returns {string} - Prompt completo
  */
-export const createPrompt = (pdfText, numQuestions, customPrompt) => {
+export const createPrompt = (pdfText, numQuestions, customPrompt, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) => {
   // Se tivermos um prompt personalizado, use-o, caso contrário use o padrão
-  const promptTemplate = customPrompt || createDefaultPrompt(numQuestions);
+  const promptTemplate = customPrompt || createDefaultPrompt(numQuestions, questionType);
+  
+  // Escolher a instrução de formato correto baseado no tipo
+  const formatInstruction = questionType === QUESTION_TYPES.OPEN 
+    ? JSON_FORMAT_INSTRUCTION_OPEN 
+    : JSON_FORMAT_INSTRUCTION;
 
   // Adiciona as instruções fixas de formato JSON antes do texto do PDF
   return (
     promptTemplate +
     "\n\n" +
-    JSON_FORMAT_INSTRUCTION +
+    formatInstruction +
     "\n\nO texto para análise é:\n\n" +
     pdfText
   );
@@ -445,10 +506,116 @@ const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProc
 };
 
 /**
- * Extrai texto de um arquivo PDF com pré-processamento
- * Tenta extração normal primeiro, depois OCR se falhar
+ * Extrai texto de um arquivo PDF usando OCR (Tesseract.js)
  * @param {File} file - Arquivo PDF
- * @param {Function} onProgress - Callback para atualizar progresso (0-50)
+ * @param {Function} onProgress - Callback para progresso (0-100)
+ * @param {string} selectedModel - ID do modelo (para contexto)
+ * @param {Function} onProcessingStep - Callback para etapas
+ * @returns {Promise<{text: string, stats: Object}>} - Texto extraído via OCR
+ */
+export const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProcessingStep) => {
+  try {
+    if (onProcessingStep) {
+      onProcessingStep('🔍 Usando OCR para extrair texto de imagens...');
+    }
+
+    // Importar Tesseract dinamicamente
+    const Tesseract = await import('tesseract.js').then(m => m.default);
+    
+    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    const numPages = pdf.numPages;
+    
+    console.debug(`extractTextFromPdfWithOcr - Processando ${numPages} páginas com OCR`);
+
+    let ocrText = "";
+    let processedPages = 0;
+
+    for (let i = 1; i <= numPages; i++) {
+      try {
+        if (onProcessingStep) {
+          onProcessingStep(`🔍 OCR: Página ${i} de ${numPages}...`);
+        }
+
+        const page = await pdf.getPage(i);
+        
+        // Renderizar página como canvas
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+
+        // Extrair texto com Tesseract
+        if (onProgress) {
+          onProgress(50 + Math.floor((i / numPages) * 40)); // 50-90%
+        }
+
+        const result = await Tesseract.recognize(canvas, 'por');
+        const pageText = result.data.text;
+
+        if (pageText && pageText.trim().length > 0) {
+          ocrText += pageText + "\n\n";
+        }
+
+        processedPages++;
+
+      } catch (pageError) {
+        console.warn(`extractTextFromPdfWithOcr - Erro na página ${i}:`, pageError.message);
+        // Continuar com outras páginas
+      }
+    }
+
+    if (onProgress) {
+      onProgress(90); // 90% após OCR
+    }
+
+    // Aplicar pré-processamento
+    const { text: processedText, stats: preprocessStats } = preprocessPdfText(ocrText);
+
+    if (onProgress) {
+      onProgress(95); // 95% após pré-processamento
+    }
+
+    console.debug('extractTextFromPdfWithOcr - Estatísticas:', {
+      páginas: numPages,
+      páginasProcessadas: processedPages,
+      caracteresOriginais: preprocessStats.original,
+      caracteresProcessados: preprocessStats.processed
+    });
+
+    return {
+      text: processedText,
+      stats: {
+        ...preprocessStats,
+        numPages,
+        usedOcr: true,
+        pagesProcessed: processedPages
+      }
+    };
+
+  } catch (error) {
+    console.error('extractTextFromPdfWithOcr - Erro:', error);
+    throw createDetailedError(
+      ErrorTypes.PDF_CORRUPT,
+      'Não foi possível extrair texto via OCR.',
+      { originalError: error.message }
+    );
+  }
+};
+
+/**
+ * Extrai texto de um arquivo PDF com pré-processamento e OCR fallback
+ * @param {File} file - Arquivo PDF
+ * @param {Function} onProgress - Callback para atualizar progresso (0-100)
  * @param {string} selectedModel - ID do modelo selecionado
  * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
  * @returns {Promise<{text: string, stats: Object}>} - Texto extraído e estatísticas
@@ -559,7 +726,7 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
         onProgress(0); // Reset progresso para OCR
       }
 
-      // Tentar OCR
+      // Tentar OCR como fallback
       try {
         const ocrResult = await extractTextFromPdfWithOcr(file, onProgress, selectedModel, onProcessingStep);
         
@@ -568,23 +735,34 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
           return ocrResult;
         } else {
           console.warn('extractTextFromPdf - OCR retornou texto insuficiente:', ocrResult.text.length, 'caracteres');
+          throw createDetailedError(
+            ErrorTypes.PDF_EMPTY,
+            'O PDF não contém texto suficiente mesmo após OCR.',
+            {
+              textLength: ocrResult.text.length,
+              numPages,
+              message: 'O PDF pode estar completamente vazio ou corrupto'
+            }
+          );
         }
       } catch (ocrError) {
         console.error('extractTextFromPdf - OCR também falhou:', ocrError);
-        // Continuar para lançar erro original abaixo
-      }
-
-      // Se OCR também falhou ou retornou texto insuficiente, lançar erro
-      throw createDetailedError(
-        ErrorTypes.PDF_EMPTY,
-        'O PDF não contém texto suficiente para gerar questões.\n\nTentamos extrair texto usando OCR (reconhecimento óptico de caracteres), mas não foi possível obter conteúdo legível suficiente.\n\nPossíveis causas:\n• As imagens no PDF têm baixa qualidade/resolução\n• O texto é muito pequeno ou ilegível\n• O PDF está realmente vazio ou corrompido\n\nSugestão: Use um PDF com texto selecionável ou imagens em alta resolução.',
-        {
-          extractedLength: processedText.length,
-          numPages,
-          pageStats: pageTexts.map(p => ({ page: p.pageNum, chars: p.charCount })),
-          ocrAttempted: true
+        
+        // Se OCR também falhou, lançar erro informando que ambos falharam
+        if (ocrError.errorType) {
+          throw ocrError;
         }
-      );
+        
+        throw createDetailedError(
+          ErrorTypes.PDF_EMPTY,
+          'O PDF não contém texto suficiente. Extração normal e OCR falharam.',
+          {
+            textLength: processedText.length,
+            numPages,
+            ocrError: ocrError.message
+          }
+        );
+      }
     }
 
     // Verificar se há texto suficiente (código removido, já verificamos acima)
@@ -644,7 +822,13 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
  * @param {string} responseContent - Conteúdo da resposta da API
  * @returns {Array} - Array de questões analisadas
  */
-export const parseGroqResponse = (responseContent) => {
+/**
+ * Analisa a resposta da API GROQ para extrair as questões em formato JSON
+ * @param {string} responseContent - Conteúdo da resposta da API
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
+ * @returns {Array} - Array de questões analisadas
+ */
+export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) => {
   // Log para diagnóstico
   console.debug('parseGroqResponse - Conteúdo recebido (primeiros 500 chars):', 
     responseContent ? responseContent.substring(0, 500) : 'VAZIO');
@@ -665,12 +849,12 @@ export const parseGroqResponse = (responseContent) => {
     parsedData = JSON.parse(responseContent);
     if (Array.isArray(parsedData)) {
       console.debug('parseGroqResponse - Sucesso na tentativa 1 (JSON direto)');
-      return validateParsedQuestions(parsedData);
+      return validateParsedQuestions(parsedData, questionType);
     } else if (parsedData && typeof parsedData === 'object') {
       // Alguns modelos retornam { questions: [...] }
       if (Array.isArray(parsedData.questions)) {
         console.debug('parseGroqResponse - Sucesso na tentativa 1 (objeto com .questions)');
-        return validateParsedQuestions(parsedData.questions);
+        return validateParsedQuestions(parsedData.questions, questionType);
       }
     }
   } catch (e) {
@@ -689,7 +873,7 @@ export const parseGroqResponse = (responseContent) => {
           parsedData = JSON.parse(match);
           if (Array.isArray(parsedData) && parsedData.length > 0) {
             console.debug('parseGroqResponse - Sucesso na tentativa 2 (regex array)');
-            return validateParsedQuestions(parsedData);
+            return validateParsedQuestions(parsedData, questionType);
           }
         } catch (innerE) {
           continue;
@@ -712,7 +896,7 @@ export const parseGroqResponse = (responseContent) => {
           parsedData = JSON.parse(jsonContent);
           if (Array.isArray(parsedData)) {
             console.debug('parseGroqResponse - Sucesso na tentativa 3 (markdown code block)');
-            return validateParsedQuestions(parsedData);
+            return validateParsedQuestions(parsedData, questionType);
           }
         } catch (innerE) {
           continue;
@@ -740,7 +924,7 @@ export const parseGroqResponse = (responseContent) => {
     parsedData = JSON.parse(cleanedContent);
     if (Array.isArray(parsedData)) {
       console.debug('parseGroqResponse - Sucesso na tentativa 4 (limpeza de JSON)');
-      return validateParsedQuestions(parsedData);
+      return validateParsedQuestions(parsedData, questionType);
     }
   } catch (e) {
     parseError = parseError || e.message;
@@ -784,7 +968,13 @@ export const parseGroqResponse = (responseContent) => {
  * @param {Array} questions - Array de questões parseadas
  * @returns {Array} - Array de questões validadas
  */
-const validateParsedQuestions = (questions) => {
+/**
+ * Valida e filtra questões parseadas, retornando erro detalhado se inválidas
+ * @param {Array} questions - Array de questões parseadas
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
+ * @returns {Array} - Array de questões validadas
+ */
+const validateParsedQuestions = (questions, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) => {
   if (!Array.isArray(questions) || questions.length === 0) {
     throw createDetailedError(
       ErrorTypes.NO_VALID_QUESTIONS,
@@ -796,33 +986,58 @@ const validateParsedQuestions = (questions) => {
   const validQuestions = [];
   const invalidReasons = [];
 
-  questions.forEach((q, index) => {
-    const issues = [];
-    
-    if (!q || typeof q !== 'object') {
-      issues.push('não é um objeto');
-    } else {
-      if (!q.question || typeof q.question !== 'string') {
-        issues.push('campo "question" ausente ou inválido');
+  if (questionType === QUESTION_TYPES.OPEN) {
+    // Validação para questões abertas
+    questions.forEach((q, index) => {
+      const issues = [];
+      
+      if (!q || typeof q !== 'object') {
+        issues.push('não é um objeto');
+      } else {
+        if (!q.question || typeof q.question !== 'string') {
+          issues.push('campo "question" ausente ou inválido');
+        }
+        if (!q.expectedAnswer || typeof q.expectedAnswer !== 'string') {
+          issues.push('campo "expectedAnswer" ausente ou inválido');
+        }
       }
-      if (!Array.isArray(q.options)) {
-        issues.push('campo "options" não é um array');
-      } else if (q.options.length < 2) {
-        issues.push(`"options" tem apenas ${q.options.length} item(s), mínimo é 2`);
-      }
-      if (typeof q.correctOption !== 'number') {
-        issues.push('campo "correctOption" não é um número');
-      } else if (Array.isArray(q.options) && (q.correctOption < 0 || q.correctOption >= q.options.length)) {
-        issues.push(`"correctOption" (${q.correctOption}) fora do range de options`);
-      }
-    }
 
-    if (issues.length === 0) {
-      validQuestions.push(q);
-    } else {
-      invalidReasons.push(`Questão ${index + 1}: ${issues.join(', ')}`);
-    }
-  });
+      if (issues.length === 0) {
+        validQuestions.push(q);
+      } else {
+        invalidReasons.push(`Questão ${index + 1}: ${issues.join(', ')}`);
+      }
+    });
+  } else {
+    // Validação para questões de múltipla escolha
+    questions.forEach((q, index) => {
+      const issues = [];
+      
+      if (!q || typeof q !== 'object') {
+        issues.push('não é um objeto');
+      } else {
+        if (!q.question || typeof q.question !== 'string') {
+          issues.push('campo "question" ausente ou inválido');
+        }
+        if (!Array.isArray(q.options)) {
+          issues.push('campo "options" não é um array');
+        } else if (q.options.length < 2) {
+          issues.push(`"options" tem apenas ${q.options.length} item(s), mínimo é 2`);
+        }
+        if (typeof q.correctOption !== 'number') {
+          issues.push('campo "correctOption" não é um número');
+        } else if (Array.isArray(q.options) && (q.correctOption < 0 || q.correctOption >= q.options.length)) {
+          issues.push(`"correctOption" (${q.correctOption}) fora do range de options`);
+        }
+      }
+
+      if (issues.length === 0) {
+        validQuestions.push(q);
+      } else {
+        invalidReasons.push(`Questão ${index + 1}: ${issues.join(', ')}`);
+      }
+    });
+  }
 
   if (validQuestions.length === 0) {
     throw createDetailedError(
@@ -852,6 +1067,7 @@ const validateParsedQuestions = (questions) => {
  * @param {string} apiKey - Chave da API GROQ
  * @param {string} customPrompt - Prompt personalizado opcional
  * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
  * @returns {Promise<Array>} - Array de questões geradas
  */
 export const generateQuestionsWithGroq = async (
@@ -860,7 +1076,8 @@ export const generateQuestionsWithGroq = async (
   selectedModel,
   apiKey,
   customPrompt,
-  onProcessingStep
+  onProcessingStep,
+  questionType = QUESTION_TYPES.MULTIPLE_CHOICE
 ) => {
   try {
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
@@ -880,20 +1097,23 @@ export const generateQuestionsWithGroq = async (
     }
 
     // Preparar o prompt para o GROQ com o texto do PDF e o número de questões
-    const prompt = createPrompt(pdfText, numQuestions, customPrompt);
+    const prompt = createPrompt(pdfText, numQuestions, customPrompt, questionType);
 
     // URL da API GROQ
     const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
 
     try {
       // Preparar o body separadamente para poder logar
+      const systemPrompt = questionType === QUESTION_TYPES.OPEN
+        ? "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões discursivas em formato JSON sem explicações adicionais."
+        : "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.";
+
       const requestBody = {
         model: selectedModel,
         messages: [
           {
             role: "system",
-            content:
-              "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.",
+            content: systemPrompt,
           },
           {
             role: "user",
@@ -908,6 +1128,7 @@ export const generateQuestionsWithGroq = async (
       console.debug("GROQ request -> apiUrl:", apiUrl);
       console.debug("GROQ request -> selectedModel:", selectedModel);
       console.debug("GROQ request -> selectedModelInfo:", selectedModelInfo);
+      console.debug("GROQ request -> questionType:", questionType);
       console.debug("GROQ request -> prompt length:", prompt.length);
       console.debug("GROQ request -> requestBody (truncated):", {
         ...requestBody,
@@ -1003,17 +1224,29 @@ export const generateQuestionsWithGroq = async (
       }
 
       // Processar a resposta para extrair as questões
-      const parsedQuestions = parseGroqResponse(content);
+      const parsedQuestions = parseGroqResponse(content, questionType);
 
-      // Validar cada questão
-      const validatedQuestions = parsedQuestions.filter(
-        (q) =>
-          q &&
-          q.question &&
-          Array.isArray(q.options) &&
-          q.options.length >= 2 &&
-          typeof q.correctOption === "number"
-      );
+      // Validar cada questão de acordo com o tipo
+      let validatedQuestions;
+      if (questionType === QUESTION_TYPES.OPEN) {
+        validatedQuestions = parsedQuestions.filter(
+          (q) =>
+            q &&
+            q.question &&
+            typeof q.question === 'string' &&
+            q.expectedAnswer &&
+            typeof q.expectedAnswer === 'string'
+        );
+      } else {
+        validatedQuestions = parsedQuestions.filter(
+          (q) =>
+            q &&
+            q.question &&
+            Array.isArray(q.options) &&
+            q.options.length >= 2 &&
+            typeof q.correctOption === "number"
+        );
+      }
 
       if (validatedQuestions.length === 0) {
         throw new Error(
@@ -1037,13 +1270,20 @@ export const generateQuestionsWithGroq = async (
           const baseQuestion = validatedQuestions[baseIndex];
 
           // Cria variante para completar o número necessário
-          const newQuestion = {
-            ...baseQuestion,
-            question: `${baseQuestion.question} (variação ${i + 1})`,
-            options: [...baseQuestion.options],
-          };
-
-          finalQuestions.push(newQuestion);
+          if (questionType === QUESTION_TYPES.OPEN) {
+            const newQuestion = {
+              ...baseQuestion,
+              question: `${baseQuestion.question} (variação ${i + 1})`,
+            };
+            finalQuestions.push(newQuestion);
+          } else {
+            const newQuestion = {
+              ...baseQuestion,
+              question: `${baseQuestion.question} (variação ${i + 1})`,
+              options: [...baseQuestion.options],
+            };
+            finalQuestions.push(newQuestion);
+          }
         }
       } else {
         finalQuestions = validatedQuestions;
@@ -1075,6 +1315,7 @@ export const generateQuestionsWithGroq = async (
  * @param {string} apiKey - Chave API GROQ
  * @param {string} customPrompt - Prompt personalizado (opcional)
  * @param {Object} callbacks - Callbacks para atualizar UI
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
  * @returns {Promise<{text: string, questions: Array}>} - Texto extraído e questões geradas
  */
 export const processPdfAndGenerateQuestions = async (
@@ -1083,7 +1324,8 @@ export const processPdfAndGenerateQuestions = async (
   selectedModel,
   apiKey,
   customPrompt,
-  callbacks = {}
+  callbacks = {},
+  questionType = QUESTION_TYPES.MULTIPLE_CHOICE
 ) => {
   const { onProgress, onProcessingStep } = callbacks;
 
@@ -1119,7 +1361,8 @@ export const processPdfAndGenerateQuestions = async (
       selectedModel,
       apiKey,
       customPrompt,
-      onProcessingStep
+      onProcessingStep,
+      questionType
     );
 
     if (onProgress) {
