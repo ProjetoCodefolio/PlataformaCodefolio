@@ -8,6 +8,7 @@ import {
 } from "../../utils/courseUtils";
 import { updateCourseProgress } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
+import { isAliasAvailable } from "./alias";
 
 export const fetchCourses = async (limit) => {
   try {
@@ -374,7 +375,7 @@ export const fetchCourseDetails = async (courseId) => {
  * @param {string} userId - ID do usuário criador do curso
  * @returns {Promise<{courseId: string, courseData: Object}>} - ID do curso criado e dados
  */
-export const createCourse = async (courseData, userId) => {
+export const createCourse = async (courseData, userId, courseAlias = null) => {
   try {
     // Validação básica
     if (!userId || !courseData.title || !courseData.description) {
@@ -416,7 +417,14 @@ export const createCourse = async (courseData, userId) => {
       // Salvar o curso normalmente
       await set(newCourseRef, finalCourseData);
     }
-    
+
+    if(courseAlias) {
+      const courseAliasRef = ref(database, `courseAliases/${courseAlias}`);
+      await set(courseAliasRef, {
+        courseId: courseKey,
+      });
+    }
+
     return { 
       courseId: courseKey,
       courseData: finalCourseData // Contém o PIN original para o admin
@@ -439,10 +447,21 @@ export const updateCourse = async (courseId, courseData) => {
       throw new Error("ID do curso é obrigatório para atualização");
     }
     
+    // Obter dados atuais do curso para preservar o userId original
+    const courseRef = ref(database, `courses/${courseId}`);
+    const currentCourseSnapshot = await get(courseRef);
+    
+    if (!currentCourseSnapshot.exists()) {
+      throw new Error("Curso não encontrado");
+    }
+    
+    const currentCourse = currentCourseSnapshot.val();
+    
     // Criar uma cópia do objeto para não modificar o original
     const updatedData = {
       ...courseData,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      userId: currentCourse.userId // Preservar o userId original (owner) - nunca pode mudar
     };
     
     // Se o PIN foi atualizado, fazer o hash e remover o PIN bruto
@@ -451,8 +470,30 @@ export const updateCourse = async (courseId, courseData) => {
       delete updatedData.pin; // Remover o PIN bruto antes de salvar
     }
     
-    const courseRef = ref(database, `courses/${courseId}`);
     await update(courseRef, updatedData);
+    
+    // Atualizar alias se fornecido
+    if (courseData.alias) {
+      // Procurar e remover alias antigo do mesmo courseId
+      const courseAliasesRef = ref(database, `courseAliases`);
+      const aliasesSnapshot = await get(courseAliasesRef);
+      
+      if (aliasesSnapshot.exists()) {
+        const aliases = aliasesSnapshot.val();
+        for (const [aliasKey, aliasData] of Object.entries(aliases)) {
+          if (aliasData.courseId === courseId && aliasKey !== courseData.alias) {
+            await remove(ref(database, `courseAliases/${aliasKey}`));
+          }
+        }
+      }
+
+      // Criar o novo alias com o novo nome
+      const newCourseAliasRef = ref(database, `courseAliases/${courseData.alias}`);
+      await set(newCourseAliasRef, {
+        courseId: courseId,
+        alias: courseData.alias
+      });
+    }
     
     return { 
       success: true,
@@ -471,7 +512,7 @@ export const updateCourse = async (courseId, courseData) => {
  * @param {string} userId - ID do usuário
  * @returns {Promise<{courseId: string, isNew: boolean, courseData: Object}>} - Resultado da operação
  */
-export const saveCourse = async (courseId, courseData, userId) => {
+export const saveCourse = async (courseId, courseData, userId, courseAlias = null) => {
   try {
     if (courseId) {
       // Atualizar curso existente
@@ -483,7 +524,7 @@ export const saveCourse = async (courseId, courseData, userId) => {
       };
     } else {
       // Criar novo curso
-      const result = await createCourse(courseData, userId);
+      const result = await createCourse(courseData, userId, courseAlias);
       return { 
         courseId: result.courseId, 
         isNew: true, 
@@ -509,6 +550,34 @@ export const validateCourseData = async (courseData, quizzes) => {
         isValid: false,
         error: "Preencha todos os campos obrigatórios"
       };
+    }
+
+    if(courseData.alias) {
+      if (!/^[a-zA-Z0-9_-]+$/.test(courseData.alias)) {
+        return {
+          isValid: false,
+          error: "O alias só pode conter letras, números, hífens e underscores"
+        };
+      }
+    }
+
+    // Verificar se o alias já existe para outro curso
+    if (courseData.alias && courseData.courseId) {
+      const aliasIsValid = await isAliasAvailable(courseData.alias, courseData.courseId);
+      if (!aliasIsValid) {
+        return {
+          isValid: false,
+          error: "Este alias já está em uso por outro curso"
+        };
+      }
+    } else if (courseData.alias) {
+      const aliasIsValid = await isAliasAvailable(courseData.alias);
+      if (!aliasIsValid) {
+        return {
+          isValid: false,
+          error: "Este alias já está em uso por outro curso"
+        };
+      }
     }
     
     // Verificar se há quizzes sem questões

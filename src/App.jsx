@@ -5,6 +5,7 @@ import {
   Routes,
   Navigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./app/context/AuthContext";
 import Login from "./app/pages/Login";
@@ -141,18 +142,21 @@ function App() {
             <Route
               path="/listcurso"
               element={
-                // <PrivateRoute >
                 <ListCursos />
-                // </PrivateRoute >
+              }
+            />
+
+            <Route
+              path="/course/:alias"
+              element={
+                <CourseAliasRoute />
               }
             />
 
             <Route
               path="/classes"
               element={
-                // <PrivateRoute >
                 <Classes />
-                // </PrivateRoute >
               }
             />
 
@@ -255,6 +259,7 @@ function App() {
               }
             />
 
+            <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
@@ -273,6 +278,12 @@ function PrivateRoute({ children }) {
   }
 
   return children;
+}
+
+function CourseAliasRoute() {
+  const { alias } = useParams();
+
+  return <Classes alias={alias} />;
 }
 
 // Protege rotas de professor, exigindo autenticação e permissão de teacher

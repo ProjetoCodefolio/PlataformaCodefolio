@@ -109,6 +109,7 @@ const CourseForm = () => {
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
+  const [courseAlias, setCourseAlias] = useState("");
   const [selectedTab, setSelectedTab] = useState(parseInt(params.get("tab")) || 0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -130,6 +131,7 @@ const CourseForm = () => {
           if (courseData) {
             setCourseTitle(courseData.title || "");
             setCourseDescription(courseData.description || "");
+            setCourseAlias(courseData.alias || "");
             setPinRequired(!!courseData.pinEnabled);
             
             // Se tiver pin habilitado e estiver retornando apenas o hash
@@ -192,12 +194,15 @@ const CourseForm = () => {
         return;
       }
 
+      console.log("alias recebido", courseAlias);
+
       // Usar a função da API para validar os dados do curso
       const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
       const validation = await validateCourseData(
         {
           title: courseTitle,
           description: courseDescription,
+          alias: courseAlias,
         },
         quizzes
       );
@@ -220,6 +225,7 @@ const CourseForm = () => {
       const courseData = {
         title: courseTitle,
         description: courseDescription,
+        alias: courseAlias,
         userId: userDetails.userId,
         pinEnabled: pinRequired,
       };
@@ -229,7 +235,7 @@ const CourseForm = () => {
       }
 
       // Salvar curso usando a função da API
-      const result = await saveCourse(courseId, courseData, userDetails.userId);
+      const result = await saveCourse(courseId, courseData, userDetails.userId, courseAlias);
       const finalCourseId = result.courseId;
 
       if (finalCourseId !== courseId) {
@@ -261,6 +267,7 @@ const CourseForm = () => {
   }, [
     courseTitle,
     courseDescription,
+    courseAlias,
     userDetails,
     courseId,
     coursePin,
@@ -275,7 +282,7 @@ const CourseForm = () => {
       courseDescription.trim() !== "" &&
       !quizzes.some((quiz) => quiz.questions.length === 0)
     );
-  }, [courseTitle, courseDescription]);
+  }, [courseTitle, courseDescription, courseAlias]);
 
   // Funções de manipulação de menu
   const handleAdvancedSettingsClick = () => {
@@ -383,6 +390,31 @@ const CourseForm = () => {
                 variant="outlined"
                 multiline
                 rows={3}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  },
+                  "& .MuiInputBase-input": {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Apelido do Curso"
+                fullWidth
+                value={courseAlias}
+                onChange={(e) => setCourseAlias(e.target.value.replace(/\s/g, ''))}
+                variant="outlined"
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { borderColor: "#666" },
