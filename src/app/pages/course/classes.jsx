@@ -928,7 +928,7 @@ const Classes = ({ alias = null }) => {
           onClose={() => setShowCompletionModal(false)}
           onExplore={() => {
             setShowCompletionModal(false);
-            navigate("/listcurso");
+            navigate("/cursos");
           }}
           modalRef={modalRef}
           modalDimensions={modalDimensions}
