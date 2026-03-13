@@ -37,6 +37,7 @@ import KeyIcon from "@mui/icons-material/Key";
 import { toast } from "react-toastify";
 import {
   GROQ_MODELS,
+  QUESTION_TYPES,
   createDefaultPrompt,
   JSON_FORMAT_INSTRUCTION,
   formatFriendlyError,
@@ -59,6 +60,7 @@ const PdfQuizGenerator = ({
   const [processingStep, setProcessingStep] = useState("");
   const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
+  const [questionType, setQuestionType] = useState(QUESTION_TYPES.MULTIPLE_CHOICE);
   const fileInputRef = useRef(null);
 
   // Estados para o diálogo de configurações
@@ -136,10 +138,14 @@ const PdfQuizGenerator = ({
     setNumQuestions(e.target.value);
   };
 
+  const handleQuestionTypeChange = (e) => {
+    setQuestionType(e.target.value);
+  };
+
   // Manipulação do diálogo de configurações
   const handleOpenSettings = () => {
     if (!customPrompt && !usingCustomPrompt) {
-      setCustomPrompt(createDefaultPrompt(numQuestions));
+      setCustomPrompt(createDefaultPrompt(numQuestions, questionType));
     }
     setSettingsOpen(true);
   };
@@ -170,7 +176,7 @@ const PdfQuizGenerator = ({
   };
 
   const handleResetPrompt = () => {
-    setCustomPrompt(createDefaultPrompt(numQuestions));
+    setCustomPrompt(createDefaultPrompt(numQuestions, questionType));
     toast.info("Prompt restaurado para o padrão");
   };
 
@@ -236,21 +242,21 @@ const PdfQuizGenerator = ({
         {
           onProgress: setProgress,
           onProcessingStep: setProcessingStep
-        }
+        },
+        questionType
       );
 
       setExtractedText(result.text);
       setGeneratedQuestions(result.questions);
       
-      // Notificar usuário se OCR foi usado
-      if (result.stats?.usedOcr) {
-        toast.success(
-          `${result.questions.length} questões geradas com sucesso!\n\n⚠️ Observação: O texto foi extraído usando OCR (reconhecimento óptico de caracteres) pois o PDF contém apenas imagens. A qualidade pode variar.`,
-          { autoClose: 7000 }
-        );
-      } else {
-        toast.success(`${result.questions.length} questões geradas com sucesso!`);
+      // Notificar se OCR foi usado
+      if (result.stats && result.stats.usedOcr) {
+        toast.warning('⚠️ Texto extraído usando OCR (imagens do PDF)', {
+          autoClose: 5000,
+        });
       }
+      
+      toast.success(`${result.questions.length} questões geradas com sucesso!`);
     } catch (err) {
       // Usar mensagens de erro mais amigáveis
       const friendlyError = formatFriendlyError(err);
@@ -363,7 +369,7 @@ const PdfQuizGenerator = ({
       {/* Configurações de geração */}
       {!loading && (
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth variant="outlined" size="small">
               <InputLabel id="num-questions-label">
                 Número de Questões
@@ -389,7 +395,32 @@ const PdfQuizGenerator = ({
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12} sm={6} md={4}>
+            <FormControl fullWidth variant="outlined" size="small">
+              <InputLabel id="question-type-label">Tipo de Questão</InputLabel>
+              <Select
+                labelId="question-type-label"
+                value={questionType}
+                onChange={handleQuestionTypeChange}
+                label="Tipo de Questão"
+                sx={{ bgcolor: "#f9f9ff" }}
+              >
+                <MenuItem value={QUESTION_TYPES.MULTIPLE_CHOICE}>
+                  Múltipla Escolha
+                </MenuItem>
+                <MenuItem value={QUESTION_TYPES.OPEN}>
+                  Abertas (Dissertativas)
+                </MenuItem>
+              </Select>
+              <FormHelperText>
+                {questionType === QUESTION_TYPES.OPEN
+                  ? "Questões com resposta livre"
+                  : "Questões com 4 alternativas"}
+              </FormHelperText>
+            </FormControl>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={4}>
             <FormControl fullWidth variant="outlined" size="small">
               <InputLabel id="model-select-label">Modelo IA</InputLabel>
               <Select
@@ -661,44 +692,71 @@ const PdfQuizGenerator = ({
                   px: { xs: 1.5, sm: 2 },
                 }}
               >
-                <ListItemText
-                  primary={`${index + 1}. ${question.question}`}
-                  secondary={
-                    <Box component="span" sx={{ mt: 1, display: 'block' }}>
-                      {question.options.map((opt, i) => (
-                        <Box
-                          key={i}
-                          component="span"
-                          sx={{ display: "block", my: 0.5 }}
-                        >
-                          <span
-                            style={{
-                              fontWeight:
-                                i === question.correctOption
-                                  ? "bold"
-                                  : "normal",
-                              color:
-                                i === question.correctOption
-                                  ? "green"
-                                  : "inherit",
-                              fontSize: "0.875rem",
-                            }}
+              <ListItemText
+                primary={`${index + 1}. ${question.question}`}
+                secondary={
+                  <Box component="span" sx={{ mt: 1, display: 'block' }}>
+                    {question.options ? (
+                      // Questão de múltipla escolha
+                      <>
+                        <Typography variant="caption" sx={{ display: "block", mb: 0.5, color: "#666", fontSize: { xs: "0.75rem", sm: "0.813rem" } }}>
+                          <strong>Alternativas:</strong>
+                        </Typography>
+                        {question.options.map((opt, i) => (
+                          <Box
+                            key={i}
+                            component="span"
+                            sx={{ display: "block", my: 0.5 }}
                           >
-                            {String.fromCharCode(65 + i)}) {opt}
-                          </span>
-                        </Box>
-                      ))}
-                    </Box>
-                  }
-                  primaryTypographyProps={{
-                    sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
-                  }}
-                  secondaryTypographyProps={{
-                    component: 'div',
-                    sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
-                  }}
-                  sx={{ pr: { xs: 0, sm: 10 } }}
-                />
+                            <span
+                              style={{
+                                fontWeight:
+                                  i === question.correctOption
+                                    ? "bold"
+                                    : "normal",
+                                color:
+                                  i === question.correctOption
+                                    ? "green"
+                                    : "inherit",
+                                fontSize: "0.875rem",
+                              }}
+                            >
+                              {String.fromCharCode(65 + i)}) {opt}
+                            </span>
+                          </Box>
+                        ))}
+                      </>
+                    ) : (
+                      // Questão aberta
+                      <>
+                        <Typography variant="caption" sx={{ display: "block", mb: 0.5, color: "#666", fontSize: { xs: "0.75rem", sm: "0.813rem" } }}>
+                          <strong>Resposta Sugerida:</strong>
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          sx={{ 
+                            display: "block", 
+                            my: 0.5, 
+                            fontStyle: "italic",
+                            color: "#555",
+                            fontSize: { xs: "0.813rem", sm: "0.875rem" }
+                          }}
+                        >
+                          {question.expectedAnswer}
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
+                }
+                primaryTypographyProps={{
+                  sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
+                }}
+                secondaryTypographyProps={{
+                  component: 'div',
+                  sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
+                }}
+                sx={{ pr: { xs: 0, sm: 10 } }}
+              />
                 <ListItemSecondaryAction
                   sx={{
                     position: { xs: "relative", sm: "absolute" },
