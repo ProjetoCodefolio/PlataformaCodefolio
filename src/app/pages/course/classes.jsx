@@ -923,7 +923,7 @@ const Classes = ({ alias = null }) => {
           modalRef={modalRef}
         />
 
-        <CompletionModal
+        {/* <CompletionModal
           open={showCompletionModal}
           onClose={() => setShowCompletionModal(false)}
           onExplore={() => {
@@ -934,7 +934,7 @@ const Classes = ({ alias = null }) => {
           modalDimensions={modalDimensions}
           userName={userDetails?.firstName}
           courseTitle={courseTitle}
-        />
+        /> */}
 
         {showQuizGigi && (
           <QuizGigi
