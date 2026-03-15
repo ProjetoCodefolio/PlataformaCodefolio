@@ -107,7 +107,6 @@ const Classes = ({ alias = null }) => {
           const result = await getCourseIdByAlias(alias);
           if (result.courseId) {
             setCourseId(result.courseId);
-            console.log("encontrado", result.courseId);
           } else {
             toast.error("Curso não encontrado para o alias fornecido.");
             navigate("/404");
@@ -127,7 +126,6 @@ const Classes = ({ alias = null }) => {
   useEffect(() => {
     const fetchData = async () => {
       setLoadingVideos(true);
-      console.log("Carregando dados do curso com ID:", courseId);
       try {
         // Carrega dados do curso usando o serviço
         const courseData = await loadCourseData(

@@ -194,8 +194,6 @@ const CourseForm = () => {
         return;
       }
 
-      console.log("alias recebido", courseAlias);
-
       // Usar a função da API para validar os dados do curso
       const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
       const validation = await validateCourseData(

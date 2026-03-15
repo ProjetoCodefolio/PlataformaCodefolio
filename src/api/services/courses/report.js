@@ -242,8 +242,6 @@ export const sendReport = async (reportData) => {
     // Salvar no banco
     await set(newReportRef, report);
 
-    console.log(`✅ Reporte #${reportNumber} salvo com sucesso!`, report);
-
     // Enviar email de notificação (não bloqueia se falhar)
     sendReportEmail({
       ...report,
