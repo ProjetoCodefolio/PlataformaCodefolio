@@ -68,7 +68,7 @@ export const isAliasAvailable = async (alias, currentCourseId = null) => {
     
     // Se o alias existe e não é do curso atual, não está disponível
     const aliasData = snapshot.val();
-    return currentCourseId && aliasData.courseId === currentCourseId;
+        return Boolean(currentCourseId && aliasData.courseId === currentCourseId);
   } catch (error) {
     console.error("Erro ao verificar disponibilidade do alias:", error);
     return false;

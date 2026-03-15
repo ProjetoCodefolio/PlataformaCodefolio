@@ -204,7 +204,8 @@ const CourseForm = () => {
           description: courseDescription,
           alias: courseAlias,
         },
-        quizzes
+        quizzes,
+        courseId
       );
 
       if (!validation.isValid) {

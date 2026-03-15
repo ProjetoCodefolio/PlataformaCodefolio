@@ -552,9 +552,10 @@ export const saveCourse = async (courseId, courseData, userId, courseAlias = nul
  * Valida se um curso pode ser salvo
  * @param {Object} courseData - Dados do curso
  * @param {Array} quizzes - Lista de quizzes
+ * @param {string|null} courseId - ID do curso atual (opcional, para atualização)
  * @returns {Promise<{isValid: boolean, error: string|null}>} - Resultado da validação
  */
-export const validateCourseData = async (courseData, quizzes) => {
+export const validateCourseData = async (courseData, quizzes, courseId = null) => {
   try {
     if (!courseData.title?.trim() || !courseData.description?.trim()) {
       return {
@@ -573,16 +574,8 @@ export const validateCourseData = async (courseData, quizzes) => {
     }
 
     // Verificar se o alias já existe para outro curso
-    if (courseData.alias && courseData.courseId) {
-      const aliasIsValid = await isAliasAvailable(courseData.alias, courseData.courseId);
-      if (!aliasIsValid) {
-        return {
-          isValid: false,
-          error: "Este alias já está em uso por outro curso"
-        };
-      }
-    } else if (courseData.alias) {
-      const aliasIsValid = await isAliasAvailable(courseData.alias);
+    if (courseData.alias) {
+      const aliasIsValid = await isAliasAvailable(courseData.alias, courseId);
       if (!aliasIsValid) {
         return {
           isValid: false,
