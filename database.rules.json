@@ -142,7 +142,7 @@
     "studentCourses": {
       "$userId": {
         "$courseId":{
-          ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid)",
+          ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".read": true
         }
       }
