@@ -506,113 +506,6 @@ const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProc
 };
 
 /**
- * Extrai texto de um arquivo PDF usando OCR (Tesseract.js)
- * @param {File} file - Arquivo PDF
- * @param {Function} onProgress - Callback para progresso (0-100)
- * @param {string} selectedModel - ID do modelo (para contexto)
- * @param {Function} onProcessingStep - Callback para etapas
- * @returns {Promise<{text: string, stats: Object}>} - Texto extraído via OCR
- */
-export const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProcessingStep) => {
-  try {
-    if (onProcessingStep) {
-      onProcessingStep('🔍 Usando OCR para extrair texto de imagens...');
-    }
-
-    // Importar Tesseract dinamicamente
-    const Tesseract = await import('tesseract.js').then(m => m.default);
-    
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
-    
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-    const numPages = pdf.numPages;
-    
-    console.debug(`extractTextFromPdfWithOcr - Processando ${numPages} páginas com OCR`);
-
-    let ocrText = "";
-    let processedPages = 0;
-
-    for (let i = 1; i <= numPages; i++) {
-      try {
-        if (onProcessingStep) {
-          onProcessingStep(`🔍 OCR: Página ${i} de ${numPages}...`);
-        }
-
-        const page = await pdf.getPage(i);
-        
-        // Renderizar página como canvas
-        const viewport = page.getViewport({ scale: 2 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
-
-        // Extrair texto com Tesseract
-        if (onProgress) {
-          onProgress(50 + Math.floor((i / numPages) * 40)); // 50-90%
-        }
-
-        const result = await Tesseract.recognize(canvas, 'por');
-        const pageText = result.data.text;
-
-        if (pageText && pageText.trim().length > 0) {
-          ocrText += pageText + "\n\n";
-        }
-
-        processedPages++;
-
-      } catch (pageError) {
-        console.warn(`extractTextFromPdfWithOcr - Erro na página ${i}:`, pageError.message);
-        // Continuar com outras páginas
-      }
-    }
-
-    if (onProgress) {
-      onProgress(90); // 90% após OCR
-    }
-
-    // Aplicar pré-processamento
-    const { text: processedText, stats: preprocessStats } = preprocessPdfText(ocrText);
-
-    if (onProgress) {
-      onProgress(95); // 95% após pré-processamento
-    }
-
-    console.debug('extractTextFromPdfWithOcr - Estatísticas:', {
-      páginas: numPages,
-      páginasProcessadas: processedPages,
-      caracteresOriginais: preprocessStats.original,
-      caracteresProcessados: preprocessStats.processed
-    });
-
-    return {
-      text: processedText,
-      stats: {
-        ...preprocessStats,
-        numPages,
-        usedOcr: true,
-        pagesProcessed: processedPages
-      }
-    };
-
-  } catch (error) {
-    console.error('extractTextFromPdfWithOcr - Erro:', error);
-    throw createDetailedError(
-      ErrorTypes.PDF_CORRUPT,
-      'Não foi possível extrair texto via OCR.',
-      { originalError: error.message }
-    );
-  }
-};
-
-/**
  * Extrai texto de um arquivo PDF com pré-processamento e OCR fallback
  * @param {File} file - Arquivo PDF
  * @param {Function} onProgress - Callback para atualizar progresso (0-100)
@@ -718,7 +611,7 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
       reduçãoPercent: preprocessStats.reduction
     });
 
-    // **PLANO B: Se não extraiu texto suficiente, tentar OCR**
+    // Verificar se há texto suficiente
     if (!processedText.trim() || processedText.trim().length < 50) {
       console.warn('extractTextFromPdf - Texto insuficiente detectado. Iniciando OCR...');
       
@@ -764,8 +657,6 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
         );
       }
     }
-
-    // Verificar se há texto suficiente (código removido, já verificamos acima)
 
     // Ajustar o tamanho máximo com base no modelo selecionado
     const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);

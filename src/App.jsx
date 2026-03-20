@@ -140,14 +140,14 @@ function App() {
             />
 
             <Route
-              path="/listcurso"
+              path="/cursos"
               element={
                 <ListCursos />
               }
             />
 
             <Route
-              path="/course/:alias"
+              path="/cursos/:alias"
               element={
                 <CourseAliasRoute />
               }

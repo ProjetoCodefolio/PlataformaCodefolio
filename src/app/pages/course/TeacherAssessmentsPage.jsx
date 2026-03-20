@@ -57,7 +57,6 @@ const TeacherAssessmentsPage = () => {
   const { userDetails } = useAuth();
   const navigate = useNavigate();
 
-  console.log("userDetails:", userDetails);
 
   // Carregar cursos do professor
   useEffect(() => {

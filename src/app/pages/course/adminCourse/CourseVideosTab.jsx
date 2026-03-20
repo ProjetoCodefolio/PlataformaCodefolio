@@ -411,8 +411,9 @@ const CourseVideosTab = forwardRef((props, ref) => {
       </Typography>
 
       <List sx={{ mt: 4 }}>
-        {videos.map((video) => (
-          <ListItem
+        {videos && videos.length > 0 ? (
+          videos.filter(video => video && typeof video === 'object').map((video) => (
+            <ListItem
             key={video.id}
             sx={{
               p: { xs: 1.5, sm: 2 },
@@ -460,7 +461,7 @@ const CourseVideosTab = forwardRef((props, ref) => {
             }
           >
             <ListItemText
-              primary={video.title}
+              primary={video.title || "Vídeo sem título"}
               secondary={
                 <Typography component="span" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   {`Exige anteriores: ${video.requiresPrevious ? "Sim" : "Não"
@@ -487,7 +488,12 @@ const CourseVideosTab = forwardRef((props, ref) => {
               }}
             />
           </ListItem>
-        ))}
+          ))
+        ) : (
+          <Typography sx={{ color: "#999", textAlign: "center", py: 4 }}>
+            Nenhum vídeo adicionado ao curso ainda.
+          </Typography>
+        )}
       </List>
 
       <Modal

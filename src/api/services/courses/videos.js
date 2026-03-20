@@ -102,21 +102,36 @@ export const fetchCourseVideos = async (courseId) => {
     
     const courseVideos = snapshot.val();
     
+    // Validar se courseVideos é um objeto válido
+    if (!courseVideos || typeof courseVideos !== 'object') {
+      return [];
+    }
+    
     // Processar os vídeos com informações adicionais
     const videoEntries = Object.entries(courseVideos);
     const enrichedVideos = [];
     
     for (const [key, video] of videoEntries) {
+      // Validar se video não é nulo e tem as propriedades necessárias
+      if (!video || typeof video !== 'object') {
+        continue;
+      }
+      
       const hasQuizzes = await hasVideoQuizzes(courseId, key);
       enrichedVideos.push({
         id: key,
         ...video,
+        order: video.order ?? 0,
+        title: video.title || "Vídeo sem título",
+        url: video.url || "",
+        description: video.description || "",
         requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
         hasQuizzes: hasQuizzes.length > 0,
       });
     }
     
-    return enrichedVideos;
+    // Ordenar pelos vídeos ordem
+    return enrichedVideos.sort((a, b) => (a.order || 0) - (b.order || 0));
   } catch (error) {
     console.error("Erro ao buscar vídeos do curso:", error);
     throw error;
@@ -235,7 +250,19 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
     // Deletar video da tabela de courseVideos
     const videoRef = ref(database, `courseVideos/${courseId}/${videoId}`);
     const videoSnapshot = await get(videoRef);
+    
+    if (!videoSnapshot.exists()) {
+      throw new Error("Vídeo não encontrado");
+    }
+    
     const video = videoSnapshot.val();
+    
+    // Validar se o vídeo tem a propriedade order
+    if (!video || typeof video !== 'object') {
+      throw new Error("Dados do vídeo inválidos");
+    }
+    
+    const videoOrder = video.order ?? 0;
     await remove(videoRef);
 
     // Buscar vídeos atualizados após a remoção
@@ -246,7 +273,7 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
     
     // Atualizar a ordem de cada vídeo remanescente
     allVideos.forEach(v => {
-      if (v.order > video.order) {
+      if (v && v.order !== undefined && v.order > videoOrder) {
         updates[`courseVideos/${courseId}/${v.id}/order`] = v.order - 1;
       }
     });
@@ -285,11 +312,18 @@ export const saveAllCourseVideos = async (courseId, videos) => {
       throw new Error("ID do curso não disponível");
     }
     
+    // Filtrar vídeos nulos ou inválidos
+    const validVideos = videos.filter(video => video && typeof video === 'object');
+    
+    if (validVideos.length === 0 && videos.length > 0) {
+      throw new Error("Nenhum vídeo válido foi encontrado");
+    }
+    
     // Verificar se todos os vídeos têm URLs válidas
-    const invalidVideos = videos.filter(video => !isValidYouTubeUrl(video.url));
+    const invalidVideos = validVideos.filter(video => !isValidYouTubeUrl(video.url));
     if (invalidVideos.length > 0) {
       // Construir mensagem de erro com títulos dos vídeos inválidos
-      const invalidVideoTitles = invalidVideos.map(v => `"${v.title}"`).join(", ");
+      const invalidVideoTitles = invalidVideos.map(v => `"${v.title || 'Sem título'}"`).join(", ");
       throw new Error(`O curso contém vídeos com URLs inválidas: ${invalidVideoTitles}`);
     }
     
@@ -298,7 +332,7 @@ export const saveAllCourseVideos = async (courseId, videos) => {
     const existingVideos = snapshot.val() || {};
     
     const existingVideoIds = new Set(Object.keys(existingVideos));
-    const currentVideoIds = new Set(videos.map(video => video.id).filter(id => id));
+    const currentVideoIds = new Set(validVideos.map(video => video.id).filter(id => id));
     
     // Remover vídeos que não existem mais
     for (const id of existingVideoIds) {
@@ -308,13 +342,13 @@ export const saveAllCourseVideos = async (courseId, videos) => {
     }
     
     // Adicionar ou atualizar vídeos
-    for (const [index, video] of videos.entries()) {
+    for (const [index, video] of validVideos.entries()) {
       const videoData = {
-        title: video.title,
+        title: video.title || "Vídeo sem título",
         url: video.url,
         description: video.description || "",
         order: index,
-        requiresPrevious: video.requiresPrevious,
+        requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
       };
       
       if (video.id && existingVideoIds.has(video.id)) {
@@ -364,17 +398,22 @@ export const validateCourseVideos = async (videos) => {
  * Verifica se um vídeo está bloqueado
  */
 export const isVideoLocked = (video, videos) => {
-  if (!video || !videos || !Array.isArray(videos)) return false;
+  // Validar entrada
+  if (!video || typeof video !== 'object') return false;
+  if (!videos || !Array.isArray(videos)) return false;
   
   // Encontrar o índice do vídeo atual
-  const currentIndex = videos.findIndex(v => v.id === video.id);
+  const currentIndex = videos.findIndex(v => v && v.id === video.id);
   if (currentIndex <= 0) return false; // O primeiro vídeo nunca está bloqueado
   
   const previousVideo = videos[currentIndex - 1];
   
+  // Validar vídeo anterior
+  if (!previousVideo || typeof previousVideo !== 'object') return false;
+  
   // Um vídeo está bloqueado se requerer o anterior E
   // o anterior não foi assistido OU tem um quiz não concluído
-  return video.requiresPrevious && 
+  return video.requiresPrevious === true && 
          previousVideo && 
          (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed));
 };

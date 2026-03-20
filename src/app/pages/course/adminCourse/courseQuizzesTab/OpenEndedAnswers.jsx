@@ -39,7 +39,6 @@ const OpenEndedAnswers = ({ open, onClose, courseId, quizId, question }) => {
   const loadAnswers = async () => {
     try {
       setLoading(true);
-      console.log('📥 Carregando respostas abertas:', { courseId, quizId, questionId: question.id });
       
       // Buscar dos lugares corretos: liveQuizResults e customQuizResults
       const liveQuizResultsRef = ref(database, `liveQuizResults/${courseId}/${quizId}`);
@@ -53,8 +52,6 @@ const OpenEndedAnswers = ({ open, onClose, courseId, quizId, question }) => {
       const liveResults = liveSnapshot.exists() ? liveSnapshot.val() : {};
       const customResults = customSnapshot.exists() ? customSnapshot.val() : {};
       
-      console.log('📦 Live Quiz Results:', liveResults);
-      console.log('📦 Custom Quiz Results:', customResults);
       
       // Combinar todos os resultados
       const allResults = { ...liveResults, ...customResults };
@@ -90,8 +87,6 @@ const OpenEndedAnswers = ({ open, onClose, courseId, quizId, question }) => {
         }
       }
       
-      console.log(`✅ ${answersArray.length} resposta(s) encontrada(s) para esta questão`);
-      console.log('👥 Respostas com dados dos usuários:', answersArray);
       setAnswers(answersArray);
     } catch (error) {
       console.error('❌ Erro ao carregar respostas:', error);
