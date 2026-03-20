@@ -16,7 +16,7 @@ export const checkCourseAliasExists = async (alias) => {
                 if (aliasKey === alias) {
                     return { exists: true, courseId: aliasData.courseId };
                 }
-            }
+            } 
         }
         return { exists: false, courseId: null };
     } catch (error) {

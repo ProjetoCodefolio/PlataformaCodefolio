@@ -1,5 +1,6 @@
 import { database } from "../../config/firebase";
 import { ref, get } from "firebase/database";
+import { normalizeDiagnosticFlag } from "./quizzes";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -23,7 +24,7 @@ export const fetchAllCourseQuizzes = async (courseId) => {
         id: quizId,
         videoId: quizData.videoId || quizId,
         minPercentage: quizData.minPercentage || 0,
-        isDiagnostic: quizData.isDiagnostic || false,
+        isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
         questions: quizData.questions || [],
         isSlideQuiz: quizId.startsWith("slide_"),
       });
@@ -222,7 +223,7 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
     quizId: quiz.id,
     quizName: quiz.videoId,
     isSlideQuiz: quiz.isSlideQuiz,
-    isDiagnostic: quiz.isDiagnostic,
+    isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
     totalQuestions, // Apenas questões de múltipla escolha
     totalOpenEnded, // Número de questões abertas (apenas informativo)
     totalCorrect,

@@ -28,6 +28,7 @@ const QuizForm = ({
   handleAddQuiz,
   handleBlurSaveMinPercentage,
   handleBlurSaveDiagnosticStatus,
+  handleDiagnosticToggle,
   questionFormRef,
   entityType,
   additionalButtons,
@@ -124,57 +125,58 @@ const QuizForm = ({
           />
         </Grid>
 
-        <Grid item xs={12}>
-          <Box
-            sx={{
-              p: 2,
-              borderRadius: 1,
-              backgroundColor: newQuizIsDiagnostic
-                ? "rgba(33, 150, 243, 0.08)"
-                : "transparent",
-              border: "1px solid",
-              borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
-              transition: "all 0.3s ease",
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={newQuizIsDiagnostic}
-                  onChange={(e) => setNewQuizIsDiagnostic(e.target.checked)}
-                  onBlur={handleBlurSaveDiagnosticStatus}
-                  sx={{
-                    color: "#9041c1",
-                    "&.Mui-checked": {
-                      color: "#2196f3",
-                    },
-                  }}
-                />
-              }
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Typography sx={{ fontWeight: 500 }}>
-                    Quiz Diagnóstico
-                  </Typography>
-                  <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
-                </Box>
-              }
-            />
-            <Typography
-              variant="caption"
+        {editQuiz && (
+          <Grid item xs={12}>
+            <Box
               sx={{
-                display: "block",
-                ml: 4,
-                color: "#666",
-                mt: 0.5,
-                fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                p: 2,
+                borderRadius: 1,
+                backgroundColor: newQuizIsDiagnostic
+                  ? "rgba(33, 150, 243, 0.08)"
+                  : "transparent",
+                border: "1px solid",
+                borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
+                transition: "all 0.3s ease",
               }}
             >
-              Quizzes diagnósticos registram a nota do aluno, mas não são
-              considerados em somatórios de avaliação do curso.
-            </Typography>
-          </Box>
-        </Grid>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={newQuizIsDiagnostic}
+                    onChange={(e) => handleDiagnosticToggle(e.target.checked)}
+                    sx={{
+                      color: "#9041c1",
+                      "&.Mui-checked": {
+                        color: "#2196f3",
+                      },
+                    }}
+                  />
+                }
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography sx={{ fontWeight: 500 }}>
+                      Quiz Diagnóstico
+                    </Typography>
+                    <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
+                  </Box>
+                }
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  ml: 4,
+                  color: "#666",
+                  mt: 0.5,
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                }}
+              >
+                Quizzes diagnósticos registram a nota do aluno, mas não são
+                considerados em somatórios de avaliação do curso.
+              </Typography>
+            </Box>
+          </Grid>
+        )}
 
         {!editQuiz && (
           <Grid item xs={12}>

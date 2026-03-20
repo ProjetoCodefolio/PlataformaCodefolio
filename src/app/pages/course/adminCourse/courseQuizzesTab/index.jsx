@@ -8,16 +8,21 @@ import React, {
 } from "react";
 import {
   Box,
-  Divider,
+  Typography,
   Tabs,
   Tab,
-  Typography,
+  Divider,
+  Grid,
   FormControl,
+  FormHelperText,
   InputLabel,
   Select,
   MenuItem,
   Button,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
+import InfoIcon from "@mui/icons-material/Info";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { toast } from "react-toastify";
 
@@ -39,6 +44,7 @@ import {
   updateQuizDiagnosticStatus,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
+  normalizeDiagnosticFlag,
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 
@@ -94,6 +100,14 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     );
   }, [newQuizOptions.length]);
 
+  useEffect(() => {
+    if (editQuiz) {
+      setNewQuizIsDiagnostic(normalizeDiagnosticFlag(editQuiz.isDiagnostic));
+    } else {
+      setNewQuizIsDiagnostic(false);
+    }
+  }, [editQuiz]);
+
   // Função para carregar vídeos
   const loadVideos = async () => {
     try {
@@ -147,6 +161,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             ...quiz,
             videoId: id,
             questions: quiz.questions || [],
+            isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
             isSlideQuiz: id.startsWith("slide_"),
           };
 
@@ -324,7 +339,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
 
     setNewQuizMinPercentage(quiz.minPercentage);
-    setNewQuizIsDiagnostic(quiz.isDiagnostic || false);
+    setNewQuizIsDiagnostic(normalizeDiagnosticFlag(quiz.isDiagnostic));
   };
 
   const handleRemoveQuiz = (quiz) => {
@@ -500,6 +515,42 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       toast.success("Status de diagnóstico atualizado!");
     } catch (error) {
       console.error("Erro ao atualizar status de diagnóstico:", error);
+      toast.error("Erro ao salvar o status de diagnóstico");
+    }
+  };
+
+  const handleDiagnosticToggle = async (checked) => {
+    const previousValue = newQuizIsDiagnostic;
+    setNewQuizIsDiagnostic(checked);
+
+    if (!editQuiz) {
+      return;
+    }
+
+    try {
+      const updatedQuiz = await updateQuizDiagnosticStatus(
+        courseId,
+        editQuiz,
+        checked
+      );
+
+      if (editQuiz.isSlideQuiz) {
+        setSlideQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      } else {
+        setQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      }
+
+      setEditQuiz(updatedQuiz);
+      toast.success(
+        checked ? "Quiz marcado como diagnóstico!" : "Quiz desmarcado como diagnóstico!"
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar status de diagnóstico:", error);
+      setNewQuizIsDiagnostic(previousValue);
       toast.error("Erro ao salvar o status de diagnóstico");
     }
   };
@@ -739,6 +790,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleAddQuiz={handleAddQuiz}
             handleBlurSaveMinPercentage={handleBlurSaveMinPercentage}
             handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
+            handleDiagnosticToggle={handleDiagnosticToggle}
             questionFormRef={questionFormRef}
             entityType="vídeo"
             additionalButtons={gradesOverviewButton}
@@ -777,95 +829,218 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             <>
               {/* Formulário para criar quiz para slide */}
               <Box sx={{ mb: 3 }}>
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 2,
+                    fontWeight: "bold",
+                    color: "#333",
+                    fontSize: { xs: "1.1rem", sm: "1.25rem" },
+                  }}
+                >
                   {editQuiz && editQuiz.isSlideQuiz
-                    ? "Editar Quiz do Slide"
-                    : "Novo Quiz para Slide"}
+                    ? "Editar Quiz"
+                    : "Criar Novo Quiz"}
                 </Typography>
 
-            <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-              {/* Dropdown para seleção do slide */}
-              <FormControl fullWidth size="small">
-                <InputLabel>Slide</InputLabel>
-                <Select
-                  value={newQuizSlideId}
-                  onChange={(e) => setNewQuizSlideId(e.target.value)}
-                  label="Slide"
-                  disabled={editQuiz && editQuiz.isSlideQuiz}
-                >
-                  {(!slidesState || slidesState.length === 0) && (
-                    <MenuItem value="" disabled>
-                      Nenhum slide disponível
-                    </MenuItem>
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel
+                        sx={{
+                          color: "#666",
+                          "&.Mui-focused": { color: "#9041c1" },
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        Slide
+                      </InputLabel>
+                      <Select
+                        value={newQuizSlideId}
+                        onChange={(e) => setNewQuizSlideId(e.target.value)}
+                        label="Slide"
+                        disabled={editQuiz && editQuiz.isSlideQuiz}
+                        sx={{
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#666",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#9041c1",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#9041c1",
+                          },
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        {slidesState.map((slide) => (
+                          <MenuItem
+                            key={slide.id}
+                            value={slide.id}
+                            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
+                          >
+                            {slide.title || `Slide ${slide.id.substring(0, 6)}`}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
+                        {editQuiz && editQuiz.isSlideQuiz
+                          ? "Não é possível alterar o slide de um quiz existente"
+                          : "Selecione o slide para este quiz"}
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid item xs={12} md={6}>
+                    <FormControl fullWidth>
+                      <InputLabel
+                        sx={{
+                          color: "#666",
+                          "&.Mui-focused": { color: "#9041c1" },
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        Nota Mínima (%)
+                      </InputLabel>
+                      <Select
+                        value={newQuizMinPercentage}
+                        onChange={(e) => setNewQuizMinPercentage(e.target.value)}
+                        label="Nota Mínima (%)"
+                        onBlur={
+                          editQuiz && editQuiz.isSlideQuiz
+                            ? handleBlurSaveMinPercentage
+                            : undefined
+                        }
+                        sx={{
+                          "& .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#666",
+                          },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#9041c1",
+                          },
+                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#9041c1",
+                          },
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                        ref={questionFormRef}
+                      >
+                        {[0, 50, 60, 70, 80, 90, 100].map((value) => (
+                          <MenuItem key={value} value={value}>
+                            {value}%
+                          </MenuItem>
+                        ))}
+                      </Select>
+                      <FormHelperText sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
+                        0 a 100%. Se 0, o quiz não será obrigatório.
+                      </FormHelperText>
+                    </FormControl>
+                  </Grid>
+
+                  {editQuiz && (
+                    <Grid item xs={12}>
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: 1,
+                          backgroundColor: newQuizIsDiagnostic
+                            ? "rgba(33, 150, 243, 0.08)"
+                            : "transparent",
+                          border: "1px solid",
+                          borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
+                          transition: "all 0.3s ease",
+                        }}
+                      >
+                        <FormControlLabel
+                          control={
+                            <Checkbox
+                              checked={newQuizIsDiagnostic}
+                              onChange={(e) => handleDiagnosticToggle(e.target.checked)}
+                              sx={{
+                                color: "#9041c1",
+                                "&.Mui-checked": {
+                                  color: "#2196f3",
+                                },
+                              }}
+                            />
+                          }
+                          label={
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <Typography sx={{ fontWeight: 500 }}>
+                                Quiz Diagnóstico
+                              </Typography>
+                              <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
+                            </Box>
+                          }
+                        />
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: "block",
+                            ml: 4,
+                            color: "#666",
+                            mt: 0.5,
+                            fontSize: { xs: "0.7rem", sm: "0.75rem" },
+                          }}
+                        >
+                          Quizzes diagnósticos registram a nota do aluno, mas não
+                          são considerados em somatórios de avaliação do curso.
+                        </Typography>
+                      </Box>
+                    </Grid>
                   )}
-                  {slidesState && slidesState.length > 0 &&
-                    slidesState.map((slide) => (
-                      <MenuItem key={slide.id} value={slide.id}>
-                        {slide.title || `Slide ${slide.id.substring(0, 6)}`}
-                      </MenuItem>
-                    ))}
-                </Select>
-              </FormControl>
 
-              {/* Input para nota mínima */}
-              <FormControl sx={{ width: "200px" }} size="small">
-                <InputLabel>Nota Mínima (%)</InputLabel>
-                <Select
-                  value={newQuizMinPercentage}
-                  onChange={(e) => setNewQuizMinPercentage(e.target.value)}
-                  label="Nota Mínima (%)"
-                  onBlur={
-                    editQuiz && editQuiz.isSlideQuiz
-                      ? handleBlurSaveMinPercentage
-                      : undefined
-                  }
-                >
-                  {[0, 50, 60, 70, 80, 90, 100].map((value) => (
-                    <MenuItem key={value} value={value}>
-                      {value}%
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Botão para adicionar o quiz */}
-              {!editQuiz && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                  <button
-                    onClick={handleAddQuiz}
-                    style={{
-                      backgroundColor: "#9041c1",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "8px 16px",
-                      cursor: "pointer",
-                      fontWeight: "500",
-                    }}
-                  >
-                    Adicionar Quiz
-                  </button>
-                  {gradesOverviewButton}
-                </Box>
-              )}
-            </Box>
+                  {!editQuiz && (
+                    <Grid item xs={12}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: { xs: "column", sm: "row" },
+                          gap: 2,
+                          alignItems: { xs: "stretch", sm: "center" },
+                        }}
+                      >
+                        <Button
+                          variant="contained"
+                          onClick={handleAddQuiz}
+                          disabled={!newQuizSlideId}
+                          sx={{
+                            backgroundColor: "#9041c1",
+                            "&:hover": { backgroundColor: "#7d37a7" },
+                            "&.Mui-disabled": {
+                              backgroundColor: "rgba(0, 0, 0, 0.12)",
+                              color: "rgba(0, 0, 0, 0.26)",
+                            },
+                            fontSize: { xs: "0.875rem", sm: "1rem" },
+                            minWidth: { xs: "100%", sm: "auto" },
+                          }}
+                        >
+                          Adicionar Quiz
+                        </Button>
+                        {gradesOverviewButton}
+                      </Box>
+                    </Grid>
+                  )}
+                </Grid>
           </Box>
 
-          {/* Lista de quizzes de slides */}
-          <QuizList
-            quizzes={slideQuizzes || []}
-            videos={slidesState || []}
-            expandedQuiz={expandedQuiz}
-            setExpandedQuiz={setExpandedQuiz}
-            handleEditQuiz={handleEditQuiz}
-            handleRemoveQuiz={handleRemoveQuiz}
-            quizSettingsRef={quizSettingsRef}
-            questionFormRef={questionFormRef}
-            handleEditQuestion={handleEditQuestion}
-            handleRemoveQuestion={handleRemoveQuestion}
-            quizzesListEndRef={quizzesListEndRef}
-            entityType="slide"
-            entityItems={slidesState || []}            courseId={courseId}          />
+              {/* Lista de quizzes de slides */}
+              <QuizList
+                quizzes={slideQuizzes || []}
+                videos={slidesState || []}
+                expandedQuiz={expandedQuiz}
+                setExpandedQuiz={setExpandedQuiz}
+                handleEditQuiz={handleEditQuiz}
+                handleRemoveQuiz={handleRemoveQuiz}
+                quizSettingsRef={quizSettingsRef}
+                questionFormRef={questionFormRef}
+                handleEditQuestion={handleEditQuestion}
+                handleRemoveQuestion={handleRemoveQuestion}
+                quizzesListEndRef={quizzesListEndRef}
+                entityType="slide"
+                entityItems={slidesState || []}
+                courseId={courseId}
+              />
             </>
           )}
         </>
