@@ -1,6 +1,7 @@
 import React, {
   useState,
   useEffect,
+  useRef,
   useImperativeHandle,
   forwardRef,
 } from "react";
@@ -10,16 +11,14 @@ import {
   TextField,
   Button,
   Grid,
-  Paper,
+  List,
+  ListItem,
+  ListItemText,
   IconButton,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
+  Modal,
 } from "@mui/material";
 import { toast } from "react-toastify";
-import { Edit, Delete, CheckCircle } from "@mui/icons-material";
+import { Edit, Delete, CheckCircleOutline } from "@mui/icons-material";
 import {
   fetchCourseSlides,
   addCourseSlide,
@@ -40,6 +39,7 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastAction, setLastAction] = useState("");
+  const slidesTabRef = useRef(null);
 
   // Carregar slides ao inicializar
   const loadSlides = async () => {
@@ -90,6 +90,10 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
     setSlideTitle(slide.title);
     setSlideUrl(slide.url);
     setSlideDescription(slide.description || "");
+
+    setTimeout(() => {
+      slidesTabRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
   };
 
   const handleEditSlideSubmit = async () => {
@@ -167,166 +171,172 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   }));
 
   return (
-    <Box sx={{ mt: 4, px: { xs: 0, sm: 0 } }}>
-      <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-        Gerenciar Slides
+    <Box
+      sx={{
+        mt: 4,
+        p: 3,
+        backgroundColor: "#fff",
+        borderRadius: "8px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      }}
+      ref={slidesTabRef}
+    >
+      <Typography
+        variant="h6"
+        sx={{ mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}
+      >
+        {isEditing ? "Editar Slide" : "Adicionar Slide"}
       </Typography>
 
-      <Paper elevation={2} sx={{ p: { xs: 2, sm: 3 }, mb: 4 }}>
-        <Typography variant="subtitle1" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.1rem' } }}>
-          {isEditing ? "Editar Slide" : "Adicionar Novo Slide"}
-        </Typography>
-
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TextField
-              label="Título do Slide"
-              fullWidth
-              value={slideTitle}
-              onChange={(e) => setSlideTitle(e.target.value)}
-              required
-              size="small"
-              sx={{
-                "& .MuiInputLabel-root": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                },
-                "& .MuiInputBase-input": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                }
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="URL do Slide (Google Apresentações)"
-              fullWidth
-              value={slideUrl}
-              onChange={(e) => setSlideUrl(e.target.value)}
-              required
-              size="small"
-              placeholder="https://docs.google.com/presentation/d/..."
-              helperText="Cole o link de incorporação do Google Apresentações"
-              sx={{
-                "& .MuiInputLabel-root": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                },
-                "& .MuiInputBase-input": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                },
-                "& .MuiFormHelperText-root": {
-                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
-                }
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <TextField
-              label="Descrição (opcional)"
-              fullWidth
-              value={slideDescription}
-              onChange={(e) => setSlideDescription(e.target.value)}
-              multiline
-              rows={2}
-              size="small"
-              sx={{
-                "& .MuiInputLabel-root": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                },
-                "& .MuiInputBase-input": {
-                  fontSize: { xs: '0.875rem', sm: '1rem' }
-                }
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12}>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSlide}
-                disabled={!slideTitle.trim() || !slideUrl.trim()}
-                fullWidth={false}
-                sx={{
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  minWidth: { xs: '100%', sm: 'auto' }
-                }}
-              >
-                {isEditing ? "Salvar Alterações" : "Adicionar Slide"}
-              </Button>
-
-              {isEditing && (
-                <Button
-                  variant="outlined"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setSlideTitle("");
-                    setSlideUrl("");
-                    setSlideDescription("");
-                    setSlideToEdit(null);
-                  }}
-                  fullWidth={false}
-                  sx={{
-                    fontSize: { xs: '0.875rem', sm: '1rem' },
-                    minWidth: { xs: '100%', sm: 'auto' }
-                  }}
-                >
-                  Cancelar
-                </Button>
-              )}
-            </Box>
-          </Grid>
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="Título do Slide"
+            fullWidth
+            value={slideTitle}
+            onChange={(e) => setSlideTitle(e.target.value)}
+            required
+            variant="outlined"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#666" },
+                "&:hover fieldset": { borderColor: "#9041c1" },
+                "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+              },
+              "& .MuiInputLabel-root": {
+                color: "#666",
+                "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }
+            }}
+          />
         </Grid>
-      </Paper>
+
+        <Grid item xs={12} md={6}>
+          <TextField
+            label="URL do Slide (Google Apresentações)"
+            fullWidth
+            value={slideUrl}
+            onChange={(e) => setSlideUrl(e.target.value)}
+            required
+            variant="outlined"
+            placeholder="https://docs.google.com/presentation/d/..."
+            helperText="Cole o link de incorporação do Google Apresentações"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#666" },
+                "&:hover fieldset": { borderColor: "#9041c1" },
+                "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+              },
+              "& .MuiInputLabel-root": {
+                color: "#666",
+                "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiFormHelperText-root": {
+                fontSize: { xs: '0.75rem', sm: '0.875rem' }
+              }
+            }}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <TextField
+            label="Descrição (opcional)"
+            fullWidth
+            value={slideDescription}
+            onChange={(e) => setSlideDescription(e.target.value)}
+            multiline
+            rows={3}
+            variant="outlined"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": { borderColor: "#666" },
+                "&:hover fieldset": { borderColor: "#9041c1" },
+                "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+              },
+              "& .MuiInputLabel-root": {
+                color: "#666",
+                "&.Mui-focused": { color: "#9041c1" },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              },
+              "& .MuiInputBase-input": {
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }
+            }}
+          />
+        </Grid>
+      </Grid>
+
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 4 }}>
+        <Button
+          variant="contained"
+          onClick={handleSlide}
+          disabled={!slideTitle.trim() || !slideUrl.trim()}
+          sx={{
+            p: 1.5,
+            fontWeight: "bold",
+            backgroundColor: "#9041c1",
+            "&:hover": { backgroundColor: "#7d37a7" },
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            minWidth: { xs: '100%', sm: 'auto' }
+          }}
+        >
+          {isEditing ? "Salvar Alterações" : "Adicionar Slide"}
+        </Button>
+
+        {isEditing && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setIsEditing(false);
+              setSlideTitle("");
+              setSlideUrl("");
+              setSlideDescription("");
+              setSlideToEdit(null);
+            }}
+            sx={{
+              p: 1.5,
+              fontWeight: "bold",
+              color: "#9041c1",
+              borderColor: "#9041c1",
+              "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              minWidth: { xs: '100%', sm: 'auto' }
+            }}
+          >
+            Cancelar
+          </Button>
+        )}
+      </Box>
 
       <Typography variant="h6" gutterBottom sx={{ mt: 4, fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
         Slides Cadastrados
       </Typography>
 
       {slides.length > 0 ? (
-        <Grid container spacing={2}>
+        <List sx={{ mt: 2 }}>
           {slides.map((slide) => (
-            <Grid item xs={12} sm={6} md={4} key={slide.id}>
-              <Paper
-                elevation={2}
-                sx={{
-                  p: 2,
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  position: "relative",
-                  minHeight: { xs: '100px', sm: '120px' }
-                }}
-              >
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ 
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  pr: { xs: 7, sm: 8 },
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>
-                  {slide.title}
-                </Typography>
-
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ 
-                    mb: 1,
-                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical'
-                  }}
-                >
-                  {slide.description || "Sem descrição"}
-                </Typography>
-
-                <Box sx={{ position: "absolute", top: 8, right: 8 }}>
+            <ListItem
+              key={slide.id}
+              sx={{
+                p: { xs: 1.5, sm: 2 },
+                border: "1px solid #ddd",
+                borderRadius: "8px",
+                mb: 2,
+                backgroundColor: "white",
+                "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.04)" },
+                alignItems: "flex-start",
+                flexWrap: { xs: "wrap", sm: "nowrap" },
+              }}
+              secondaryAction={
+                <>
                   <IconButton
                     size="small"
                     color="primary"
@@ -346,70 +356,132 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
                   >
                     <Delete fontSize="small" />
                   </IconButton>
-                </Box>
-              </Paper>
-            </Grid>
+                </>
+              }
+              >
+              <ListItemText
+                primary={slide.title || "Slide sem título"}
+                secondary={
+                  <Typography component="span" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    {slide.description || "Sem descrição"}
+                  </Typography>
+                }
+                primaryTypographyProps={{
+                  sx: {
+                    fontWeight: 500,
+                    color: "#333",
+                    fontSize: { xs: '0.875rem', sm: '1rem' },
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: { xs: 'calc(100vw - 96px)', sm: 'calc(100% - 96px)' },
+                    display: 'block'
+                  },
+                }}
+                sx={{
+                  maxWidth: { xs: 'calc(100% - 96px)', sm: 'calc(100% - 96px)' },
+                  pr: 1,
+                }}
+              />
+            </ListItem>
           ))}
-        </Grid>
+        </List>
       ) : (
-        <Paper
-          elevation={0}
-          sx={{ p: 3, backgroundColor: "#f5f5f5", textAlign: "center" }}
-        >
-          <Typography variant="body1" color="text.secondary">
-            Nenhum slide cadastrado.
-          </Typography>
-        </Paper>
+        <Typography sx={{ color: "#999", textAlign: "center", py: 4 }}>
+          Nenhum slide adicionado ao curso ainda.
+        </Typography>
       )}
 
-      {/* Modal de confirmação de exclusão */}
-      <Dialog open={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-        <DialogTitle>Excluir Slide</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Tem certeza que deseja excluir o slide "{slideToDelete?.title}"?
-            Esta ação não pode ser desfeita.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setShowDeleteModal(false)}>Cancelar</Button>
-          <Button color="error" variant="contained" onClick={handleDeleteSlide}>
-            Excluir
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Modal
+        open={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        aria-labelledby="delete-modal-title"
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+          }}
+        >
+          <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            Tem certeza que deseja excluir "{slideToDelete?.title}"?
+          </Typography>
+          <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, justifyContent: "center", gap: 2 }}>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={handleDeleteSlide}
+              fullWidth={false}
+              sx={{
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Sim, Excluir
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => setShowDeleteModal(false)}
+              fullWidth={false}
+              sx={{
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Cancelar
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
 
-      {/* Modal de sucesso */}
-      <Dialog
+      <Modal
         open={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
-        aria-labelledby="success-dialog-title"
-        aria-describedby="success-dialog-description"
+        aria-labelledby="success-modal-title"
       >
-        <DialogTitle id="success-dialog-title">
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <CheckCircle color="success" />
-            {lastAction === "add" ? "Slide Adicionado" : "Slide Atualizado"}
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <DialogContentText id="success-dialog-description">
-            {lastAction === "add"
-              ? "O slide foi adicionado com sucesso!"
-              : "O slide foi atualizado com sucesso!"}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: '90%', sm: 400 },
+            maxWidth: 400,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+          }}
+        >
+          <CheckCircleOutline
+            sx={{ fontSize: { xs: 50, sm: 60 }, color: "#4caf50", mb: 2 }}
+          />
+          <Typography id="success-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            {lastAction === "add" ? "Slide adicionado com sucesso!" : "Slide atualizado com sucesso!"}
+          </Typography>
           <Button
-            onClick={() => setShowSuccessModal(false)}
-            color="primary"
             variant="contained"
-            autoFocus
+            onClick={() => setShowSuccessModal(false)}
+            sx={{
+              backgroundColor: "#9041c1",
+              "&:hover": { backgroundColor: "#7d37a7" },
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
           >
             OK
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Modal>
     </Box>
   );
 });

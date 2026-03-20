@@ -843,7 +843,9 @@ export const saveQuizResults = async (
   quizData,
   userAnswers,
   questions,
-  answersDetails = null
+  answersDetails = null,
+  quizResultId = null,
+  isSlide = false
 ) => {
 
   try {
@@ -864,9 +866,11 @@ export const saveQuizResults = async (
     }
 
     // Verificar se já existe um resultado anterior para este quiz
+    const resultId = quizResultId || videoId;
+
     const quizResultRef = ref(
       database,
-      `quizResults/${userId}/${courseId}/${videoId}`
+      `quizResults/${userId}/${courseId}/${resultId}`
     );
     const existingResultSnapshot = await get(quizResultRef);
     const existingResult = existingResultSnapshot.exists()
@@ -940,7 +944,9 @@ export const saveQuizResults = async (
       detailedAnswers,
       // Adicionar campos que podem estar sendo adicionados por outro código
       completedAt: currentDate,
-      isSlide: false,
+      isSlide: Boolean(isSlide),
+      quizId: resultId,
+      videoId,
       // Adicionar flag para indicar que estes dados são completos
       isComplete: true,
     };
