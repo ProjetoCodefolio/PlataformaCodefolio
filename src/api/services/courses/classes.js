@@ -175,7 +175,8 @@ export const processQuizCompletion = async (
   courseId,
   videoId,
   duration,
-  isSlide = false
+  isSlide = false,
+  quizResultId = null
 ) => {
   try {
     if (isPassed) {
@@ -189,7 +190,7 @@ export const processQuizCompletion = async (
         completedAt: new Date().toISOString(),
         isSlide: isSlide, // Marcando se é um quiz de slide para referência futura
       };
-      await markQuizAsCompleted(userId, courseId, videoId, quizResult);
+      await markQuizAsCompleted(userId, courseId, quizResultId || videoId, quizResult);
 
       // Buscar resultados atualizados
       const attempts = await fetchUserQuizResults(userId, courseId);

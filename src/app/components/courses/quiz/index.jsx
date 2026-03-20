@@ -192,6 +192,9 @@ const Quiz = ({
         return;
       }
 
+      const quizResultId = quizId?.includes("/") ? quizId.split("/")[1] : quizId;
+      const isSlideQuiz = quizSource === "slide" || quizResultId?.startsWith("slide_");
+
       // Processar questões
       for (const question of questions) {
         if (question.questionType === 'open-ended') {
@@ -280,7 +283,9 @@ const Quiz = ({
         },
         filteredMultipleChoiceAnswers,
         multipleChoiceQuestions,
-        answersDetails // Passar todas as respostas detalhadas (múltipla escolha + abertas)
+        answersDetails, // Passar todas as respostas detalhadas (múltipla escolha + abertas)
+        quizResultId,
+        isSlideQuiz
       );
 
       // Verificar e exibir o resultado

@@ -87,6 +87,29 @@ const Classes = ({ alias = null }) => {
   const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
 
   const currentVideo = videos.find((video) => video.id === currentVideoId);
+  const activeSlide =
+    slideData || (currentVideo?.isSlide ? currentVideo : null);
+  const shouldShowSlidePlayer = showSlidePlayer || Boolean(activeSlide);
+
+  useEffect(() => {
+    if (!currentVideoId && videos.length > 0) {
+      setCurrentVideoId(videos[0].id);
+    }
+  }, [videos, currentVideoId]);
+
+  useEffect(() => {
+    if (!currentVideo) {
+      return;
+    }
+
+    if (currentVideo.isSlide) {
+      setSlideData(currentVideo);
+      setShowSlidePlayer(true);
+    } else {
+      setShowSlidePlayer(false);
+      setSlideData(null);
+    }
+  }, [currentVideo]);
 
   useEffect(() => {
     if (showCompletionModal && modalRef.current) {
@@ -168,8 +191,10 @@ const Classes = ({ alias = null }) => {
         setVideos(combinedContent);
         setUserAttempts(courseData.userQuizzesResults);
 
-        if (!currentVideoId && courseData.nextVideoId) {
-          setCurrentVideoId(courseData.nextVideoId);
+        if (!currentVideoId) {
+          setCurrentVideoId(
+            courseData.nextVideoId || combinedContent[0]?.id || null
+          );
         }
       } catch (error) {
         console.error("Erro ao carregar dados do curso:", error);
@@ -330,12 +355,19 @@ const Classes = ({ alias = null }) => {
     if (previousShowQuiz && !showQuiz && userDetails?.userId && courseId) {
       const updateAttempts = async () => {
         try {
+          const quizResultId =
+            quizSource === "slide"
+              ? `slide_${currentVideoId}`
+              : currentVideoId;
+
           const result = await processQuizCompletion(
             true,
             userDetails.userId,
             courseId,
             currentVideoId,
-            0
+            0,
+            quizSource === "slide",
+            quizResultId
           );
           if (result.attempts) {
             setUserAttempts(result.attempts);
@@ -370,7 +402,7 @@ const Classes = ({ alias = null }) => {
 
   // Manipuladores de eventos
 
-  const handleQuizComplete = async (isPassed, action, videoId) => {
+  const handleQuizComplete = async (isPassed, action, videoId, quizResultId = null, isSlide = false) => {
     try {
       // Garantir que isPassed seja um booleano
       const wasApproved = Boolean(isPassed);
@@ -383,7 +415,7 @@ const Classes = ({ alias = null }) => {
       if (userDetails?.userId) {
         // Create a synthetic attempt update that will be replaced by the real one later
         const updatedAttempts = { ...userAttempts };
-        const quizIdForAttempts = contentId.includes("/") ? contentId.split("/")[1] : contentId;
+        const quizIdForAttempts = quizResultId || (contentId.includes("/") ? contentId.split("/")[1] : contentId);
 
         if (!updatedAttempts[quizIdForAttempts]) {
           updatedAttempts[quizIdForAttempts] = { attemptCount: 1 };
@@ -426,7 +458,8 @@ const Classes = ({ alias = null }) => {
             courseId,
             contentId,
             duration,
-            quizSource === "slide"
+            quizSource === "slide",
+            quizSource === "slide" ? `slide_${contentId}` : contentId
           );
 
           if (result?.attempts) {
@@ -525,13 +558,18 @@ const Classes = ({ alias = null }) => {
         return;
       }
 
+      const quizResultId =
+        quizSource === "slide"
+          ? `slide_${currentVideoId}`
+          : currentVideoId;
+
       const { isPassed } = await validateQuizAnswers(
-        `${courseId}/${currentVideoId}`,
+        `${courseId}/${quizResultId}`,
         userAnswers,
         currentVideo?.minPercentage || 70
       );
 
-      await handleQuizComplete(isPassed);
+      await handleQuizComplete(isPassed, null, currentVideoId, quizResultId, quizSource === "slide");
     } catch (error) {
       console.error("Erro ao validar respostas do quiz:", error);
       toast.error("Erro ao processar o quiz. Por favor, tente novamente.");
@@ -584,7 +622,9 @@ const Classes = ({ alias = null }) => {
 
     // Se recebemos o slide diretamente (novo caso para slides independentes)
     if (slide && slide.isSlide) {
-      setCurrentVideo(slide);
+      setCurrentVideoId(slide.id);
+      setSlideData(slide);
+      setShowSlidePlayer(true);
       return;
     }
 
@@ -604,7 +644,9 @@ const Classes = ({ alias = null }) => {
     }
 
     if (slideToShow) {
-      setCurrentVideo(slideToShow);
+      setCurrentVideoId(slideToShow.id);
+      setSlideData(slideToShow);
+      setShowSlidePlayer(true);
     }
   };
 
@@ -806,9 +848,9 @@ const Classes = ({ alias = null }) => {
                   position: "relative",
                 }}
               >
-                {showSlidePlayer && slideData ? (
+                {shouldShowSlidePlayer && activeSlide ? (
                   <SlidePlayer
-                    slideData={slideData}
+                    slideData={activeSlide}
                     onReturnToVideo={handleReturnToVideo}
                     courseTitle={courseTitle}
                   />

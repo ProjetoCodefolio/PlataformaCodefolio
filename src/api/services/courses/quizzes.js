@@ -3,6 +3,9 @@ import { database } from "../../config/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
 
+export const normalizeDiagnosticFlag = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
 /**
  * ==============================
  * FUNÇÕES DE BUSCA DE QUIZZES
@@ -98,7 +101,11 @@ export const fetchQuizQuestions = async (quizId) => {
     }
 
     const quizData = snapshot.val();
-    return { ...quizData, id: elementId };
+    return {
+      ...quizData,
+      id: elementId,
+      isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
+    };
   } catch (error) {
     console.error("Erro ao buscar perguntas do quiz:", error, quizId);
     throw error;
@@ -290,7 +297,7 @@ export const addQuiz = async (courseId, videoId, minPercentage = 0, isDiagnostic
     const newQuiz = {
       videoId,
       minPercentage,
-      isDiagnostic,
+      isDiagnostic: normalizeDiagnosticFlag(isDiagnostic),
       questions: [],
       courseId,
     };
@@ -390,7 +397,7 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
-      isDiagnostic: quiz.isDiagnostic || false,
+      isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
       courseId: courseId,
       videoId: videoId,
     });
@@ -451,7 +458,7 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
-      isDiagnostic: quiz.isDiagnostic || false,
+      isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
       courseId: courseId,
       videoId: videoId,
     });
@@ -490,7 +497,7 @@ export const removeQuizQuestion = async (courseId, quiz, questionId) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
-      isDiagnostic: quiz.isDiagnostic || false,
+      isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
       courseId: courseId,
       videoId: videoId,
     });
@@ -555,12 +562,12 @@ export const updateQuizDiagnosticStatus = async (courseId, quiz, isDiagnostic) =
 
     const updatedQuiz = {
       ...quiz,
-      isDiagnostic,
+      isDiagnostic: normalizeDiagnosticFlag(isDiagnostic),
     };
 
     // Atualizar no Firebase
     const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
-    await update(quizRef, { isDiagnostic });
+    await update(quizRef, { isDiagnostic: normalizeDiagnosticFlag(isDiagnostic) });
 
     return updatedQuiz;
   } catch (error) {
@@ -601,7 +608,7 @@ export const addMultipleQuestionsToQuiz = async (courseId, quiz, questions) => {
     await set(quizRef, {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
-      isDiagnostic: quiz.isDiagnostic || false,
+      isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
       courseId: courseId,
       videoId: videoId,
     });
@@ -632,6 +639,7 @@ export const saveAllCourseQuizzes = async (
       const quizData = {
         questions: quiz.questions,
         minPercentage: quiz.minPercentage,
+        isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
         courseId: targetCourseId,
         videoId: quiz.videoId,
       };
@@ -663,7 +671,7 @@ export const saveQuiz = async (courseId, videoId, quizData) => {
     await set(quizRef, {
       questions: quizData.questions,
       minPercentage: quizData.minPercentage,
-      isDiagnostic: quizData.isDiagnostic || false,
+      isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
       courseId: courseId,
       videoId: videoId,
     });
@@ -835,7 +843,9 @@ export const saveQuizResults = async (
   quizData,
   userAnswers,
   questions,
-  answersDetails = null
+  answersDetails = null,
+  quizResultId = null,
+  isSlide = false
 ) => {
 
   try {
@@ -856,9 +866,11 @@ export const saveQuizResults = async (
     }
 
     // Verificar se já existe um resultado anterior para este quiz
+    const resultId = quizResultId || videoId;
+
     const quizResultRef = ref(
       database,
-      `quizResults/${userId}/${courseId}/${videoId}`
+      `quizResults/${userId}/${courseId}/${resultId}`
     );
     const existingResultSnapshot = await get(quizResultRef);
     const existingResult = existingResultSnapshot.exists()
@@ -932,7 +944,9 @@ export const saveQuizResults = async (
       detailedAnswers,
       // Adicionar campos que podem estar sendo adicionados por outro código
       completedAt: currentDate,
-      isSlide: false,
+      isSlide: Boolean(isSlide),
+      quizId: resultId,
+      videoId,
       // Adicionar flag para indicar que estes dados são completos
       isComplete: true,
     };

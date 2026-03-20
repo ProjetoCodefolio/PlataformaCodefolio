@@ -26,7 +26,7 @@ const SlidePlayer = ({ slideData, onReturnToVideo, courseTitle }) => {
   }
 
   // Assegure-se de que a URL está no formato correto
-  const slideUrl = slideData.url;
+  const slideUrl = prepareSlideUrl(slideData);
 
   return (
     <Box
