@@ -271,8 +271,8 @@ const StudentDashboard = () => {
                     variant="body1"
                     sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}
                   >
-                    <strong>Vídeo:</strong>{" "}
-                    {videoData?.title || "Video não encontrado"}
+                    <strong>{videoData?.isSlide ? "Slide:" : "Vídeo:"}</strong>{" "}
+                    {videoData?.title || (videoData?.isSlide ? "Slide não encontrado" : "Video não encontrado")}
                   </Typography>
                   <Typography 
                     variant="body1"

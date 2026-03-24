@@ -1,13 +1,31 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box, Typography, IconButton } from "@mui/material";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import SchoolIcon from "@mui/icons-material/School";
+import PersonIcon from "@mui/icons-material/Person";
+import ReportIcon from "@mui/icons-material/Report";
+import EditIcon from "@mui/icons-material/Edit";
 import { useNavigate } from "react-router-dom";
 import { prepareSlideUrl } from "$api/services/courses/slides";
+import { checkSlideHasQuiz } from "$api/services/courses/slides";
+import ReportModal from "$components/common/reportModal";
+import { useAuth } from "$context/AuthContext";
+import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
 
-const SlidePlayer = ({ slideData, onReturnToVideo, courseTitle }) => {
+const SlidePlayer = ({
+  slideData,
+  onReturnToVideo,
+  courseTitle,
+  courseId,
+  courseOwnerUid,
+  onOpenQuizGigi,
+}) => {
   const navigate = useNavigate();
+  const { userDetails } = useAuth();
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [hasQuiz, setHasQuiz] = useState(Boolean(slideData?.quizId));
 
   if (!slideData) {
     return (
@@ -27,6 +45,58 @@ const SlidePlayer = ({ slideData, onReturnToVideo, courseTitle }) => {
 
   // Assegure-se de que a URL está no formato correto
   const slideUrl = prepareSlideUrl(slideData);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyQuiz = async () => {
+      try {
+        if (slideData?.quizId) {
+          if (isMounted) setHasQuiz(true);
+          return;
+        }
+
+        if (!courseId || !slideData?.id) {
+          if (isMounted) setHasQuiz(false);
+          return;
+        }
+
+        const exists = await checkSlideHasQuiz(courseId, slideData.id);
+        if (isMounted) setHasQuiz(Boolean(exists));
+      } catch (error) {
+        console.error("Erro ao verificar quiz do slide:", error);
+        if (isMounted) setHasQuiz(false);
+      }
+    };
+
+    verifyQuiz();
+    return () => {
+      isMounted = false;
+    };
+  }, [courseId, slideData?.id, slideData?.quizId]);
+
+  const quizIdForActions = useMemo(() => {
+    if (slideData?.quizId) return slideData.quizId;
+    if (hasQuiz && courseId && slideData?.id) {
+      return `${courseId}/slide_${slideData.id}`;
+    }
+    return null;
+  }, [courseId, hasQuiz, slideData?.id, slideData?.quizId]);
+
+  const quizKeyForDashboard = useMemo(() => {
+    if (!quizIdForActions) return null;
+    return quizIdForActions.split("/")[1] || quizIdForActions;
+  }, [quizIdForActions]);
+
+  const handleViewStudents = () => {
+    if (!quizKeyForDashboard) return;
+    navigate(`/studentDashboard?quizId=${quizKeyForDashboard}`);
+  };
+
+  const handleEditCourse = () => {
+    if (!courseId) return;
+    navigate(`/adm-cursos?courseId=${courseId}`);
+  };
 
   return (
     <Box
@@ -71,6 +141,78 @@ const SlidePlayer = ({ slideData, onReturnToVideo, courseTitle }) => {
         </Typography>
 
         <Box sx={{ display: "flex", ml: "auto" }}>
+          {canViewQuizResults(userDetails, courseOwnerUid) && hasQuiz && (
+            <>
+              <IconButton
+                onClick={handleViewStudents}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "#9041c1",
+                  mr: 1,
+                  p: 0.8,
+                  "&:hover": {
+                    bgcolor: "#7a35a3",
+                  },
+                }}
+                title="Ver resultados dos estudantes"
+              >
+                <PersonIcon sx={{ fontSize: "18px" }} />
+              </IconButton>
+
+              {onOpenQuizGigi && (
+                <IconButton
+                  onClick={onOpenQuizGigi}
+                  sx={{
+                    color: "#fff",
+                    bgcolor: "#9041c1",
+                    mr: 1,
+                    p: 0.8,
+                    "&:hover": {
+                      bgcolor: "#7a35a3",
+                    },
+                  }}
+                  title="Abrir Quiz Gigi"
+                >
+                  <SchoolIcon sx={{ fontSize: "18px" }} />
+                </IconButton>
+              )}
+            </>
+          )}
+
+          {canEditCourse(userDetails, courseOwnerUid) && (
+            <IconButton
+              onClick={handleEditCourse}
+              sx={{
+                color: "#fff",
+                bgcolor: "#9041c1",
+                mr: 1,
+                p: 0.8,
+                "&:hover": {
+                  bgcolor: "#7a35a3",
+                },
+              }}
+              title="Editar curso"
+            >
+              <EditIcon sx={{ fontSize: "18px" }} />
+            </IconButton>
+          )}
+
+          <IconButton
+            onClick={() => setReportModalOpen(true)}
+            sx={{
+              color: "#fff",
+              bgcolor: "#f44336",
+              mr: 1,
+              p: 0.8,
+              "&:hover": {
+                bgcolor: "#d32f2f",
+              },
+            }}
+            title="Reportar problema"
+          >
+            <ReportIcon sx={{ fontSize: "18px" }} />
+          </IconButton>
+
           <IconButton
             onClick={onReturnToVideo}
             sx={{
@@ -146,6 +288,17 @@ const SlidePlayer = ({ slideData, onReturnToVideo, courseTitle }) => {
           </Typography>
         </Box>
       )}
+
+      <ReportModal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        reportType="slide"
+        itemId={slideData?.id}
+        courseId={courseId}
+        userId={userDetails?.userId || "anonymous"}
+        userName={userDetails?.displayName || "Usuário Anônimo"}
+        currentTime={0}
+      />
     </Box>
   );
 };
@@ -157,9 +310,14 @@ SlidePlayer.propTypes = {
     url: PropTypes.string.isRequired,
     description: PropTypes.string,
     videoId: PropTypes.string,
+    quizId: PropTypes.string,
+    isSlide: PropTypes.bool,
   }).isRequired,
   onReturnToVideo: PropTypes.func.isRequired,
   courseTitle: PropTypes.string,
+  courseId: PropTypes.string,
+  courseOwnerUid: PropTypes.string,
+  onOpenQuizGigi: PropTypes.func,
 };
 
 export default SlidePlayer;

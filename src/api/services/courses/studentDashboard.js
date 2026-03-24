@@ -76,6 +76,20 @@ export const fetchQuizData = async (quizId) => {
           if (videoSnapshot.exists()) {
             foundVideo = videoSnapshot.val();
             foundVideo.id = quizId;
+          } else if (quizId && quizId.startsWith("slide_")) {
+            // Fallback: quiz associado a um slide
+            const slideId = quizId.replace("slide_", "");
+            const slideRef = ref(
+              database,
+              `courseSlides/${courseIds[i]}/${slideId}`
+            );
+            const slideSnapshot = await get(slideRef);
+
+            if (slideSnapshot.exists()) {
+              foundVideo = slideSnapshot.val();
+              foundVideo.id = slideId;
+              foundVideo.isSlide = true;
+            }
           }
 
           break;

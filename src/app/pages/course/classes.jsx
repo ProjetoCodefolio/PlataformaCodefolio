@@ -590,7 +590,17 @@ const Classes = ({ alias = null }) => {
   };
 
   const handleOpenQuizGigi = async () => {
-    if (currentVideo?.quizId) {
+    const quizId =
+      currentVideo?.quizId ||
+      slideData?.quizId ||
+      (currentVideo?.isSlide && courseId && currentVideo?.id
+        ? `${courseId}/slide_${currentVideo.id}`
+        : null) ||
+      (slideData?.isSlide && courseId && slideData?.id
+        ? `${courseId}/slide_${slideData.id}`
+        : null);
+
+    if (quizId) {
       if (
         videoPlayerRef.current &&
         typeof videoPlayerRef.current.pause === "function"
@@ -599,10 +609,16 @@ const Classes = ({ alias = null }) => {
       }
 
       try {
-        const quiz = await loadQuizData(currentVideo.quizId);
+        const quiz = await loadQuizData(quizId);
+        if (!quiz) {
+          toast.error("Quiz não encontrado.");
+          return;
+        }
+
+        const quizKey = quizId.split("/")[1] || quizId;
         setQuizData({
           ...quiz,
-          id: currentVideo?.quizId.split("/")[1] || null,
+          id: quizKey,
         });
         setShowQuizGigi(true);
       } catch (error) {
@@ -853,6 +869,9 @@ const Classes = ({ alias = null }) => {
                     slideData={activeSlide}
                     onReturnToVideo={handleReturnToVideo}
                     courseTitle={courseTitle}
+                    courseId={courseId}
+                    courseOwnerUid={courseOwnerUid}
+                    onOpenQuizGigi={handleOpenQuizGigi}
                   />
                 ) : (
                   <VideoPlayer
