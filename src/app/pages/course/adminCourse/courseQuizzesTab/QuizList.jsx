@@ -35,6 +35,7 @@ const QuizList = ({
   entityType,
   entityItems,
   courseId,
+  onAutoSaveQuestion,
 }) => {
   const navigate = useNavigate();
 
@@ -162,6 +163,7 @@ const QuizList = ({
                   handleRemoveQuestion={handleRemoveQuestion}
                   questionFormRef={questionFormRef}
                   courseId={courseId}
+                  onAutoSaveQuestion={onAutoSaveQuestion}
                 />
                 <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 1, sm: 2 } }}>
                   <Button

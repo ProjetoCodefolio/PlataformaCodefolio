@@ -5,6 +5,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useRef,
+  useCallback,
 } from "react";
 import {
   Box,
@@ -427,7 +428,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   };
 
-  // Função para adicionar questões de PDF (permanece inalterada)
+  // Função para adicionar questões de PDF
   const handleQuestionsFromPdf = async (generatedQuestions) => {
     if (!editQuiz || generatedQuestions.length === 0) {
       toast.error("Selecione um quiz primeiro para adicionar as questões");
@@ -435,32 +436,80 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
 
     try {
-      // Formatar as questões para o formato esperado
-      const formattedQuestions = generatedQuestions.map((question) => ({
-        id: question.id || generateUUID(),
-        question: question.question,
-        options: question.options,
-        correctOption: question.correctOption,
-      }));
+      const formattedQuestions = generatedQuestions.map((question) => {
+        const isOpenEnded =
+          question.questionType === "open-ended" ||
+          question.options == null ||
+          !Array.isArray(question.options);
 
-      // Adicionar as questões ao quiz usando a função da API
+        const base = {
+          id: question.id || generateUUID(),
+          question: question.question,
+          questionType: isOpenEnded ? "open-ended" : "multiple-choice",
+        };
+
+        if (isOpenEnded) {
+          return base;
+        }
+
+        return {
+          ...base,
+          options: question.options,
+          correctOption: question.correctOption,
+        };
+      });
+
       const updatedQuiz = await addMultipleQuestionsToQuiz(
         courseId,
         editQuiz,
         formattedQuestions
       );
 
-      // Atualizar o estado
-      setQuizzes((prev) =>
-        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-      );
+      if (editQuiz.isSlideQuiz) {
+        setSlideQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      } else {
+        setQuizzes((prev) =>
+          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+        );
+      }
       setEditQuiz(updatedQuiz);
-
     } catch (error) {
       console.error("Erro ao adicionar questões do PDF:", error);
       toast.error(error.message || "Erro ao salvar questões no banco de dados");
     }
   };
+
+  // Auto-save de uma questão (para edição inline na lista)
+  const handleAutoSaveQuestion = useCallback(
+    async (quiz, questionData) => {
+      if (!courseId || !quiz || !questionData?.id) return;
+
+      const latestQuiz = (quiz.isSlideQuiz ? slideQuizzes : quizzes).find(
+        (q) => q.videoId === quiz.videoId
+      ) || quiz;
+
+      const updatedQuiz = await updateQuizQuestion(
+        courseId,
+        latestQuiz,
+        questionData
+      );
+
+      if (quiz.isSlideQuiz) {
+        setSlideQuizzes((prev) =>
+          prev.map((q) => (q.videoId === quiz.videoId ? updatedQuiz : q))
+        );
+      } else {
+        setQuizzes((prev) =>
+          prev.map((q) => (q.videoId === quiz.videoId ? updatedQuiz : q))
+        );
+      }
+
+      setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? updatedQuiz : prev));
+    },
+    [courseId, quizzes, slideQuizzes]
+  );
 
   // Função para salvar a porcentagem mínima quando o campo perde o foco
   const handleBlurSaveMinPercentage = async () => {
@@ -812,6 +861,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             entityType="vídeo"
             entityItems={videosState}
             courseId={courseId}
+            onAutoSaveQuestion={handleAutoSaveQuestion}
           />
         </>
       )}
@@ -1040,6 +1090,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                 entityType="slide"
                 entityItems={slidesState || []}
                 courseId={courseId}
+                onAutoSaveQuestion={handleAutoSaveQuestion}
               />
             </>
           )}

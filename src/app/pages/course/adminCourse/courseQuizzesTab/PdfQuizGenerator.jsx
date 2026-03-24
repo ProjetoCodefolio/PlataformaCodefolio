@@ -7,10 +7,10 @@ import {
   Alert,
   LinearProgress,
   IconButton,
+  Collapse,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   Tooltip,
   FormControl,
   InputLabel,
@@ -34,6 +34,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyIcon from "@mui/icons-material/Key";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { toast } from "react-toastify";
 import {
   GROQ_MODELS,
@@ -74,6 +75,9 @@ const PdfQuizGenerator = ({
   const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
   const [models, setModels] = useState([]);
   const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
+
+  // Edição inline das questões geradas (não mexe no formulário principal)
+  const [editingGeneratedIndex, setEditingGeneratedIndex] = useState(null);
 
   useEffect(() => {
     // Buscar modelos LLM disponíveis
@@ -281,39 +285,70 @@ const PdfQuizGenerator = ({
     }
   };
 
-  const handleEditQuestion = (question) => {
-    // Configura o formulário para edição da questão selecionada
-    setNewQuizQuestion(question.question);
-    setNewQuizOptions([...question.options]);
-    setNewQuizCorrectOption(question.correctOption);
+  const toggleInlineEdit = (index) => {
+    setEditingGeneratedIndex((prev) => (prev === index ? null : index));
+  };
 
-    // Remove a questão da lista de geradas
-    setGeneratedQuestions((prev) => prev.filter((q) => q.id !== question.id));
+  const updateGeneratedQuestion = (index, patch) => {
+    setGeneratedQuestions((prev) =>
+      prev.map((q, i) => (i === index ? { ...q, ...patch } : q))
+    );
+  };
 
-    // Define a questão para edição
-    setEditQuestion({
-      id: question.id,
-      question: question.question,
-      options: question.options,
-      correctOption: question.correctOption,
-    });
+  const updateGeneratedOption = (qIndex, optIndex, value) => {
+    setGeneratedQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIndex) return q;
+        const nextOptions = Array.isArray(q.options) ? [...q.options] : ["", ""];
+        nextOptions[optIndex] = value;
+        return { ...q, options: nextOptions };
+      })
+    );
+  };
 
-    // Role para o formulário de edição
-    setTimeout(() => {
-      const formElement = document.getElementById("question-form");
-      if (formElement) {
-        formElement.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
-    }, 100);
+  const removeGeneratedOption = (qIndex, optIndexToRemove) => {
+    setGeneratedQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIndex) return q;
+        const cur = Array.isArray(q.options) ? q.options : ["", ""];
+        if (cur.length <= 2) return q;
+
+        const next = cur.filter((_, oi) => oi !== optIndexToRemove);
+        let nextCorrect = Number(q.correctOption) || 0;
+        if (optIndexToRemove === nextCorrect) nextCorrect = 0;
+        if (optIndexToRemove < nextCorrect) nextCorrect -= 1;
+
+        return {
+          ...q,
+          options: next,
+          correctOption: Math.min(nextCorrect, next.length - 1),
+        };
+      })
+    );
+  };
+
+  const addGeneratedOption = (qIndex) => {
+    setGeneratedQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIndex) return q;
+        const cur = Array.isArray(q.options) ? q.options : ["", ""];
+        if (cur.length >= 5) return q;
+        return { ...q, options: [...cur, ""] };
+      })
+    );
   };
 
   const handleDeleteQuestion = (indexToRemove) => {
     setGeneratedQuestions((prev) =>
       prev.filter((_, index) => index !== indexToRemove)
     );
+
+    setEditingGeneratedIndex((prev) => {
+      if (prev == null) return prev;
+      if (prev === indexToRemove) return null;
+      if (prev > indexToRemove) return prev - 1;
+      return prev;
+    });
   };
 
   return (
@@ -679,123 +714,241 @@ const PdfQuizGenerator = ({
               overflow: "auto",
             }}
           >
-            {generatedQuestions.map((question, index) => (
+            {generatedQuestions.map((question, index) => {
+              const isEditing = editingGeneratedIndex === index;
+              const isOpenEnded = !question.options;
+
+              return (
               <ListItem
                 key={index}
                 sx={{
                   backgroundColor: "white",
                   mb: 1,
                   borderRadius: 1,
-                  flexDirection: { xs: "column", sm: "row" },
-                  alignItems: { xs: "flex-start", sm: "center" },
+                  flexDirection: "column",
+                  alignItems: "stretch",
                   py: { xs: 2, sm: 1 },
                   px: { xs: 1.5, sm: 2 },
+                  gap: 1,
                 }}
               >
-              <ListItemText
-                primary={`${index + 1}. ${question.question}`}
-                secondary={
-                  <Box component="span" sx={{ mt: 1, display: 'block' }}>
-                    {question.options ? (
-                      // Questão de múltipla escolha
-                      <>
-                        <Typography variant="caption" sx={{ display: "block", mb: 0.5, color: "#666", fontSize: { xs: "0.75rem", sm: "0.813rem" } }}>
-                          <strong>Alternativas:</strong>
-                        </Typography>
-                        {question.options.map((opt, i) => (
-                          <Box
-                            key={i}
-                            component="span"
-                            sx={{ display: "block", my: 0.5 }}
+                <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      flex: 1,
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                      wordBreak: "break-word",
+                      overflowWrap: "break-word",
+                    }}
+                  >
+                    {index + 1}. {question.question}
+                  </Typography>
+
+                  <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+                    <Tooltip title={isEditing ? "Fechar edição" : "Editar questão"}>
+                      <IconButton
+                        onClick={() => toggleInlineEdit(index)}
+                        sx={{ color: "#9041c1" }}
+                        size="small"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Remover questão">
+                      <IconButton
+                        onClick={() => handleDeleteQuestion(index)}
+                        sx={{ color: "#d32f2f" }}
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+
+                <Box component="span" sx={{ mt: 0.5, display: "block" }}>
+                  {question.options ? (
+                    <>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          mb: 0.5,
+                          color: "#666",
+                          fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                        }}
+                      >
+                        <strong>Alternativas:</strong>
+                      </Typography>
+                      {question.options.map((opt, i) => (
+                        <Box
+                          key={i}
+                          component="span"
+                          sx={{ display: "block", my: 0.5 }}
+                        >
+                          <span
+                            style={{
+                              fontWeight:
+                                i === question.correctOption ? "bold" : "normal",
+                              color:
+                                i === question.correctOption ? "green" : "inherit",
+                              fontSize: "0.875rem",
+                            }}
                           >
-                            <span
-                              style={{
-                                fontWeight:
-                                  i === question.correctOption
-                                    ? "bold"
-                                    : "normal",
-                                color:
-                                  i === question.correctOption
-                                    ? "green"
-                                    : "inherit",
-                                fontSize: "0.875rem",
-                              }}
-                            >
-                              {String.fromCharCode(65 + i)}) {opt}
-                            </span>
-                          </Box>
-                        ))}
-                      </>
-                    ) : (
-                      // Questão aberta
+                            <strong>Opção {i + 1}:</strong> {opt}
+                          </span>
+                        </Box>
+                      ))}
+                    </>
+                  ) : (
+                    <>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          mb: 0.5,
+                          color: "#666",
+                          fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                        }}
+                      >
+                        <strong>Resposta Sugerida:</strong>
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          display: "block",
+                          my: 0.5,
+                          fontStyle: "italic",
+                          color: "#555",
+                          fontSize: { xs: "0.813rem", sm: "0.875rem" },
+                          wordBreak: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {question.expectedAnswer}
+                      </Typography>
+                    </>
+                  )}
+                </Box>
+
+                <Collapse in={isEditing} timeout="auto" unmountOnExit>
+                  <Box
+                    sx={{
+                      mt: 1,
+                      p: 1.5,
+                      border: "1px solid #e0e0e0",
+                      borderRadius: 1,
+                      bgcolor: "#fafafa",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.5,
+                    }}
+                  >
+                    <TextField
+                      label="Pergunta"
+                      size="small"
+                      fullWidth
+                      value={question.question || ""}
+                      onChange={(e) =>
+                        updateGeneratedQuestion(index, { question: e.target.value })
+                      }
+                    />
+
+                    {!isOpenEnded && (
                       <>
-                        <Typography variant="caption" sx={{ display: "block", mb: 0.5, color: "#666", fontSize: { xs: "0.75rem", sm: "0.813rem" } }}>
-                          <strong>Resposta Sugerida:</strong>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                          Opções (marque a correta)
                         </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            display: "block", 
-                            my: 0.5, 
-                            fontStyle: "italic",
-                            color: "#555",
-                            fontSize: { xs: "0.813rem", sm: "0.875rem" }
+
+                        {(question.options || []).map((opt, optIndex) => {
+                          const isCorrect = question.correctOption === optIndex;
+
+                          return (
+                            <Box
+                              key={`${index}-opt-${optIndex}`}
+                              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                            >
+                              <IconButton
+                                onClick={() =>
+                                  updateGeneratedQuestion(index, {
+                                    correctOption: optIndex,
+                                  })
+                                }
+                                size="small"
+                                sx={{
+                                  color: isCorrect ? "#2e7d32" : "#9e9e9e",
+                                }}
+                                title={isCorrect ? "Correta" : "Marcar como correta"}
+                              >
+                                {isCorrect ? (
+                                  <CheckCircleIcon fontSize="small" />
+                                ) : (
+                                  <RadioButtonUncheckedIcon fontSize="small" />
+                                )}
+                              </IconButton>
+
+                              <TextField
+                                label={`Opção ${optIndex + 1}`}
+                                size="small"
+                                fullWidth
+                                value={opt}
+                                onChange={(e) =>
+                                  updateGeneratedOption(index, optIndex, e.target.value)
+                                }
+                              />
+
+                              <IconButton
+                                onClick={() => removeGeneratedOption(index, optIndex)}
+                                size="small"
+                                sx={{ color: "#d32f2f" }}
+                                disabled={(question.options || []).length <= 2}
+                                title="Remover opção"
+                              >
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Box>
+                          );
+                        })}
+
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => addGeneratedOption(index)}
+                          disabled={(question.options || []).length >= 5}
+                          sx={{
+                            color: "#9041c1",
+                            borderColor: "#9041c1",
+                            "&:hover": { borderColor: "#7d37a7" },
+                            alignSelf: "flex-start",
                           }}
                         >
-                          {question.expectedAnswer}
-                        </Typography>
+                          Adicionar Opção
+                        </Button>
                       </>
                     )}
+
+                    {isOpenEnded && (
+                      <TextField
+                        label="Resposta sugerida (opcional)"
+                        size="small"
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        value={question.expectedAnswer || ""}
+                        onChange={(e) =>
+                          updateGeneratedQuestion(index, {
+                            expectedAnswer: e.target.value,
+                            questionType: "open-ended",
+                          })
+                        }
+                      />
+                    )}
                   </Box>
-                }
-                primaryTypographyProps={{
-                  sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
-                }}
-                secondaryTypographyProps={{
-                  component: 'div',
-                  sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
-                }}
-                sx={{ pr: { xs: 0, sm: 10 } }}
-              />
-                <ListItemSecondaryAction
-                  sx={{
-                    position: { xs: "relative", sm: "absolute" },
-                    right: { xs: "auto", sm: 16 },
-                    top: { xs: "auto", sm: "50%" },
-                    transform: { xs: "none", sm: "translateY(-50%)" },
-                    display: "flex",
-                    gap: 0.5,
-                    mt: { xs: 1, sm: 0 },
-                    width: { xs: "100%", sm: "auto" },
-                    justifyContent: { xs: "flex-end", sm: "flex-start" },
-                  }}
-                >
-                  <Tooltip title="Editar questão">
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleEditQuestion(question)}
-                      sx={{
-                        color: "#9041c1",
-                        mr: { xs: 0, sm: 1 },
-                      }}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Remover questão">
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleDeleteQuestion(index)}
-                      sx={{ color: "#d32f2f" }}
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Tooltip>
-                </ListItemSecondaryAction>
+                </Collapse>
               </ListItem>
-            ))}
+              );
+            })}
           </List>
 
           <Button

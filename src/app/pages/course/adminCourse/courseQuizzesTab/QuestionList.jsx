@@ -1,61 +1,242 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  Box,
+  Button,
+  Chip,
+  Collapse,
+  Divider,
+  FormControl,
+  IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemText,
-  Box,
-  IconButton,
-  Chip,
+  MenuItem,
+  Select,
+  TextField,
+  Typography,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 
-const QuestionList = ({ 
-  quiz, 
-  handleEditQuestion, 
+const DEBOUNCE_MS = 650;
+
+const QuestionList = ({
+  quiz,
+  handleEditQuestion,
   handleRemoveQuestion,
   questionFormRef,
   courseId,
+  onAutoSaveQuestion,
 }) => {
+  const [editingId, setEditingId] = useState(null);
+  const [drafts, setDrafts] = useState({});
+  const [savingById, setSavingById] = useState({});
+  const [errorById, setErrorById] = useState({});
+
+  const timersRef = useRef({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(timersRef.current).forEach((t) => clearTimeout(t));
+      timersRef.current = {};
+    };
+  }, []);
+
+  const initDraft = (question) => {
+    const isOpenEnded = (question.questionType || "multiple-choice") === "open-ended";
+    return {
+      id: question.id,
+      question: question.question || "",
+      questionType: isOpenEnded ? "open-ended" : "multiple-choice",
+      options: Array.isArray(question.options)
+        ? [...question.options]
+        : ["", ""],
+      correctOption:
+        Number.isInteger(question.correctOption) ? question.correctOption : 0,
+    };
+  };
+
+  const isValidForSave = (draft) => {
+    if (!draft?.question?.trim()) return false;
+    if (draft.questionType === "open-ended") return true;
+    if (!Array.isArray(draft.options) || draft.options.length < 2) return false;
+    if (draft.options.some((o) => !String(o || "").trim())) return false;
+
+    const idx = Number(draft.correctOption);
+    return Number.isInteger(idx) && idx >= 0 && idx < draft.options.length;
+  };
+
+  const scheduleSave = (questionId, nextDraft) => {
+    if (!onAutoSaveQuestion) return;
+
+    if (timersRef.current[questionId]) {
+      clearTimeout(timersRef.current[questionId]);
+    }
+
+    timersRef.current[questionId] = setTimeout(async () => {
+      if (!isValidForSave(nextDraft)) {
+        setErrorById((prev) => ({
+          ...prev,
+          [questionId]: "Preencha a pergunta e todas as opções para salvar.",
+        }));
+        return;
+      }
+
+      try {
+        setSavingById((prev) => ({ ...prev, [questionId]: true }));
+        setErrorById((prev) => ({ ...prev, [questionId]: "" }));
+
+        await onAutoSaveQuestion(quiz, {
+          id: nextDraft.id,
+          question: nextDraft.question,
+          questionType: nextDraft.questionType,
+          ...(nextDraft.questionType === "open-ended"
+            ? {}
+            : {
+                options: nextDraft.options,
+                correctOption: Number(nextDraft.correctOption),
+              }),
+        });
+      } catch (e) {
+        console.error("Erro no auto-save da questão:", e);
+        setErrorById((prev) => ({
+          ...prev,
+          [questionId]: e?.message || "Erro ao salvar automaticamente.",
+        }));
+      } finally {
+        setSavingById((prev) => ({ ...prev, [questionId]: false }));
+      }
+    }, DEBOUNCE_MS);
+  };
+
+  const updateDraft = (questionId, patch) => {
+    setDrafts((prev) => {
+      const current = prev[questionId] || initDraft(quiz.questions.find((q) => q.id === questionId) || {});
+      const next = { ...current, ...patch };
+      scheduleSave(questionId, next);
+      return { ...prev, [questionId]: next };
+    });
+  };
+
+  const toggleEdit = (question) => {
+    setErrorById((prev) => ({ ...prev, [question.id]: "" }));
+    setDrafts((prev) => ({
+      ...prev,
+      [question.id]: prev[question.id] || initDraft(question),
+    }));
+    setEditingId((prev) => (prev === question.id ? null : question.id));
+  };
 
   return (
-    <>
-      <List>
-        {quiz.questions.map((question) => {
-          const isOpenEnded = question.questionType === 'open-ended';
-          
-          return (
+    <List>
+      {quiz.questions.map((question, index) => {
+        const isEditing = editingId === question.id;
+        const draft = drafts[question.id] || initDraft(question);
+        const isOpenEnded = draft.questionType === "open-ended";
+
+        return (
+          <React.Fragment key={question.id}>
             <ListItem
-              key={question.id}
               sx={{
                 p: 2,
                 borderBottom: "1px solid #e0e0e0",
                 display: "flex",
-                alignItems: "center",
-                flexDirection: { xs: 'column', sm: 'row' },
-                gap: { xs: 2, sm: 0 },
+                alignItems: "stretch",
+                flexDirection: "column",
+                gap: 1,
               }}
             >
-              <Box sx={{ flex: 1, width: { xs: '100%', sm: 'auto' } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <Chip
-                    label={isOpenEnded ? 'Aberta' : 'Múltipla Escolha'}
-                    size="small"
-                    color={isOpenEnded ? 'secondary' : 'primary'}
-                    sx={{ fontSize: '0.7rem' }}
-                  />
-                </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Chip
+                  label={isOpenEnded ? "Aberta" : "Múltipla Escolha"}
+                  size="small"
+                  color={isOpenEnded ? "secondary" : "primary"}
+                  sx={{ fontSize: "0.7rem" }}
+                />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ flex: 1 }}
+                >
+                  {index + 1}.
+                </Typography>
+
+                <IconButton
+                  onClick={() => toggleEdit(question)}
+                  sx={{
+                    color: "#9041c1",
+                    "&:hover": {
+                      backgroundColor: "rgba(144, 65, 193, 0.1)",
+                    },
+                  }}
+                  size="small"
+                  title={isEditing ? "Fechar edição" : "Editar questão"}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  onClick={() => handleRemoveQuestion(quiz, question.id)}
+                  sx={{
+                    color: "#d32f2f",
+                    "&:hover": {
+                      backgroundColor: "rgba(211, 47, 47, 0.1)",
+                    },
+                  }}
+                  size="small"
+                  title="Remover questão"
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              {!isEditing && (
                 <ListItemText
                   primary={question.question}
                   secondary={
-                    isOpenEnded
-                      ? 'Resposta dissertativa'
-                      : `Opções: ${question.options.join(", ")} | Correta: ${question.options[question.correctOption]}`
+                    question.questionType === "open-ended"
+                      ? "Resposta dissertativa"
+                      : (
+                          <Box component="span" sx={{ mt: 1, display: "block" }}>
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                display: "block",
+                                mb: 0.5,
+                                color: "#666",
+                                fontSize: { xs: "0.75rem", sm: "0.813rem" },
+                              }}
+                            >
+                              <strong>Alternativas:</strong>
+                            </Typography>
+                            {(question.options || []).map((opt, i) => (
+                              <Box
+                                key={i}
+                                component="span"
+                                sx={{ display: "block", my: 0.5 }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight:
+                                      i === question.correctOption
+                                        ? "bold"
+                                        : "normal",
+                                    color:
+                                      i === question.correctOption
+                                        ? "green"
+                                        : "inherit",
+                                    fontSize: "0.875rem",
+                                  }}
+                                >
+                                  <strong>Opção {i + 1}:</strong> {opt}
+                                </span>
+                              </Box>
+                            ))}
+                          </Box>
+                        )
                   }
-                  sx={{
-                    pr: { xs: 0, sm: 10 },
-                    flex: 1,
-                  }}
                   primaryTypographyProps={{
                     sx: {
                       wordBreak: "break-word",
@@ -69,48 +250,165 @@ const QuestionList = ({
                     },
                   }}
                 />
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  gap: { xs: 1, sm: 0.5 },
-                  position: { xs: 'relative', sm: 'absolute' },
-                  right: { xs: 'auto', sm: 16 },
-                  width: { xs: '100%', sm: 'auto' },
-                  justifyContent: { xs: 'flex-end', sm: 'flex-start' },
-                }}
-              >
-                <IconButton
-                  onClick={() => {
-                    handleEditQuestion(quiz, question);
-                    questionFormRef.current?.scrollIntoView({ behavior: "smooth" });
-                  }}
+              )}
+
+              <Collapse in={isEditing} timeout="auto" unmountOnExit>
+                <Box
                   sx={{
-                    color: "#9041c1",
-                    "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.1)" },
+                    mt: 1,
+                    p: 1.5,
+                    border: "1px solid #e0e0e0",
+                    borderRadius: 1,
+                    bgcolor: "#fafafa",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1.5,
                   }}
-                  size="small"
-                  title="Editar questão"
                 >
-                  <EditIcon fontSize="small" />
-                </IconButton>
-                <IconButton
-                  onClick={() => handleRemoveQuestion(quiz, question.id)}
-                  sx={{
-                    color: "#d32f2f",
-                    "&:hover": { backgroundColor: "rgba(211, 47, 47, 0.1)" },
-                  }}
-                  size="small"
-                  title="Remover questão"
-                >
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
-              </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    <FormControl size="small" sx={{ minWidth: 220 }}>
+                      <InputLabel>Tipo de Questão</InputLabel>
+                      <Select
+                        label="Tipo de Questão"
+                        value={draft.questionType || "multiple-choice"}
+                        onChange={(e) =>
+                          updateDraft(question.id, { questionType: e.target.value })
+                        }
+                      >
+                        <MenuItem value="multiple-choice">Múltipla Escolha</MenuItem>
+                        <MenuItem value="open-ended">Questão Aberta</MenuItem>
+                      </Select>
+                    </FormControl>
+
+                    <Typography variant="caption" color="text.secondary">
+                      {savingById[question.id]
+                        ? "Salvando..."
+                        : "Salva automaticamente"}
+                    </Typography>
+                    {errorById[question.id] && (
+                      <Typography variant="caption" color="error">
+                        {errorById[question.id]}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <TextField
+                    label="Pergunta"
+                    size="small"
+                    fullWidth
+                    value={draft.question}
+                    onChange={(e) =>
+                      updateDraft(question.id, { question: e.target.value })
+                    }
+                  />
+
+                  {!isOpenEnded && (
+                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                        Opções (marque a correta)
+                      </Typography>
+
+                      {(draft.options || []).map((opt, optIndex) => {
+                        const isCorrect = Number(draft.correctOption) === optIndex;
+
+                        return (
+                          <Box
+                            key={`${question.id}-opt-${optIndex}`}
+                            sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                          >
+                            <IconButton
+                              onClick={() =>
+                                updateDraft(question.id, { correctOption: optIndex })
+                              }
+                              size="small"
+                              sx={{
+                                color: isCorrect ? "#2e7d32" : "#9e9e9e",
+                              }}
+                              title={isCorrect ? "Correta" : "Marcar como correta"}
+                            >
+                              {isCorrect ? (
+                                <CheckCircleIcon fontSize="small" />
+                              ) : (
+                                <RadioButtonUncheckedIcon fontSize="small" />
+                              )}
+                            </IconButton>
+
+                            <TextField
+                              label={`Opção ${optIndex + 1}`}
+                              size="small"
+                              fullWidth
+                              value={opt}
+                              onChange={(e) => {
+                                const next = [...(draft.options || [])];
+                                next[optIndex] = e.target.value;
+                                updateDraft(question.id, { options: next });
+                              }}
+                            />
+
+                            <IconButton
+                              onClick={() => {
+                                const cur = draft.options || [];
+                                if (cur.length <= 2) return;
+
+                                const next = cur.filter((_, i) => i !== optIndex);
+                                let nextCorrect = Number(draft.correctOption) || 0;
+                                if (optIndex === nextCorrect) nextCorrect = 0;
+                                if (optIndex < nextCorrect) nextCorrect -= 1;
+
+                                updateDraft(question.id, {
+                                  options: next,
+                                  correctOption: Math.min(
+                                    nextCorrect,
+                                    next.length - 1
+                                  ),
+                                });
+                              }}
+                              size="small"
+                              sx={{ color: "#d32f2f" }}
+                              disabled={(draft.options || []).length <= 2}
+                              title="Remover opção"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Box>
+                        );
+                      })}
+
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          const cur = draft.options || ["", ""];
+                          if (cur.length >= 5) return;
+                          updateDraft(question.id, { options: [...cur, ""] });
+                        }}
+                        disabled={(draft.options || []).length >= 5}
+                        sx={{
+                          color: "#9041c1",
+                          borderColor: "#9041c1",
+                          "&:hover": { borderColor: "#7d37a7" },
+                          alignSelf: "flex-start",
+                        }}
+                      >
+                        Adicionar Opção
+                      </Button>
+                    </Box>
+                  )}
+                </Box>
+              </Collapse>
             </ListItem>
-          );
-        })}
-      </List>
-    </>
+            <Divider />
+          </React.Fragment>
+        );
+      })}
+    </List>
   );
 };
 
