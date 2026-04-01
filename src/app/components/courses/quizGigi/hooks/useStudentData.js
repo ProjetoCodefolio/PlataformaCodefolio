@@ -14,6 +14,24 @@ export const useStudentData = (courseId, quizId) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const popperRef = useRef(null);
   const chooseButtonRef = useRef(null);
+  const remainingDrawPoolRef = useRef([]);
+
+  const shuffleInPlace = (array) => {
+    for (let i = array.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  };
+
+  const buildNewDrawPool = (enabledStudents) =>
+    shuffleInPlace(enabledStudents.map((s) => s.userId));
+
+  useEffect(() => {
+    // O sorteio “sem repetição” é por quiz. Quando muda curso/quiz,
+    // reinicia o pool para começar um novo ciclo.
+    remainingDrawPoolRef.current = [];
+  }, [courseId, quizId]);
 
   // Efeito para carregar estudantes matriculados
   useEffect(() => {
@@ -51,12 +69,33 @@ export const useStudentData = (courseId, quizId) => {
     );
 
     if (enabledStudents.length > 0) {
-      const randomIndex = Math.floor(Math.random() * enabledStudents.length);
-      const selectedStudent = enabledStudents[randomIndex];
-      setSelectedStudent(selectedStudent);
+      const enabledById = new Map(
+        enabledStudents.map((student) => [student.userId, student])
+      );
+
+      // Mantém um pool embaralhado de alunos restantes. Só repete depois
+      // que todos os habilitados forem sorteados ao menos 1x.
+      let pool = Array.isArray(remainingDrawPoolRef.current)
+        ? remainingDrawPoolRef.current
+        : [];
+
+      // Remove do pool alunos que foram desabilitados/removidos.
+      pool = pool.filter((userId) => enabledById.has(userId));
+
+      if (pool.length === 0) {
+        pool = buildNewDrawPool(enabledStudents);
+      }
+
+      const nextUserId = pool.shift();
+      remainingDrawPoolRef.current = pool;
+
+      const nextStudent =
+        (nextUserId && enabledById.get(nextUserId)) || enabledStudents[0];
+
+      setSelectedStudent(nextStudent);
 
       // Usa o serviço para atualizar contagem de sorteios
-      updateStudentDrawCount(courseId, quizId, selectedStudent.userId, false);
+      updateStudentDrawCount(courseId, quizId, nextStudent.userId, false);
     } else {
       alert(
         "Não há alunos habilitados para sorteio. Por favor, habilite pelo menos um aluno."
