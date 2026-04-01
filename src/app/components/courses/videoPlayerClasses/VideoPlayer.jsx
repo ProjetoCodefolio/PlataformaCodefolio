@@ -289,33 +289,9 @@ export const VideoPlayer = forwardRef(
       );
     };
 
-    const handleOpenSlide = (videoId, quizId = null, slide = null) => {
-      if (
-        videoPlayerRef.current &&
-        typeof videoPlayerRef.current.pause === "function"
-      ) {
-        videoPlayerRef.current.pause();
-      }
-
-      if (slide) {
-        setSlideData(slide);
-        setShowSlidePlayer(true);
-        return;
-      }
-
-      let foundSlides = [];
-
-      if (videoId) {
-        foundSlides = videoSlides[videoId] || [];
-      } else if (quizId) {
-        const quizKey = `quiz_${quizId}`;
-        foundSlides = videoSlides[quizKey] || [];
-      }
-
-      if (foundSlides.length > 0) {
-        setSlideData(foundSlides[0]);
-        setShowSlidePlayer(true);
-      }
+    const handleOpenSlidesClick = () => {
+      if (typeof onOpenSlide !== "function") return;
+      onOpenSlide({ videoId: video?.id, quizId: video?.quizId });
     };
 
     useEffect(() => {
@@ -570,7 +546,7 @@ export const VideoPlayer = forwardRef(
           <Box sx={{ display: "flex", ml: "auto" }}>
             {hasSlide && (
               <IconButton
-                onClick={handleOpenSlide}
+                onClick={handleOpenSlidesClick}
                 sx={{
                   color: "#fff",
                   bgcolor: "#9041c1",

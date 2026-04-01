@@ -73,6 +73,7 @@ const Classes = ({ alias = null }) => {
   const [courseOwnerUid, setCourseOwnerUid] = useState("");
   const [showSlidePlayer, setShowSlidePlayer] = useState(false);
   const [slideData, setSlideData] = useState(null);
+  const [videoIdBeforeSlide, setVideoIdBeforeSlide] = useState(null);
   const [videoSlides, setVideoSlides] = useState({});
   const [userAttempts, setUserAttempts] = useState({});
   const [slides, setSlides] = useState([]); // Novo estado para armazenar slides independentes
@@ -512,11 +513,18 @@ const Classes = ({ alias = null }) => {
   };
 
   const handleVideoSelect = (video) => {
+    // Se o usuário escolheu outro conteúdo, sair do modo quiz
+    setShowQuiz(false);
+
     // Se for slide ou se a configuração não exigir completar vídeo anterior, permitir acesso direto
     if (
       video.isSlide ||
       advancedSettings?.videos?.requirePreviousCompletion === false
     ) {
+      // Guardar o vídeo atual para conseguir voltar ao vídeo após visualizar slide
+      if (video.isSlide && currentVideoId && !currentVideo?.isSlide) {
+        setVideoIdBeforeSlide(currentVideoId);
+      }
       setCurrentVideoId(video.id);
       return;
     }
@@ -628,7 +636,8 @@ const Classes = ({ alias = null }) => {
   };
 
   // Modificar a função handleOpenSlide para que funcione com slides independentes
-  const handleOpenSlide = (slide) => {
+  // Também fecha o Quiz, para que o usuário veja o Slide ao abrir.
+  const handleOpenSlide = (slideOrContext = null, videoIdArg = null, quizIdArg = null) => {
     if (
       videoPlayerRef.current &&
       typeof videoPlayerRef.current.pause === "function"
@@ -636,10 +645,17 @@ const Classes = ({ alias = null }) => {
       videoPlayerRef.current.pause();
     }
 
+    // Ao abrir slides, garantir que saímos do modo quiz
+    setShowQuiz(false);
+
     // Se recebemos o slide diretamente (novo caso para slides independentes)
-    if (slide && slide.isSlide) {
-      setCurrentVideoId(slide.id);
-      setSlideData(slide);
+    if (slideOrContext && typeof slideOrContext === "object" && slideOrContext.isSlide) {
+      if (currentVideoId && !currentVideo?.isSlide) {
+        setVideoIdBeforeSlide(currentVideoId);
+      }
+
+      setCurrentVideoId(slideOrContext.id);
+      setSlideData(slideOrContext);
       setShowSlidePlayer(true);
       return;
     }
@@ -647,28 +663,64 @@ const Classes = ({ alias = null }) => {
     // Caso contrário, procura pelos slides associados a vídeo ou quiz
     let slideToShow = null;
 
-    if (slide.videoId) {
-      const slidesForVideo = slides.filter((s) => s.videoId === slide.videoId);
+    const ctxObj = slideOrContext && typeof slideOrContext === "object" ? slideOrContext : null;
+    const resolvedVideoId = videoIdArg || ctxObj?.videoId || (typeof slideOrContext === "string" ? slideOrContext : null) || currentVideoId;
+    const resolvedQuizId = quizIdArg || ctxObj?.quizId || null;
+
+    if (resolvedVideoId) {
+      const slidesForVideo = slides.filter((s) => s?.videoId === resolvedVideoId);
       if (slidesForVideo.length > 0) {
         slideToShow = slidesForVideo[0];
       }
-    } else if (slide.quizId) {
-      const slidesForQuiz = slides.filter((s) => s.quizId === slide.quizId);
+    }
+
+    if (!slideToShow && resolvedQuizId) {
+      const slidesForQuiz = slides.filter((s) => s?.quizId === resolvedQuizId);
       if (slidesForQuiz.length > 0) {
         slideToShow = slidesForQuiz[0];
       }
     }
 
+    // Fallback: quizId no formato `${courseId}/slide_${slideId}`
+    if (!slideToShow && resolvedQuizId && resolvedQuizId.includes("slide_")) {
+      const slideId = resolvedQuizId.split("slide_")[1];
+      slideToShow = slides.find((s) => s?.id === slideId) || null;
+    }
+
     if (slideToShow) {
+      // Guardar vídeo de origem para retorno
+      if (slideToShow.videoId) {
+        setVideoIdBeforeSlide(slideToShow.videoId);
+      } else if (currentVideoId && !currentVideo?.isSlide) {
+        setVideoIdBeforeSlide(currentVideoId);
+      }
+
       setCurrentVideoId(slideToShow.id);
       setSlideData(slideToShow);
       setShowSlidePlayer(true);
+    } else {
+      toast.info("Nenhum slide encontrado para este conteúdo.");
     }
   };
 
   const handleReturnToVideo = () => {
     setShowSlidePlayer(false);
     setSlideData(null);
+
+    // Sempre garantir que saímos do modo quiz ao voltar
+    setShowQuiz(false);
+
+    if (videoIdBeforeSlide) {
+      setCurrentVideoId(videoIdBeforeSlide);
+      setVideoIdBeforeSlide(null);
+      return;
+    }
+
+    // Fallback: se estivermos em um slide sem vídeo anterior, voltar para o primeiro vídeo (não-slide)
+    const firstVideo = videos.find((v) => !v?.isSlide && v?.type !== "slide");
+    if (firstVideo?.id) {
+      setCurrentVideoId(firstVideo.id);
+    }
   };
 
   const handleProgress = (currentTime, duration) => {

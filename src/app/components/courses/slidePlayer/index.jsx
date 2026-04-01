@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { Box, Typography, IconButton } from "@mui/material";
-import YouTubeIcon from "@mui/icons-material/YouTube";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
@@ -121,7 +120,7 @@ const SlidePlayer = ({
         }}
       >
         <IconButton
-          onClick={() => navigate(-1)}
+          onClick={onReturnToVideo}
           sx={{
             color: "#9041c1",
             mr: 1,
@@ -211,22 +210,6 @@ const SlidePlayer = ({
             title="Reportar problema"
           >
             <ReportIcon sx={{ fontSize: "18px" }} />
-          </IconButton>
-
-          <IconButton
-            onClick={onReturnToVideo}
-            sx={{
-              color: "#fff",
-              bgcolor: "#9041c1",
-              mr: 1,
-              p: 0.8,
-              "&:hover": {
-                bgcolor: "#7a35a3",
-              },
-            }}
-            title="Voltar ao vídeo"
-          >
-            <YouTubeIcon sx={{ fontSize: "18px" }} />
           </IconButton>
         </Box>
       </Box>
