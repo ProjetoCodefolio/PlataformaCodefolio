@@ -439,7 +439,6 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                 <TableCell sx={{ fontWeight: "bold" }}>Progresso</TableCell>
                                                 <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
                                                 <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Ações</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -574,18 +573,6 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                             </Box>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <IconButton
-                                                            disabled={isCurrentUserTeacher ||
-                                                                courseDetails.userId !== currentUser.uid
-                                                            }
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => handleDeleteClick(student)}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -630,15 +617,6 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                             {student.email}
                                                         </Typography>
                                                     </Box>
-                                                    {!isCurrentUserTeacher && courseDetails.userId === currentUser.uid && (
-                                                        <IconButton
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => handleDeleteClick(student)}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    )}
                                                 </Stack>
                                                 
                                                 <Divider sx={{ my: 1.5 }} />
