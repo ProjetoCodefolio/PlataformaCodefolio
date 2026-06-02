@@ -56,6 +56,9 @@ const QuestionList = ({
         : ["", ""],
       correctOption:
         Number.isInteger(question.correctOption) ? question.correctOption : 0,
+      imageUrl: question.imageUrl || "",
+      imageWidth: question.imageWidth || "",
+      imageHeight: question.imageHeight || "",
     };
   };
 
@@ -93,6 +96,9 @@ const QuestionList = ({
           id: nextDraft.id,
           question: nextDraft.question,
           questionType: nextDraft.questionType,
+          imageUrl: nextDraft.imageUrl,
+          imageWidth: nextDraft.imageWidth,
+          imageHeight: nextDraft.imageHeight,
           ...(nextDraft.questionType === "open-ended"
             ? {}
             : {
@@ -308,6 +314,65 @@ const QuestionList = ({
                       updateDraft(question.id, { question: e.target.value })
                     }
                   />
+
+                  {/* Imagem opcional da questão */}
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Imagem (opcional)
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      <TextField
+                        label="URL da imagem"
+                        size="small"
+                        value={draft.imageUrl || ""}
+                        onChange={(e) =>
+                          updateDraft(question.id, { imageUrl: e.target.value })
+                        }
+                        placeholder="https://..."
+                        sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" } }}
+                      />
+                      <TextField
+                        label="Largura (px)"
+                        type="number"
+                        size="small"
+                        value={draft.imageWidth || ""}
+                        onChange={(e) =>
+                          updateDraft(question.id, { imageWidth: e.target.value })
+                        }
+                        sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
+                      />
+                      <TextField
+                        label="Altura (px)"
+                        type="number"
+                        size="small"
+                        value={draft.imageHeight || ""}
+                        onChange={(e) =>
+                          updateDraft(question.id, { imageHeight: e.target.value })
+                        }
+                        sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
+                      />
+                    </Box>
+                    {draft.imageUrl && String(draft.imageUrl).trim() && (
+                      <Box sx={{ display: "flex", justifyContent: "center" }}>
+                        <img
+                          src={draft.imageUrl}
+                          alt="Pré-visualização"
+                          style={{
+                            width: Number(draft.imageWidth) > 0 ? `${Number(draft.imageWidth)}px` : "auto",
+                            height: Number(draft.imageHeight) > 0 ? `${Number(draft.imageHeight)}px` : "auto",
+                            maxWidth: "100%",
+                            maxHeight: 200,
+                            objectFit: "contain",
+                            borderRadius: 8,
+                            border: "1px solid #e0e0e0",
+                          }}
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      </Box>
+                    )}
+                  </Box>
 
                   {!isOpenEnded && (
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>

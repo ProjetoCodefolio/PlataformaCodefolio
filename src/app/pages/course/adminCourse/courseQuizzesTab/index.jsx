@@ -57,6 +57,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
 
+  // Imagem opcional da questão (URL + dimensões em px)
+  const [newQuizImageUrl, setNewQuizImageUrl] = useState("");
+  const [newQuizImageWidth, setNewQuizImageWidth] = useState("");
+  const [newQuizImageHeight, setNewQuizImageHeight] = useState("");
+
   // Novos estados para questões abertas
   const [newQuestionType, setNewQuestionType] = useState('multiple-choice');
 
@@ -280,7 +285,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     setEditQuestion(question);
     setNewQuizQuestion(question.question);
     setNewQuestionType(question.questionType || 'multiple-choice');
-    
+    setNewQuizImageUrl(question.imageUrl || "");
+    setNewQuizImageWidth(question.imageWidth || "");
+    setNewQuizImageHeight(question.imageHeight || "");
+
     if (question.questionType === 'open-ended') {
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
@@ -447,6 +455,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           question: question.question,
           questionType: isOpenEnded ? "open-ended" : "multiple-choice",
         };
+
+        // Carrega imagem opcional, se definida no editor do gerador
+        if (question.imageUrl && String(question.imageUrl).trim()) {
+          base.imageUrl = String(question.imageUrl).trim();
+          if (Number(question.imageWidth) > 0)
+            base.imageWidth = Number(question.imageWidth);
+          if (Number(question.imageHeight) > 0)
+            base.imageHeight = Number(question.imageHeight);
+        }
 
         if (isOpenEnded) {
           return base;
@@ -675,6 +692,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         id: editQuestion.id,
         question: newQuizQuestion.trim(),
         questionType: newQuestionType,
+        imageUrl: newQuizImageUrl,
+        imageWidth: newQuizImageWidth,
+        imageHeight: newQuizImageHeight,
       };
 
       if (isOpenEnded) {
@@ -708,6 +728,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
       setNewQuestionType('multiple-choice');
+      setNewQuizImageUrl("");
+      setNewQuizImageWidth("");
+      setNewQuizImageHeight("");
 
       toast.success("Questão atualizada com sucesso!");
     } catch (error) {
@@ -737,6 +760,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         id: generateUUID(), // Gera um ID único para a nova questão
         question: newQuizQuestion.trim(),
         questionType: newQuestionType,
+        imageUrl: newQuizImageUrl,
+        imageWidth: newQuizImageWidth,
+        imageHeight: newQuizImageHeight,
       };
 
       if (isOpenEnded) {
@@ -769,6 +795,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
       setNewQuestionType('multiple-choice');
+      setNewQuizImageUrl("");
+      setNewQuizImageWidth("");
+      setNewQuizImageHeight("");
 
       toast.success("Questão adicionada com sucesso!");
     } catch (error) {
@@ -1130,6 +1159,12 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
               setNewQuizCorrectOption={setNewQuizCorrectOption}
               newQuestionType={newQuestionType}
               setNewQuestionType={setNewQuestionType}
+              newQuizImageUrl={newQuizImageUrl}
+              setNewQuizImageUrl={setNewQuizImageUrl}
+              newQuizImageWidth={newQuizImageWidth}
+              setNewQuizImageWidth={setNewQuizImageWidth}
+              newQuizImageHeight={newQuizImageHeight}
+              setNewQuizImageHeight={setNewQuizImageHeight}
               handleBlurSave={handleBlurSave}
               handleKeyDown={handleKeyDown}
               questionRef={questionRef}

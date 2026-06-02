@@ -7,6 +7,44 @@ export const normalizeDiagnosticFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
 
 /**
+ * Aplica os campos opcionais de imagem (imageUrl/imageWidth/imageHeight) a uma
+ * questão. Como o Realtime Database não aceita valores `undefined`, os campos
+ * só são adicionados quando há uma URL válida; caso contrário são removidos
+ * (útil ao editar uma questão e apagar a imagem).
+ * @param {Object} target - Objeto da questão a ser mutado
+ * @param {Object} source - Dados da questão (de onde vêm os campos de imagem)
+ * @returns {Object} - O próprio target, já com os campos ajustados
+ */
+export const applyQuestionImageFields = (target, source = {}) => {
+  const url =
+    typeof source.imageUrl === "string" ? source.imageUrl.trim() : "";
+
+  if (url) {
+    target.imageUrl = url;
+
+    const width = Number(source.imageWidth);
+    if (Number.isFinite(width) && width > 0) {
+      target.imageWidth = width;
+    } else {
+      delete target.imageWidth;
+    }
+
+    const height = Number(source.imageHeight);
+    if (Number.isFinite(height) && height > 0) {
+      target.imageHeight = height;
+    } else {
+      delete target.imageHeight;
+    }
+  } else {
+    delete target.imageUrl;
+    delete target.imageWidth;
+    delete target.imageHeight;
+  }
+
+  return target;
+};
+
+/**
  * ==============================
  * FUNÇÕES DE BUSCA DE QUIZZES
  * ==============================
@@ -371,6 +409,9 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
       newQuestion.correctOption = questionData.correctOption;
     }
 
+    // Imagem opcional da questão (URL + dimensões em px)
+    applyQuestionImageFields(newQuestion, questionData);
+
     // Verificar se a questão já existe
     const existingQuestionIndex = quiz.questions.findIndex(
       (q) => q.id === questionId
@@ -442,6 +483,9 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
           updatedQuestion.options = questionData.options;
           updatedQuestion.correctOption = questionData.correctOption;
         }
+
+        // Imagem opcional da questão (URL + dimensões em px)
+        applyQuestionImageFields(updatedQuestion, questionData);
 
         return updatedQuestion;
       }

@@ -18,8 +18,13 @@ import {
   Modal,
   FormControlLabel,
   Switch,
+  InputAdornment,
+  Tooltip,
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import Topbar from "$components/topbar/Topbar";
 import CourseVideosTab from "./CourseVideosTab";
 import CourseSlidesTab from "./CourseSlidesTab";
@@ -115,6 +120,7 @@ const CourseForm = () => {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pinRequired, setPinRequired] = useState(false);
   const [coursePin, setCoursePin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [randomPin, setRandomPin] = useState(
     Math.floor(1000000 + Math.random() * 9000000).toString()
   );
@@ -477,12 +483,65 @@ const CourseForm = () => {
                   label="PIN de Acesso"
                   fullWidth
                   variant="outlined"
+                  type={showPin ? "text" : "password"}
                   value={coursePin === "[PIN configurado]" ? "" : coursePin}
                   disabled={!pinRequired}
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Tooltip title={showPin ? "Ocultar PIN" : "Mostrar PIN"}>
+                          <span>
+                            <IconButton
+                              onClick={() => setShowPin((prev) => !prev)}
+                              edge="end"
+                              size="small"
+                              disabled={
+                                !coursePin || coursePin === "[PIN configurado]"
+                              }
+                            >
+                              {showPin ? (
+                                <VisibilityOff fontSize="small" />
+                              ) : (
+                                <Visibility fontSize="small" />
+                              )}
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Copiar PIN">
+                          <span>
+                            <IconButton
+                              onClick={() => {
+                                if (
+                                  !coursePin ||
+                                  coursePin === "[PIN configurado]"
+                                )
+                                  return;
+                                navigator.clipboard
+                                  ?.writeText(coursePin)
+                                  .then(() =>
+                                    toast.success("PIN copiado para a área de transferência!")
+                                  )
+                                  .catch(() =>
+                                    toast.error("Não foi possível copiar o PIN")
+                                  );
+                              }}
+                              edge="end"
+                              size="small"
+                              disabled={
+                                !coursePin || coursePin === "[PIN configurado]"
+                              }
+                            >
+                              <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </InputAdornment>
+                    ),
+                  }}
                   helperText={
-                    coursePin === "[PIN configurado]" 
+                    coursePin === "[PIN configurado]"
                       ? "O PIN já foi configurado. Para alterá-lo, desmarque e marque novamente a opção de PIN."
                       : "Digite um PIN para o curso ou deixe em branco para gerar um automaticamente."
                   }

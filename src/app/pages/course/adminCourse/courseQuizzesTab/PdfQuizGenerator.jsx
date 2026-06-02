@@ -855,6 +855,43 @@ const PdfQuizGenerator = ({
                       }
                     />
 
+                    {/* Imagem opcional da questão */}
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      Imagem (opcional)
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                      <TextField
+                        label="URL da imagem"
+                        size="small"
+                        value={question.imageUrl || ""}
+                        onChange={(e) =>
+                          updateGeneratedQuestion(index, { imageUrl: e.target.value })
+                        }
+                        placeholder="https://..."
+                        sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" } }}
+                      />
+                      <TextField
+                        label="Largura (px)"
+                        type="number"
+                        size="small"
+                        value={question.imageWidth || ""}
+                        onChange={(e) =>
+                          updateGeneratedQuestion(index, { imageWidth: e.target.value })
+                        }
+                        sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
+                      />
+                      <TextField
+                        label="Altura (px)"
+                        type="number"
+                        size="small"
+                        value={question.imageHeight || ""}
+                        onChange={(e) =>
+                          updateGeneratedQuestion(index, { imageHeight: e.target.value })
+                        }
+                        sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
+                      />
+                    </Box>
+
                     {!isOpenEnded && (
                       <>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>

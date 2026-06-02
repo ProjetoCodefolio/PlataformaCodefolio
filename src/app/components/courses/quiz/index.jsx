@@ -21,6 +21,7 @@ import { toast } from "react-toastify";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import QuestionImage from "$components/common/QuestionImage";
 
 const Quiz = ({
   quizId,
@@ -871,6 +872,12 @@ const Quiz = ({
         >
           {currentQuestion?.question || "Pergunta indisponível"}
         </Typography>
+
+        <QuestionImage
+          imageUrl={currentQuestion?.imageUrl}
+          imageWidth={currentQuestion?.imageWidth}
+          imageHeight={currentQuestion?.imageHeight}
+        />
 
         {/* Renderizar campo apropriado baseado no tipo de questão */}
         {isOpenEnded ? (

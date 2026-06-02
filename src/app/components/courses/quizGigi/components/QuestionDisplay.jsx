@@ -3,6 +3,7 @@ import { Box, Typography, Paper } from "@mui/material";
 import QuestionResultDisplay from "./QuestionResultDisplay";
 import StudentSelector from "./StudentSelector";
 import AnswerOptions from "./AnswerOptions";
+import QuestionImage from "../../../common/QuestionImage";
 
 const QuestionDisplay = ({
   currentQuestion,
@@ -73,6 +74,12 @@ const QuestionDisplay = ({
     >
       {currentQuestion.question}
     </Typography>
+
+      <QuestionImage
+        imageUrl={currentQuestion.imageUrl}
+        imageWidth={currentQuestion.imageWidth}
+        imageHeight={currentQuestion.imageHeight}
+      />
 
       <QuestionResultDisplay
         currentQuestion={currentQuestion}

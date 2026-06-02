@@ -26,6 +26,12 @@ const QuestionForm = ({
   setNewQuizCorrectOption,
   newQuestionType,
   setNewQuestionType,
+  newQuizImageUrl,
+  setNewQuizImageUrl,
+  newQuizImageWidth,
+  setNewQuizImageWidth,
+  newQuizImageHeight,
+  setNewQuizImageHeight,
   handleBlurSave,
   handleKeyDown,
   questionRef,
@@ -85,6 +91,60 @@ const QuestionForm = ({
             inputRef={questionRef}
             size="small"
           />
+        </Grid>
+
+        {/* Imagem opcional da questão (exibida entre o enunciado e as opções) */}
+        <Grid item xs={12}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+            Imagem (opcional)
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            <TextField
+              label="URL da imagem"
+              fullWidth
+              value={newQuizImageUrl || ""}
+              onChange={(e) => setNewQuizImageUrl(e.target.value)}
+              size="small"
+              placeholder="https://..."
+              sx={{ flex: { xs: "1 1 100%", sm: "1 1 300px" } }}
+            />
+            <TextField
+              label="Largura (px)"
+              type="number"
+              value={newQuizImageWidth || ""}
+              onChange={(e) => setNewQuizImageWidth(e.target.value)}
+              size="small"
+              sx={{ width: { xs: "calc(50% - 4px)", sm: 130 } }}
+            />
+            <TextField
+              label="Altura (px)"
+              type="number"
+              value={newQuizImageHeight || ""}
+              onChange={(e) => setNewQuizImageHeight(e.target.value)}
+              size="small"
+              sx={{ width: { xs: "calc(50% - 4px)", sm: 130 } }}
+            />
+          </Box>
+          {newQuizImageUrl && String(newQuizImageUrl).trim() && (
+            <Box sx={{ mt: 1.5, display: "flex", justifyContent: "center" }}>
+              <img
+                src={newQuizImageUrl}
+                alt="Pré-visualização da imagem da questão"
+                style={{
+                  width: Number(newQuizImageWidth) > 0 ? `${Number(newQuizImageWidth)}px` : "auto",
+                  height: Number(newQuizImageHeight) > 0 ? `${Number(newQuizImageHeight)}px` : "auto",
+                  maxWidth: "100%",
+                  maxHeight: 240,
+                  objectFit: "contain",
+                  borderRadius: 8,
+                  border: "1px solid #e0e0e0",
+                }}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </Box>
+          )}
         </Grid>
 
         {!isOpenEnded && (
@@ -205,6 +265,9 @@ const QuestionForm = ({
               setNewQuizOptions(["", ""]);
               setNewQuizCorrectOption(0);
               setNewQuestionType('multiple-choice');
+              setNewQuizImageUrl("");
+              setNewQuizImageWidth("");
+              setNewQuizImageHeight("");
             }}
             ref={cancelButtonRef}
             onKeyDown={(e) => {
@@ -216,6 +279,9 @@ const QuestionForm = ({
                 setNewQuizOptions(["", ""]);
                 setNewQuizCorrectOption(0);
                 setNewQuestionType('multiple-choice');
+                setNewQuizImageUrl("");
+                setNewQuizImageWidth("");
+                setNewQuizImageHeight("");
               }
             }}
             sx={{
