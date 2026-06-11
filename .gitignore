@@ -25,3 +25,5 @@ serviceAccount.json
 .env
 
 rules.js
+
+conversation-log.md

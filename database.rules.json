@@ -159,7 +159,12 @@
       ".indexOn": ["email"],
       "$userId": {
         ".read": "auth != null && (auth.uid === $userId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
-        ".write": "auth != null && (auth.uid === $userId || (root.child('users').child(auth.uid).child('role').val() === 'admin' && newData.hasChild('role')))"
+        ".write": "auth != null && (auth.uid === $userId || (root.child('users').child(auth.uid).child('role').val() === 'admin' && newData.hasChild('role')))",
+        "coursesTeacher": {
+          "$courseId": {
+            ".write": "auth != null && (auth.uid === $userId || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('courses').child($courseId).child('userId').val() === auth.uid)"
+          }
+        }
       }
     },
 

@@ -522,8 +522,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                         <FormControl
                                                             fullWidth
                                                             size="small"
-                                                            disabled={courseDetails.userId !== currentUser.uid ||
-                                                                updatingRole === student.userId ||
+                                                            disabled={updatingRole === student.userId ||
                                                                 courseDetails.userId === student.userId ||
                                                                 isCurrentUserTeacher}
                                                         >
@@ -678,8 +677,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     <FormControl
                                                         fullWidth
                                                         size="small"
-                                                        disabled={courseDetails.userId !== currentUser.uid ||
-                                                            updatingRole === student.userId ||
+                                                        disabled={updatingRole === student.userId ||
                                                             courseDetails.userId === student.userId ||
                                                             isCurrentUserTeacher}
                                                     >
