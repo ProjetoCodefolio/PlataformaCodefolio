@@ -85,7 +85,12 @@ const PdfQuizGenerator = ({
       try {
         const fetchedModels = await fetchAllLlmModels();
         const modelsArray = Object.values(fetchedModels);
-        const activeModels = modelsArray.filter((model) => model.isActive);
+        // Excluir modelos que não suportam chat completions (áudio/STT/TTS),
+        // pois geram erro 400 ao serem usados para gerar questões.
+        const NON_CHAT_MODEL_PATTERN = /whisper|tts|guard|playai|distil-whisper/i;
+        const activeModels = modelsArray.filter(
+          (model) => model.isActive && !NON_CHAT_MODEL_PATTERN.test(model.modelId || "")
+        );
         setModels(activeModels);
       } catch (err) {
         console.error("Erro ao buscar modelos LLM:", err);

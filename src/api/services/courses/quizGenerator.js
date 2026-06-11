@@ -822,6 +822,35 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
     console.debug('parseGroqResponse - Tentativa 4 falhou:', e.message);
   }
 
+  // Tentativa 5: Recuperar questões completas de uma resposta truncada.
+  // Quando o array é cortado por max_tokens (falta o "]" final), as tentativas
+  // acima falham. Como os objetos de questão não têm chaves {} aninhadas
+  // (options usa []), extraímos cada objeto {...} completo individualmente e
+  // descartamos apenas o fragmento final incompleto.
+  try {
+    const objectRegex = /\{[^{}]*\}/g;
+    const objectMatches = responseContent.match(objectRegex);
+    if (objectMatches && objectMatches.length > 0) {
+      const salvaged = [];
+      for (const objStr of objectMatches) {
+        try {
+          salvaged.push(JSON.parse(objStr));
+        } catch (innerE) {
+          continue;
+        }
+      }
+      if (salvaged.length > 0) {
+        console.warn(
+          `parseGroqResponse - Resposta truncada: recuperadas ${salvaged.length} questão(ões) completa(s) de ${objectMatches.length} bloco(s).`
+        );
+        return validateParsedQuestions(salvaged, questionType);
+      }
+    }
+  } catch (e) {
+    parseError = parseError || e.message;
+    console.debug('parseGroqResponse - Tentativa 5 falhou:', e.message);
+  }
+
   // Se chegou aqui, não conseguimos extrair o JSON
   // Criar erro detalhado com diagnóstico
   const contentPreview = responseContent.substring(0, 200);
@@ -999,6 +1028,18 @@ export const generateQuestionsWithGroq = async (
         ? "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões discursivas em formato JSON sem explicações adicionais."
         : "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.";
 
+      // No free tier da GROQ o gargalo é o limite de tokens-por-minuto (TPM),
+      // não o contexto do modelo. Tanto os tokens do prompt quanto o max_tokens
+      // (reserva de saída) contam para o TPM. Por isso estimamos os tokens do
+      // prompt (~4 chars/token) e reservamos o restante de um orçamento
+      // conservador (abaixo do menor limite de TPM, ~6000) para a saída.
+      const TPM_BUDGET = 5500;
+      const estimatedPromptTokens = Math.ceil(prompt.length / 4) + 250; // +overhead de system/format
+      const maxOutputTokens = Math.max(
+        1024,
+        Math.min(4000, TPM_BUDGET - estimatedPromptTokens)
+      );
+
       const requestBody = {
         model: selectedModel,
         messages: [
@@ -1012,7 +1053,7 @@ export const generateQuestionsWithGroq = async (
           },
         ],
         temperature: 0.2,
-        max_tokens: 4000,
+        max_tokens: maxOutputTokens,
       };
 
       // Logs para diagnóstico
@@ -1072,11 +1113,23 @@ export const generateQuestionsWithGroq = async (
             `O modelo "${modelId}" não está disponível.`,
             { statusCode: 404, modelId, responseBody: respText }
           );
-        } else if (response.status === 429) {
+        } else if (response.status === 429 || response.status === 413) {
+          // 413 da GROQ = "Request too large" por tokens-por-minuto (TPM),
+          // não tamanho do payload. 429 = limite de requisições atingido.
+          // Tentar extrair o tempo de espera sugerido da mensagem.
+          let waitTime;
+          try {
+            const errorData = JSON.parse(respText);
+            const msg = errorData?.error?.message || '';
+            const waitMatch = msg.match(/try again in ([\d.]+)s/i);
+            if (waitMatch) waitTime = `${Math.ceil(parseFloat(waitMatch[1]))} segundos`;
+          } catch (e) {
+            // Ignorar erro de parse
+          }
           throw createDetailedError(
             ErrorTypes.RATE_LIMIT,
-            'Limite de requisições da API GROQ excedido.',
-            { statusCode: 429, responseBody: respText }
+            'Limite de tokens-por-minuto da API GROQ excedido.',
+            { statusCode: response.status, waitTime, responseBody: respText }
           );
         } else if (response.status === 400) {
           // Mensagem específica para 400 incluindo corpo para ajudar debug
@@ -1188,13 +1241,14 @@ export const generateQuestionsWithGroq = async (
       }));
     } catch (fetchError) {
       console.error("Erro na comunicação com a API:", fetchError);
-      // relança mensagem amigável ao usuário, mantendo o log técnico
-      throw new Error(formatFriendlyError(fetchError));
+      // Propaga o erro original (preservando errorType/details).
+      // A formatação amigável acontece uma única vez na borda da UI.
+      throw fetchError;
     }
   } catch (error) {
     console.error("Erro ao gerar questões:", error);
-    // relança mensagem amigável ao usuário, mantendo o log técnico
-    throw new Error(formatFriendlyError(error));
+    // Propaga o erro original (preservando errorType/details).
+    throw error;
   }
 };
 
@@ -1267,17 +1321,8 @@ export const processPdfAndGenerateQuestions = async (
     };
   } catch (error) {
     console.error("Erro ao processar PDF:", error);
-    
-    // Se já é um erro formatado/estruturado, usar diretamente
-    if (error.errorType) {
-      const friendlyMsg = formatFriendlyError(error);
-      const formattedError = new Error(friendlyMsg);
-      formattedError.errorType = error.errorType;
-      formattedError.details = error.details;
-      throw formattedError;
-    }
-    
-    // Para outros erros, formatar
-    throw new Error(formatFriendlyError(error));
+    // Propaga o erro original (preservando errorType/details) para que a UI
+    // formate uma única vez via formatFriendlyError.
+    throw error;
   }
 };
