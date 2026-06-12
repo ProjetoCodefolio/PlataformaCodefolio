@@ -20,5 +20,9 @@ export default defineConfig({
       '$utils': path.resolve(__dirname, './src/app/utils'),
       '$context': path.resolve(__dirname, './src/app/context'),
     }
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
   }
 })
