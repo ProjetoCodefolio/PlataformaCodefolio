@@ -25,6 +25,7 @@ import {
   FormControlLabel,
   FormHelperText,
   Grid,
+  Chip,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -58,6 +59,8 @@ const PdfQuizGenerator = ({
   const [progress, setProgress] = useState(0);
   const [extractedText, setExtractedText] = useState("");
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
+  // Provider que gerou as questões: 'question_api' (IA Codefolio/GPT-5.5) ou 'groq'
+  const [provider, setProvider] = useState(null);
   const [processingStep, setProcessingStep] = useState("");
   const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
@@ -229,6 +232,7 @@ const PdfQuizGenerator = ({
     setError("");
     setProgress(0);
     setGeneratedQuestions([]);
+    setProvider(null);
 
     try {
       // Determinar qual chave API usar
@@ -257,14 +261,15 @@ const PdfQuizGenerator = ({
 
       setExtractedText(result.text);
       setGeneratedQuestions(result.questions);
-      
+      setProvider(result.provider);
+
       // Notificar se OCR foi usado
       if (result.stats && result.stats.usedOcr) {
         toast.warning('⚠️ Texto extraído usando OCR (imagens do PDF)', {
           autoClose: 5000,
         });
       }
-      
+
       toast.success(`${result.questions.length} questões geradas com sucesso!`);
     } catch (err) {
       // Usar mensagens de erro mais amigáveis
@@ -287,6 +292,7 @@ const PdfQuizGenerator = ({
       setPdfFile(null);
       setGeneratedQuestions([]);
       setExtractedText("");
+      setProvider(null);
     }
   };
 
@@ -409,7 +415,7 @@ const PdfQuizGenerator = ({
       {/* Configurações de geração */}
       {!loading && (
         <Grid container spacing={2} sx={{ mb: 2 }}>
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth variant="outlined" size="small">
               <InputLabel id="num-questions-label">
                 Número de Questões
@@ -435,7 +441,7 @@ const PdfQuizGenerator = ({
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid item xs={12} sm={6}>
             <FormControl fullWidth variant="outlined" size="small">
               <InputLabel id="question-type-label">Tipo de Questão</InputLabel>
               <Select
@@ -460,33 +466,6 @@ const PdfQuizGenerator = ({
             </FormControl>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={4}>
-            <FormControl fullWidth variant="outlined" size="small">
-              <InputLabel id="model-select-label">Modelo IA</InputLabel>
-              <Select
-                labelId="model-select-label"
-                value={selectedModel}
-                onChange={handleModelChange}
-                label="Modelo IA"
-                sx={{ bgcolor: "#f9f9ff" }}
-              >
-                {models.map((model) => (
-                  <MenuItem key={model.modelId} value={model.modelId}>
-                    {model.name}
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>
-                {selectedModel === "llama-3.3-70b-versatile"
-                  ? "Modelo recomendado para melhor qualidade"
-                  : selectedModel === "mixtral-8x7b-32768"
-                  ? "Melhor para PDFs maiores"
-                  : selectedModel === "llama-3.1-8b-instant"
-                  ? "Modelo mais rápido"
-                  : ""}
-              </FormHelperText>
-            </FormControl>
-          </Grid>
         </Grid>
       )}
 
@@ -673,8 +652,7 @@ const PdfQuizGenerator = ({
                   py: { xs: 1, sm: 1.5 },
                 }}
               >
-                Gerar {numQuestions} Questões com{" "}
-                {models.find((m) => m.modelId === selectedModel)?.name}
+                Gerar {numQuestions} Questões com GPT-5.5
               </Button>
             )}
           </Box>
@@ -697,17 +675,59 @@ const PdfQuizGenerator = ({
 
       {generatedQuestions.length > 0 && (
         <Box sx={{ mt: 3 }}>
-          <Typography
-            variant="h6"
+          <Box
             sx={{
               display: "flex",
               alignItems: "center",
-              fontSize: { xs: "1rem", sm: "1.25rem" },
+              flexWrap: "wrap",
+              gap: 1,
             }}
           >
-            <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
-            {generatedQuestions.length} questões geradas
-          </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                fontSize: { xs: "1rem", sm: "1.25rem" },
+              }}
+            >
+              <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
+              {generatedQuestions.length} questões geradas
+            </Typography>
+
+            {provider && (
+              <Tooltip
+                title={
+                  provider === "question_api"
+                    ? "Geradas pela IA própria da Codefolio (GPT-5.5), o provedor principal."
+                    : "Geradas pela GROQ, usada como provedor de fallback."
+                }
+              >
+                <Chip
+                  size="small"
+                  icon={
+                    provider === "question_api" ? (
+                      <AutoFixHighIcon />
+                    ) : (
+                      <KeyIcon />
+                    )
+                  }
+                  label={
+                    provider === "question_api"
+                      ? "IA Codefolio • GPT-5.5"
+                      : "GROQ (fallback)"
+                  }
+                  sx={{
+                    fontWeight: 600,
+                    color: "#fff",
+                    backgroundColor:
+                      provider === "question_api" ? "#9041c1" : "#f59e0b",
+                    "& .MuiChip-icon": { color: "#fff" },
+                  }}
+                />
+              </Tooltip>
+            )}
+          </Box>
 
           <List
             sx={{
@@ -1035,6 +1055,57 @@ const PdfQuizGenerator = ({
           Configurações do Gerador de Questões
         </DialogTitle>
         <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
+          {/* Provedor de IA: GPT-5.5 é o padrão; modelo GROQ é só fallback */}
+          <Box
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              mb: 2,
+              bgcolor: "rgba(144, 65, 193, 0.08)",
+              borderLeft: "4px solid #9041c1",
+              borderRadius: 1,
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              sx={{ color: "#9041c1", fontSize: { xs: "0.875rem", sm: "1rem" } }}
+            >
+              Modelo padrão: GPT-5.5 (IA Codefolio)
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mt: 1, fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+            >
+              As questões são geradas por padrão pela IA própria da Codefolio
+              (GPT-5.5). O modelo abaixo é usado apenas como <strong>fallback</strong>,
+              caso o provedor principal fique indisponível.
+            </Typography>
+
+            <FormControl
+              fullWidth
+              variant="outlined"
+              size="small"
+              sx={{ mt: 2 }}
+            >
+              <InputLabel id="fallback-model-select-label">
+                Modelo de fallback (GROQ)
+              </InputLabel>
+              <Select
+                labelId="fallback-model-select-label"
+                value={selectedModel}
+                onChange={handleModelChange}
+                label="Modelo de fallback (GROQ)"
+                sx={{ bgcolor: "#fff" }}
+              >
+                {models.map((model) => (
+                  <MenuItem key={model.modelId} value={model.modelId}>
+                    {model.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+
           <Typography
             variant="body2"
             color="text.secondary"

@@ -579,7 +579,7 @@ const AdminCourses = () => {
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
         title="Confirmar exclusão"
-        message={`Tem certeza que deseja excluir o curso "${courseToDelete?.title}"? Esta ação não pode ser desfeita.`}
+        message={`Tem certeza que deseja excluir o curso "${courseToDelete?.title}"? Esta ação remove permanentemente TODO o conteúdo do curso (vídeos, slides, quizzes e materiais), além das avaliações, matrículas e de todo o progresso e resultados de quiz dos alunos. Esta ação não pode ser desfeita.`}
       />
     </Box>
   );

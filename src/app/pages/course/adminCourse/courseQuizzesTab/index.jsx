@@ -1211,6 +1211,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             "selecionado"
             }?"`
         }
+        content="Isso apaga permanentemente todas as respostas e resultados dos alunos para este quiz (incluindo rankings e respostas abertas). Esta ação não pode ser desfeita."
       />
 
       <ConfirmationModal

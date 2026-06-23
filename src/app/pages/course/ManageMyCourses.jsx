@@ -371,6 +371,18 @@ const ManageMyCourses = () => {
           >
             Tem certeza que deseja deletar esse curso?
           </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              mb: 2,
+              color: "#666",
+              fontSize: { xs: "0.8rem", sm: "0.9rem" },
+            }}
+          >
+            Isso remove permanentemente todo o conteúdo (vídeos, slides, quizzes
+            e materiais), além das avaliações, matrículas e de todo o progresso e
+            resultados de quiz dos alunos. Esta ação não pode ser desfeita.
+          </Typography>
           <Box
             sx={{
               display: "flex",

@@ -1,11 +1,5 @@
 import { ref, get, set, push, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
-import { 
-  hasCourseVideos, 
-  hasCourseMaterials, 
-  hasCourseQuizzes, 
-  hasCourseSlides 
-} from "../../utils/courseUtils";
 import { updateCourseProgress } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
 import { isAliasAvailable } from "./alias";
@@ -244,69 +238,73 @@ export const deleteCourse = async (courseId) => {
       return { success: false, message: "ID do curso não fornecido" };
     }
 
-    // Verificar se o curso possui conteúdo associado
-    const [videos, materials, quizzes, slides] = await Promise.all([
-      hasCourseVideos(courseId),
-      hasCourseMaterials(courseId),
-      hasCourseQuizzes(courseId),
-      hasCourseSlides(courseId),
-    ]);
+    // O Realtime Database não tem deleção em cascata nativa: precisamos remover
+    // manualmente o curso e TODOS os nós que o referenciam. Montamos um único
+    // objeto `updates` e aplicamos com um update() para que a remoção seja atômica.
+    const updates = {};
 
-    if (
-      videos.length > 0 ||
-      materials.length > 0 ||
-      quizzes.length > 0 ||
-      slides.length > 0
-    ) {
-      return { 
-        success: false, 
-        message: "Não é possível deletar o curso pois existem vídeos, materiais, slides ou quizzes associados a ele."
-      };
-    }
+    // Conteúdo do curso (nós chaveados por courseId)
+    updates[`courses/${courseId}`] = null;
+    updates[`courseVideos/${courseId}`] = null;
+    updates[`courseQuizzes/${courseId}`] = null;
+    updates[`courseSlides/${courseId}`] = null;
+    updates[`courseMaterials/${courseId}`] = null;
+    updates[`courseAssessments/${courseId}`] = null;
+    updates[`courseAdvancedSettings/${courseId}`] = null;
 
-    // Deleta o curso da tabela courseAliases se houver
-    const courseData = ref(database, `courses/${courseId}`);
-    const courseSnapshot = await get(courseData);
+    // Resultados de quizzes (nós chaveados por courseId)
+    updates[`customQuizResults/${courseId}`] = null;
+    updates[`liveQuizResults/${courseId}`] = null;
+    updates[`openEndedAnswers/${courseId}`] = null;
+    updates[`quizGigi/${courseId}`] = null;
+
+    // Alias reverso (courseAliases é chaveado pelo alias, não pelo courseId)
+    const courseSnapshot = await get(ref(database, `courses/${courseId}`));
     if (courseSnapshot.exists()) {
       const course = courseSnapshot.val();
-      console.log("Dados do curso para remoção de alias:", course);
       if (course.alias) {
-        await remove(ref(database, `courseAliases/${course.alias}`));
+        updates[`courseAliases/${course.alias}`] = null;
       }
     }
 
-    // Deleta o curso da tabela courses
-    await remove(ref(database, `courses/${courseId}`));
+    // Dados por usuário: matrículas, progresso, resultados e flag de professor.
+    // Esses nós são chaveados por userId, então precisamos varrê-los procurando
+    // entradas deste curso.
+    const [studentCoursesSnap, videoProgressSnap, quizResultsSnap, usersSnap] =
+      await Promise.all([
+        get(ref(database, "studentCourses")),
+        get(ref(database, "videoProgress")),
+        get(ref(database, "quizResults")),
+        get(ref(database, "users")),
+      ]);
 
-    // Deleta o curso da tabela studentCourses para todos os usuários
-    const studentCoursesRef = ref(database, `studentCourses`);
-    const studentCoursesSnapshot = await get(studentCoursesRef);
-    const studentCoursesData = studentCoursesSnapshot.val();
-
-    if (studentCoursesData) {
-      const updates = {};
-      Object.keys(studentCoursesData).forEach((userId) => {
-        if (studentCoursesData[userId][courseId]) {
-          updates[`studentCourses/${userId}/${courseId}`] = null;
+    const addPerUserCourse = (snapshot, buildPath) => {
+      const data = snapshot.val();
+      if (!data) return;
+      Object.keys(data).forEach((userId) => {
+        if (data[userId] && data[userId][courseId] !== undefined) {
+          updates[buildPath(userId)] = null;
         }
       });
-      await update(ref(database), updates);
-    }
+    };
 
-    // Deleta o curso da tabela videoProgress para todos os usuários
-    const videoProgressRef = ref(database, `videoProgress`);
-    const videoProgressSnapshot = await get(videoProgressRef);
-    const videoProgressData = videoProgressSnapshot.val();
+    addPerUserCourse(studentCoursesSnap, (u) => `studentCourses/${u}/${courseId}`);
+    addPerUserCourse(videoProgressSnap, (u) => `videoProgress/${u}/${courseId}`);
+    addPerUserCourse(quizResultsSnap, (u) => `quizResults/${u}/${courseId}`);
 
-    if (videoProgressData) {
-      const updates = {};
-      Object.keys(videoProgressData).forEach((userId) => {
-        if (videoProgressData[userId][courseId]) {
-          updates[`videoProgress/${userId}/${courseId}`] = null;
+    // Flag de professor: users/{userId}/coursesTeacher/{courseId}
+    const usersData = usersSnap.val();
+    if (usersData) {
+      Object.keys(usersData).forEach((userId) => {
+        const coursesTeacher = usersData[userId]?.coursesTeacher;
+        if (coursesTeacher && coursesTeacher[courseId] !== undefined) {
+          updates[`users/${userId}/coursesTeacher/${courseId}`] = null;
         }
       });
-      await update(ref(database), updates);
     }
+
+    // Remove tudo de uma vez (atômico)
+    await update(ref(database), updates);
 
     return { success: true, message: "Curso deletado com sucesso" };
   } catch (error) {

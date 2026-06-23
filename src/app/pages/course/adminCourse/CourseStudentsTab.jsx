@@ -758,7 +758,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                 onClose={handleAlertClose}
                 onConfirm={handleConfirmDelete}
                 title="Confirmar exclusão"
-                message={`Tem certeza que deseja remover ${studentToDelete?.name ? capitalizeWords(studentToDelete.name) : 'este aluno'} do curso?`}
+                message={`Tem certeza que deseja remover ${studentToDelete?.name ? capitalizeWords(studentToDelete.name) : 'este aluno'} do curso? Isso apaga permanentemente a matrícula, o progresso dos vídeos e todos os resultados de quiz deste aluno neste curso. Esta ação não pode ser desfeita.`}
             />
         </Box>
     );

@@ -360,8 +360,46 @@ export const removeQuiz = async (courseId, videoId) => {
       throw new Error("IDs de curso e vídeo são obrigatórios");
     }
 
-    const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
-    await remove(quizRef);
+    // O quiz é chaveado por videoId (quizId === videoId). Ao removê-lo precisamos
+    // limpar, em cascata, todos os nós de resultado que o referenciam — caso
+    // contrário ficam órfãos no banco e poluem agregações/rankings.
+    const updates = {};
+
+    // O próprio quiz e os resultados chaveados por courseId/quizId
+    updates[`courseQuizzes/${courseId}/${videoId}`] = null;
+    updates[`customQuizResults/${courseId}/${videoId}`] = null;
+    updates[`liveQuizResults/${courseId}/${videoId}`] = null;
+    updates[`openEndedAnswers/${courseId}/${videoId}`] = null;
+    updates[`quizGigi/${courseId}/${videoId}`] = null;
+
+    // Resultados por usuário: quizResults/{userId}/{courseId}/{quizId}
+    const quizResultsSnapshot = await get(ref(database, `quizResults`));
+    const quizResultsData = quizResultsSnapshot.val();
+    if (quizResultsData) {
+      Object.keys(quizResultsData).forEach((uid) => {
+        if (
+          quizResultsData[uid] &&
+          quizResultsData[uid][courseId] &&
+          quizResultsData[uid][courseId][videoId] !== undefined
+        ) {
+          updates[`quizResults/${uid}/${courseId}/${videoId}`] = null;
+        }
+      });
+    }
+
+    // Desvincular o quiz de quaisquer slides que o referenciem (slide.quizId)
+    const slidesSnapshot = await get(ref(database, `courseSlides/${courseId}`));
+    const slidesData = slidesSnapshot.val();
+    if (slidesData) {
+      Object.keys(slidesData).forEach((slideId) => {
+        if (slidesData[slideId] && slidesData[slideId].quizId === videoId) {
+          updates[`courseSlides/${courseId}/${slideId}/quizId`] = null;
+        }
+      });
+    }
+
+    // Remove tudo de uma vez (atômico)
+    await update(ref(database), updates);
     return true;
   } catch (error) {
     console.error("Erro ao remover quiz:", error);

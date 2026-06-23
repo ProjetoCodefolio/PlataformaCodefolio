@@ -242,57 +242,88 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
   try {
     // Verificar se o vídeo possui quizzes
     const courseQuizzes = await hasVideoQuizzes(courseId, videoId);
-    
+
     if (courseQuizzes.length > 0) {
       throw new Error("Não é possível deletar o vídeo pois existe um quiz associado a ele.");
     }
-    
+
+    // Verificar se algum slide está vinculado a este vídeo. Como o slide referencia
+    // o vídeo por videoId, deletar o vídeo deixaria o slide apontando para um vídeo
+    // inexistente — então bloqueamos (mesma lógica do bloqueio por quiz).
+    const slidesSnapshot = await get(ref(database, `courseSlides/${courseId}`));
+    if (slidesSnapshot.exists()) {
+      const linkedSlides = Object.values(slidesSnapshot.val())
+        .filter((slide) => slide && slide.videoId === videoId);
+      if (linkedSlides.length > 0) {
+        const titles = linkedSlides
+          .map((s) => `"${s.title || "Sem título"}"`)
+          .join(", ");
+        throw new Error(
+          `Não é possível deletar o vídeo pois há slides vinculados a ele: ${titles}. Remova ou desvincule esses slides primeiro.`
+        );
+      }
+    }
+
     // Deletar video da tabela de courseVideos
     const videoRef = ref(database, `courseVideos/${courseId}/${videoId}`);
     const videoSnapshot = await get(videoRef);
-    
+
     if (!videoSnapshot.exists()) {
       throw new Error("Vídeo não encontrado");
     }
-    
+
     const video = videoSnapshot.val();
-    
+
     // Validar se o vídeo tem a propriedade order
     if (!video || typeof video !== 'object') {
       throw new Error("Dados do vídeo inválidos");
     }
-    
+
     const videoOrder = video.order ?? 0;
     await remove(videoRef);
 
     // Buscar vídeos atualizados após a remoção
     const allVideos = await fetchCourseVideos(courseId);
 
-    // Criar um objeto de atualizações para cada vídeo
+    // Criar um objeto de atualizações: reordenação dos vídeos remanescentes +
+    // limpeza do progresso deste vídeo para TODOS os usuários (não só o atual).
     const updates = {};
-    
+
     // Atualizar a ordem de cada vídeo remanescente
     allVideos.forEach(v => {
       if (v && v.order !== undefined && v.order > videoOrder) {
         updates[`courseVideos/${courseId}/${v.id}/order`] = v.order - 1;
       }
     });
-    
+
+    // Deletar o progresso deste vídeo (videoProgress/{userId}/{courseId}/{videoId})
+    // para todos os usuários que tenham registro dele. Limpar só o usuário atual
+    // deixaria o progresso dos demais alunos contando um vídeo inexistente.
+    const videoProgressSnapshot = await get(ref(database, `videoProgress`));
+    const videoProgressData = videoProgressSnapshot.val();
+    if (videoProgressData) {
+      Object.keys(videoProgressData).forEach((uid) => {
+        if (
+          videoProgressData[uid] &&
+          videoProgressData[uid][courseId] &&
+          videoProgressData[uid][courseId][videoId] !== undefined
+        ) {
+          updates[`videoProgress/${uid}/${courseId}/${videoId}`] = null;
+        }
+      });
+    }
+
     // Aplicar as atualizações se houver alguma
     if (Object.keys(updates).length > 0) {
       await update(ref(database), updates);
     }
-    
-    // Deletar vídeo da tabela de videoProgress
-    const videoProgressRef = ref(database, `videoProgress/${userId}/${courseId}/${videoId}`);
-    await remove(videoProgressRef);
-    
+
     // Buscar vídeos atualizados
     const updatedVideos = await fetchCourseVideos(courseId);
-    
+
     // Atualizar progresso do curso para todos os usuários
     await updateAllUsersCourseProgress(courseId, updatedVideos);
-    
+
     return true;
   } catch (error) {
     console.error("Erro ao excluir vídeo:", error);

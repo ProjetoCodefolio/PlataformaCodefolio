@@ -560,6 +560,10 @@ const CourseVideosTab = forwardRef((props, ref) => {
           <Typography id="delete-modal-title" variant="h6" sx={{ mb: 2, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             Tem certeza que deseja excluir "{videoToDelete?.title}"?
           </Typography>
+          <Typography variant="body2" sx={{ mb: 2, color: "text.secondary", fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+            O progresso deste vídeo será removido de todos os alunos e o progresso
+            do curso será recalculado. Esta ação não pode ser desfeita.
+          </Typography>
           <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, justifyContent: "center", gap: 2 }}>
             <Button
               variant="contained"
