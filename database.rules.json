@@ -5,6 +5,7 @@
 
     "courseAssessments": {
       "$courseId": {
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$assessmentId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
@@ -15,6 +16,7 @@
     "courseMaterials": {
       "$courseId": {
         ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$materialId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
@@ -24,6 +26,7 @@
     "courseQuizzes": {
       "$courseId": {
         ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
@@ -33,6 +36,7 @@
     "courseSlides": {
       "$courseId": {
         ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$slideId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
@@ -42,6 +46,7 @@
     "courseVideos": {
       "$courseId": {
         ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$videoId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
@@ -62,8 +67,16 @@
       }
     },
 
+    "courseAdvancedSettings": {
+      "$courseId": {
+        ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+      }
+    },
+
     "customQuizResults": {
       "$courseId": {
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
           "$userId": {
             ".write": "auth != null && auth.uid === $userId",
@@ -75,6 +88,7 @@
 
     "liveQuizResults": {
       "$courseId": {
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
           "$userId": {
             ".write": "auth != null && auth.uid === $userId",
@@ -86,6 +100,7 @@
 
     "openEndedAnswers": {
       "$courseId": {
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
           "$questionId": {
             "$userId": {
@@ -113,6 +128,7 @@
 
     "quizGigi": {
       "$courseId": {
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
           "$userId": {
             ".write": "auth != null && auth.uid === $userId",
@@ -126,7 +142,8 @@
       "$userId": {
         ".write": "auth != null && auth.uid === $userId",
         "$courseId": {
-          ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
+          ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()"
         }
       }
     },
@@ -171,7 +188,10 @@
     "videoProgress": {
       "$userId": {
         ".write": "auth != null && auth.uid === $userId",
-        ".read": true
+        ".read": true,
+        "$courseId": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()"
+        }
       }
     }
   }
