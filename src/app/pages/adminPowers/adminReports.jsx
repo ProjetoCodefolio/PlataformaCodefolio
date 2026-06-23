@@ -47,6 +47,8 @@ import { fetchAllReports, updateReportStatus } from "$api/services/courses/repor
 import { toast } from "react-toastify";
 import { useAuth } from "$context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import SortableHeader from "$components/common/SortableHeader";
+import { sortRows, getNextSort } from "$utils/tableSort";
 
 const STATUS_OPTIONS = [
   { value: "pendente", label: "Pendente", color: "warning" },
@@ -76,6 +78,19 @@ export default function AdminReports() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [sortField, setSortField] = useState("reportNumber");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const handleSort = (field) => {
+    const next = getNextSort({ sortField, sortOrder }, field);
+    setSortField(next.sortField);
+    setSortOrder(next.sortOrder);
+  };
+
+  // Acessores para colunas cujo valor de ordenação difere do campo bruto
+  const reportSortAccessors = {
+    createdAt: (r) => (r.createdAt ? new Date(r.createdAt).getTime() : null),
+  };
 
   // Verifica se é admin
   useEffect(() => {
@@ -441,19 +456,19 @@ export default function AdminReports() {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                  <TableCell sx={{ fontWeight: "bold" }}>#</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Nome</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Tipo</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Usuário</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
+                  <SortableHeader label="#" field="reportNumber" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Nome" field="reportName" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Tipo" field="type" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Usuário" field="userName" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Data" field="createdAt" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                   <TableCell sx={{ fontWeight: "bold" }} align="center">
                     Ações
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredReports.map((report) => (
+                {sortRows(filteredReports, sortField, sortOrder, reportSortAccessors).map((report) => (
                   <TableRow
                     key={report.id}
                     hover
@@ -527,7 +542,7 @@ export default function AdminReports() {
           {/* Cards Mobile */}
           <Box sx={{ display: { xs: 'block', md: 'none' } }}>
             <Stack spacing={2}>
-              {filteredReports.map((report) => (
+              {sortRows(filteredReports, sortField, sortOrder, reportSortAccessors).map((report) => (
                 <Card
                   key={report.id}
                   sx={{

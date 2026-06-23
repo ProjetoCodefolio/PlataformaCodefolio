@@ -40,6 +40,8 @@ import {
   capitalizeWords,
   getSortedStudentResults,
 } from "$api/services/courses/studentDashboard";
+import SortableHeader from "$components/common/SortableHeader";
+import { sortRows, getNextSort } from "$utils/tableSort";
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -57,6 +59,8 @@ const StudentDashboard = () => {
   const [studentResults, setStudentResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortType, setSortType] = useState("name");
+  const [sortField, setSortField] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [liveQuizResults, setLiveQuizResults] = useState({});
@@ -108,6 +112,25 @@ const StudentDashboard = () => {
 
   const handleSortChange = (event) => {
     setSortType(event.target.value);
+    // O dropdown e os cabeçalhos compartilham a mesma lista: ao usar o dropdown,
+    // devolvemos o controle da ordenação a ele limpando o sort por cabeçalho.
+    setSortField("");
+  };
+
+  // Ordenação por clique no cabeçalho (sobrepõe o dropdown enquanto ativa)
+  const handleSort = (field) => {
+    const next = getNextSort({ sortField, sortOrder }, field);
+    setSortField(next.sortField);
+    setSortOrder(next.sortOrder);
+  };
+
+  // Acessores para colunas derivadas da tabela principal (status e total geral)
+  const dashboardSortAccessors = {
+    status: (s) => (s.passed ? 1 : 0),
+    totalCorrect: (s) =>
+      (s.correctAnswers || 0) +
+      (liveQuizResults[s.userId]?.correctAnswers || 0) +
+      (customQuizResults[s.userId]?.correctAnswers || 0),
   };
 
   const handleSearch = (term) => {
@@ -126,6 +149,13 @@ const StudentDashboard = () => {
   const getSortedResults = () => {
     return getSortedStudentResults(studentResults, searchTerm, sortType);
   };
+
+  // Lista final exibida nas tabelas: aplica o sort por cabeçalho sobre o
+  // resultado do serviço (que já faz busca + ordenação do dropdown). Quando
+  // nenhum cabeçalho está ativo (sortField vazio), mantém a ordem do serviço.
+  const sortedResults = sortField
+    ? sortRows(getSortedResults(), sortField, sortOrder, dashboardSortAccessors)
+    : getSortedResults();
 
   // Renderização durante carregamento
   if (loading) {
@@ -425,30 +455,18 @@ const StudentDashboard = () => {
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Estudante
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Nota</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Acertos
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Status
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Tentativas
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Última Tentativa
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Acertos Totais (Geral)
-                        </TableCell>
+                        <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Email" field="email" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Nota" field="score" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Acertos" field="correctAnswers" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Tentativas" field="attemptCount" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Última Tentativa" field="lastAttemptDate" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Acertos Totais (Geral)" field="totalCorrect" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {getSortedResults().map((student) => (
+                      {sortedResults.map((student) => (
                         <React.Fragment key={student.userId}>
                           <TableRow hover>
                             <TableCell>
@@ -810,7 +828,7 @@ const StudentDashboard = () => {
                 {/* Mobile Cards */}
                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   <Stack spacing={2}>
-                    {getSortedResults().map((student) => (
+                    {sortedResults.map((student) => (
                       <Card
                         key={student.userId}
                         sx={{
@@ -973,10 +991,8 @@ const StudentDashboard = () => {
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Estudante
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Email" field="email" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                         <TableCell sx={{ fontWeight: "bold" }}>
                           Acertos
                         </TableCell>
@@ -993,7 +1009,7 @@ const StudentDashboard = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {getSortedResults().map((student) => {
+                      {sortedResults.map((student) => {
                         const studentLiveData =
                           liveQuizResults[student.userId] || {};
 
@@ -1133,7 +1149,7 @@ const StudentDashboard = () => {
                 {/* Mobile Cards - Live Quiz */}
                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   <Stack spacing={2}>
-                    {getSortedResults().map((student) => {
+                    {sortedResults.map((student) => {
                       const studentLiveData = liveQuizResults[student.userId] || {};
                       const correctAnswers = studentLiveData.correctAnswers || 0;
                       const wrongAnswers = studentLiveData.wrongAnswers || 0;
@@ -1217,10 +1233,8 @@ const StudentDashboard = () => {
                   <Table sx={{ minWidth: 650 }}>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell sx={{ fontWeight: "bold" }}>
-                          Estudante
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+                        <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                        <SortableHeader label="Email" field="email" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                         <TableCell sx={{ fontWeight: "bold" }}>
                           Acertos
                         </TableCell>
@@ -1237,7 +1251,7 @@ const StudentDashboard = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {getSortedResults().map((student) => {
+                      {sortedResults.map((student) => {
                         const studentCustomData =
                           customQuizResults[student.userId] || {};
 
@@ -1375,7 +1389,7 @@ const StudentDashboard = () => {
                 {/* Mobile Cards - Custom Quiz */}
                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                   <Stack spacing={2}>
-                    {getSortedResults().map((student) => {
+                    {sortedResults.map((student) => {
                       const studentCustomData = customQuizResults[student.userId] || {};
                       const correctAnswers = studentCustomData.correctAnswers || 0;
                       const wrongAnswers = studentCustomData.wrongAnswers || 0;

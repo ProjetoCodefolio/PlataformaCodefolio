@@ -49,6 +49,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { toast } from "react-toastify";
 import Topbar from "../../../components/topbar/Topbar";
 import BreadcrumbsComponent from "../../../components/common/BreadcrumbsComponent";
+import SortableHeader from "../../../components/common/SortableHeader";
 import {
   fetchAggregatedQuizGrades,
   exportQuizGradesToCSV,
@@ -500,24 +501,25 @@ export default function QuizGradesOverview() {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                  <TableCell sx={{ fontWeight: "bold" }}>Estudante</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }} align="center">
-                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 0.5 }}>
-                      Média Geral
-                      <Tooltip title="Média considerando apenas quizzes avaliativos">
-                        <InfoIcon sx={{ fontSize: 16, color: "#666" }} />
-                      </Tooltip>
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }} align="center">
-                    Quizzes Realizados
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }} align="center">
-                    Taxa de Conclusão
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }} align="center">
-                    Quizzes Aprovados
-                  </TableCell>
+                  <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSortClick} />
+                  <SortableHeader
+                    align="center"
+                    field="averageGrade"
+                    sortField={sortField}
+                    sortOrder={sortOrder}
+                    onSort={handleSortClick}
+                    label={
+                      <Box component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
+                        Média Geral
+                        <Tooltip title="Média considerando apenas quizzes avaliativos">
+                          <InfoIcon sx={{ fontSize: 16, color: "#666" }} />
+                        </Tooltip>
+                      </Box>
+                    }
+                  />
+                  <SortableHeader label="Quizzes Realizados" field="attemptedQuizzes" align="center" sortField={sortField} sortOrder={sortOrder} onSort={handleSortClick} />
+                  <SortableHeader label="Taxa de Conclusão" field="completionRate" align="center" sortField={sortField} sortOrder={sortOrder} onSort={handleSortClick} />
+                  <SortableHeader label="Quizzes Aprovados" field="passedQuizzes" align="center" sortField={sortField} sortOrder={sortOrder} onSort={handleSortClick} />
                   <TableCell sx={{ fontWeight: "bold" }} align="center">
                     Ações
                   </TableCell>

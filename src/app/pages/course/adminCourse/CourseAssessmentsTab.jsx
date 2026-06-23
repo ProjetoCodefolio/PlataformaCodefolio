@@ -27,6 +27,8 @@ import { fetchCourseDetails } from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
 import { canManageAssessments } from "$api/utils/permissions";
+import SortableHeader from "$components/common/SortableHeader";
+import { sortRows, getNextSort } from "$utils/tableSort";
 
 export default function CourseAssessmentsTab() {
   const navigate = useNavigate();
@@ -40,6 +42,14 @@ export default function CourseAssessmentsTab() {
   const [success, setSuccess] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [sortField, setSortField] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  const handleSort = (field) => {
+    const next = getNextSort({ sortField, sortOrder }, field);
+    setSortField(next.sortField);
+    setSortOrder(next.sortOrder);
+  };
   const [courseDetails, setCourseDetails] = useState({});
   const [isCourseOwner, setIsCourseOwner] = useState(false);
   const { currentUser, userDetails } = useAuth();
@@ -441,13 +451,13 @@ export default function CourseAssessmentsTab() {
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                  <TableCell sx={{ fontWeight: "bold" }}>Nome</TableCell>
-                  <TableCell sx={{ fontWeight: "bold" }}>Percentual</TableCell>
+                  <SortableHeader label="Nome" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                  <SortableHeader label="Percentual" field="percentage" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                   <TableCell sx={{ fontWeight: "bold" }}>Ações</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {assessments.map((assessment) => (
+                {sortRows(assessments, sortField, sortOrder).map((assessment) => (
                   <TableRow key={assessment.id}>
                     <TableCell>{assessment.name}</TableCell>
                     <TableCell>{assessment.percentage}%</TableCell>

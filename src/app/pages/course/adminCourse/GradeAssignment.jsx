@@ -44,6 +44,8 @@ import * as courseService from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
 import { canAssignGrades } from "$api/utils/permissions";
+import SortableHeader from "$components/common/SortableHeader";
+import { sortRows, getNextSort } from "$utils/tableSort";
 
 // Função para formatar nomes com capitalização adequada - igual ao CourseStudentsTab
 const capitalizeWords = (name) => {
@@ -60,6 +62,14 @@ export default function GradeAssignmentPage() {
   const [assessmentDetails, setAssessmentDetails] = useState(null);
   const [courseDetails, setCourseDetails] = useState({});
   const [grades, setGrades] = useState({});
+  const [sortField, setSortField] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  const handleSort = (field) => {
+    const next = getNextSort({ sortField, sortOrder }, field);
+    setSortField(next.sortField);
+    setSortOrder(next.sortOrder);
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState({});
   const [saveStatus, setSaveStatus] = useState({});
@@ -311,23 +321,31 @@ export default function GradeAssignmentPage() {
   };
 
   // Filtrar alunos pelo nome e status
-  const filteredStudents = students.filter((student) => {
-    const studentId = student.userId || student.id;
-    
-    // Filtro de busca por nome
-    const matchesSearch = (student.name || "")
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    
-    // Filtro de status
-    let matchesStatus = true;
-    if (filterStatus !== "all") {
-      const studentStatus = getStudentStatus(studentId);
-      matchesStatus = studentStatus === filterStatus;
-    }
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Lista filtrada E ordenada. É importante ordenar aqui (e não só na
+  // renderização) porque a navegação por teclado e o salvamento usam o índice
+  // posicional de filteredStudents — renderização e lógica precisam estar na
+  // mesma ordem.
+  const filteredStudents = sortRows(
+    students.filter((student) => {
+      const studentId = student.userId || student.id;
+
+      // Filtro de busca por nome
+      const matchesSearch = (student.name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+      // Filtro de status
+      let matchesStatus = true;
+      if (filterStatus !== "all") {
+        const studentStatus = getStudentStatus(studentId);
+        matchesStatus = studentStatus === filterStatus;
+      }
+
+      return matchesSearch && matchesStatus;
+    }),
+    sortField,
+    sortOrder
+  );
 
   // Confirmar navegação mesmo com notas pendentes
   const confirmNavigation = () => {
@@ -696,12 +714,8 @@ export default function GradeAssignmentPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: "bold", width: "40%" }}>
-                        Estudante
-                      </TableCell>
-                      <TableCell sx={{ fontWeight: "bold", width: "30%" }}>
-                        Email
-                      </TableCell>
+                      <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} sx={{ width: "40%" }} />
+                      <SortableHeader label="Email" field="email" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} sx={{ width: "30%" }} />
                       <TableCell sx={{ fontWeight: "bold", width: "20%" }}>
                         Nota (0-10)
                       </TableCell>

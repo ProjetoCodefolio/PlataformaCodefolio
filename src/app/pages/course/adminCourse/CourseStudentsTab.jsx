@@ -46,6 +46,8 @@ import {
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
 import { canManageStudents } from "$api/utils/permissions";
+import SortableHeader from "$components/common/SortableHeader";
+import { sortRows, getNextSort } from "$utils/tableSort";
 
 // Função para formatar nomes com capitalização adequada
 const capitalizeWords = (name) => {
@@ -60,7 +62,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const [students, setStudents] = useState([]);
     const [courseDetails, setCourseDetails] = useState({})
     const [loading, setLoading] = useState(true);
-    const [sortType, setSortType] = useState("name-asc");
+    const [sortField, setSortField] = useState("name");
+    const [sortOrder, setSortOrder] = useState("asc");
     const [searchTerm, setSearchTerm] = useState("");
     const [progressFilter, setProgressFilter] = useState("all");
     const [roleFilter, setRoleFilter] = useState("all");
@@ -127,27 +130,27 @@ const CourseStudentsTab = forwardRef((props, ref) => {
         }
 
         // Aplicar ordenação
-        switch (sortType) {
-            case "name-asc":
-                return filteredStudents.sort((a, b) => {
-                    const nameA = (a.name || "").toLowerCase();
-                    const nameB = (b.name || "").toLowerCase();
-                    return nameA.localeCompare(nameB);
-                });
-            case "name-desc":
-                return filteredStudents.sort((a, b) => {
-                    const nameA = (a.name || "").toLowerCase();
-                    const nameB = (b.name || "").toLowerCase();
-                    return nameB.localeCompare(nameA);
-                });
-            default:
-                return filteredStudents;
-        }
+        return sortRows(filteredStudents, sortField, sortOrder, studentSortAccessors);
     };
 
-    // Função para lidar com a mudança do tipo de ordenação
+    // Acessores para colunas cujo valor de ordenação difere do campo bruto
+    const studentSortAccessors = {
+        progress: (s) => Number(s.progress || 0),
+        role: (s) => (s.role || "student"),
+    };
+
+    // Ordenação por clique no cabeçalho (desktop)
+    const handleSort = (field) => {
+        const next = getNextSort({ sortField, sortOrder }, field);
+        setSortField(next.sortField);
+        setSortOrder(next.sortOrder);
+    };
+
+    // Ordenação pelo dropdown (mobile) — valor no formato "campo-direção"
     const handleSortChange = (event) => {
-        setSortType(event.target.value);
+        const [field, order] = event.target.value.split("-");
+        setSortField(field);
+        setSortOrder(order === "desc" ? "desc" : "asc");
     };
 
     // Limpar todos os filtros
@@ -321,7 +324,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                             <Select
                                 labelId="sort-select-label"
                                 id="sort-select"
-                                value={sortType}
+                                value={`${sortField}-${sortOrder}`}
                                 onChange={handleSortChange}
                                 label="Ordenar por"
                                 sx={{
@@ -334,6 +337,14 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                             >
                                 <MenuItem value="name-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nome (A-Z)</MenuItem>
                                 <MenuItem value="name-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Nome (Z-A)</MenuItem>
+                                <MenuItem value="email-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Email (A-Z)</MenuItem>
+                                <MenuItem value="email-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Email (Z-A)</MenuItem>
+                                <MenuItem value="progress-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Progresso (menor)</MenuItem>
+                                <MenuItem value="progress-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Progresso (maior)</MenuItem>
+                                <MenuItem value="status-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Status (A-Z)</MenuItem>
+                                <MenuItem value="status-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Status (Z-A)</MenuItem>
+                                <MenuItem value="role-asc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Função (A-Z)</MenuItem>
+                                <MenuItem value="role-desc" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Função (Z-A)</MenuItem>
                             </Select>
                         </FormControl>
                     </Stack>
@@ -434,11 +445,11 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                     <Table sx={{ minWidth: 650 }}>
                                         <TableHead>
                                             <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Estudante</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Progresso</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                                                <TableCell sx={{ fontWeight: "bold" }}>Role</TableCell>
+                                                <SortableHeader label="Estudante" field="name" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                                <SortableHeader label="Email" field="email" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                                <SortableHeader label="Progresso" field="progress" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                                <SortableHeader label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                                <SortableHeader label="Role" field="role" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
