@@ -13,6 +13,9 @@ import {
   CircularProgress,
   Chip,
   Tooltip,
+  Stack,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Topbar from "$components/topbar/Topbar";
@@ -33,6 +36,11 @@ export default function MyAssessmentsPage() {
   const [courseMetaMap, setCourseMetaMap] = useState({});
   const [userFallbackName, setUserFallbackName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  // Filtro: por padrão, esconde cursos sem avaliações cadastradas para não
+  // poluir a tela. assessmentsLoading evita "piscar" a lista vazia enquanto a
+  // contagem de avaliações de cada curso ainda está sendo carregada.
+  const [onlyWithAssessments, setOnlyWithAssessments] = useState(true);
+  const [assessmentsLoading, setAssessmentsLoading] = useState(true);
 
   const userName =
     userDetails?.name ||
@@ -152,8 +160,13 @@ export default function MyAssessmentsPage() {
 
   // Novo useEffect para buscar a quantidade de avaliações de todos os cursos ao carregar
   useEffect(() => {
-    if (!courses.length) return;
+    if (!courses.length) {
+      setAssessmentsLoading(false);
+      return;
+    }
+    let active = true;
     (async () => {
+      setAssessmentsLoading(true);
       const updates = {};
       await Promise.all(
         courses.map(async (course) => {
@@ -175,10 +188,15 @@ export default function MyAssessmentsPage() {
           }
         })
       );
+      if (!active) return;
       if (Object.keys(updates).length) {
         setCourseAssessmentsMap((prev) => ({ ...prev, ...updates }));
       }
+      setAssessmentsLoading(false);
     })();
+    return () => {
+      active = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courses]);
 
@@ -252,10 +270,20 @@ export default function MyAssessmentsPage() {
         })
       : "0,00";
 
-  // Função para filtrar cursos pelo termo de busca
+  // Quantidade de avaliações cadastradas em um curso (já carregada em massa)
+  const getAssessmentsCount = (course) => {
+    const id = getCourseId(course);
+    const entry = courseAssessmentsMap[id];
+    return Array.isArray(entry?.assessments) ? entry.assessments.length : 0;
+  };
+  const hasAssessments = (course) => getAssessmentsCount(course) > 0;
+
+  // Filtra cursos por: termo de busca (nome) + "somente com avaliações cadastradas"
   const filteredCourses = courses.filter((course) => {
     const title = getCourseTitle(course).toLowerCase();
-    return title.includes(searchTerm.toLowerCase());
+    const matchesSearch = title.includes(searchTerm.toLowerCase());
+    const matchesAssessmentsFilter = !onlyWithAssessments || hasAssessments(course);
+    return matchesSearch && matchesAssessmentsFilter;
   });
 
   return (
@@ -268,8 +296,64 @@ export default function MyAssessmentsPage() {
           </Box>
         ) : (
           <>
-            {!filteredCourses || filteredCourses.length === 0 ? (
-              <Typography>Nenhum curso encontrado.</Typography>
+            {/* Barra de filtros */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", sm: "row" },
+                alignItems: { xs: "flex-start", sm: "center" },
+                justifyContent: "space-between",
+                gap: 1.5,
+                mb: 3,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                Exibindo {filteredCourses.length} de {courses.length} curso(s)
+              </Typography>
+              <Stack direction="row" spacing={2} alignItems="center">
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={onlyWithAssessments}
+                      onChange={(e) => setOnlyWithAssessments(e.target.checked)}
+                      sx={{
+                        "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#9041c1",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Somente cursos com avaliações cadastradas
+                    </Typography>
+                  }
+                />
+              </Stack>
+            </Box>
+
+            {assessmentsLoading ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 2,
+                  py: 8,
+                }}
+              >
+                <CircularProgress />
+                <Typography variant="body2" color="text.secondary">
+                  Carregando avaliações dos cursos...
+                </Typography>
+              </Box>
+            ) : !filteredCourses || filteredCourses.length === 0 ? (
+              <Typography>
+                {onlyWithAssessments && courses.length > 0
+                  ? "Nenhum curso com avaliações cadastradas. Desative o filtro para ver todos os seus cursos."
+                  : "Nenhum curso encontrado."}
+              </Typography>
             ) : (
               <Grid container spacing={3}>
                 {filteredCourses.map((course) => {
