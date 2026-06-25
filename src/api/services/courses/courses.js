@@ -66,10 +66,14 @@ export const loadCategorizedCourses = async (userId) => {
     if (!snapshot.exists()) return { availableCourses: [], inProgressCourses: [], completedCourses: [] };
 
     const coursesData = snapshot.val();
-    const coursesArray = Object.entries(coursesData).map(([courseId, course]) => ({
-      courseId,
-      ...course,
-    }));
+    const coursesArray = Object.entries(coursesData)
+      .map(([courseId, course]) => ({
+        courseId,
+        ...course,
+      }))
+      // Cursos arquivados só aparecem para o owner, na aba "Gerenciar Meus Cursos".
+      // Em qualquer catálogo/listagem geral eles ficam ocultos.
+      .filter((course) => !course.archived);
 
     // Se o usuário estiver logado, buscar o progresso dos cursos do usuário
     if (userId) {
@@ -310,6 +314,42 @@ export const deleteCourse = async (courseId) => {
   } catch (error) {
     console.error("Erro ao deletar curso:", error);
     return { success: false, message: "Erro ao deletar o curso: " + error.message };
+  }
+};
+
+/**
+ * Arquiva ou desarquiva um curso.
+ * Um curso arquivado deixa de aparecer em catálogos/listagens e o acesso direto
+ * (link/alias) é bloqueado para quem não é o owner. Ele continua visível apenas
+ * para o owner, na aba "Gerenciar Meus Cursos".
+ * @param {string} courseId - ID do curso
+ * @param {boolean} archived - true para arquivar, false para desarquivar
+ * @returns {Promise<{success: boolean, archived?: boolean, message: string}>}
+ */
+export const setCourseArchived = async (courseId, archived) => {
+  try {
+    if (!courseId) {
+      return { success: false, message: "ID do curso não fornecido" };
+    }
+
+    await update(ref(database, `courses/${courseId}`), {
+      archived: !!archived,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return {
+      success: true,
+      archived: !!archived,
+      message: archived
+        ? "Curso arquivado com sucesso"
+        : "Curso desarquivado com sucesso",
+    };
+  } catch (error) {
+    console.error("Erro ao arquivar/desarquivar curso:", error);
+    return {
+      success: false,
+      message: "Erro ao atualizar o curso: " + error.message,
+    };
   }
 };
 

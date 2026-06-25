@@ -17,13 +17,17 @@ import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import WarningIcon from "@mui/icons-material/Warning";
-import { 
+import {
   loadTeacherCourses,
   deleteTeacherCourse,
+  setTeacherCourseArchived,
   searchTeacherCourses,
   canCreateCourses,
   canManageCourses
 } from "$api/services/courses/manageMyCourses";
+import { Chip } from "@mui/material";
+import ArchiveIcon from "@mui/icons-material/Archive";
+import UnarchiveIcon from "@mui/icons-material/Unarchive";
 
 const ManageMyCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -80,7 +84,9 @@ const ManageMyCourses = () => {
             });
             
             const teacherCourses = (await Promise.all(teacherCoursesPromises))
-              .filter(course => course !== null);
+              // Cursos onde o usuário é apenas professor (não owner) e estão
+              // arquivados não devem aparecer: arquivado é visível só para o owner.
+              .filter(course => course !== null && !course.archived);
             
             // Adicionar cursos onde é professor à lista, evitando duplicatas
             teacherCourses.forEach(course => {
@@ -122,6 +128,28 @@ const ManageMyCourses = () => {
   const handleDeleteCourse = (courseId) => {
     setCourseToDelete(courseId);
     setDeleteModalOpen(true);
+  };
+
+  const handleToggleArchive = async (course) => {
+    try {
+      const newArchived = !course.archived;
+      const result = await setTeacherCourseArchived(course.courseId, newArchived);
+
+      if (result.success) {
+        const applyUpdate = (list) =>
+          list.map((c) =>
+            c.courseId === course.courseId ? { ...c, archived: newArchived } : c
+          );
+        setCourses(applyUpdate);
+        setFilteredCourses(applyUpdate);
+        toast.success(result.message);
+      } else {
+        toast.error(result.message || "Erro ao atualizar o curso");
+      }
+    } catch (error) {
+      console.error("Erro ao arquivar/desarquivar curso:", error);
+      toast.error("Erro ao atualizar o curso");
+    }
   };
 
   const confirmDeleteCourse = async () => {
@@ -192,6 +220,20 @@ const ManageMyCourses = () => {
               }}
             >
               <CardContent sx={{ flex: 1 }}>
+                {course.archived && (
+                  <Box sx={{ display: "flex", justifyContent: "center", mb: 1 }}>
+                    <Chip
+                      icon={<ArchiveIcon sx={{ fontSize: "1rem" }} />}
+                      label="Arquivado"
+                      size="small"
+                      sx={{
+                        backgroundColor: "#ececec",
+                        color: "#666",
+                        fontWeight: 600,
+                      }}
+                    />
+                  </Box>
+                )}
                 <Typography
                   variant="subtitle1"
                   sx={{
@@ -248,6 +290,33 @@ const ManageMyCourses = () => {
                 >
                   {actionButtonLabel}
                 </Button>
+                {!course.isTeacherOnly && (
+                  <Button
+                    variant="outlined"
+                    startIcon={
+                      course.archived ? <UnarchiveIcon /> : <ArchiveIcon />
+                    }
+                    sx={{
+                      color: "#9041c1",
+                      borderColor: "#9041c1",
+                      borderRadius: "12px",
+                      "&:hover": {
+                        borderColor: "#7d37a7",
+                        backgroundColor: "#f5eefb",
+                      },
+                      textTransform: "none",
+                      fontWeight: 500,
+                      fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
+                      px: { xs: 1, sm: 2 },
+                      py: { xs: 0.5, sm: 1 },
+                      minWidth: { xs: "80px", sm: "100px", md: "120px" },
+                      width: { xs: "45%", sm: "auto" },
+                    }}
+                    onClick={() => handleToggleArchive(course)}
+                  >
+                    {course.archived ? "Desarquivar" : "Arquivar"}
+                  </Button>
+                )}
                 <Button
                   variant="contained"
                   sx={{

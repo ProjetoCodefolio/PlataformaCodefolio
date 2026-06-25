@@ -1,6 +1,7 @@
 import {
   fetchUserCreatedCourses,
   deleteCourse as deleteCourseFn,
+  setCourseArchived,
   filterCoursesBySearchTerm,
 } from "./courses";
 
@@ -59,6 +60,28 @@ export const deleteTeacherCourse = async (courseId) => {
     return {
       success: false,
       message: "Não foi possível deletar o curso. Tente novamente mais tarde.",
+    };
+  }
+};
+
+/**
+ * Arquiva ou desarquiva um curso do professor
+ * @param {string} courseId - ID do curso
+ * @param {boolean} archived - true para arquivar, false para desarquivar
+ * @returns {Promise<object>} - Resultado da operação
+ */
+export const setTeacherCourseArchived = async (courseId, archived) => {
+  try {
+    if (!courseId) {
+      return { success: false, message: "ID do curso é obrigatório" };
+    }
+
+    return await setCourseArchived(courseId, archived);
+  } catch (error) {
+    console.error("Erro ao arquivar/desarquivar curso:", error);
+    return {
+      success: false,
+      message: "Não foi possível atualizar o curso. Tente novamente mais tarde.",
     };
   }
 };

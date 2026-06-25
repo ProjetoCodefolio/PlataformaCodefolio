@@ -158,6 +158,17 @@ const Classes = ({ alias = null }) => {
           currentVideoId
         );
 
+        // Curso arquivado só pode ser acessado pelo owner (ou por um admin).
+        // Qualquer outra pessoa (inclusive via link/alias direto ou aluno já
+        // matriculado) é bloqueada.
+        const isOwner = courseData.courseOwnerUid === userDetails?.userId;
+        const isAdmin = userDetails?.role === "admin";
+        if (courseData?.courseData?.archived && !isOwner && !isAdmin) {
+          toast.error("Este curso está arquivado e não está disponível.");
+          navigate("/cursos");
+          return;
+        }
+
         // Carregar slides independentes
         const slidesData = await loadCourseSlides(courseId);
 

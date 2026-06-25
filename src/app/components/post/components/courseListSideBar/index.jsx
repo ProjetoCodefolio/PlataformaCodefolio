@@ -31,6 +31,8 @@ const CourseListSidebar = ({ onSelectCourse }) => {
 
       // Ordena corretamente convertendo createdAt para timestamp
       coursesData = coursesData
+        // Cursos arquivados não aparecem em listagens públicas
+        .filter((course) => !course.archived)
         .filter((course) => !!course.createdAt)
         .sort(
           (a, b) =>

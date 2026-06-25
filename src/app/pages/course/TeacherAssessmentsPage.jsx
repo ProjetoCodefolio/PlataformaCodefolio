@@ -74,7 +74,10 @@ const TeacherAssessmentsPage = () => {
             // Se for professor, buscar apenas seus cursos
             teacherCourses = await loadTeacherCourses(userDetails.userId);
           }
-          
+
+          // Cursos arquivados aparecem somente em "Gerenciar Meus Cursos"
+          teacherCourses = teacherCourses.filter((course) => !course.archived);
+
           setCourses(teacherCourses);
 
           // Selecionar o primeiro curso por padrão

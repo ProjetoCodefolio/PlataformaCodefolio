@@ -33,7 +33,9 @@ import {
   Close,
   School,
   FilterList,
-  Sort
+  Sort,
+  Archive,
+  Unarchive
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
@@ -41,7 +43,7 @@ import MyConfirm from "$components/post/components/confirm/Confirm";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "$context/AuthContext";
-import { fetchCourses, deleteCourse } from "$api/services/courses/courses";
+import { fetchCourses, deleteCourse, setCourseArchived } from "$api/services/courses/courses";
 import { fetchUserById } from "$api/services/users";
 import { fetchCourseStudents } from "$api/services/courses/students";
 
@@ -67,7 +69,7 @@ const AdminCourses = () => {
       try {
         setLoading(true);
         const allCourses = await fetchCourses();
-        
+
         // Add extra derived data for display and filtering
         const processedCoursesPromises = allCourses.map(async course => {
           // Fetch owner details for each course
@@ -237,6 +239,31 @@ const AdminCourses = () => {
   // Handle edit course
   const handleEditCourse = (courseId) => {
     navigate(`/adm-cursos?courseId=${courseId}`);
+  };
+
+  // Handle archive/unarchive course
+  const handleToggleArchive = async (course) => {
+    try {
+      const newArchived = !course.archived;
+      const result = await setCourseArchived(course.courseId, newArchived);
+
+      if (result.success) {
+        const applyUpdate = (list) =>
+          list.map((c) =>
+            c.courseId === course.courseId
+              ? { ...c, archived: newArchived, status: getStatus({ ...c, archived: newArchived }) }
+              : c
+          );
+        setCourses(applyUpdate);
+        setFilteredCourses(applyUpdate);
+        toast.success(result.message);
+      } else {
+        toast.error(result.message || "Não foi possível atualizar o curso.");
+      }
+    } catch (err) {
+      console.error("Error toggling archive:", err);
+      toast.error("Erro ao atualizar o curso. Por favor, tente novamente.");
+    }
   };
 
   // Get status chip color
@@ -475,7 +502,7 @@ const AdminCourses = () => {
                           )}
                         </Box>
                       </TableCell>
-                      {/* <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell> */}
+                      <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                       <TableCell sx={{ fontWeight: 'bold' }}>Ações</TableCell>
                     </TableRow>
                   </TableHead>
@@ -513,13 +540,13 @@ const AdminCourses = () => {
                         <TableCell>
                           {course.createdAt ? new Date(course.createdAt).toLocaleDateString('pt-BR') : '-'}
                         </TableCell>
-                        {/* <TableCell>
-                          <Chip 
+                        <TableCell>
+                          <Chip
                             label={getStatusName(course.status)}
                             size="small"
                             color={getStatusColor(course.status)}
                           />
-                        </TableCell> */}
+                        </TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Tooltip title="Visualizar curso">
@@ -540,9 +567,22 @@ const AdminCourses = () => {
                                 <Edit fontSize="small" />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title={course.archived ? "Desarquivar curso" : "Arquivar curso"}>
+                              <IconButton
+                                size="small"
+                                sx={{ color: "#9041c1" }}
+                                onClick={() => handleToggleArchive(course)}
+                              >
+                                {course.archived ? (
+                                  <Unarchive fontSize="small" />
+                                ) : (
+                                  <Archive fontSize="small" />
+                                )}
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Excluir curso">
-                              <IconButton 
-                                size="small" 
+                              <IconButton
+                                size="small"
                                 color="error"
                                 onClick={() => handleDeleteClick(course)}
                               >

@@ -126,6 +126,7 @@ const CourseForm = () => {
   );
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
+  const [archived, setArchived] = useState(false);
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -139,6 +140,7 @@ const CourseForm = () => {
             setCourseDescription(courseData.description || "");
             setCourseAlias(courseData.alias || "");
             setPinRequired(!!courseData.pinEnabled);
+            setArchived(!!courseData.archived);
             
             // Se tiver pin habilitado e estiver retornando apenas o hash
             if (courseData.pinEnabled) {
@@ -233,6 +235,7 @@ const CourseForm = () => {
         alias: courseAlias,
         userId: userDetails.userId,
         pinEnabled: pinRequired,
+        archived: archived,
       };
 
       if (pinRequired) {
@@ -278,6 +281,7 @@ const CourseForm = () => {
     coursePin,
     pinRequired,
     randomPin,
+    archived,
   ]);
 
   const isFormValid = useCallback(() => {
@@ -562,6 +566,36 @@ const CourseForm = () => {
                     "& .MuiInputBase-input": {
                       fontSize: { xs: '0.875rem', sm: '1rem' }
                     }
+                  }}
+                />
+              </Grid>
+            )}
+
+            {courseId && !isCurrentUserTeacher && (
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={archived}
+                      onChange={(e) => setArchived(e.target.checked)}
+                      sx={{
+                        "& .MuiSwitch-switchBase": {
+                          color: "grey",
+                          "&.Mui-checked": { color: "#9041c1" },
+                          "&.Mui-checked + .MuiSwitch-track": {
+                            backgroundColor: "#9041c1",
+                          },
+                        },
+                        "& .MuiSwitch-track": { backgroundColor: "#666" },
+                      }}
+                    />
+                  }
+                  label="Arquivar curso (visível apenas para você, em Gerenciamento de Cursos)"
+                  sx={{
+                    color: "#666",
+                    "& .MuiFormControlLabel-label": {
+                      fontSize: { xs: "0.875rem", sm: "1rem" },
+                    },
                   }}
                 />
               </Grid>
