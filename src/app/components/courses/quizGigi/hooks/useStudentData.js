@@ -15,6 +15,9 @@ export const useStudentData = (courseId, quizId) => {
   const popperRef = useRef(null);
   const chooseButtonRef = useRef(null);
   const remainingDrawPoolRef = useRef([]);
+  // Último aluno sorteado/selecionado no ciclo atual — usado para evitar que a
+  // mesma pessoa saia duas vezes seguidas na virada de um ciclo para o outro.
+  const lastDrawnRef = useRef(null);
 
   const shuffleInPlace = (array) => {
     for (let i = array.length - 1; i > 0; i -= 1) {
@@ -31,6 +34,7 @@ export const useStudentData = (courseId, quizId) => {
     // O sorteio “sem repetição” é por quiz. Quando muda curso/quiz,
     // reinicia o pool para começar um novo ciclo.
     remainingDrawPoolRef.current = [];
+    lastDrawnRef.current = null;
   }, [courseId, quizId]);
 
   // Efeito para carregar estudantes matriculados
@@ -83,7 +87,17 @@ export const useStudentData = (courseId, quizId) => {
       pool = pool.filter((userId) => enabledById.has(userId));
 
       if (pool.length === 0) {
+        // Novo ciclo: todos os habilitados voltam ao pool. Para não repetir o
+        // último sorteado logo na virada, se ele cair como primeiro e houver
+        // mais de um aluno, ele é jogado para o fim.
         pool = buildNewDrawPool(enabledStudents);
+        if (
+          enabledStudents.length > 1 &&
+          lastDrawnRef.current &&
+          pool[0] === lastDrawnRef.current
+        ) {
+          pool.push(pool.shift());
+        }
       }
 
       const nextUserId = pool.shift();
@@ -92,6 +106,7 @@ export const useStudentData = (courseId, quizId) => {
       const nextStudent =
         (nextUserId && enabledById.get(nextUserId)) || enabledStudents[0];
 
+      lastDrawnRef.current = nextStudent.userId;
       setSelectedStudent(nextStudent);
 
       // Usa o serviço para atualizar contagem de sorteios
@@ -151,6 +166,15 @@ export const useStudentData = (courseId, quizId) => {
   const handleSelectStudent = (student, isCustomMode = false) => {
     setSelectedStudent(student);
     handleCloseMenu();
+
+    // Seleção manual também consome o aluno do pool, mantendo o rodízio justo:
+    // ele não será sorteado de novo antes de todos os outros no ciclo atual.
+    if (Array.isArray(remainingDrawPoolRef.current)) {
+      remainingDrawPoolRef.current = remainingDrawPoolRef.current.filter(
+        (userId) => userId !== student.userId
+      );
+    }
+    lastDrawnRef.current = student.userId;
 
     // Usa o serviço para atualizar contagem de sorteios
     updateStudentDrawCount(courseId, quizId, student.userId, isCustomMode);

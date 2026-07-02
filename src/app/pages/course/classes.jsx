@@ -42,6 +42,8 @@ import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
 import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
+import { fetchFlippedClassroomVideos } from "$api/services/courses/submissions";
+import AssignmentList from "$components/courses/assignments/AssignmentList";
 
 const Classes = ({ alias = null }) => {
   const [videos, setVideos] = useState([]);
@@ -195,8 +197,28 @@ const Classes = ({ alias = null }) => {
           })
         );
 
-        // Combinar vídeos com slides
-        const combinedContent = [...courseData.videos, ...formattedSlides];
+        // Carregar vídeos entregues no modelo "sala de aula invertida" e
+        // formatá-los para exibição na lista de conteúdo. São marcados como
+        // isIndependent/isFlippedVideo para NÃO afetarem o progresso e a
+        // conclusão do curso (filtrados em checkCourseCompletion).
+        const flippedVideos = await fetchFlippedClassroomVideos(courseId);
+        const formattedFlipped = flippedVideos.map((v, i) => ({
+          ...v,
+          isFlippedVideo: true,
+          isIndependent: true,
+          requiresPrevious: false,
+          watched: false,
+          quizId: null,
+          quizPassed: false,
+          order: 3000 + i,
+        }));
+
+        // Combinar vídeos com slides e vídeos de alunos
+        const combinedContent = [
+          ...courseData.videos,
+          ...formattedSlides,
+          ...formattedFlipped,
+        ];
 
         setCourseTitle(courseData.courseTitle);
         setCourseOwnerUid(courseData.courseOwnerUid);
@@ -349,7 +371,7 @@ const Classes = ({ alias = null }) => {
   useEffect(() => {
     const verifyCourseCompletion = async () => {
       const isCompleted = await checkCourseCompletion(
-        videos,
+        videos.filter((v) => !v.isFlippedVideo),
         userDetails?.userId,
         courseId
       );
@@ -487,7 +509,7 @@ const Classes = ({ alias = null }) => {
 
         // Verifica conclusão do curso
         const isCompleted = await checkCourseCompletion(
-          updatedVideos,
+          updatedVideos.filter((v) => !v.isFlippedVideo),
           userDetails?.userId,
           courseId
         );
@@ -1012,6 +1034,7 @@ const Classes = ({ alias = null }) => {
               >
                 <Tab label="Conteúdo" />
                 <Tab label="Materiais Extras" />
+                <Tab label="Trabalhos" />
               </Tabs>
               <Divider />
               <Box
@@ -1031,8 +1054,16 @@ const Classes = ({ alias = null }) => {
                     userQuizAttempts={userAttempts}
                     advancedSettings={advancedSettings} // Adicione esta linha
                   />
-                ) : (
+                ) : selectedTab === 1 ? (
                   <MaterialExtra courseId={courseId} />
+                ) : userDetails?.userId ? (
+                  <AssignmentList courseId={courseId} userId={userDetails.userId} />
+                ) : (
+                  <Box sx={{ p: 2, textAlign: "center", color: "#888" }}>
+                    <Typography variant="body2">
+                      Faça login para ver os trabalhos deste curso.
+                    </Typography>
+                  </Box>
                 )}
               </Box>
             </Box>

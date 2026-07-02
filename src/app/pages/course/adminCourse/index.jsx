@@ -32,6 +32,7 @@ import CourseMaterialsTab from "./CourseMaterialsTab";
 import CourseQuizzesTab from "./courseQuizzesTab/";
 import CourseStudentsTab from "./CourseStudentsTab";
 import CourseAssessmentsTab from "./CourseAssessmentsTab";
+import CourseAssignmentsTab from "./CourseAssignmentsTab";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdvancedSettingsModal from "../../../components/courses/AdvancedSettingsModal";
@@ -627,6 +628,7 @@ const CourseForm = () => {
                   <Tab label="Quiz" />
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
+                  <Tab label="Trabalhos" />
                 </Tabs>
               </Box>
 
@@ -655,6 +657,8 @@ const CourseForm = () => {
                   <Tab label="Materiais Extras" />
                   <Tab label="Quiz" />
                   <Tab label="Alunos" />
+                  <Tab label="Avaliações" />
+                  <Tab label="Trabalhos" />
                 </Tabs>
               </Box>
 
@@ -684,6 +688,7 @@ const CourseForm = () => {
                   <CourseAssessmentsTab />
                 </Typography>
               )}
+              {selectedTab === 6 && <CourseAssignmentsTab />}
             </>
           )}
         </Paper>

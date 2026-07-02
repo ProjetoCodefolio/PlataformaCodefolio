@@ -16,12 +16,16 @@ import {
   Stack,
   FormControlLabel,
   Switch,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Topbar from "$components/topbar/Topbar";
+import AssignmentList from "$components/courses/assignments/AssignmentList";
 import { useAuth } from "$context/AuthContext";
 import * as studentService from "$api/services/courses/students";
 import * as assessmentService from "$api/services/courses/assessments";
+import { fetchAssignmentsByCourse } from "$api/services/courses/assignments";
 import { database } from "$api/config/firebase";
 import { ref, get } from "firebase/database";
 
@@ -41,6 +45,13 @@ export default function MyAssessmentsPage() {
   // contagem de avaliações de cada curso ainda está sendo carregada.
   const [onlyWithAssessments, setOnlyWithAssessments] = useState(true);
   const [assessmentsLoading, setAssessmentsLoading] = useState(true);
+  // Aba 0 = Trabalhos (enunciados), Aba 1 = Notas (avaliações já existentes)
+  const [activeTab, setActiveTab] = useState(0);
+  // Contagem de enunciados por curso + filtro/expansão da aba Trabalhos
+  const [assignmentsCountMap, setAssignmentsCountMap] = useState({});
+  const [assignmentsCountLoading, setAssignmentsCountLoading] = useState(true);
+  const [onlyWithAssignments, setOnlyWithAssignments] = useState(true);
+  const [expandedTrabalhoId, setExpandedTrabalhoId] = useState(null);
 
   const userName =
     userDetails?.name ||
@@ -200,6 +211,40 @@ export default function MyAssessmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courses]);
 
+  // Contagem de enunciados (trabalhos) de cada curso, para filtro/label da aba
+  useEffect(() => {
+    if (!courses.length) {
+      setAssignmentsCountLoading(false);
+      return;
+    }
+    let active = true;
+    (async () => {
+      setAssignmentsCountLoading(true);
+      const updates = {};
+      await Promise.all(
+        courses.map(async (course) => {
+          const courseId = getCourseId(course);
+          if (!courseId || assignmentsCountMap[courseId] !== undefined) return;
+          try {
+            const list = await fetchAssignmentsByCourse(courseId);
+            updates[courseId] = (list || []).length;
+          } catch {
+            updates[courseId] = 0;
+          }
+        })
+      );
+      if (!active) return;
+      if (Object.keys(updates).length) {
+        setAssignmentsCountMap((prev) => ({ ...prev, ...updates }));
+      }
+      setAssignmentsCountLoading(false);
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courses]);
+
   const handleToggleCourse = async (course) => {
     const courseId = getCourseId(course);
     const isExpanding = expandedCourseId !== courseId;
@@ -286,11 +331,198 @@ export default function MyAssessmentsPage() {
     return matchesSearch && matchesAssessmentsFilter;
   });
 
+  // ----- Aba Trabalhos (enunciados) -----
+  const getAssignmentsCount = (course) => {
+    const id = getCourseId(course);
+    return assignmentsCountMap[id] || 0;
+  };
+  const hasAssignments = (course) => getAssignmentsCount(course) > 0;
+
+  const filteredTrabalhoCourses = courses.filter((course) => {
+    const title = getCourseTitle(course).toLowerCase();
+    const matchesSearch = title.includes(searchTerm.toLowerCase());
+    const matchesFilter = !onlyWithAssignments || hasAssignments(course);
+    return matchesSearch && matchesFilter;
+  });
+
   return (
     <>
       <Topbar hideSearch={false} onSearch={setSearchTerm} />
       <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1200, mx: "auto", mt: 8 }}>
-        {loading ? (
+        <Tabs
+          value={activeTab}
+          onChange={(e, v) => setActiveTab(v)}
+          sx={{
+            mb: 3,
+            "& .MuiTab-root": {
+              color: "#666",
+              fontWeight: 700,
+              "&.Mui-selected": { color: "#9041c1" },
+            },
+            "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
+          }}
+        >
+          <Tab label="Trabalhos" />
+          <Tab label="Notas" />
+        </Tabs>
+        {activeTab === 0 ? (
+          loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : courses.length === 0 ? (
+            <Typography>Você ainda não está matriculado em nenhum curso.</Typography>
+          ) : (
+            <>
+              {/* Barra de filtros */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  alignItems: { xs: "flex-start", sm: "center" },
+                  justifyContent: "space-between",
+                  gap: 1.5,
+                  mb: 3,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+                  Seus trabalhos por curso · {filteredTrabalhoCourses.length} de {courses.length}
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={onlyWithAssignments}
+                      onChange={(e) => setOnlyWithAssignments(e.target.checked)}
+                      sx={{
+                        "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                          backgroundColor: "#9041c1",
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      Somente cursos com trabalhos
+                    </Typography>
+                  }
+                />
+              </Box>
+
+              {assignmentsCountLoading ? (
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 8 }}>
+                  <CircularProgress />
+                  <Typography variant="body2" color="text.secondary">
+                    Carregando trabalhos dos cursos...
+                  </Typography>
+                </Box>
+              ) : filteredTrabalhoCourses.length === 0 ? (
+                <Typography>
+                  {onlyWithAssignments && courses.length > 0
+                    ? "Nenhum curso com trabalhos publicados. Desative o filtro para ver todos os seus cursos."
+                    : "Nenhum curso encontrado."}
+                </Typography>
+              ) : (
+                <Grid container spacing={3}>
+                  {filteredTrabalhoCourses.map((course) => {
+                    const courseId = getCourseId(course);
+                    const count = getAssignmentsCount(course);
+                    return (
+                      <Grid item xs={12} key={courseId || Math.random()}>
+                        <Card
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 3,
+                            boxShadow: "0 2px 16px rgba(0,0,0,0.07)",
+                            borderColor: "#e3eafc",
+                            overflow: "hidden",
+                            bgcolor: "#fafdff",
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              px: { xs: 2, sm: 3 },
+                              pt: { xs: 2, sm: 3 },
+                              pb: 1,
+                              borderBottom: "1px solid #e3eafc",
+                              flexDirection: { xs: "column", sm: "row" },
+                              gap: { xs: 1, sm: 0 },
+                            }}
+                          >
+                            <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
+                              <Typography
+                                variant="h5"
+                                sx={{
+                                  fontWeight: 900,
+                                  color: "#964bd0ff",
+                                  fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                                }}
+                              >
+                                {getCourseTitle(course)}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ textAlign: { xs: "center", sm: "right" } }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                Aluno
+                              </Typography>
+                              <Typography variant="body1" sx={{ fontWeight: 700 }}>
+                                {userName || "—"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <CardContent sx={{ p: 0 }}>
+                            <Accordion
+                              expanded={expandedTrabalhoId === courseId}
+                              onChange={() =>
+                                setExpandedTrabalhoId(
+                                  expandedTrabalhoId === courseId ? null : courseId
+                                )
+                              }
+                              TransitionProps={{ unmountOnExit: true }}
+                              sx={{ boxShadow: "none", bgcolor: "transparent", borderRadius: 0, border: "none" }}
+                            >
+                              <AccordionSummary
+                                expandIcon={<ExpandMoreIcon />}
+                                sx={{
+                                  px: { xs: 2, sm: 3 },
+                                  py: { xs: 1.5, sm: 2 },
+                                  bgcolor: "#faf8fca7",
+                                  borderBottom: "1px solid #e3eafc",
+                                  minHeight: 0,
+                                }}
+                              >
+                                <Typography sx={{ fontWeight: 700, fontSize: { xs: "0.875rem", sm: "1rem" } }}>
+                                  Trabalhos do curso
+                                </Typography>
+                                <Chip
+                                  label={`${count} trabalho${count === 1 ? "" : "s"}`}
+                                  size="small"
+                                  sx={{ ml: { xs: 1, sm: 2 }, bgcolor: "#e3e4e9ff", fontWeight: 700 }}
+                                />
+                              </AccordionSummary>
+                              <AccordionDetails sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 2 }, bgcolor: "#fafdff" }}>
+                                {courseId && userId ? (
+                                  <AssignmentList courseId={courseId} userId={userId} />
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Não foi possível carregar os trabalhos deste curso.
+                                  </Typography>
+                                )}
+                              </AccordionDetails>
+                            </Accordion>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              )}
+            </>
+          )
+        ) : loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
             <CircularProgress />
           </Box>

@@ -13,13 +13,15 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_MEASUREMENT_ID,
 };
 
+const useEmulators = import.meta.env.VITE_MODE === "development";
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);
 export const analytics = getAnalytics(app);
 
 // Conectar ao emulador apenas em ambiente local
-if (import.meta.env.VITE_MODE === "development") {
+if (useEmulators) {
   console.log("🔥 Conectando ao Firebase Emulator...");
   connectDatabaseEmulator(database, "localhost", 9000);
 }

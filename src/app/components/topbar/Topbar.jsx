@@ -28,6 +28,7 @@ import { useAuth } from "$context/AuthContext";
 import logo from "$assets/img/codefolio.png";
 import { handleGoogleSignIn, handleSignOut } from "$api/services/auth";
 import { fetchTeacherCourses } from "$api/services/courses/courses";
+import NotificationBell from "./NotificationBell";
 
 export default function Topbar({ onSearch, hideSearch = false }) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -143,6 +144,7 @@ export default function Topbar({ onSearch, hideSearch = false }) {
         </Box>
 
         <Box className="topbarRight">
+          {userDetails?.userId && <NotificationBell userId={userDetails.userId} />}
           <Box className="topbarIcons desktopIcons">
             <Link to="/dashboard" style={{ textDecoration: "none" }}>
               <Box className="topbarIconCont">
@@ -238,7 +240,7 @@ export default function Topbar({ onSearch, hideSearch = false }) {
               <ListItemIcon>
                 <AssignmentIcon fontSize="small" />
               </ListItemIcon>
-              Minhas Avaliações
+              Avaliações
             </MenuItem>
             {isAdmin && (
               <MenuItem onClick={() => navigate("/admin-panel")}>
