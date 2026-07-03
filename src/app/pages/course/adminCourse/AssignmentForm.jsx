@@ -33,6 +33,8 @@ import {
 import { setupGroups, fetchGroups } from "$api/services/courses/assignmentGroups";
 import * as assessmentService from "$api/services/courses/assessments";
 import { compressImageToBase64 } from "$api/services/storageService";
+import RichTextEditor from "$components/common/RichTextEditor";
+import { sanitizeRichHtml } from "$utils/richText";
 import { toast } from "react-toastify";
 
 const purpleField = {
@@ -94,6 +96,7 @@ export default function AssignmentForm({
   const [allowLate, setAllowLate] = useState(false);
   const [allowText, setAllowText] = useState(true);
   const [allowLink, setAllowLink] = useState(true);
+  const [allowDrive, setAllowDrive] = useState(false);
   const [flippedClassroom, setFlippedClassroom] = useState(false);
   const [mode, setMode] = useState("individual");
   const [weight, setWeight] = useState("");
@@ -124,6 +127,7 @@ export default function AssignmentForm({
     setAllowLate(!!a.allowLate);
     setAllowText(a.submissionTypes?.text !== false);
     setAllowLink(a.submissionTypes?.link !== false);
+    setAllowDrive(!!a.submissionTypes?.drive);
     setFlippedClassroom(!!a.flippedClassroom);
     setMode(a.mode || "individual");
     setMaxGroups(a.groups?.maxGroups || 2);
@@ -201,8 +205,8 @@ export default function AssignmentForm({
 
   const validate = () => {
     if (!title.trim()) return "O título é obrigatório.";
-    if (!allowText && !allowLink && !flippedClassroom)
-      return "Habilite ao menos um tipo de entrega (texto, link ou vídeo).";
+    if (!allowText && !allowLink && !allowDrive && !flippedClassroom)
+      return "Habilite ao menos um tipo de entrega (texto, link, Google Drive ou vídeo).";
     if (openDate && dueDate && new Date(openDate) >= new Date(dueDate))
       return "A data de abertura deve ser anterior à data de encerramento.";
     if (weight !== "" && (Number(weight) <= 0 || Number(weight) > 100))
@@ -244,12 +248,12 @@ export default function AssignmentForm({
 
       const payload = {
         title: title.trim(),
-        descriptionHtml,
+        descriptionHtml: sanitizeRichHtml(descriptionHtml),
         attachments,
         openDate: localInputToIso(openDate),
         dueDate: localInputToIso(dueDate),
         allowLate,
-        submissionTypes: { text: allowText, link: allowLink },
+        submissionTypes: { text: allowText, link: allowLink, drive: allowDrive },
         flippedClassroom,
         mode,
         linkedAssessmentId,
@@ -331,17 +335,18 @@ export default function AssignmentForm({
             onKeyDown={handleTitleKeyDown}
             sx={purpleField}
           />
-          <TextField
-            label="Enunciado (descrição, instruções, critérios)"
-            fullWidth
-            multiline
-            minRows={4}
-            inputRef={descriptionRef}
-            value={descriptionHtml}
-            onChange={(e) => setDescriptionHtml(e.target.value)}
-            placeholder="Descreva o objetivo, as instruções e os critérios de avaliação."
-            sx={purpleField}
-          />
+          <Box>
+            <Typography variant="caption" sx={{ color: "#666", fontWeight: 600, display: "block", mb: 0.5 }}>
+              Enunciado (descrição, instruções, critérios)
+            </Typography>
+            <RichTextEditor
+              value={descriptionHtml}
+              onChange={setDescriptionHtml}
+              editableRef={descriptionRef}
+              placeholder="Descreva o objetivo, as instruções e os critérios de avaliação. Use a barra acima para negrito, itálico e listas."
+              minHeight={140}
+            />
+          </Box>
         </Stack>
 
         {/* --- Materiais --- */}
@@ -508,6 +513,10 @@ export default function AssignmentForm({
           <FormControlLabel
             control={<Switch checked={allowLink} onChange={(e) => setAllowLink(e.target.checked)} sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#9041c1" } }} />}
             label="Link (URL / GitHub)"
+          />
+          <FormControlLabel
+            control={<Switch checked={allowDrive} onChange={(e) => setAllowDrive(e.target.checked)} sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#9041c1" } }} />}
+            label="Google Drive (link)"
           />
           <FormControlLabel
             control={<Switch checked={flippedClassroom} onChange={(e) => setFlippedClassroom(e.target.checked)} sx={{ "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { backgroundColor: "#9041c1" } }} />}

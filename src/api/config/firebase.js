@@ -13,7 +13,11 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_MEASUREMENT_ID,
 };
 
-const useEmulators = import.meta.env.VITE_MODE === "development";
+// import.meta.env.DEV é definido automaticamente pelo Vite: true apenas ao
+// rodar o dev server (`vite`), sempre false em `vite build` — diferente de
+// VITE_MODE (variável do .env), que fica cravada no bundle e não muda entre
+// build de dev e de produção se o .env não for trocado.
+const useEmulators = import.meta.env.DEV;
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

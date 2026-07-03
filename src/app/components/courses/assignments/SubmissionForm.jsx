@@ -13,7 +13,11 @@ import SendIcon from "@mui/icons-material/Send";
 import NotesIcon from "@mui/icons-material/Notes";
 import LinkIcon from "@mui/icons-material/Link";
 import YouTubeIcon from "@mui/icons-material/YouTube";
+import AddToDriveIcon from "@mui/icons-material/AddToDrive";
 import { isValidYouTubeUrl } from "$api/services/courses/videos";
+import { isValidGoogleDriveUrl } from "$api/services/courses/submissions";
+import RichTextEditor from "$components/common/RichTextEditor";
+import { richTextIsEmpty, sanitizeRichHtml } from "$utils/richText";
 
 const purpleField = {
   "& .MuiOutlinedInput-root": {
@@ -44,6 +48,7 @@ export default function SubmissionForm({
 
   const [text, setText] = useState("");
   const [link, setLink] = useState("");
+  const [drive, setDrive] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoTitle, setVideoTitle] = useState("");
   const [videoDescription, setVideoDescription] = useState("");
@@ -54,6 +59,7 @@ export default function SubmissionForm({
     const c = existingSubmission?.content || {};
     setText(c.text || "");
     setLink(c.link || "");
+    setDrive(c.drive || "");
     setVideoUrl(c.video?.youtubeUrl || "");
     setVideoTitle(c.video?.title || "");
     setVideoDescription(c.video?.description || "");
@@ -63,8 +69,15 @@ export default function SubmissionForm({
     setError(null);
 
     const content = {};
-    if (types.text && text.trim()) content.text = text.trim();
+    if (types.text && !richTextIsEmpty(text)) content.text = sanitizeRichHtml(text);
     if (types.link && link.trim()) content.link = link.trim();
+    if (types.drive && drive.trim()) {
+      if (!isValidGoogleDriveUrl(drive.trim())) {
+        setError("Informe um link válido do Google Drive (drive.google.com ou docs.google.com).");
+        return;
+      }
+      content.drive = drive.trim();
+    }
     if (allowVideo && videoUrl.trim()) {
       if (!isValidYouTubeUrl(videoUrl.trim())) {
         setError("Informe uma URL válida do YouTube para o vídeo.");
@@ -81,7 +94,7 @@ export default function SubmissionForm({
       };
     }
 
-    if (!content.text && !content.link && !content.video) {
+    if (!content.text && !content.link && !content.drive && !content.video) {
       setError("Preencha ao menos um campo de entrega.");
       return;
     }
@@ -122,24 +135,21 @@ export default function SubmissionForm({
       )}
 
       {types.text && (
-        <TextField
-          label="Resposta em texto"
-          fullWidth
-          multiline
-          minRows={3}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          disabled={disabled}
-          placeholder="Escreva sua resposta ou explique sua entrega..."
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: 1.5 }}>
-                <NotesIcon fontSize="small" sx={{ color: "#9041c1" }} />
-              </InputAdornment>
-            ),
-          }}
-          sx={{ ...purpleField, mb: 2 }}
-        />
+        <Box sx={{ mb: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+            <NotesIcon fontSize="small" sx={{ color: "#9041c1" }} />
+            <Typography variant="caption" sx={{ color: "#666", fontWeight: 600 }}>
+              Resposta em texto
+            </Typography>
+          </Box>
+          <RichTextEditor
+            value={text}
+            onChange={setText}
+            disabled={disabled}
+            placeholder="Escreva sua resposta ou explique sua entrega. Use a barra para negrito, itálico e listas."
+            minHeight={110}
+          />
+        </Box>
       )}
 
       {types.link && (
@@ -159,6 +169,31 @@ export default function SubmissionForm({
           }}
           sx={{ ...purpleField, mb: 2 }}
         />
+      )}
+
+      {types.drive && (
+        <TextField
+          label="Link do Google Drive"
+          fullWidth
+          value={drive}
+          onChange={(e) => setDrive(e.target.value)}
+          disabled={disabled}
+          placeholder="https://drive.google.com/... (compartilhe com acesso de visualização)"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <AddToDriveIcon fontSize="small" sx={{ color: "#1a73e8" }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ ...purpleField, mb: 0.5 }}
+        />
+      )}
+      {types.drive && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 2 }}>
+          Cole o link de compartilhamento do arquivo/pasta. Garanta que a permissão
+          esteja como "qualquer pessoa com o link pode ver".
+        </Typography>
       )}
 
       {allowVideo && (

@@ -9,6 +9,11 @@ import {
   Stack,
   CircularProgress,
   Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -17,6 +22,8 @@ import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import { toast } from "react-toastify";
 import {
   isPastDue,
   isBeforeOpen,
@@ -26,10 +33,12 @@ import {
 import {
   fetchSubmission,
   saveSubmission,
+  deleteSubmission,
   submitterKeyFor,
 } from "$api/services/courses/submissions";
 import SubmissionForm from "./SubmissionForm";
 import GroupPicker from "./GroupPicker";
+import { RichTextView } from "$components/common/RichTextEditor";
 
 const fmtDate = (iso) =>
   iso
@@ -158,6 +167,8 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
   const [currentGroupId, setCurrentGroupId] = useState(null);
   const [submission, setSubmission] = useState(null);
   const [loadingSub, setLoadingSub] = useState(false);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const windowState = getWindowState(assignment);
   const scheduled = windowState === "scheduled";
@@ -200,6 +211,21 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
     await loadSubmission();
   };
 
+  const handleWithdraw = async () => {
+    if (!submitterKey) return;
+    setWithdrawing(true);
+    try {
+      await deleteSubmission(courseId, assignment.id, submitterKey);
+      setConfirmWithdraw(false);
+      await loadSubmission();
+      toast.success("Entrega retirada.");
+    } catch (err) {
+      toast.error(err.message || "Erro ao retirar a entrega.");
+    } finally {
+      setWithdrawing(false);
+    }
+  };
+
   return (
     <Box>
       <Button startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ color: "#9041c1", mb: 1 }}>
@@ -227,9 +253,7 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
         <DeadlineBanner assignment={assignment} />
 
         {assignment.descriptionHtml && (
-          <Typography variant="body1" sx={{ mt: 2.5, color: "#444", whiteSpace: "pre-wrap", lineHeight: 1.7 }}>
-            {assignment.descriptionHtml}
-          </Typography>
+          <RichTextView html={assignment.descriptionHtml} sx={{ mt: 2.5, fontSize: "1rem" }} />
         )}
 
         {Array.isArray(assignment.attachments) && assignment.attachments.length > 0 && (
@@ -316,15 +340,31 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
         ) : (
           <>
             {submission && (
-              <Alert
-                icon={<CheckCircleIcon fontSize="inherit" />}
-                severity={submission.isLate ? "warning" : "success"}
-                sx={{ mb: 2 }}
-              >
-                Entregue em {fmtDate(submission.submittedAt)}
-                {submission.isLate ? " (com atraso)" : ""}.
-                {isGroup ? " Entrega do grupo." : ""}
-              </Alert>
+              <>
+                <Alert
+                  icon={<CheckCircleIcon fontSize="inherit" />}
+                  severity={submission.isLate ? "warning" : "success"}
+                  sx={{ mb: 2 }}
+                >
+                  Entregue em {fmtDate(submission.submittedAt)}
+                  {submission.isLate ? " (com atraso)" : ""}.
+                  {isGroup ? " Entrega do grupo." : ""}
+                </Alert>
+                {!disabled && (
+                  <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      startIcon={<DeleteOutlineIcon />}
+                      onClick={() => setConfirmWithdraw(true)}
+                      sx={{ textTransform: "none", fontWeight: 700 }}
+                    >
+                      Retirar entrega
+                    </Button>
+                  </Box>
+                )}
+              </>
             )}
             <SubmissionForm
               assignment={assignment}
@@ -336,6 +376,31 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
           </>
         )}
       </Paper>
+
+      <Dialog open={confirmWithdraw} onClose={() => !withdrawing && setConfirmWithdraw(false)}>
+        <DialogTitle>Retirar entrega?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {isGroup
+              ? "Isso remove a entrega do grupo inteiro (inclusive vídeos enviados). Todos os integrantes precisarão enviar novamente. Deseja continuar?"
+              : "Isso remove a sua entrega, incluindo eventual vídeo enviado (ele deixará de aparecer na lista de conteúdo do curso). Deseja continuar?"}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmWithdraw(false)} disabled={withdrawing} sx={{ color: "#666" }}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleWithdraw}
+            disabled={withdrawing}
+            variant="contained"
+            color="error"
+            startIcon={withdrawing ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+          >
+            Retirar entrega
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

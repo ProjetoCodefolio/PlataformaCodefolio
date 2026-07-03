@@ -29,9 +29,12 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SearchIcon from "@mui/icons-material/Search";
 import SortIcon from "@mui/icons-material/Sort";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import AddToDriveIcon from "@mui/icons-material/AddToDrive";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
@@ -39,6 +42,7 @@ import { fetchAssignment } from "$api/services/courses/assignments";
 import {
   fetchAllSubmissions,
   markSubmissionGraded,
+  deleteSubmission,
 } from "$api/services/courses/submissions";
 import {
   fetchGroups,
@@ -50,6 +54,7 @@ import { fetchCourseDetails } from "$api/services/courses/courses";
 import { assignGrade, getAssessmentGrades } from "$api/services/courses/assessments";
 import { notifyGrade } from "$api/services/notifications";
 import { canAssignGrades } from "$api/utils/permissions";
+import { RichTextView } from "$components/common/RichTextEditor";
 
 const fmtDate = (iso) =>
   iso
@@ -69,6 +74,40 @@ const SORT_OPTIONS = [
   { value: "recent", label: "Ordem de envio (mais recentes)" },
   { value: "ungraded", label: "Não avaliados primeiro" },
 ];
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "all", label: "Todos" },
+  { value: "graded", label: "Avaliados" },
+  { value: "pending", label: "Pendentes (sem nota)" },
+];
+
+const GRADE_BAND_OPTIONS = [
+  { value: "all", label: "Todas as notas" },
+  { value: "9-10", label: "9 – 10" },
+  { value: "7-8.99", label: "7 – 8,9" },
+  { value: "6-6.99", label: "6 – 6,9" },
+  { value: "0-5.99", label: "Abaixo de 6" },
+];
+
+/** Retorna true se a nota (número ou null) cai na faixa selecionada. */
+const gradeInBand = (grade, band) => {
+  if (band === "all") return true;
+  if (grade == null || grade === "") return false;
+  const n = Number(grade);
+  if (Number.isNaN(n)) return false;
+  switch (band) {
+    case "9-10":
+      return n >= 9;
+    case "7-8.99":
+      return n >= 7 && n < 9;
+    case "6-6.99":
+      return n >= 6 && n < 7;
+    case "0-5.99":
+      return n < 6;
+    default:
+      return true;
+  }
+};
 
 /**
  * Campo de nota com salvamento automático (ao sair do campo ou pressionar
@@ -162,6 +201,11 @@ export default function AssignmentSubmissionsDashboard() {
   const [savingKey, setSavingKey] = useState(null);
   const [sortBy, setSortBy] = useState("name");
   const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterGradeBand, setFilterGradeBand] = useState("all");
+  const [filterGroup, setFilterGroup] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const canGrade = canAssignGrades(userDetails, courseOwnerId);
   const isGroup = assignment?.mode === "group";
@@ -218,7 +262,7 @@ export default function AssignmentSubmissionsDashboard() {
    * Persiste a nota para um conjunto de alunos (1 para individual, N para grupo)
    * gravando em courseAssessments para refletir na média do curso.
    */
-  const persistGrade = async (key, studentIds, gradeValue) => {
+  const persistGrade = async (savingKeyId, studentIds, gradeValue, metaKey = null) => {
     if (!assignment?.linkedAssessmentId) {
       toast.warn("Este trabalho não vale nota. Defina um peso (%) no enunciado para poder avaliar.");
       return;
@@ -228,15 +272,18 @@ export default function AssignmentSubmissionsDashboard() {
       toast.error("A nota deve estar entre 0 e 10.");
       return;
     }
-    setSavingKey(key);
+    setSavingKey(savingKeyId);
     try {
       await Promise.all(
         studentIds.map((sid) =>
           assignGrade(courseId, assignment.linkedAssessmentId, sid, grade)
         )
       );
-      const submitterKey = isGroup ? key : studentIds[0];
-      await markSubmissionGraded(courseId, assignmentId, submitterKey, grade);
+      // Metadado no envio só faz sentido quando existe uma entrega para a chave
+      // (evita criar nós fantasmas ao dar nota individual a um membro de grupo).
+      if (metaKey && submissionsByKey[metaKey]) {
+        await markSubmissionGraded(courseId, assignmentId, metaKey, grade);
+      }
       // Notifica cada aluno avaliado
       studentIds.forEach((sid) =>
         notifyGrade(sid, courseId, { id: assignmentId, title: assignment.title }, grade)
@@ -257,6 +304,30 @@ export default function AssignmentSubmissionsDashboard() {
     }
   };
 
+  /**
+   * Remove a entrega de um aluno (individual) ou de um grupo. Se a entrega tinha
+   * vídeo de sala invertida, ele deixa de aparecer na lista de conteúdo.
+   */
+  const handleDeleteSubmission = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteSubmission(courseId, assignmentId, deleteTarget.submitterKey);
+      setSubmissionsByKey((prev) => {
+        const next = { ...prev };
+        delete next[deleteTarget.submitterKey];
+        return next;
+      });
+      setDeleteTarget(null);
+      toast.success("Entrega excluída.");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message || "Erro ao excluir a entrega.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const statusChip = (submission) => {
     if (!submission) return <Chip size="small" label="Pendente" sx={{ bgcolor: "#eceff1", color: "#455a64", fontWeight: 700 }} />;
     return submission.isLate ? (
@@ -268,11 +339,19 @@ export default function AssignmentSubmissionsDashboard() {
 
   // Ordenação/filtro dos alunos (modo individual)
   const sortStudents = (list) => {
-    const filtered = search
-      ? list.filter((s) =>
-          (s.name || s.email || "").toLowerCase().includes(search.toLowerCase())
-        )
-      : list;
+    const filtered = list.filter((s) => {
+      const matchesSearch = search
+        ? (s.name || s.email || "").toLowerCase().includes(search.toLowerCase())
+        : true;
+      const grade = gradesByStudent[s.userId];
+      const hasGrade = grade != null && grade !== "";
+      const matchesStatus =
+        filterStatus === "all" ||
+        (filterStatus === "graded" && hasGrade) ||
+        (filterStatus === "pending" && !hasGrade);
+      const matchesGrade = gradeInBand(grade, filterGradeBand);
+      return matchesSearch && matchesStatus && matchesGrade;
+    });
     const arr = [...filtered];
     arr.sort((a, b) => {
       if (sortBy === "recent") {
@@ -375,10 +454,17 @@ export default function AssignmentSubmissionsDashboard() {
                   onView={setViewing}
                   onMove={handleMove}
                   onRemove={handleRemoveFromGroup}
+                  onDelete={setDeleteTarget}
                   statusChip={statusChip}
                   canGrade={canGrade}
                   savingKey={savingKey}
                   linkedAssessmentId={assignment.linkedAssessmentId}
+                  filterGroup={filterGroup}
+                  setFilterGroup={setFilterGroup}
+                  filterStatus={filterStatus}
+                  setFilterStatus={setFilterStatus}
+                  filterGradeBand={filterGradeBand}
+                  setFilterGradeBand={setFilterGradeBand}
                 />
               ) : (
                 <>
@@ -386,7 +472,7 @@ export default function AssignmentSubmissionsDashboard() {
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
                     spacing={1.5}
-                    sx={{ mb: 2 }}
+                    sx={{ mb: 1.5 }}
                   >
                     <TextField
                       size="small"
@@ -415,9 +501,57 @@ export default function AssignmentSubmissionsDashboard() {
                           </InputAdornment>
                         ),
                       }}
-                      sx={{ minWidth: { xs: "100%", sm: 260 } }}
+                      sx={{ minWidth: { xs: "100%", sm: 240 } }}
                     >
                       {SORT_OPTIONS.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Stack>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    sx={{ mb: 2 }}
+                  >
+                    <TextField
+                      select
+                      size="small"
+                      label="Status"
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <FilterListIcon fontSize="small" sx={{ color: "#9041c1" }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ flex: 1, minWidth: { xs: "100%", sm: 200 } }}
+                    >
+                      {STATUS_FILTER_OPTIONS.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      select
+                      size="small"
+                      label="Nota"
+                      value={filterGradeBand}
+                      onChange={(e) => setFilterGradeBand(e.target.value)}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <FilterListIcon fontSize="small" sx={{ color: "#9041c1" }} />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ flex: 1, minWidth: { xs: "100%", sm: 200 } }}
+                    >
+                      {GRADE_BAND_OPTIONS.map((o) => (
                         <MenuItem key={o.value} value={o.value}>
                           {o.label}
                         </MenuItem>
@@ -433,7 +567,7 @@ export default function AssignmentSubmissionsDashboard() {
                           <TableCell sx={{ fontWeight: "bold" }}>Entrega</TableCell>
                           <TableCell sx={{ fontWeight: "bold" }}>Enviada em</TableCell>
                           <TableCell sx={{ fontWeight: "bold" }}>Nota (0–10)</TableCell>
-                          <TableCell sx={{ fontWeight: "bold" }}>Ver</TableCell>
+                          <TableCell sx={{ fontWeight: "bold" }} align="center">Ações</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
@@ -458,18 +592,37 @@ export default function AssignmentSubmissionsDashboard() {
                                   storedGrade={gradesByStudent[s.userId]}
                                   disabled={!canGrade || !assignment.linkedAssessmentId}
                                   saving={savingKey === s.userId}
-                                  onCommit={(n) => persistGrade(s.userId, [s.userId], n)}
+                                  onCommit={(n) => persistGrade(s.userId, [s.userId], n, s.userId)}
                                 />
                               </TableCell>
-                              <TableCell>
-                                <IconButton
-                                  size="small"
-                                  disabled={!sub}
-                                  onClick={() => setViewing({ ...sub, who: s.name || s.email })}
-                                  sx={{ color: "#1976d2" }}
-                                >
-                                  <VisibilityIcon fontSize="small" />
-                                </IconButton>
+                              <TableCell align="center">
+                                <Box sx={{ display: "flex", justifyContent: "center" }}>
+                                  <IconButton
+                                    size="small"
+                                    disabled={!sub}
+                                    onClick={() => setViewing({ ...sub, who: s.name || s.email })}
+                                    sx={{ color: "#1976d2" }}
+                                  >
+                                    <VisibilityIcon fontSize="small" />
+                                  </IconButton>
+                                  {canGrade && (
+                                    <IconButton
+                                      size="small"
+                                      disabled={!sub}
+                                      onClick={() =>
+                                        setDeleteTarget({
+                                          submitterKey: s.userId,
+                                          who: s.name || s.email,
+                                          isGroup: false,
+                                        })
+                                      }
+                                      sx={{ color: "#d32f2f" }}
+                                      title="Excluir entrega"
+                                    >
+                                      <DeleteOutlineIcon fontSize="small" />
+                                    </IconButton>
+                                  )}
+                                </Box>
                               </TableCell>
                             </TableRow>
                           );
@@ -500,7 +653,7 @@ export default function AssignmentSubmissionsDashboard() {
           {viewing?.content?.text && (
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Texto</Typography>
-              <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>{viewing.content.text}</Typography>
+              <RichTextView html={viewing.content.text} sx={{ fontSize: "0.875rem", color: "#333" }} />
             </Box>
           )}
           {viewing?.content?.link && (
@@ -508,6 +661,16 @@ export default function AssignmentSubmissionsDashboard() {
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Link</Typography>
               <Link href={viewing.content.link} target="_blank" rel="noopener noreferrer">
                 {viewing.content.link}
+              </Link>
+            </Box>
+          )}
+          {viewing?.content?.drive && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, display: "flex", alignItems: "center", gap: 0.5 }}>
+                <AddToDriveIcon fontSize="small" sx={{ color: "#1a73e8" }} /> Google Drive
+              </Typography>
+              <Link href={viewing.content.drive} target="_blank" rel="noopener noreferrer">
+                {viewing.content.drive}
               </Link>
             </Box>
           )}
@@ -525,7 +688,7 @@ export default function AssignmentSubmissionsDashboard() {
               )}
             </Box>
           )}
-          {!viewing?.content?.text && !viewing?.content?.link && !viewing?.content?.video && (
+          {!viewing?.content?.text && !viewing?.content?.link && !viewing?.content?.drive && !viewing?.content?.video && (
             <Typography variant="body2" color="text.secondary">Sem conteúdo.</Typography>
           )}
         </DialogContent>
@@ -533,13 +696,43 @@ export default function AssignmentSubmissionsDashboard() {
           <Button onClick={() => setViewing(null)} sx={{ color: "#9041c1" }}>Fechar</Button>
         </DialogActions>
       </Dialog>
+
+      {/* Confirmação de exclusão de entrega */}
+      <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)}>
+        <DialogTitle>Excluir entrega?</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            {deleteTarget?.isGroup
+              ? `A entrega do ${deleteTarget?.who} será removida (inclusive vídeos de sala invertida). Esta ação não pode ser desfeita.`
+              : `A entrega de ${deleteTarget?.who} será removida (inclusive vídeos de sala invertida). Esta ação não pode ser desfeita.`}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting} sx={{ color: "#666" }}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleDeleteSubmission}
+            disabled={deleting}
+            variant="contained"
+            color="error"
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteOutlineIcon />}
+          >
+            Excluir
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
 
 /**
- * Bloco de entregas por grupo, com nota (auto-salva) aplicada a todos os
- * integrantes e gestão manual (mover/remover) de membros pelo professor.
+ * Bloco de entregas por grupo. A nota pode ser lançada de duas formas:
+ *  - "Nota do grupo": aplica o mesmo valor a todos os integrantes de uma vez;
+ *  - "Notas por integrante": permite ajustar individualmente cada aluno, pois
+ *    mesmo em um trabalho de grupo os membros podem ser avaliados de forma
+ *    diferente. Ambas gravam em courseAssessments e refletem em Avaliações.
+ * Inclui também gestão manual (mover/remover) de membros e exclusão da entrega.
  */
 function GroupSubmissions({
   groups,
@@ -552,10 +745,17 @@ function GroupSubmissions({
   onView,
   onMove,
   onRemove,
+  onDelete,
   statusChip,
   canGrade,
   savingKey,
   linkedAssessmentId,
+  filterGroup,
+  setFilterGroup,
+  filterStatus,
+  setFilterStatus,
+  filterGradeBand,
+  setFilterGradeBand,
 }) {
   const groupedUserIds = new Set(
     groups.flatMap((g) => Object.keys(g.members || {}))
@@ -563,6 +763,34 @@ function GroupSubmissions({
   const ungrouped = students
     .filter((s) => !groupedUserIds.has(s.userId))
     .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+  const hasGrade = (id) =>
+    gradesByStudent[id] != null && gradesByStudent[id] !== "";
+
+  // Aplica os filtros por grupo, status (avaliado = todos os membros com nota)
+  // e faixa de nota (grupo entra se algum integrante cai na faixa).
+  const visibleGroups = groups.filter((g) => {
+    if (filterGroup !== "all" && g.groupId !== filterGroup) return false;
+    const memberIds = Object.keys(g.members || {});
+    if (filterStatus !== "all") {
+      const allGraded = memberIds.length > 0 && memberIds.every(hasGrade);
+      if (filterStatus === "graded" && !allGraded) return false;
+      if (filterStatus === "pending" && allGraded) return false;
+    }
+    if (filterGradeBand !== "all") {
+      const anyInBand = memberIds.some((id) =>
+        gradeInBand(gradesByStudent[id], filterGradeBand)
+      );
+      if (!anyInBand) return false;
+    }
+    return true;
+  });
+
+  const showUngrouped =
+    ungrouped.length > 0 &&
+    filterGroup === "all" &&
+    filterStatus !== "graded" &&
+    filterGradeBand === "all";
 
   const memberChip = (id, groupId) => (
     <Chip
@@ -578,11 +806,70 @@ function GroupSubmissions({
 
   return (
     <Stack spacing={2}>
-      {groups.map((g) => {
+      {/* Filtros do modo grupo */}
+      <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+        <TextField
+          select
+          size="small"
+          label="Grupo"
+          value={filterGroup}
+          onChange={(e) => setFilterGroup(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <FilterListIcon fontSize="small" sx={{ color: "#9041c1" }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ flex: 1, minWidth: { xs: "100%", sm: 180 } }}
+        >
+          <MenuItem value="all">Todos os grupos</MenuItem>
+          {groups.map((g) => (
+            <MenuItem key={g.groupId} value={g.groupId}>
+              Grupo {g.index + 1}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Status"
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          sx={{ flex: 1, minWidth: { xs: "100%", sm: 180 } }}
+        >
+          {STATUS_FILTER_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              {o.label}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Nota"
+          value={filterGradeBand}
+          onChange={(e) => setFilterGradeBand(e.target.value)}
+          sx={{ flex: 1, minWidth: { xs: "100%", sm: 180 } }}
+        >
+          {GRADE_BAND_OPTIONS.map((o) => (
+            <MenuItem key={o.value} value={o.value}>
+              {o.label}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Stack>
+
+      {visibleGroups.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: "center" }}>
+          Nenhum grupo corresponde aos filtros.
+        </Typography>
+      )}
+
+      {visibleGroups.map((g) => {
         const key = `group_${g.groupId}`;
         const sub = submissionsByKey[key];
         const memberIds = Object.keys(g.members || {});
-        const currentGrade = memberIds.length ? gradesByStudent[memberIds[0]] ?? "" : "";
         return (
           <Paper key={g.groupId} variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
@@ -614,24 +901,80 @@ function GroupSubmissions({
               >
                 Ver entrega
               </Button>
+              {canGrade && (
+                <Button
+                  size="small"
+                  variant="outlined"
+                  color="error"
+                  startIcon={<DeleteOutlineIcon />}
+                  disabled={!sub}
+                  onClick={() =>
+                    onDelete({ submitterKey: key, who: `Grupo ${g.index + 1}`, isGroup: true })
+                  }
+                  sx={{ alignSelf: { xs: "flex-start", sm: "center" } }}
+                >
+                  Excluir entrega
+                </Button>
+              )}
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <Typography variant="body2" sx={{ fontWeight: 600, color: "#555" }}>
-                  Nota:
+                  Nota do grupo (todos):
                 </Typography>
                 <GradeInput
-                  storedGrade={currentGrade === "" ? null : currentGrade}
+                  storedGrade={null}
                   disabled={!canGrade || memberIds.length === 0 || !linkedAssessmentId}
                   saving={savingKey === key}
-                  onCommit={(n) => onSaveGrade(key, memberIds, n)}
+                  onCommit={(n) => onSaveGrade(key, memberIds, n, key)}
                 />
               </Box>
             </Stack>
+
+            {/* Notas individuais por integrante */}
+            {memberIds.length > 0 && (
+              <Box sx={{ mt: 2, pt: 1.5, borderTop: "1px dashed #e0d3f0" }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "#7d37a7" }}>
+                  Notas por integrante (edite para diferenciar)
+                </Typography>
+                <Stack spacing={1} sx={{ mt: 1 }}>
+                  {memberIds.map((id) => (
+                    <Box
+                      key={id}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 1,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                        <Avatar
+                          src={photoById[id] || undefined}
+                          sx={{ width: 26, height: 26, fontSize: "0.7rem", bgcolor: "#9041c1" }}
+                        >
+                          {(studentsById[id] || "?")[0]}
+                        </Avatar>
+                        <Typography variant="body2" sx={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {studentsById[id] || id.substring(0, 6)}
+                        </Typography>
+                      </Box>
+                      <GradeInput
+                        storedGrade={gradesByStudent[id] ?? null}
+                        disabled={!canGrade || !linkedAssessmentId}
+                        saving={savingKey === id}
+                        onCommit={(n) => onSaveGrade(id, [id], n, null)}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
+              </Box>
+            )}
           </Paper>
         );
       })}
 
       {/* Alunos sem grupo */}
-      {ungrouped.length > 0 && (
+      {showUngrouped && (
         <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: "#fff9f0", borderColor: "#ffe0b2" }}>
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#e65100" }}>

@@ -1,5 +1,5 @@
 import { database } from "$api/config/firebase";
-import { ref, set, get, update } from "firebase/database";
+import { ref, set, get, update, remove } from "firebase/database";
 import { fetchAssignmentsByCourse } from "./assignments";
 
 /**
@@ -24,6 +24,26 @@ import { fetchAssignmentsByCourse } from "./assignments";
  */
 export const submitterKeyFor = (mode, userId, groupId) =>
   mode === "group" ? `group_${groupId}` : userId;
+
+/**
+ * Valida se a URL é um link do Google Drive / Google Docs (Docs, Sheets,
+ * Slides, arquivos e pastas compartilhadas).
+ * @param {string} url
+ * @returns {boolean}
+ */
+export const isValidGoogleDriveUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  try {
+    const { hostname } = new URL(url.trim());
+    return (
+      hostname === "drive.google.com" ||
+      hostname === "docs.google.com" ||
+      hostname.endsWith(".docs.google.com")
+    );
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Verifica se uma entrega está atrasada em relação ao prazo do enunciado.
@@ -119,6 +139,35 @@ export const saveSubmission = async ({
   } catch (error) {
     console.error("Erro ao salvar entrega:", error);
     throw new Error("Falha ao salvar entrega");
+  }
+};
+
+/**
+ * Remove (retira) uma entrega inteira, incluindo eventual vídeo de sala de aula
+ * invertida — que deixa de aparecer na lista de conteúdo do curso.
+ *
+ * Permissões (ver database.rules.json):
+ *  - individual: o próprio aluno (submitterKey === auth.uid) ou o professor/admin
+ *  - grupo (submitterKey "group_..."): qualquer membro autenticado ou o professor/admin
+ *
+ * @param {string} courseId
+ * @param {string} assignmentId
+ * @param {string} submitterKey
+ */
+export const deleteSubmission = async (courseId, assignmentId, submitterKey) => {
+  if (!courseId || !assignmentId || !submitterKey) {
+    throw new Error("Dados insuficientes para remover a entrega");
+  }
+  try {
+    await remove(
+      ref(
+        database,
+        `assignmentSubmissions/${courseId}/${assignmentId}/${submitterKey}`
+      )
+    );
+  } catch (error) {
+    console.error("Erro ao remover entrega:", error);
+    throw new Error("Falha ao remover entrega");
   }
 };
 
