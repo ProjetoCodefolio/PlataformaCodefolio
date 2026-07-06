@@ -107,7 +107,7 @@ const StudentDashboard = () => {
 
   // Manipuladores de eventos
   const handleGoBack = () => {
-    navigate(`/adm-cursos?courseId=${courseData?.courseId}&tab=3`);
+    navigate(`/adm-cursos?courseId=${courseData?.courseId}&tab=2`);
   };
 
   const handleSortChange = (event) => {

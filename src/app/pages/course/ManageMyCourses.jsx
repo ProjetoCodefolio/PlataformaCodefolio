@@ -265,14 +265,16 @@ const ManageMyCourses = () => {
               <CardActions
                 sx={{
                   p: { xs: 1, sm: 2 },
-                  justifyContent: "center",
                   mt: "auto",
-                  gap: { xs: 1, sm: 2 },
-                  flexWrap: "wrap",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                  gap: 1,
                 }}
               >
                 <Button
                   variant="contained"
+                  fullWidth
                   sx={{
                     backgroundColor: "#9041c1",
                     color: "white",
@@ -281,10 +283,7 @@ const ManageMyCourses = () => {
                     textTransform: "none",
                     fontWeight: 500,
                     fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
-                    px: { xs: 1, sm: 2 },
-                    py: { xs: 0.5, sm: 1 },
-                    minWidth: { xs: "80px", sm: "100px", md: "120px" },
-                    width: { xs: "45%", sm: "auto" },
+                    py: { xs: 0.75, sm: 1 },
                   }}
                   onClick={() => onClickAction(course)}
                 >
@@ -293,6 +292,7 @@ const ManageMyCourses = () => {
                 {!course.isTeacherOnly && (
                   <Button
                     variant="outlined"
+                    fullWidth
                     startIcon={
                       course.archived ? <UnarchiveIcon /> : <ArchiveIcon />
                     }
@@ -307,10 +307,7 @@ const ManageMyCourses = () => {
                       textTransform: "none",
                       fontWeight: 500,
                       fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
-                      px: { xs: 1, sm: 2 },
-                      py: { xs: 0.5, sm: 1 },
-                      minWidth: { xs: "80px", sm: "100px", md: "120px" },
-                      width: { xs: "45%", sm: "auto" },
+                      py: { xs: 0.75, sm: 1 },
                     }}
                     onClick={() => handleToggleArchive(course)}
                   >
@@ -319,6 +316,7 @@ const ManageMyCourses = () => {
                 )}
                 <Button
                   variant="contained"
+                  fullWidth
                   sx={{
                     backgroundColor: "#dc3545",
                     color: "white",
@@ -327,10 +325,7 @@ const ManageMyCourses = () => {
                     textTransform: "none",
                     fontWeight: 500,
                     fontSize: { xs: "0.75rem", sm: "0.875rem", md: "1rem" },
-                    px: { xs: 1, sm: 2 },
-                    py: { xs: 0.5, sm: 1 },
-                    minWidth: { xs: "80px", sm: "100px", md: "120px" },
-                    width: { xs: "45%", sm: "auto" },
+                    py: { xs: 0.75, sm: 1 },
                   }}
                   onClick={() => handleDeleteCourse(course.courseId)}
                 >

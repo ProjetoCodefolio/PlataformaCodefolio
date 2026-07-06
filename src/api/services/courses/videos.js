@@ -46,6 +46,7 @@
 import { ref, get, push, set, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
 import { updateAllUsersCourseProgress } from "./courses";
+import { getNextContentOrder } from "./contentOrder";
 
 /**
  * Valida se uma URL é uma URL válida do YouTube
@@ -175,12 +176,16 @@ export const addCourseVideo = async (courseId, videoData) => {
     
     const courseVideosRef = ref(database, `courseVideos/${courseId}`);
     const newVideoRef = push(courseVideosRef);
-    
+
+    // Novo vídeo entra no fim da ordem global do conteúdo (vídeos + slides),
+    // para que a ordenação arrastável unificada permaneça coerente.
+    const order = await getNextContentOrder(courseId);
+
     const video = {
       title: videoData.title.trim(),
       url: videoData.url.trim(),
       description: String(videoData.description || ""),
-      order: videoData.order || 0,
+      order,
       requiresPrevious: videoData.requiresPrevious || true
     };
     
@@ -372,16 +377,31 @@ export const saveAllCourseVideos = async (courseId, videos) => {
       }
     }
     
+    // Base de ordem para vídeos que ainda não possuem `order` (ex.: criados só
+    // neste bulk save). Vídeos existentes preservam sua ordem global para não
+    // sobrescrever a ordenação arrastável unificada (vídeos + slides).
+    let nextOrderBase = null;
+
     // Adicionar ou atualizar vídeos
     for (const [index, video] of validVideos.entries()) {
+      let order;
+      if (typeof video.order === "number") {
+        order = video.order;
+      } else {
+        if (nextOrderBase === null) {
+          nextOrderBase = await getNextContentOrder(courseId);
+        }
+        order = nextOrderBase + index;
+      }
+
       const videoData = {
         title: video.title || "Vídeo sem título",
         url: video.url,
         description: video.description || "",
-        order: index,
+        order,
         requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
       };
-      
+
       if (video.id && existingVideoIds.has(video.id)) {
         await set(ref(database, `courseVideos/${courseId}/${video.id}`), videoData);
       } else {

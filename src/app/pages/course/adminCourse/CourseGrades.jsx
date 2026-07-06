@@ -167,7 +167,7 @@ export default function CourseGrades() {
 
   // Voltar para página anterior
   const handleBack = () => {
-    navigate(`/adm-cursos?courseId=${courseId}&tab=5`);
+    navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
   };
 
   // Lidar com clique em cabeçalho para ordenação
@@ -283,7 +283,7 @@ export default function CourseGrades() {
         {/* Breadcrumbs */}
         <BreadcrumbsComponent
           items={[
-            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=5` },
+            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=4` },
             { label: "Notas" },
           ]}
           onBack={handleBack}

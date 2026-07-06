@@ -260,10 +260,10 @@ export default function GradeAssignmentPage() {
     });
 
     if (studentsWithoutGrades.length > 0) {
-      setPendingNavigation(`/adm-cursos?courseId=${courseId}&tab=5`);
+      setPendingNavigation(`/adm-cursos?courseId=${courseId}&tab=4`);
       setShowExitWarning(true);
     } else {
-      navigate(`/adm-cursos?courseId=${courseId}&tab=5`);
+      navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
     }
   };
 
@@ -512,8 +512,8 @@ export default function GradeAssignmentPage() {
         {/* Breadcrumbs */}
         <BreadcrumbsComponent
           items={[
-            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=5` },
-            { label: "Avaliações", path: `/adm-cursos?courseId=${courseId}&tab=5` },
+            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=4` },
+            { label: "Avaliações", path: `/adm-cursos?courseId=${courseId}&tab=4` },
             { label: assessmentDetails?.name || "Atribuir Notas" },
           ]}
           onBack={handleBack}

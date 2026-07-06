@@ -77,7 +77,7 @@ export const fetchQuizData = async (quizId) => {
             foundVideo = videoSnapshot.val();
             foundVideo.id = quizId;
           } else if (quizId && quizId.startsWith("slide_")) {
-            // Fallback: quiz associado a um slide
+            // Fallback: quiz associado a um slide (formato legado)
             const slideId = quizId.replace("slide_", "");
             const slideRef = ref(
               database,
@@ -89,6 +89,20 @@ export const fetchQuizData = async (quizId) => {
               foundVideo = slideSnapshot.val();
               foundVideo.id = slideId;
               foundVideo.isSlide = true;
+            }
+          } else {
+            // Fallback: quiz associado a um item da nova collection unificada
+            // de conteúdo (courseContent), que pode ser vídeo ou slide.
+            const contentRef = ref(
+              database,
+              `courseContent/${courseIds[i]}/${quizId}`
+            );
+            const contentSnapshot = await get(contentRef);
+
+            if (contentSnapshot.exists()) {
+              foundVideo = contentSnapshot.val();
+              foundVideo.id = quizId;
+              foundVideo.isSlide = foundVideo.category === "slide";
             }
           }
 

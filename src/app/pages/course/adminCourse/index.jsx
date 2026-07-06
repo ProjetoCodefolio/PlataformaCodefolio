@@ -26,8 +26,7 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import Topbar from "$components/topbar/Topbar";
-import CourseVideosTab from "./CourseVideosTab";
-import CourseSlidesTab from "./CourseSlidesTab";
+import CourseContentTab from "./CourseContentTab";
 import CourseMaterialsTab from "./CourseMaterialsTab";
 import CourseQuizzesTab from "./courseQuizzesTab/";
 import CourseStudentsTab from "./CourseStudentsTab";
@@ -107,8 +106,6 @@ const CourseForm = () => {
   const params = new URLSearchParams(location.search);
   const [courseId, setCourseId] = useState(params.get("courseId"));
 
-  const courseVideosRef = useRef();
-  const courseSlidesRef = useRef();
   const courseMaterialsRef = useRef();
   const courseQuizzesRef = useRef();
   const courseStudentsRef = useRef();
@@ -116,7 +113,12 @@ const CourseForm = () => {
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [courseAlias, setCourseAlias] = useState("");
-  const [selectedTab, setSelectedTab] = useState(parseInt(params.get("tab")) || 0);
+  // Abas: 0 Conteúdo, 1 Materiais Extras, 2 Quiz, 3 Alunos, 4 Avaliações, 5 Trabalhos.
+  // Clamp para links antigos que apontavam para índices que não existem mais.
+  const [selectedTab, setSelectedTab] = useState(() => {
+    const tab = parseInt(params.get("tab")) || 0;
+    return tab >= 0 && tab <= 5 ? tab : 0;
+  });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [pinRequired, setPinRequired] = useState(false);
@@ -220,15 +222,6 @@ const CourseForm = () => {
         return;
       }
 
-      // Verificar se existem vídeos com URLs inválidas
-      try {
-        // Pré-validação dos vídeos (vai disparar erro se tiver URLs inválidas)
-        await courseVideosRef.current?.validateVideos();
-      } catch (error) {
-        toast.error(error.message);
-        return;
-      }
-
       // Preparar dados do curso
       const courseData = {
         title: courseTitle,
@@ -251,10 +244,9 @@ const CourseForm = () => {
         setCourseId(finalCourseId);
       }
 
-      // Salvar demais componentes do curso
+      // Salvar demais componentes do curso. O conteúdo (vídeos/slides) da aba
+      // "Conteúdo" é salvo imediatamente pela própria aba, não neste botão.
       await Promise.all([
-        courseVideosRef.current?.saveVideos(finalCourseId),
-        courseSlidesRef.current?.saveSlides(finalCourseId),
         courseMaterialsRef.current?.saveMaterials(finalCourseId),
         courseQuizzesRef.current?.saveQuizzes(finalCourseId),
       ]);
@@ -622,8 +614,7 @@ const CourseForm = () => {
                     "& .MuiTabs-indicator": { backgroundColor: "#9041c1" },
                   }}
                 >
-                  <Tab label="Vídeos" />
-                  <Tab label="Slides" />
+                  <Tab label="Conteúdo" />
                   <Tab label="Materiais Extras" />
                   <Tab label="Quiz" />
                   <Tab label="Alunos" />
@@ -652,8 +643,7 @@ const CourseForm = () => {
                     "& .MuiTabs-scrollButtons": { color: "#9041c1" },
                   }}
                 >
-                  <Tab label="Vídeos" />
-                  <Tab label="Slides" />
+                  <Tab label="Conteúdo" />
                   <Tab label="Materiais Extras" />
                   <Tab label="Quiz" />
                   <Tab label="Alunos" />
@@ -663,32 +653,29 @@ const CourseForm = () => {
               </Box>
 
               {selectedTab === 0 && (
-                <CourseVideosTab ref={courseVideosRef} courseId={courseId} />
+                <CourseContentTab courseId={courseId} />
               )}
               {selectedTab === 1 && (
-                <CourseSlidesTab ref={courseSlidesRef} courseId={courseId} />
-              )}
-              {selectedTab === 2 && (
                 <CourseMaterialsTab
                   ref={courseMaterialsRef}
                   courseId={courseId}
                 />
               )}
-              {selectedTab === 3 && (
+              {selectedTab === 2 && (
                 <CourseQuizzesTab ref={courseQuizzesRef} courseId={courseId} />
               )}
-              {selectedTab === 4 && (
+              {selectedTab === 3 && (
                 <CourseStudentsTab
                   ref={courseStudentsRef}
                   courseId={courseId}
                 />
               )}
-              {selectedTab === 5 && (
+              {selectedTab === 4 && (
                 <Typography variant="h6" sx={{ color: "#666" }}>
                   <CourseAssessmentsTab />
                 </Typography>
               )}
-              {selectedTab === 6 && <CourseAssignmentsTab />}
+              {selectedTab === 5 && <CourseAssignmentsTab />}
             </>
           )}
         </Paper>

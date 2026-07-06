@@ -260,13 +260,15 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
       return { students: [], quizzes: [], summary: {}, videoNames: {}, slideNames: {} };
     }
 
-    // Buscar nomes dos vídeos e slides
+    // Buscar nomes dos vídeos, slides e da nova collection de conteúdo
     const videosRef = ref(database, `courseVideos/${courseId}`);
     const slidesRef = ref(database, `courseSlides/${courseId}`);
-    
-    const [videosSnapshot, slidesSnapshot] = await Promise.all([
+    const contentRef = ref(database, `courseContent/${courseId}`);
+
+    const [videosSnapshot, slidesSnapshot, contentSnapshot] = await Promise.all([
       get(videosRef),
-      get(slidesRef)
+      get(slidesRef),
+      get(contentRef)
     ]);
 
     const videoNames = {};
@@ -277,6 +279,18 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
       const videosData = videosSnapshot.val();
       Object.entries(videosData).forEach(([videoId, videoData]) => {
         videoNames[videoId] = videoData.title || videoData.videoTitle || `Vídeo ${videoId.substring(0, 8)}`;
+      });
+    }
+
+    // Itens da nova collection unificada (vídeos e slides) têm quiz chaveado
+    // pelo id puro (sem prefixo), então entram no mapa de videoNames.
+    if (contentSnapshot.exists()) {
+      const contentData = contentSnapshot.val();
+      Object.entries(contentData).forEach(([contentId, item]) => {
+        if (item && typeof item === "object") {
+          videoNames[contentId] =
+            item.title || `Conteúdo ${contentId.substring(0, 8)}`;
+        }
       });
     }
 

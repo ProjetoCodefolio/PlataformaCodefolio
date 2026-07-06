@@ -48,6 +48,7 @@ import {
   normalizeDiagnosticFlag,
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
+import { fetchCourseContentItems } from "$api/services/courses/content";
 
 const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   // Estados existentes
@@ -114,18 +115,31 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   }, [editQuiz]);
 
-  // Função para carregar vídeos
+  // Função para carregar os alvos de quiz da aba "Quizzes de Conteúdo":
+  // itens da nova collection unificada (vídeos e slides) + vídeos legados.
+  // Ambos usam a mesma chave de quiz (courseQuizzes/{courseId}/{id}, sem prefixo).
   const loadVideos = async () => {
     try {
-      const videosData = await fetchCourseVideosForQuiz(courseId);
-      setVideos(videosData);
+      const [contentData, videosData] = await Promise.all([
+        fetchCourseContentItems(courseId),
+        fetchCourseVideosForQuiz(courseId),
+      ]);
 
-      if (videosData.length > 0 && !newQuizVideoId) {
-        setNewQuizVideoId(videosData[0].id);
+      const contentTargets = contentData.map((item) => ({
+        id: item.id,
+        title:
+          item.category === "slide" ? `${item.title} (Slide)` : item.title,
+      }));
+
+      const targets = [...contentTargets, ...videosData];
+      setVideos(targets);
+
+      if (targets.length > 0 && !newQuizVideoId) {
+        setNewQuizVideoId(targets[0].id);
       }
     } catch (error) {
-      console.error("Erro ao carregar vídeos:", error);
-      toast.error("Erro ao buscar vídeos do curso");
+      console.error("Erro ao carregar conteúdo:", error);
+      toast.error("Erro ao buscar o conteúdo do curso");
       setVideos([]);
     }
   };
@@ -848,8 +862,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         sx={{ mb: 3 }}
         variant="fullWidth"
       >
-        <Tab label="Quizzes de Vídeos" />
-        <Tab label="Quizzes de Slides" />
+        <Tab label="Quizzes de Conteúdo" />
+        <Tab label="Quizzes de Slides (legado)" />
       </Tabs>
 
       {/* Conteúdo da tab de quizzes de vídeos */}
@@ -870,7 +884,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
             handleDiagnosticToggle={handleDiagnosticToggle}
             questionFormRef={questionFormRef}
-            entityType="vídeo"
+            entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
           />
 
@@ -887,7 +901,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleEditQuestion={handleEditQuestion}
             handleRemoveQuestion={handleRemoveQuestion}
             quizzesListEndRef={quizzesListEndRef}
-            entityType="vídeo"
+            entityType="conteúdo"
             entityItems={videosState}
             courseId={courseId}
             onAutoSaveQuestion={handleAutoSaveQuestion}
@@ -901,7 +915,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           {!slidesState || slidesState.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2 }}>
               <Typography variant="body1" color="text.secondary">
-                Nenhum slide cadastrado ainda. Cadastre slides na aba "Slides" para criar quizzes.
+                Nenhum slide no formato legado. Para slides novos, crie o quiz
+                na aba "Quizzes de Conteúdo" — eles aparecem no seletor de
+                conteúdo.
               </Typography>
             </Box>
           ) : (
@@ -1194,7 +1210,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             behavior: "smooth",
           });
         }}
-        title={`Quiz ${activeTab === 0 ? "do vídeo" : "do slide"
+        title={`Quiz ${activeTab === 0 ? "do conteúdo" : "do slide"
           } adicionado com sucesso!`}
       />
 

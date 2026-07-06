@@ -157,7 +157,7 @@ export default function QuizGradesOverview() {
   };
 
   const handleBack = () => {
-    navigate(`/adm-cursos?courseId=${courseId}&tab=3`);
+    navigate(`/adm-cursos?courseId=${courseId}&tab=2`);
   };
 
   const handleSortClick = (field) => {
@@ -254,7 +254,7 @@ export default function QuizGradesOverview() {
         {/* Breadcrumbs */}
         <BreadcrumbsComponent
           items={[
-            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=3` },
+            { label: "Curso", path: `/adm-cursos?courseId=${courseId}&tab=2` },
             { label: "Visão Geral de Notas dos Quizzes" },
           ]}
           onBack={handleBack}

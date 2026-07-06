@@ -109,6 +109,16 @@
         }
       }
     },
+
+    "courseContent": {
+      "$courseId": {
+        ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        "$contentId": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+        }
+      }
+    },
     
     "courseAliases": {
       "$aliasId": {

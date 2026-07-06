@@ -75,6 +75,18 @@ const fetchContentDetails = async (type, itemId, courseId) => {
           contentUrl: videoData.url || null,
         };
       }
+
+      // Fallback: item da nova collection unificada de conteúdo
+      const contentSnapshot = await get(
+        ref(database, `courseContent/${courseId}/${itemId}`)
+      );
+      if (contentSnapshot.exists()) {
+        const contentData = contentSnapshot.val();
+        return {
+          contentTitle: contentData.title || "Conteúdo sem título",
+          contentUrl: contentData.url || null,
+        };
+      }
     } else if (type === "quiz") {
       // Buscar quiz em courseQuizzes
       const quizRef = ref(database, `courseQuizzes/${courseId}`);
@@ -102,6 +114,18 @@ const fetchContentDetails = async (type, itemId, courseId) => {
         return {
           contentTitle: slideData.title || "Slide sem título",
           contentUrl: slideData.url || null,
+        };
+      }
+
+      // Fallback: slide da nova collection unificada de conteúdo
+      const contentSnapshot = await get(
+        ref(database, `courseContent/${courseId}/${itemId}`)
+      );
+      if (contentSnapshot.exists()) {
+        const contentData = contentSnapshot.val();
+        return {
+          contentTitle: contentData.title || "Slide sem título",
+          contentUrl: contentData.url || null,
         };
       }
     }

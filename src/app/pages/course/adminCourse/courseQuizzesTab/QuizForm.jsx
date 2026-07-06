@@ -33,6 +33,10 @@ const QuizForm = ({
   entityType,
   additionalButtons,
 }) => {
+  // Rótulo do seletor de alvo do quiz ("vídeo" legado ou "conteúdo" unificado).
+  const entityName = entityType || "vídeo";
+  const entityLabel = entityName.charAt(0).toUpperCase() + entityName.slice(1);
+
   return (
     <>
       <Typography
@@ -52,12 +56,12 @@ const QuizForm = ({
                 fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
-              Vídeo
+              {entityLabel}
             </InputLabel>
             <Select
               value={newQuizVideoId}
               onChange={(e) => setNewQuizVideoId(e.target.value)}
-              label="Vídeo"
+              label={entityLabel}
               disabled={!!editQuiz}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": {
@@ -80,8 +84,8 @@ const QuizForm = ({
             </Select>
             <FormHelperText sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
               {editQuiz
-                ? "Não é possível alterar o vídeo de um quiz existente"
-                : "Selecione o vídeo para este quiz"}
+                ? `Não é possível alterar o ${entityName} de um quiz existente`
+                : `Selecione o ${entityName} para este quiz`}
             </FormHelperText>
           </FormControl>
         </Grid>

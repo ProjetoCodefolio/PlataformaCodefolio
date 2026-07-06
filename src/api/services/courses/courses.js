@@ -153,9 +153,19 @@ const loadAnonymousCourses = async (coursesArray) => {
     const enrichedCourses = await Promise.all(
       coursesArray.map(async (course) => {
         const courseVideosRef = ref(database, `courseVideos/${course.courseId}`);
-        const videoSnapshot = await get(courseVideosRef);
+        const courseContentRef = ref(database, `courseContent/${course.courseId}`);
+        const [videoSnapshot, contentSnapshot] = await Promise.all([
+          get(courseVideosRef),
+          get(courseContentRef),
+        ]);
         const videosData = videoSnapshot.val() || {};
-        const totalVideos = Object.keys(videosData).length;
+        // Vídeos da nova collection unificada também contam no total
+        // (slides ficam fora do denominador, como no formato legado).
+        const contentData = contentSnapshot.val() || {};
+        const contentVideosCount = Object.values(contentData).filter(
+          (item) => item && typeof item === "object" && item.category !== "slide"
+        ).length;
+        const totalVideos = Object.keys(videosData).length + contentVideosCount;
         const progressData = localProgress[course.courseId] || { totalVideos: 0, completedVideos: 0 };
         const effectiveTotal = Math.max(totalVideos, progressData.totalVideos);
         const progress = effectiveTotal > 0 ? (progressData.completedVideos / effectiveTotal) * 100 : 0;
@@ -250,6 +260,7 @@ export const deleteCourse = async (courseId) => {
     // Conteúdo do curso (nós chaveados por courseId)
     updates[`courses/${courseId}`] = null;
     updates[`courseVideos/${courseId}`] = null;
+    updates[`courseContent/${courseId}`] = null;
     updates[`courseQuizzes/${courseId}`] = null;
     updates[`courseSlides/${courseId}`] = null;
     updates[`courseMaterials/${courseId}`] = null;

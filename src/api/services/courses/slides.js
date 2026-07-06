@@ -2,6 +2,7 @@
 import { ref, set, get, update, remove, push } from "firebase/database";
 
 import { database } from "../../config/firebase";
+import { getNextContentOrder } from "./contentOrder";
 
 /**
  * Busca slides de um curso específico
@@ -20,12 +21,21 @@ export const fetchCourseSlides = async (courseId) => {
     }
 
     const courseSlides = snapshot.val();
-    const slidesArray = Object.entries(courseSlides).map(([key, slide]) => ({
-      id: key,
-      ...slide,
-    }));
+    const slidesArray = Object.entries(courseSlides)
+      .filter(([, slide]) => slide && typeof slide === "object")
+      .map(([key, slide]) => ({
+        id: key,
+        ...slide,
+      }));
 
-    return slidesArray;
+    // Ordena pela ordem global do conteúdo. Slides legados (sem `order`) vão
+    // para o fim, preservando o comportamento anterior.
+    return slidesArray.sort((a, b) => {
+      const orderA = typeof a.order === "number" ? a.order : Number.POSITIVE_INFINITY;
+      const orderB = typeof b.order === "number" ? b.order : Number.POSITIVE_INFINITY;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a.id).localeCompare(String(b.id));
+    });
   } catch (error) {
     console.error("Erro ao buscar slides:", error);
     throw error;
@@ -80,10 +90,14 @@ export const addCourseSlide = async (courseId, slideData) => {
     const courseSlidesRef = ref(database, `courseSlides/${courseId}`);
     const newSlideRef = push(courseSlidesRef);
 
+    // Novo slide entra no fim da ordem global do conteúdo (vídeos + slides).
+    const order = await getNextContentOrder(courseId);
+
     const slide = {
       title: slideData.title.trim(),
       url: slideData.url.trim(),
       description: String(slideData.description || ""),
+      order,
     };
 
     await set(newSlideRef, slide);
@@ -193,12 +207,27 @@ export const saveAllCourseSlides = async (
         isIndependent: true,
       };
 
+      // Preservar a ordem global do conteúdo. Este bulk save usa `set` (sobrescreve
+      // o nó inteiro); sem isto o campo `order` seria apagado e a ordenação
+      // arrastável definida na aba "Conteúdo" se perderia ao salvar o curso.
+      if (typeof slide.order === "number") {
+        slideData.order = slide.order;
+      }
+      // Preservar vínculos existentes (quiz/vídeo) que também seriam apagados
+      // pelo `set` caso o slide os possua.
+      if (slide.quizId) slideData.quizId = slide.quizId;
+      if (slide.videoId) slideData.videoId = slide.videoId;
+
       if (slide.id && existingSlideIds.has(slide.id)) {
         await set(
           ref(database, `courseSlides/${finalCourseId}/${slide.id}`),
           slideData
         );
       } else {
+        // Slide novo criado durante o bulk save: garante uma ordem global válida.
+        if (typeof slideData.order !== "number") {
+          slideData.order = await getNextContentOrder(finalCourseId);
+        }
         const newSlideRef = push(courseSlidesRef);
         await set(newSlideRef, slideData);
         slide.id = newSlideRef.key;

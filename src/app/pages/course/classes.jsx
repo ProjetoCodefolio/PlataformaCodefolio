@@ -27,7 +27,8 @@ import CompletionModal from "$components/modals/CompletionModal";
 import QuizGigi from "$components/courses/quizGigi";
 import SlidePlayer from "$components/courses/slidePlayer";
 import { validateQuizAnswers } from "$api/services/courses/quizzes";
-import { saveVideoProgress } from "$api/services/courses/videoProgress";
+import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
+import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {
   loadCourseData,
   saveVideoProgressWithUrgency,
@@ -38,6 +39,7 @@ import {
   recoverUnsavedProgress,
 } from "$api/services/courses/classes";
 import { getCourseIdByAlias } from "$api/services/courses/alias";
+import { updateCourseProgress } from "$api/services/courses/students";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
@@ -171,12 +173,23 @@ const Classes = ({ alias = null }) => {
           return;
         }
 
-        // Carregar slides independentes
+        // Carregar conteúdo da nova collection unificada (courseContent).
+        // Convive com o formato legado (courseVideos/courseSlides) até a
+        // migração completa — o aluno vê os dois, intercalados pela ordem global.
+        const contentItems = await loadCourseContentForStudent(courseId, {
+          fetchVideoProgress,
+          userId: userDetails?.userId,
+          userQuizzesResults: courseData.userQuizzesResults,
+        });
+
+        // Carregar slides independentes (formato legado)
         const slidesData = await loadCourseSlides(courseId);
 
-        // Formatar cada slide para aparecer como um item na lista de vídeos
+        // Formatar cada slide para aparecer como um item na lista de conteúdo.
+        // A ordem (`order`) é compartilhada globalmente com os vídeos, então
+        // slides e vídeos são intercalados pela ordem definida na aba "Conteúdo".
         const formattedSlides = await Promise.all(
-          slidesData.map(async (slide) => {
+          slidesData.map(async (slide, index) => {
             // Verificar se este slide tem quiz associado
             const hasQuiz = await checkSlideHasQuiz(courseId, slide.id);
 
@@ -190,7 +203,9 @@ const Classes = ({ alias = null }) => {
               url: slide.url,
               watched: true,
               progress: 100, // Slides são sempre considerados 100% vistos
-              order: 1000 + parseInt(Math.random() * 1000), // Para aparecer após os vídeos
+              // Slides legados (sem `order`) recebem um valor alto para aparecer
+              // após os vídeos, preservando o comportamento anterior.
+              order: typeof slide.order === "number" ? slide.order : 1000 + index,
               quizId: hasQuiz ? `${courseId}/slide_${slide.id}` : null,
               quizPassed: false, // Inicialmente não completado
             };
@@ -213,21 +228,54 @@ const Classes = ({ alias = null }) => {
           order: 3000 + i,
         }));
 
-        // Combinar vídeos com slides e vídeos de alunos
+        // Combinar vídeos com slides e vídeos de alunos, ordenando pela ordem
+        // global do conteúdo. Vídeos e slides usam a mesma sequência (0..N-1) e
+        // são intercalados; slides legados (order alto) ficam após os vídeos e
+        // os vídeos de "sala invertida" (order 3000+) permanecem por último.
         const combinedContent = [
+          ...contentItems,
           ...courseData.videos,
           ...formattedSlides,
           ...formattedFlipped,
-        ];
+        ].sort((a, b) => {
+          const orderA = typeof a?.order === "number" ? a.order : Number.POSITIVE_INFINITY;
+          const orderB = typeof b?.order === "number" ? b.order : Number.POSITIVE_INFINITY;
+          if (orderA !== orderB) return orderA - orderB;
+          // Desempate estável: vídeos antes de slides, depois por id.
+          if (!!a?.isSlide !== !!b?.isSlide) return a?.isSlide ? 1 : -1;
+          return String(a?.id).localeCompare(String(b?.id));
+        });
 
         setCourseTitle(courseData.courseTitle);
         setCourseOwnerUid(courseData.courseOwnerUid);
         setVideos(combinedContent);
+
+        // Recalcula o progresso do curso incluindo os vídeos da nova collection
+        // (loadCourseData só considera os vídeos legados no cálculo). Mantém a
+        // semântica existente: apenas vídeos contam no percentual (slides e
+        // itens independentes ficam fora do denominador).
+        if (userDetails?.userId) {
+          const progressVideos = combinedContent.filter(
+            (v) => v && !v.isSlide && !v.isIndependent
+          );
+          updateCourseProgress(userDetails.userId, courseId, progressVideos);
+        }
         setUserAttempts(courseData.userQuizzesResults);
 
         if (!currentVideoId) {
+          // O item inicial deve respeitar a ORDEM GLOBAL da lista combinada
+          // (conteúdo novo + legado), e não o `nextVideoId` calculado só com os
+          // vídeos legados — senão o aluno abre no vídeo que "antigamente" era o
+          // primeiro, ignorando a reordenação. Escolhe o primeiro item ainda não
+          // concluído; se todos estiverem concluídos, o primeiro da lista.
+          const firstUnfinished = combinedContent.find(
+            (item) =>
+              item &&
+              !item.isIndependent &&
+              (!item.watched || (item.quizId && !item.quizPassed))
+          );
           setCurrentVideoId(
-            courseData.nextVideoId || combinedContent[0]?.id || null
+            firstUnfinished?.id || combinedContent[0]?.id || null
           );
         }
       } catch (error) {
@@ -389,10 +437,7 @@ const Classes = ({ alias = null }) => {
     if (previousShowQuiz && !showQuiz && userDetails?.userId && courseId) {
       const updateAttempts = async () => {
         try {
-          const quizResultId =
-            quizSource === "slide"
-              ? `slide_${currentVideoId}`
-              : currentVideoId;
+          const quizResultId = getQuizResultKey(currentVideoId);
 
           const result = await processQuizCompletion(
             true,
@@ -435,6 +480,14 @@ const Classes = ({ alias = null }) => {
   }, []);
 
   // Manipuladores de eventos
+
+  // Chave do quiz/resultado de um conteúdo: slides LEGADOS usam o prefixo
+  // `slide_` (courseQuizzes/{courseId}/slide_{id}); itens da nova collection
+  // unificada (mesmo sendo slides) e vídeos usam o id puro.
+  const getQuizResultKey = (id) => {
+    const item = videos.find((v) => v.id === id);
+    return item?.isSlide && !item?.isContentItem ? `slide_${id}` : id;
+  };
 
   const handleQuizComplete = async (isPassed, action, videoId, quizResultId = null, isSlide = false) => {
     try {
@@ -493,7 +546,7 @@ const Classes = ({ alias = null }) => {
             contentId,
             duration,
             quizSource === "slide",
-            quizSource === "slide" ? `slide_${contentId}` : contentId
+            getQuizResultKey(contentId)
           );
 
           if (result?.attempts) {
@@ -599,10 +652,7 @@ const Classes = ({ alias = null }) => {
         return;
       }
 
-      const quizResultId =
-        quizSource === "slide"
-          ? `slide_${currentVideoId}`
-          : currentVideoId;
+      const quizResultId = getQuizResultKey(currentVideoId);
 
       const { isPassed } = await validateQuizAnswers(
         `${courseId}/${quizResultId}`,
@@ -903,11 +953,7 @@ const Classes = ({ alias = null }) => {
           >
             {showQuiz ? (
               <Quiz
-                quizId={
-                  quizSource === "video"
-                    ? `${courseId}/${currentVideoId}`
-                    : `${courseId}/slide_${currentVideoId}`
-                }
+                quizId={`${courseId}/${getQuizResultKey(currentVideoId)}`}
                 courseId={courseId}
                 currentVideoId={currentVideoId}
                 userDetails={userDetails}
