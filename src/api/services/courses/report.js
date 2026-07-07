@@ -1,6 +1,7 @@
 import { database } from "../../config/firebase";
 import { ref, serverTimestamp, set, get } from "firebase/database";
 import { sendReportEmail } from "../emailService";
+import { fetchFlippedClassroomVideos } from "./submissions";
 
 /**
  * Obtém o próximo número de reporte
@@ -86,6 +87,18 @@ const fetchContentDetails = async (type, itemId, courseId) => {
           contentTitle: contentData.title || "Conteúdo sem título",
           contentUrl: contentData.url || null,
         };
+      }
+
+      // Fallback: vídeo de entrega (sala invertida), id `flip_...`
+      if (itemId && itemId.startsWith("flip_")) {
+        const flippedVideos = await fetchFlippedClassroomVideos(courseId);
+        const match = flippedVideos.find((v) => v.id === itemId);
+        if (match) {
+          return {
+            contentTitle: match.title || "Vídeo de entrega",
+            contentUrl: match.url || null,
+          };
+        }
       }
     } else if (type === "quiz") {
       // Buscar quiz em courseQuizzes

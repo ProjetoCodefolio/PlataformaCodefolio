@@ -49,6 +49,7 @@ import {
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
+import { fetchFlippedClassroomVideos } from "$api/services/courses/submissions";
 
 const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   // Estados existentes
@@ -120,9 +121,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   // Ambos usam a mesma chave de quiz (courseQuizzes/{courseId}/{id}, sem prefixo).
   const loadVideos = async () => {
     try {
-      const [contentData, videosData] = await Promise.all([
+      const [contentData, videosData, flippedData] = await Promise.all([
         fetchCourseContentItems(courseId),
         fetchCourseVideosForQuiz(courseId),
+        fetchFlippedClassroomVideos(courseId),
       ]);
 
       const contentTargets = contentData.map((item) => ({
@@ -131,7 +133,13 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           item.category === "slide" ? `${item.title} (Slide)` : item.title,
       }));
 
-      const targets = [...contentTargets, ...videosData];
+      // Vídeos de entrega (sala de aula invertida): quiz chaveado pelo id `flip_...`.
+      const flippedTargets = flippedData.map((v) => ({
+        id: v.id,
+        title: `${v.title} (Entrega)`,
+      }));
+
+      const targets = [...contentTargets, ...flippedTargets, ...videosData];
       setVideos(targets);
 
       if (targets.length > 0 && !newQuizVideoId) {

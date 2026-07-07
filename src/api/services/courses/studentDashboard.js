@@ -1,5 +1,6 @@
 import { database } from "$api/config/firebase";
 import { ref, get } from "firebase/database";
+import { fetchFlippedClassroomVideos } from "./submissions";
 
 /**
  * Capitaliza as palavras de um nome
@@ -89,6 +90,21 @@ export const fetchQuizData = async (quizId) => {
               foundVideo = slideSnapshot.val();
               foundVideo.id = slideId;
               foundVideo.isSlide = true;
+            }
+          } else if (quizId && quizId.startsWith("flip_")) {
+            // Fallback: quiz associado a um vídeo de entrega (sala invertida).
+            // O id `flip_...` não é um caminho direto, então localizamos pelo
+            // coletor de vídeos de entrega do curso.
+            const flippedVideos = await fetchFlippedClassroomVideos(courseIds[i]);
+            const match = flippedVideos.find((v) => v.id === quizId);
+            if (match) {
+              foundVideo = {
+                title: match.title,
+                url: match.url,
+                description: match.description || "",
+                id: quizId,
+                isSlide: false,
+              };
             }
           } else {
             // Fallback: quiz associado a um item da nova collection unificada

@@ -1,6 +1,7 @@
 import { database } from "$api/config/firebase";
 import { ref, set, get, update, remove } from "firebase/database";
 import { fetchAssignmentsByCourse } from "./assignments";
+import { fetchCourseQuizzes } from "./quizzes";
 
 /**
  * Serviço de Entregas (submissions) de enunciados.
@@ -121,6 +122,20 @@ export const saveSubmission = async ({
   }
 
   try {
+    // Preserva a ordem que o professor definiu para o vídeo desta entrega na
+    // aba "Conteúdo". Como saveSubmission faz `set` (sobrescreve a entrega), sem
+    // isto reenviar a entrega apagaria a ordenação do vídeo de sala invertida.
+    let preservedOrder;
+    const existingSnap = await get(
+      ref(
+        database,
+        `assignmentSubmissions/${courseId}/${assignmentId}/${submitterKey}`
+      )
+    );
+    if (existingSnap.exists()) {
+      preservedOrder = existingSnap.val()?.content?.video?.order;
+    }
+
     const submittedAt = new Date().toISOString();
     const payload = {
       submittedBy,
@@ -128,6 +143,9 @@ export const saveSubmission = async ({
       isLate: computeIsLate(dueDate, submittedAt),
       content: content || {},
     };
+    if (typeof preservedOrder === "number" && payload.content?.video) {
+      payload.content.video.order = preservedOrder;
+    }
     await set(
       ref(
         database,
@@ -229,6 +247,8 @@ export const fetchFlippedClassroomVideos = async (courseId) => {
               url: video.youtubeUrl,
               description: video.description || "",
               type: "video",
+              // Ordem definida pelo professor na aba "Conteúdo" (opcional).
+              order: typeof video.order === "number" ? video.order : undefined,
             });
           }
         });
@@ -239,4 +259,88 @@ export const fetchFlippedClassroomVideos = async (courseId) => {
     console.error("Erro ao buscar vídeos de sala de aula invertida:", error);
     return [];
   }
+};
+
+/**
+ * Persiste a ordem (definida pela reordenação do professor) de um vídeo de sala
+ * de aula invertida, gravando em `.../content/video/order` da entrega.
+ * @param {string} courseId
+ * @param {string} assignmentId
+ * @param {string} submitterKey
+ * @param {number} order
+ */
+export const setFlippedVideoOrder = async (
+  courseId,
+  assignmentId,
+  submitterKey,
+  order
+) => {
+  if (!courseId || !assignmentId || !submitterKey) return;
+  await set(
+    ref(
+      database,
+      `assignmentSubmissions/${courseId}/${assignmentId}/${submitterKey}/content/video/order`
+    ),
+    order
+  );
+};
+
+/**
+ * Carrega e formata os vídeos de sala de aula invertida para a lista/reprodução
+ * do aluno, no MESMO formato dos demais conteúdos (vídeos/slides). Diferente do
+ * comportamento antigo, estes vídeos agora:
+ *  - respeitam a ordem definida pelo professor (campo `order`);
+ *  - contam no progresso do curso (não são mais `isIndependent`);
+ *  - podem ter um quiz associado (courseQuizzes/{courseId}/{flipId}).
+ *
+ * @param {string} courseId
+ * @param {Object} deps - { fetchVideoProgress, userId, userQuizzesResults }
+ * @returns {Promise<Array>}
+ */
+export const loadFlippedClassroomForStudent = async (courseId, deps = {}) => {
+  const { fetchVideoProgress, userId, userQuizzesResults = {} } = deps;
+
+  const flipped = await fetchFlippedClassroomVideos(courseId);
+  if (flipped.length === 0) return [];
+
+  // Um único fetch dos quizzes do curso para descobrir quais vídeos de entrega
+  // têm quiz (chaveado pelo id `flip_...`).
+  const quizzes = await fetchCourseQuizzes(courseId);
+
+  return Promise.all(
+    flipped.map(async (v, i) => {
+      const hasQuiz = !!quizzes?.[v.id];
+
+      let watched = false;
+      let progress = 0;
+      if (userId && typeof fetchVideoProgress === "function") {
+        try {
+          const up = await fetchVideoProgress(userId, courseId, v.id);
+          watched = up?.watched || false;
+          progress = up?.percentageWatched || 0;
+        } catch (error) {
+          console.error(`Erro ao buscar progresso do vídeo de entrega ${v.id}:`, error);
+        }
+      }
+
+      const quizPassed =
+        userQuizzesResults?.[v.id]?.isPassed ||
+        userQuizzesResults?.[v.id]?.passed ||
+        false;
+
+      return {
+        ...v,
+        isFlippedVideo: true,
+        type: "video",
+        requiresPrevious: false,
+        watched,
+        progress,
+        // Sem ordem definida ainda → vai para o fim (mas com valor finito e
+        // estável, para não "embaralhar" a cada carregamento).
+        order: typeof v.order === "number" ? v.order : 100000 + i,
+        quizId: hasQuiz ? `${courseId}/${v.id}` : null,
+        quizPassed,
+      };
+    })
+  );
 };

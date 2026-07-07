@@ -1,6 +1,7 @@
 import { database } from "../../config/firebase";
 import { ref, get } from "firebase/database";
 import { normalizeDiagnosticFlag } from "./quizzes";
+import { fetchFlippedClassroomVideos } from "./submissions";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -265,11 +266,13 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
     const slidesRef = ref(database, `courseSlides/${courseId}`);
     const contentRef = ref(database, `courseContent/${courseId}`);
 
-    const [videosSnapshot, slidesSnapshot, contentSnapshot] = await Promise.all([
-      get(videosRef),
-      get(slidesRef),
-      get(contentRef)
-    ]);
+    const [videosSnapshot, slidesSnapshot, contentSnapshot, flippedVideos] =
+      await Promise.all([
+        get(videosRef),
+        get(slidesRef),
+        get(contentRef),
+        fetchFlippedClassroomVideos(courseId),
+      ]);
 
     const videoNames = {};
     const slideNames = {};
@@ -293,6 +296,11 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
         }
       });
     }
+
+    // Vídeos de entrega (sala invertida): quiz chaveado pelo id `flip_...`.
+    flippedVideos.forEach((v) => {
+      videoNames[v.id] = `${v.title || "Vídeo de entrega"} (Entrega)`;
+    });
 
     // Mapear IDs para nomes dos slides
     if (slidesSnapshot.exists()) {

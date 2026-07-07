@@ -44,7 +44,7 @@ import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
 import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
-import { fetchFlippedClassroomVideos } from "$api/services/courses/submissions";
+import { loadFlippedClassroomForStudent } from "$api/services/courses/submissions";
 import AssignmentList from "$components/courses/assignments/AssignmentList";
 
 const Classes = ({ alias = null }) => {
@@ -212,26 +212,20 @@ const Classes = ({ alias = null }) => {
           })
         );
 
-        // Carregar vídeos entregues no modelo "sala de aula invertida" e
-        // formatá-los para exibição na lista de conteúdo. São marcados como
-        // isIndependent/isFlippedVideo para NÃO afetarem o progresso e a
-        // conclusão do curso (filtrados em checkCourseCompletion).
-        const flippedVideos = await fetchFlippedClassroomVideos(courseId);
-        const formattedFlipped = flippedVideos.map((v, i) => ({
-          ...v,
-          isFlippedVideo: true,
-          isIndependent: true,
-          requiresPrevious: false,
-          watched: false,
-          quizId: null,
-          quizPassed: false,
-          order: 3000 + i,
-        }));
+        // Carregar vídeos entregues no modelo "sala de aula invertida".
+        // Agora são conteúdo de primeira classe: respeitam a ordem definida pelo
+        // professor, CONTAM no progresso (não são mais isIndependent) e podem ter
+        // quiz. Ficam armazenados nas entregas dos alunos (assignmentSubmissions).
+        const formattedFlipped = await loadFlippedClassroomForStudent(courseId, {
+          fetchVideoProgress,
+          userId: userDetails?.userId,
+          userQuizzesResults: courseData.userQuizzesResults,
+        });
 
-        // Combinar vídeos com slides e vídeos de alunos, ordenando pela ordem
-        // global do conteúdo. Vídeos e slides usam a mesma sequência (0..N-1) e
-        // são intercalados; slides legados (order alto) ficam após os vídeos e
-        // os vídeos de "sala invertida" (order 3000+) permanecem por último.
+        // Combinar todo o conteúdo (novo, legado, slides e vídeos de entrega),
+        // ordenando pela ordem global. Todos compartilham a mesma sequência e são
+        // intercalados conforme a ordem definida pelo professor; itens sem ordem
+        // definida (ex.: entregas recém-enviadas) caem no fim.
         const combinedContent = [
           ...contentItems,
           ...courseData.videos,
@@ -250,10 +244,9 @@ const Classes = ({ alias = null }) => {
         setCourseOwnerUid(courseData.courseOwnerUid);
         setVideos(combinedContent);
 
-        // Recalcula o progresso do curso incluindo os vídeos da nova collection
-        // (loadCourseData só considera os vídeos legados no cálculo). Mantém a
-        // semântica existente: apenas vídeos contam no percentual (slides e
-        // itens independentes ficam fora do denominador).
+        // Recalcula o progresso do curso com a lista completa. Contam apenas
+        // vídeos (novos, legados E de entrega/sala invertida); slides e itens
+        // independentes ficam fora do denominador.
         if (userDetails?.userId) {
           const progressVideos = combinedContent.filter(
             (v) => v && !v.isSlide && !v.isIndependent
@@ -418,8 +411,10 @@ const Classes = ({ alias = null }) => {
   // Verifica conclusão do curso quando os vídeos mudam
   useEffect(() => {
     const verifyCourseCompletion = async () => {
+      // Vídeos de entrega (sala invertida) agora CONTAM para a conclusão, então
+      // não são mais filtrados aqui.
       const isCompleted = await checkCourseCompletion(
-        videos.filter((v) => !v.isFlippedVideo),
+        videos,
         userDetails?.userId,
         courseId
       );
@@ -560,9 +555,9 @@ const Classes = ({ alias = null }) => {
           );
         }
 
-        // Verifica conclusão do curso
+        // Verifica conclusão do curso (vídeos de entrega agora contam).
         const isCompleted = await checkCourseCompletion(
-          updatedVideos.filter((v) => !v.isFlippedVideo),
+          updatedVideos,
           userDetails?.userId,
           courseId
         );

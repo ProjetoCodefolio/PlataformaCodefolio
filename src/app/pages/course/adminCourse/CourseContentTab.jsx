@@ -22,6 +22,7 @@ import {
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import HistoryIcon from "@mui/icons-material/History";
+import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import OndemandVideoIcon from "@mui/icons-material/OndemandVideo";
 import ViewCarouselIcon from "@mui/icons-material/ViewCarousel";
 import EditIcon from "@mui/icons-material/Edit";
@@ -55,6 +56,17 @@ import {
   deleteCourseContent,
   validateContentUrl,
 } from "$api/services/courses/content";
+import {
+  fetchCourseVideos,
+  updateCourseVideo,
+  deleteCourseVideo,
+} from "$api/services/courses/videos";
+import {
+  fetchCourseSlides,
+  updateCourseSlide,
+  deleteCourseSlide,
+} from "$api/services/courses/slides";
+import { useAuth } from "$context/AuthContext";
 
 const PURPLE = "#9041c1";
 
@@ -97,7 +109,9 @@ const SortableContentItem = ({ item, index, onEdit, onDelete }) => {
         boxShadow: isDragging ? "0 6px 16px rgba(0,0,0,0.18)" : "none",
       }}
       secondaryAction={
-        item.legacy ? null : (
+        // Vídeos de entrega (source 'flipped') não são editáveis aqui — são
+        // gerenciados na entrega do aluno. Todo o resto (novo + legado) é editável.
+        item.source === "flipped" ? null : (
           <>
             <IconButton
               aria-label="Editar"
@@ -147,22 +161,40 @@ const SortableContentItem = ({ item, index, onEdit, onDelete }) => {
         }}
       />
 
-      {item.legacy && (
-        <Tooltip title="Cadastrado no formato anterior. Por enquanto pode ser reordenado; a edição chegará com a migração.">
+      {item.source === "flipped" ? (
+        <Tooltip title="Vídeo enviado por um aluno/grupo em um trabalho (sala de aula invertida). Você pode reordená-lo aqui; o conteúdo é gerenciado na entrega do aluno.">
           <Chip
-            icon={<HistoryIcon />}
-            label="Anterior"
+            icon={<AssignmentIndIcon />}
+            label="Entrega"
             size="small"
             variant="outlined"
             sx={{
               mr: 1.5,
-              color: "#9e9e9e",
-              borderColor: "#e0e0e0",
-              backgroundColor: "#fafafa",
-              "& .MuiChip-icon": { color: "#bdbdbd" },
+              color: "#2e7d32",
+              borderColor: "#c8e6c9",
+              backgroundColor: "#f1f8f2",
+              "& .MuiChip-icon": { color: "#66bb6a" },
             }}
           />
         </Tooltip>
+      ) : (
+        item.legacy && (
+          <Tooltip title="Cadastrado no formato anterior (vídeos/slides). É editável normalmente por aqui.">
+            <Chip
+              icon={<HistoryIcon />}
+              label="Anterior"
+              size="small"
+              variant="outlined"
+              sx={{
+                mr: 1.5,
+                color: "#9e9e9e",
+                borderColor: "#e0e0e0",
+                backgroundColor: "#fafafa",
+                "& .MuiChip-icon": { color: "#bdbdbd" },
+              }}
+            />
+          </Tooltip>
+        )
       )}
 
       <ListItemText
@@ -178,7 +210,7 @@ const SortableContentItem = ({ item, index, onEdit, onDelete }) => {
             maxWidth: { xs: "140px", sm: "60%" },
           },
         }}
-        sx={{ pr: item.legacy ? 1 : 10 }}
+        sx={{ pr: item.source === "flipped" ? 1 : 10 }}
       />
     </ListItem>
   );
@@ -198,14 +230,18 @@ const emptyForm = {
  * (courseVideos / courseSlides) — este apenas reordenável, marcado "Legado".
  */
 const CourseContentTab = ({ courseId }) => {
+  const { userDetails } = useAuth();
   const [items, setItems] = useState([]); // lista unificada ordenada (nova + legada)
-  const [newItemsById, setNewItemsById] = useState({}); // dados completos dos itens novos (p/ edição)
+  const [fullById, setFullById] = useState({}); // dados completos p/ edição (nova + legada)
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState(emptyForm);
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  // Origem do item em edição: 'content' (nova collection) | 'video' | 'slide'
+  // (legados). Define para onde a atualização/exclusão é roteada.
+  const [editingSource, setEditingSource] = useState("content");
   const [urlError, setUrlError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -228,21 +264,52 @@ const CourseContentTab = ({ courseId }) => {
     }
     try {
       setLoading(true);
-      const [unified, contentItems] = await Promise.all([
-        fetchCourseContent(courseId),
-        fetchCourseContentItems(courseId),
-      ]);
+      // Além da lista unificada (para exibir/ordenar), carregamos os dados
+      // completos das origens EDITÁVEIS (nova collection + vídeos/slides legados)
+      // para popular o formulário de edição. Entregas de alunos não são editáveis.
+      const [unified, contentItems, legacyVideos, legacySlides] =
+        await Promise.all([
+          fetchCourseContent(courseId),
+          fetchCourseContentItems(courseId),
+          fetchCourseVideos(courseId),
+          fetchCourseSlides(courseId),
+        ]);
       setItems(unified);
+
       const map = {};
       contentItems.forEach((it) => {
-        map[it.id] = it;
+        map[it.id] = {
+          category: it.category,
+          title: it.title,
+          url: it.url,
+          description: it.description || "",
+          requiresPrevious: !!it.requiresPrevious,
+        };
       });
-      setNewItemsById(map);
+      legacyVideos.forEach((v) => {
+        map[v.id] = {
+          category: "video",
+          title: v.title || "",
+          url: v.url || "",
+          description: v.description || "",
+          requiresPrevious: !!v.requiresPrevious,
+        };
+      });
+      legacySlides.forEach((s) => {
+        map[s.id] = {
+          category: "slide",
+          title: s.title || "",
+          url: s.url || "",
+          description: s.description || "",
+          requiresPrevious: false,
+        };
+      });
+      setFullById(map);
     } catch (error) {
       console.error("Erro ao carregar conteúdo do curso:", error);
       toast.error("Erro ao carregar o conteúdo do curso");
       setItems([]);
-      setNewItemsById({});
+      setFullById({});
     } finally {
       setLoading(false);
     }
@@ -256,6 +323,7 @@ const CourseContentTab = ({ courseId }) => {
     setForm(emptyForm);
     setIsEditing(false);
     setEditingId(null);
+    setEditingSource("content");
     setUrlError("");
   };
 
@@ -293,9 +361,17 @@ const CourseContentTab = ({ courseId }) => {
     setSubmitting(true);
     try {
       if (isEditing && editingId) {
-        await updateCourseContent(courseId, editingId, form);
+        // Roteia a atualização para a collection de origem do item.
+        if (editingSource === "video") {
+          await updateCourseVideo(courseId, editingId, form);
+        } else if (editingSource === "slide") {
+          await updateCourseSlide(courseId, editingId, form);
+        } else {
+          await updateCourseContent(courseId, editingId, form);
+        }
         toast.success("Conteúdo atualizado com sucesso!");
       } else {
+        // Itens novos são sempre criados na nova collection unificada.
         await addCourseContent(courseId, form);
         toast.success("Conteúdo adicionado com sucesso!");
       }
@@ -310,7 +386,7 @@ const CourseContentTab = ({ courseId }) => {
   };
 
   const handleEdit = (item) => {
-    const full = newItemsById[item.id];
+    const full = fullById[item.id];
     if (!full) return;
     setForm({
       category: full.category,
@@ -321,6 +397,7 @@ const CourseContentTab = ({ courseId }) => {
     });
     setIsEditing(true);
     setEditingId(item.id);
+    setEditingSource(item.source);
     setUrlError("");
     setTimeout(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -330,7 +407,15 @@ const CourseContentTab = ({ courseId }) => {
   const confirmDelete = async () => {
     if (!itemToDelete) return;
     try {
-      await deleteCourseContent(courseId, itemToDelete.id);
+      // Roteia a exclusão para a collection de origem (com as cascatas de cada
+      // uma: bloqueio por quiz, limpeza de progresso, etc.).
+      if (itemToDelete.source === "video") {
+        await deleteCourseVideo(courseId, itemToDelete.id, userDetails?.userId);
+      } else if (itemToDelete.source === "slide") {
+        await deleteCourseSlide(courseId, itemToDelete.id);
+      } else {
+        await deleteCourseContent(courseId, itemToDelete.id);
+      }
       toast.success("Conteúdo excluído com sucesso!");
       if (editingId === itemToDelete.id) resetForm();
       await loadContent();
@@ -401,6 +486,9 @@ const CourseContentTab = ({ courseId }) => {
               value={form.category}
               label="Categoria"
               onChange={(e) => handleCategoryChange(e.target.value)}
+              // Ao editar um item legado (courseVideos/courseSlides) a categoria
+              // é travada, pois trocá-la exigiria mover entre collections.
+              disabled={isEditing && editingSource !== "content"}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": { borderColor: "#666" },
                 "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: PURPLE },
@@ -535,8 +623,9 @@ const CourseContentTab = ({ courseId }) => {
       </Box>
       <Typography variant="body2" sx={{ mb: 2, color: "#666", fontSize: { xs: "0.8rem", sm: "0.9rem" } }}>
         Arraste pela alça para definir a ordem exibida ao aluno. A ordem é salva
-        automaticamente ao soltar. Itens com o selo "Anterior" foram cadastrados
-        no formato antigo — por enquanto podem apenas ser reordenados.
+        automaticamente ao soltar. Itens com o selo "Anterior" vêm do formato
+        antigo e continuam editáveis por aqui. Itens com o selo "Entrega" são
+        vídeos enviados pelos alunos nos trabalhos — esses só podem ser reordenados.
       </Typography>
 
       {loading ? (
