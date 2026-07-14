@@ -28,6 +28,11 @@ import QuizGigi from "$components/courses/quizGigi";
 import SlidePlayer from "$components/courses/slidePlayer";
 import { validateQuizAnswers } from "$api/services/courses/quizzes";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
+import {
+  fetchCourseQuizzes,
+  getQuizAttemptLimit,
+  hasUserReachedQuizAttemptLimit,
+} from "$api/services/courses/quizzes";
 import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {
   loadCourseData,
@@ -80,6 +85,9 @@ const Classes = ({ alias = null }) => {
   const [videoIdBeforeSlide, setVideoIdBeforeSlide] = useState(null);
   const [videoSlides, setVideoSlides] = useState({});
   const [userAttempts, setUserAttempts] = useState({});
+  // Configuração de tentativas por quiz (allowRetry/maxAttempts), chaveada pelo
+  // id do conteúdo (mesma chave usada em userAttempts e em video.quizId).
+  const [quizSettings, setQuizSettings] = useState({});
   const [slides, setSlides] = useState([]); // Novo estado para armazenar slides independentes
   // Adicionar uma verificação para determinar se o quiz é de vídeo ou slide
   const [quizSource, setQuizSource] = useState("video"); // Pode ser "video" ou "slide"
@@ -254,6 +262,18 @@ const Classes = ({ alias = null }) => {
           updateCourseProgress(userDetails.userId, courseId, progressVideos);
         }
         setUserAttempts(courseData.userQuizzesResults);
+
+        // Carrega a configuração de tentativas de cada quiz do curso (usada para
+        // bloquear o início/repetição de quizzes que atingiram o limite).
+        try {
+          const quizzesMap = await fetchCourseQuizzes(courseId);
+          setQuizSettings(quizzesMap || {});
+        } catch (quizSettingsError) {
+          console.error(
+            "Erro ao carregar configurações de tentativas dos quizzes:",
+            quizSettingsError
+          );
+        }
 
         if (!currentVideoId) {
           // O item inicial deve respeitar a ORDEM GLOBAL da lista combinada
@@ -628,6 +648,19 @@ const Classes = ({ alias = null }) => {
   };
 
   const handleQuizStart = (quizId, videoId) => {
+    // Bloqueia o início/repetição quando o aluno já esgotou as tentativas
+    // configuradas para este quiz (allowRetry=false → 1; ou maxAttempts).
+    const quizKey = quizId.includes("/") ? quizId.split("/")[1] : quizId;
+    const attemptLimit = getQuizAttemptLimit(quizSettings[quizKey]);
+    if (hasUserReachedQuizAttemptLimit(userAttempts, quizId, attemptLimit)) {
+      toast.info(
+        attemptLimit === 1
+          ? "Este quiz permite apenas 1 tentativa, que você já utilizou."
+          : `Você já atingiu o limite de ${attemptLimit} tentativas para este quiz.`
+      );
+      return;
+    }
+
     setCurrentVideoId(videoId);
 
     // Detectar se é um quiz de slide ou de vídeo
@@ -972,7 +1005,9 @@ const Classes = ({ alias = null }) => {
                 }
                 onOpenSlide={() => handleOpenSlide(null, currentVideoId)}
                 isSlideQuiz={quizSource === "slide"}
-                allowRetry={advancedSettings.quiz.allowRetry}
+                attemptsUsed={
+                  userAttempts[getQuizResultKey(currentVideoId)]?.attemptCount || 0
+                }
                 showResultAfterCompletion={
                   advancedSettings.quiz.showResultAfterCompletion
                 }
@@ -1104,6 +1139,7 @@ const Classes = ({ alias = null }) => {
                     onQuizStart={handleQuizStart}
                     currentVideoId={currentVideoId}
                     userQuizAttempts={userAttempts}
+                    quizSettings={quizSettings}
                     advancedSettings={advancedSettings} // Adicione esta linha
                   />
                 ) : selectedTab === 1 ? (

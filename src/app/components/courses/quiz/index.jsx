@@ -14,6 +14,8 @@ import {
   fetchQuizQuestions,
   validateQuizAnswers,
   saveQuizResults,
+  normalizeAllowRetry,
+  normalizeMaxAttempts,
 } from "$api/services/courses/quizzes";
 import { useAuth } from "$context/AuthContext";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
@@ -36,6 +38,7 @@ const Quiz = ({
   advancedSettings,
   hasSlide,
   onOpenSlide,
+  attemptsUsed = 0,
 }) => {
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -48,6 +51,14 @@ const Quiz = ({
   const [quizMinPercentage, setQuizMinPercentage] = useState(70);
   const [result, setResult] = useState(null);
   const { userDetails: authUserDetails } = useAuth();
+
+  // Configuração de tentativas deste quiz (por quiz, vinda do próprio quizData).
+  const [quizAllowRetry, setQuizAllowRetry] = useState(true);
+  const [quizMaxAttempts, setQuizMaxAttempts] = useState(null);
+  // Tentativas já feitas antes desta sessão (capturadas uma vez na montagem)
+  // somadas às submissões feitas agora, para saber quando o limite é atingido.
+  const [baseAttempts] = useState(() => Number(attemptsUsed) || 0);
+  const [sessionAttempts, setSessionAttempts] = useState(0);
 
   useEffect(() => {
     const loadQuiz = async () => {
@@ -63,6 +74,8 @@ const Quiz = ({
         }
 
         setQuestions(quizData.questions || []);
+        setQuizAllowRetry(normalizeAllowRetry(quizData.allowRetry));
+        setQuizMaxAttempts(normalizeMaxAttempts(quizData.maxAttempts));
 
         if (
           quizData.minPercentage !== undefined &&
@@ -295,6 +308,10 @@ const Quiz = ({
         return;
       }
 
+      // Cada submissão conta como uma tentativa (independe de passar ou não),
+      // acompanhando o incremento feito no banco por saveQuizResults.
+      setSessionAttempts((prev) => prev + 1);
+
       if (isPassed) {
         if (onComplete) {
           await onComplete(true);
@@ -346,6 +363,8 @@ const Quiz = ({
         }
 
         setQuestions(quizData.questions);
+        setQuizAllowRetry(normalizeAllowRetry(quizData.allowRetry));
+        setQuizMaxAttempts(normalizeMaxAttempts(quizData.maxAttempts));
 
         if (quizData.minPercentage !== undefined) {
           setQuizMinPercentage(Number(quizData.minPercentage));
@@ -389,7 +408,13 @@ const Quiz = ({
     return `${minPercentage}%`;
   };
 
-  const canRetryQuiz = advancedSettings?.quiz?.allowRetry !== false;
+  // Total de tentativas já consumidas (antes desta sessão + submissões atuais).
+  const totalAttempts = baseAttempts + sessionAttempts;
+  // O aluno pode refazer se o quiz permite repetição E ainda não atingiu o
+  // limite de tentativas (quando houver um limite definido).
+  const canRetryQuiz =
+    quizAllowRetry &&
+    (quizMaxAttempts == null || totalAttempts < quizMaxAttempts);
   const shouldShowResults =
     advancedSettings?.quiz?.showResultAfterCompletion !== false;
 
@@ -774,8 +799,7 @@ const Quiz = ({
               </Button>
             )}
 
-            {!result.isPassed &&
-              advancedSettings?.quiz?.allowRetry !== false && (
+            {!result.isPassed && canRetryQuiz && (
                 <Button
                   variant="outlined"
                   onClick={handleRetry}

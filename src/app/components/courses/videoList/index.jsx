@@ -23,6 +23,7 @@ import { toast } from "react-toastify";
 import { isVideoLocked } from "$api/services/courses/videos";
 import {
   hasUserReachedQuizAttemptLimit,
+  getQuizAttemptLimit,
   isQuizLocked,
 } from "$api/services/courses/quizzes";
 
@@ -32,12 +33,22 @@ const VideoList = ({
   onQuizStart,
   currentVideoId,
   userQuizAttempts = {},
-  maxAttempts = Infinity, // Por padrão, sem limite de tentativas
+  quizSettings = {}, // Config de tentativas por quiz (allowRetry/maxAttempts)
   course,
   slideQuizzes,
   advancedSettings, // Adicione advancedSettings aos props do componente
 }) => {
   const [pendingLimitUpdates, setPendingLimitUpdates] = useState({});
+
+  // Extrai a chave do quiz (id do conteúdo) a partir do video.quizId, que pode
+  // vir como "courseId/videoId" ou apenas "videoId".
+  const getQuizKey = (quizId) =>
+    quizId ? (quizId.includes("/") ? quizId.split("/")[1] : quizId) : null;
+
+  // Limite EFETIVO de tentativas do quiz de um vídeo (1 se repetição desativada,
+  // o número configurado, ou Infinity se ilimitado).
+  const getVideoAttemptLimit = (video) =>
+    getQuizAttemptLimit(quizSettings[getQuizKey(video?.quizId)]);
   
   // Make sure to initialize properly when component mounts or userQuizAttempts changes
   useEffect(() => {
@@ -48,35 +59,22 @@ const VideoList = ({
       videos.forEach(video => {
         if (video.quizId) {
           // Extract the videoId part (handle both formats)
-          const videoId = video.quizId.includes("/") ? video.quizId.split("/")[1] : video.quizId;
-          
+          const videoId = getQuizKey(video.quizId);
+
           // Check if this quiz has reached its attempt limit
           const attemptData = userQuizAttempts[videoId];
           const attempts = attemptData?.attemptCount || 0;
-          
-          if (attempts >= maxAttempts) {
+
+          if (attempts >= getVideoAttemptLimit(video)) {
             initialUpdates[video.quizId] = true;
           }
         }
       });
-      
+
       // Set the initial state with all attempts that reached the limit
       setPendingLimitUpdates(initialUpdates);
     }
-  }, [userQuizAttempts, videos, maxAttempts]);
-  
-  // Debug - log whenever attemptsExhausted changes for each video
-  useEffect(() => {
-    if (videos && videos.length > 0) {
-      videos.forEach(video => {
-        if (video.quizId) {
-          const videoId = video.quizId.includes("/") ? video.quizId.split("/")[1] : video.quizId;
-          const attempts = userQuizAttempts[videoId]?.attemptCount || 0;
-          const exhausted = (attempts >= maxAttempts) || pendingLimitUpdates[video.quizId];
-        }
-      });
-    }
-  }, [videos, userQuizAttempts, pendingLimitUpdates, maxAttempts]);
+  }, [userQuizAttempts, videos, quizSettings]);
 
   // Handler para clicar em um vídeo bloqueado
   const handleLockedClick = (video, previousVideo) => {
@@ -106,9 +104,11 @@ const VideoList = ({
   };
 
   // Handler para limite de tentativas atingido
-  const handleMaxAttemptsReached = () => {
+  const handleMaxAttemptsReached = (attemptLimit) => {
     toast.info(
-      `Você já atingiu o limite de ${maxAttempts} tentativas para este quiz.`,
+      attemptLimit === 1
+        ? "Este quiz permite apenas 1 tentativa, que você já utilizou."
+        : `Você já atingiu o limite de ${attemptLimit} tentativas para este quiz.`,
       {
         position: "bottom-center",
         autoClose: 5000,
@@ -135,15 +135,16 @@ const VideoList = ({
           : video.watched && (!video.quizId || video.quizPassed);
         const isCurrent = video.id === currentVideoId;
         const quizLocked = video.isSlide ? false : isQuizLocked(video);
-        const permanentlyExhausted = 
+        // Limite efetivo por quiz (allowRetry=false → 1; maxAttempts; ou Infinity).
+        const attemptLimit = getVideoAttemptLimit(video);
+        const permanentlyExhausted =
           video.quizId &&
-          (advancedSettings?.quiz?.allowRetry === false || 
-           hasUserReachedQuizAttemptLimit(
-             userQuizAttempts,
-             video.quizId,
-             maxAttempts
-           ));
-        
+          hasUserReachedQuizAttemptLimit(
+            userQuizAttempts,
+            video.quizId,
+            attemptLimit
+          );
+
         // Include both permanent exhaustion and pending updates
         const attemptsExhausted = permanentlyExhausted || pendingLimitUpdates[video.quizId];
 
@@ -354,7 +355,7 @@ const VideoList = ({
                       <IconButton
                         onClick={
                           attemptsExhausted
-                            ? handleMaxAttemptsReached
+                            ? () => handleMaxAttemptsReached(attemptLimit)
                             : () => onQuizStart(video.quizId, video.id)
                         }
                         sx={{
@@ -543,7 +544,7 @@ const VideoList = ({
                     variant="outlined"
                     onClick={
                       attemptsExhausted
-                        ? handleMaxAttemptsReached
+                        ? () => handleMaxAttemptsReached(attemptLimit)
                         : () => onQuizStart(video.quizId, video.id)
                     }
                     startIcon={
