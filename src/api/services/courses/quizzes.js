@@ -7,6 +7,51 @@ export const normalizeDiagnosticFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
 
 /**
+ * Normaliza a flag de "permitir repetição" de um quiz. O padrão é `true`
+ * (comportamento histórico: repetição liberada) — só é `false` quando o
+ * professor desativa explicitamente.
+ */
+export const normalizeAllowRetry = (value) => value !== false;
+
+/**
+ * Normaliza o limite máximo de tentativas. Retorna um inteiro positivo quando
+ * informado, ou `null` quando ausente/ inválido (= tentativas ilimitadas).
+ */
+export const normalizeMaxAttempts = (value) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+};
+
+/**
+ * Calcula o limite EFETIVO de tentativas de um quiz:
+ * - repetição desativada  → 1 tentativa;
+ * - repetição ativada com limite informado → esse número;
+ * - repetição ativada sem limite → Infinity (ilimitado).
+ * @param {Object} quiz - Quiz (ou objeto com allowRetry/maxAttempts)
+ * @returns {number}
+ */
+export const getQuizAttemptLimit = (quiz) => {
+  if (!quiz) return Infinity;
+  if (!normalizeAllowRetry(quiz.allowRetry)) return 1;
+  const max = normalizeMaxAttempts(quiz.maxAttempts);
+  return max == null ? Infinity : max;
+};
+
+/**
+ * Monta os campos de configuração de tentativas para persistência. Como vários
+ * pontos reescrevem o nó do quiz inteiro com `set`, este helper garante que
+ * `allowRetry`/`maxAttempts` sejam sempre preservados. `maxAttempts` só é
+ * incluído quando definido (ausência = ilimitado no RTDB).
+ */
+export const persistableQuizSettings = (quiz) => {
+  const settings = { allowRetry: normalizeAllowRetry(quiz?.allowRetry) };
+  const max = normalizeMaxAttempts(quiz?.maxAttempts);
+  if (max != null) settings.maxAttempts = max;
+  return settings;
+};
+
+/**
  * Aplica os campos opcionais de imagem (imageUrl/imageWidth/imageHeight) a uma
  * questão. Como o Realtime Database não aceita valores `undefined`, os campos
  * só são adicionados quando há uma URL válida; caso contrário são removidos
@@ -336,6 +381,8 @@ export const addQuiz = async (courseId, videoId, minPercentage = 0, isDiagnostic
       videoId,
       minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(isDiagnostic),
+      // Por padrão o quiz permite repetição e não tem limite de tentativas.
+      allowRetry: true,
       questions: [],
       courseId,
     };
@@ -477,6 +524,7 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+      ...persistableQuizSettings(quiz),
       courseId: courseId,
       videoId: videoId,
     });
@@ -541,6 +589,7 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+      ...persistableQuizSettings(quiz),
       courseId: courseId,
       videoId: videoId,
     });
@@ -580,6 +629,7 @@ export const removeQuizQuestion = async (courseId, quiz, questionId) => {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+      ...persistableQuizSettings(quiz),
       courseId: courseId,
       videoId: videoId,
     });
@@ -657,6 +707,52 @@ export const updateQuizDiagnosticStatus = async (courseId, quiz, isDiagnostic) =
     throw error;
   }
 };
+
+/**
+ * Atualiza a configuração de tentativas de um quiz (permitir repetição e o
+ * limite máximo de tentativas).
+ * @param {string} courseId - ID do curso
+ * @param {Object} quiz - Quiz a atualizar
+ * @param {{ allowRetry: boolean, maxAttempts: (number|string|null) }} settings
+ * @returns {Promise<Object>} - Quiz atualizado
+ */
+export const updateQuizRetrySettings = async (
+  courseId,
+  quiz,
+  { allowRetry, maxAttempts } = {}
+) => {
+  try {
+    if (!courseId || !quiz) {
+      throw new Error("Parâmetros inválidos para atualizar tentativas do quiz");
+    }
+
+    const { videoId } = quiz;
+    const normalizedAllowRetry = normalizeAllowRetry(allowRetry);
+    // Se a repetição estiver desativada, o limite não se aplica.
+    const normalizedMaxAttempts = normalizedAllowRetry
+      ? normalizeMaxAttempts(maxAttempts)
+      : null;
+
+    const updatedQuiz = {
+      ...quiz,
+      allowRetry: normalizedAllowRetry,
+      maxAttempts: normalizedMaxAttempts,
+    };
+
+    // Atualizar no Firebase. `maxAttempts: null` remove a chave no RTDB, o que
+    // representa "tentativas ilimitadas".
+    const quizRef = ref(database, `courseQuizzes/${courseId}/${videoId}`);
+    await update(quizRef, {
+      allowRetry: normalizedAllowRetry,
+      maxAttempts: normalizedMaxAttempts,
+    });
+
+    return updatedQuiz;
+  } catch (error) {
+    console.error("Erro ao atualizar tentativas do quiz:", error);
+    throw error;
+  }
+};
 /**
  * Adiciona múltiplas questões de uma vez ao quiz
  * @param {string} courseId - ID do curso
@@ -691,6 +787,7 @@ export const addMultipleQuestionsToQuiz = async (courseId, quiz, questions) => {
       questions: updatedQuestions,
       minPercentage: quiz.minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+      ...persistableQuizSettings(quiz),
       courseId: courseId,
       videoId: videoId,
     });
@@ -722,6 +819,7 @@ export const saveAllCourseQuizzes = async (
         questions: quiz.questions,
         minPercentage: quiz.minPercentage,
         isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+        ...persistableQuizSettings(quiz),
         courseId: targetCourseId,
         videoId: quiz.videoId,
       };
@@ -754,6 +852,7 @@ export const saveQuiz = async (courseId, videoId, quizData) => {
       questions: quizData.questions,
       minPercentage: quizData.minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
+      ...persistableQuizSettings(quizData),
       courseId: courseId,
       videoId: videoId,
     });
