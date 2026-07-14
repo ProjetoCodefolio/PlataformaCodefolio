@@ -673,8 +673,11 @@ const Quiz = ({
                       </Box>
                     </Box>
 
-                    {/* Mostrar a resposta correta apenas se o usuário errou */}
-                    {!answer.isCorrect && (
+                    {/* Mostrar a resposta correta apenas se o usuário errou
+                        E o quiz não permitir refazer. Se o aluno pode refazer,
+                        revelar o gabarito permitiria memorizar a alternativa
+                        certa e passar na próxima tentativa. */}
+                    {!answer.isCorrect && !canRetryQuiz && (
                       <Box
                         sx={{
                           display: "flex",
