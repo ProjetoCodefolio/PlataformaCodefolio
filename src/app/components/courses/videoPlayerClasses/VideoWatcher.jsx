@@ -142,12 +142,14 @@ export function VideoWatcher({
     toast.success("Progresso do vídeo salvo com sucesso!");
     videoState.hasNotified90Percent = true;
 
+    // Persistir imediatamente (sem debounce) para que o `watched` já esteja
+    // gravado no Firebase quando o pai recalcular o progresso agregado do curso.
+    await saveProgress(currentTime, duration);
+    setLastSavedPercentage(percentage);
+
     if (onVideoProgressUpdate) {
       onVideoProgressUpdate(videoId, percentage, true);
     }
-
-    await debouncedSaveProgress(currentTime, duration);
-    setLastSavedPercentage(percentage);
   };
 
   const saveProgress = async (currentTime, duration) => {

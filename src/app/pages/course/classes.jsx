@@ -672,6 +672,17 @@ const Classes = ({ alias = null }) => {
         v.id === videoId ? { ...v, watched: true, progress: percentage } : v
       );
       setVideos(updatedVideos);
+
+      // Recalcula o progresso agregado do curso em tempo real. Antes isso só
+      // acontecia ao (re)carregar a tela do curso, então o percentual exibido
+      // nos cards/lista de cursos ficava defasado até o aluno sair e voltar.
+      // Contam apenas vídeos (não slides nem conteúdo independente).
+      if (userDetails?.userId) {
+        const progressVideos = updatedVideos.filter(
+          (v) => v && !v.isSlide && !v.isIndependent
+        );
+        updateCourseProgress(userDetails.userId, courseId, progressVideos);
+      }
     }
   };
 
