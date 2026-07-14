@@ -28,6 +28,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
+import QuizAttemptsSettings from "./QuizAttemptsSettings";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import { ConfirmationModal, SuccessModal } from "./Modals";
@@ -43,9 +44,12 @@ import {
   removeQuizQuestion,
   updateQuizMinPercentage,
   updateQuizDiagnosticStatus,
+  updateQuizRetrySettings,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
+  normalizeAllowRetry,
+  normalizeMaxAttempts,
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
@@ -88,6 +92,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   const [questionToDelete, setQuestionToDelete] = useState(null);
   const [draftQuestionId, setDraftQuestionId] = useState(null);
   const [newQuizIsDiagnostic, setNewQuizIsDiagnostic] = useState(false);
+  // Configuração de tentativas do quiz em edição.
+  const [newQuizAllowRetry, setNewQuizAllowRetry] = useState(true);
+  const [newQuizMaxAttempts, setNewQuizMaxAttempts] = useState("");
 
   // Refs existentes
   const questionFormRef = useRef(null);
@@ -111,8 +118,13 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   useEffect(() => {
     if (editQuiz) {
       setNewQuizIsDiagnostic(normalizeDiagnosticFlag(editQuiz.isDiagnostic));
+      setNewQuizAllowRetry(normalizeAllowRetry(editQuiz.allowRetry));
+      const max = normalizeMaxAttempts(editQuiz.maxAttempts);
+      setNewQuizMaxAttempts(max == null ? "" : max);
     } else {
       setNewQuizIsDiagnostic(false);
+      setNewQuizAllowRetry(true);
+      setNewQuizMaxAttempts("");
     }
   }, [editQuiz]);
 
@@ -643,6 +655,70 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   };
 
+  // Aplica um quiz atualizado na lista correta (vídeos ou slides) e no estado
+  // de edição. Usado pelos handlers de configuração de tentativas.
+  const applyQuizUpdate = (updatedQuiz) => {
+    if (editQuiz?.isSlideQuiz) {
+      setSlideQuizzes((prev) =>
+        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+      );
+    } else {
+      setQuizzes((prev) =>
+        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+      );
+    }
+    setEditQuiz(updatedQuiz);
+  };
+
+  // Alterna "permitir repetição". Ao desativar, o limite de tentativas deixa de
+  // se aplicar (só há 1 tentativa), então limpamos o campo.
+  const handleAllowRetryToggle = async (checked) => {
+    const previousAllow = newQuizAllowRetry;
+    const previousMax = newQuizMaxAttempts;
+
+    setNewQuizAllowRetry(checked);
+    if (!checked) setNewQuizMaxAttempts("");
+
+    if (!editQuiz) return;
+
+    try {
+      const updatedQuiz = await updateQuizRetrySettings(courseId, editQuiz, {
+        allowRetry: checked,
+        maxAttempts: checked ? newQuizMaxAttempts : null,
+      });
+      applyQuizUpdate(updatedQuiz);
+      toast.success(
+        checked ? "Repetição do quiz ativada!" : "Repetição do quiz desativada!"
+      );
+    } catch (error) {
+      console.error("Erro ao atualizar repetição do quiz:", error);
+      setNewQuizAllowRetry(previousAllow);
+      setNewQuizMaxAttempts(previousMax);
+      toast.error("Erro ao salvar a configuração de tentativas");
+    }
+  };
+
+  // Salva o limite de tentativas ao sair do campo. Só faz sentido quando a
+  // repetição está ativada; em branco = ilimitado.
+  const handleBlurSaveMaxAttempts = async () => {
+    if (!editQuiz || !newQuizAllowRetry) return;
+
+    try {
+      const updatedQuiz = await updateQuizRetrySettings(courseId, editQuiz, {
+        allowRetry: true,
+        maxAttempts: newQuizMaxAttempts,
+      });
+      // Reflete o valor normalizado (ex.: campo inválido vira "ilimitado").
+      const normalizedMax = normalizeMaxAttempts(updatedQuiz.maxAttempts);
+      setNewQuizMaxAttempts(normalizedMax == null ? "" : normalizedMax);
+      applyQuizUpdate(updatedQuiz);
+      toast.success("Limite de tentativas atualizado!");
+    } catch (error) {
+      console.error("Erro ao atualizar limite de tentativas:", error);
+      toast.error("Erro ao salvar o limite de tentativas");
+    }
+  };
+
   // Adicione esta função ao componente CourseQuizzesTab (antes do return)
   const handleBlurSave = async (field) => {
     if (!editQuiz || !editQuestion) return;
@@ -891,6 +967,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             handleBlurSaveMinPercentage={handleBlurSaveMinPercentage}
             handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
             handleDiagnosticToggle={handleDiagnosticToggle}
+            newQuizAllowRetry={newQuizAllowRetry}
+            newQuizMaxAttempts={newQuizMaxAttempts}
+            setNewQuizMaxAttempts={setNewQuizMaxAttempts}
+            handleAllowRetryToggle={handleAllowRetryToggle}
+            handleBlurSaveMaxAttempts={handleBlurSaveMaxAttempts}
             questionFormRef={questionFormRef}
             entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
@@ -1090,6 +1171,18 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                           são considerados em somatórios de avaliação do curso.
                         </Typography>
                       </Box>
+                    </Grid>
+                  )}
+
+                  {editQuiz && (
+                    <Grid item xs={12}>
+                      <QuizAttemptsSettings
+                        allowRetry={newQuizAllowRetry}
+                        maxAttempts={newQuizMaxAttempts}
+                        setMaxAttempts={setNewQuizMaxAttempts}
+                        onToggle={handleAllowRetryToggle}
+                        onBlurSave={handleBlurSaveMaxAttempts}
+                      />
                     </Grid>
                   )}
 

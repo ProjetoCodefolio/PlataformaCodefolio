@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
 import { toast } from "react-toastify";
+import QuizAttemptsSettings from "./QuizAttemptsSettings";
 
 const QuizForm = ({
   videos,
@@ -29,6 +30,11 @@ const QuizForm = ({
   handleBlurSaveMinPercentage,
   handleBlurSaveDiagnosticStatus,
   handleDiagnosticToggle,
+  newQuizAllowRetry,
+  newQuizMaxAttempts,
+  setNewQuizMaxAttempts,
+  handleAllowRetryToggle,
+  handleBlurSaveMaxAttempts,
   questionFormRef,
   entityType,
   additionalButtons,
@@ -179,6 +185,18 @@ const QuizForm = ({
                 considerados em somatórios de avaliação do curso.
               </Typography>
             </Box>
+          </Grid>
+        )}
+
+        {editQuiz && (
+          <Grid item xs={12}>
+            <QuizAttemptsSettings
+              allowRetry={newQuizAllowRetry}
+              maxAttempts={newQuizMaxAttempts}
+              setMaxAttempts={setNewQuizMaxAttempts}
+              onToggle={handleAllowRetryToggle}
+              onBlurSave={handleBlurSaveMaxAttempts}
+            />
           </Grid>
         )}
 
