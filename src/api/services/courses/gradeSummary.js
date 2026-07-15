@@ -243,34 +243,22 @@ export const sortStudentsGrades = (studentsGrades, sortField = "name", sortOrder
 };
 
 /**
- * Determina a cor da nota final
- * @param {number} grade - Nota
- * @param {boolean} hasAnyGradeRecorded - Se tem alguma nota lançada
+ * Determina a cor de uma nota — a final do aluno ou a de uma avaliação.
+ *
+ * Usa o mesmo corte de determineStudentStatus: nota exatamente igual à mínima
+ * aprova, e portanto é verde. Antes havia faixas intermediárias (uma nota 6
+ * saía laranja), o que contradizia o próprio status do aluno.
+ *
+ * @param {number} grade - Nota; `null`/`undefined` significa nota não lançada
+ * @param {boolean} hasAnyGradeRecorded - Se o aluno tem alguma nota lançada;
+ *   sem nenhuma, a nota final 0 é pendente, e não reprovação
  * @returns {string} - Cor em formato hex
  */
 export const getGradeColor = (grade, hasAnyGradeRecorded = true) => {
-  // Se nota é 0 e não tem nenhuma nota lançada, cinza (pendente)
-  if (grade === 0 && !hasAnyGradeRecorded) {
-    return GRADE_COLORS.PENDING;
-  }
-
-  if (grade >= 9) return GRADE_COLORS.EXCELLENT;
-  if (grade >= MINIMUM_PASSING_GRADE + 1) return GRADE_COLORS.GOOD;
-  if (grade >= MINIMUM_PASSING_GRADE) return GRADE_COLORS.FAIR;
-  if (grade > 0) return GRADE_COLORS.POOR;
-
-  // Se chegou aqui, é 0 com notas lançadas = reprovado (vermelho)
-  return GRADE_COLORS.POOR;
-};
-
-/**
- * Determina a cor de uma nota individual (acima/abaixo da média)
- * @param {number} grade - Nota
- * @returns {string} - Cor em formato hex
- */
-export const getGradeDifferentialColor = (grade) => {
   if (grade === null || grade === undefined) return GRADE_COLORS.PENDING;
-  if (grade > MINIMUM_PASSING_GRADE) return GRADE_COLORS.GOOD;
-  if (grade < MINIMUM_PASSING_GRADE) return GRADE_COLORS.POOR;
-  return GRADE_COLORS.FAIR;
+  if (grade === 0 && !hasAnyGradeRecorded) return GRADE_COLORS.PENDING;
+
+  return grade >= MINIMUM_PASSING_GRADE
+    ? GRADE_COLORS.APPROVED
+    : GRADE_COLORS.FAILED;
 };

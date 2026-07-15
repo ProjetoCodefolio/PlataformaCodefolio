@@ -15,18 +15,10 @@ export const GRADE_STATUS = {
   FAILED: 'failed',        // Todas as notas e nota final < MINIMUM_PASSING_GRADE
 };
 
-// Cores para visualização
+// Cores para visualização. A nota só tem duas leituras — aprovado ou reprovado
+// —, então a cor acompanha exatamente o mesmo corte usado no status.
 export const GRADE_COLORS = {
-  EXCELLENT: '#2e7d32',    // >= 9
-  GOOD: '#558b2f',         // >= 7
-  FAIR: '#f57c00',         // >= 6
-  POOR: '#c62828',         // < 6
-  PENDING: '#757575',      // Sem nota
-};
-
-// Cores para diferencial (acima/abaixo da média)
-export const GRADE_DIFFERENTIAL_COLORS = {
-  ABOVE_AVERAGE: '#4caf50',    // Acima de 6
-  BELOW_AVERAGE: '#f44336',    // Abaixo de 6
-  EQUAL_AVERAGE: '#ff9800',    // Exatamente 6
+  APPROVED: '#4caf50',     // >= MINIMUM_PASSING_GRADE
+  FAILED: '#f44336',       // < MINIMUM_PASSING_GRADE
+  PENDING: '#9e9e9e',      // Sem nota
 };

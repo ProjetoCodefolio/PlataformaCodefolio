@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { computeStudentGradeSummary } from "./gradeSummary";
-import { GRADE_STATUS } from "$api/constants/gradeConstants";
+import { computeStudentGradeSummary, getGradeColor } from "./gradeSummary";
+import {
+  GRADE_STATUS,
+  GRADE_COLORS,
+  MINIMUM_PASSING_GRADE,
+} from "$api/constants/gradeConstants";
 
 const assessments = [
   { id: "a1", name: "Prova 1", percentage: 40 },
@@ -106,5 +110,39 @@ describe("computeStudentGradeSummary", () => {
     expect(summary.finalGrade).toBe(0);
     expect(summary.totalPercentage).toBe(0);
     expect(summary.status).toBe(GRADE_STATUS.PENDING);
+  });
+});
+
+describe("getGradeColor", () => {
+  it("pinta a nota mínima de verde, igual ao status que ela produz", () => {
+    // A nota exatamente igual à mínima aprova; antes ela saía laranja,
+    // contradizendo o próprio status do aluno.
+    expect(getGradeColor(MINIMUM_PASSING_GRADE)).toBe(GRADE_COLORS.APPROVED);
+    expect(
+      computeStudentGradeSummary(
+        { a1: { grade: MINIMUM_PASSING_GRADE }, a2: { grade: MINIMUM_PASSING_GRADE } },
+        assessments
+      ).status
+    ).toBe(GRADE_STATUS.APPROVED);
+  });
+
+  it("usa só verde e vermelho, sem faixas intermediárias", () => {
+    expect(getGradeColor(10)).toBe(GRADE_COLORS.APPROVED);
+    expect(getGradeColor(7)).toBe(GRADE_COLORS.APPROVED);
+    expect(getGradeColor(5.99)).toBe(GRADE_COLORS.FAILED);
+    expect(getGradeColor(0)).toBe(GRADE_COLORS.FAILED);
+
+    const cores = new Set([10, 9, 8, 7, 6, 5, 3, 0].map((n) => getGradeColor(n)));
+    expect(cores).toEqual(new Set([GRADE_COLORS.APPROVED, GRADE_COLORS.FAILED]));
+  });
+
+  it("mostra nota não lançada como pendente", () => {
+    expect(getGradeColor(null)).toBe(GRADE_COLORS.PENDING);
+    expect(getGradeColor(undefined)).toBe(GRADE_COLORS.PENDING);
+  });
+
+  it("trata a nota final 0 de aluno sem nenhuma nota como pendente, não reprovado", () => {
+    expect(getGradeColor(0, false)).toBe(GRADE_COLORS.PENDING);
+    expect(getGradeColor(0, true)).toBe(GRADE_COLORS.FAILED);
   });
 });

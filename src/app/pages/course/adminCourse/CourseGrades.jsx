@@ -371,11 +371,11 @@ export default function CourseGrades() {
   const getStatusIcon = (status) => {
     switch (status) {
       case GRADE_STATUS.APPROVED:
-        return <CheckCircleIcon sx={{ color: "#4caf50" }} />;
+        return <CheckCircleIcon sx={{ color: GRADE_COLORS.APPROVED }} />;
       case GRADE_STATUS.FAILED:
-        return <CancelIcon sx={{ color: "#f44336" }} />;
+        return <CancelIcon sx={{ color: GRADE_COLORS.FAILED }} />;
       case GRADE_STATUS.PENDING:
-        return <PendingIcon sx={{ color: "#9e9e9e" }} />;
+        return <PendingIcon sx={{ color: GRADE_COLORS.PENDING }} />;
       default:
         return null;
     }
@@ -601,7 +601,7 @@ export default function CourseGrades() {
               <Card sx={{ borderRadius: 2, height: '100%' }}>
                 <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <CheckCircleIcon sx={{ color: "#4caf50", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <CheckCircleIcon sx={{ color: GRADE_COLORS.APPROVED, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
                       <Typography 
                         variant="subtitle2" 
@@ -614,7 +614,7 @@ export default function CourseGrades() {
                         variant="h4"
                         sx={{ 
                           fontWeight: "bold", 
-                          color: "#4caf50",
+                          color: GRADE_COLORS.APPROVED,
                           fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                         }}
                       >
@@ -629,7 +629,7 @@ export default function CourseGrades() {
               <Card sx={{ borderRadius: 2, height: '100%' }}>
                 <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <CancelIcon sx={{ color: "#f44336", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <CancelIcon sx={{ color: GRADE_COLORS.FAILED, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
                       <Typography 
                         variant="subtitle2" 
@@ -642,7 +642,7 @@ export default function CourseGrades() {
                         variant="h4"
                         sx={{ 
                           fontWeight: "bold", 
-                          color: "#f44336",
+                          color: GRADE_COLORS.FAILED,
                           fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                         }}
                       >
@@ -657,7 +657,7 @@ export default function CourseGrades() {
               <Card sx={{ borderRadius: 2, height: '100%' }}>
                 <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                   <Stack direction="row" alignItems="center" spacing={1}>
-                    <PendingIcon sx={{ color: "#9e9e9e", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <PendingIcon sx={{ color: GRADE_COLORS.PENDING, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                     <Box>
                       <Typography 
                         variant="subtitle2" 
@@ -670,7 +670,7 @@ export default function CourseGrades() {
                         variant="h4"
                         sx={{ 
                           fontWeight: "bold", 
-                          color: "#9e9e9e",
+                          color: GRADE_COLORS.PENDING,
                           fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                         }}
                       >
@@ -834,8 +834,8 @@ export default function CourseGrades() {
                         align="center"
                         sx={{ fontWeight: "bold" }}
                       >
-                        <Tooltip 
-                          title={`${assessment.percentage}% da nota final${MINIMUM_PASSING_GRADE === 6 ? " (Verde: ≥6, Vermelho: <6)" : ""}`}
+                        <Tooltip
+                          title={`${assessment.percentage}% da nota final (verde: ≥${MINIMUM_PASSING_GRADE}, vermelho: <${MINIMUM_PASSING_GRADE})`}
                         >
                           <Box>
                             {assessment.name}
@@ -887,10 +887,8 @@ export default function CourseGrades() {
                       </TableCell>
                       {assessments.map((assessment) => {
                         const gradeData = student.grades[assessment.id];
-                        const gradeColor = gradeData?.grade !== null 
-                          ? gradesService.getGradeDifferentialColor(gradeData?.grade)
-                          : GRADE_COLORS.PENDING;
-                        
+                        const gradeColor = gradesService.getGradeColor(gradeData?.grade);
+
                         return (
                           <TableCell key={assessment.id} align="center">
                             {editMode ? (
@@ -1021,12 +1019,10 @@ export default function CourseGrades() {
                       <Stack spacing={1}>
                         {assessments.map((assessment) => {
                           const gradeData = student.grades[assessment.id];
-                          const gradeColor = gradeData?.grade !== null 
-                            ? gradesService.getGradeDifferentialColor(gradeData?.grade)
-                            : GRADE_COLORS.PENDING;
-                          
+                          const gradeColor = gradesService.getGradeColor(gradeData?.grade);
+
                           return (
-                            <Box 
+                            <Box
                               key={assessment.id}
                               sx={{ 
                                 display: 'flex', 
@@ -1136,22 +1132,22 @@ export default function CourseGrades() {
                   sx={{
                     width: 20,
                     height: 20,
-                    backgroundColor: GRADE_COLORS.GOOD,
+                    backgroundColor: GRADE_COLORS.APPROVED,
                     borderRadius: 1,
                   }}
                 />
-                <Typography variant="body2">Acima de {MINIMUM_PASSING_GRADE} (≥{MINIMUM_PASSING_GRADE})</Typography>
+                <Typography variant="body2">Aprovado (≥{MINIMUM_PASSING_GRADE})</Typography>
               </Stack>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Box
                   sx={{
                     width: 20,
                     height: 20,
-                    backgroundColor: GRADE_COLORS.POOR,
+                    backgroundColor: GRADE_COLORS.FAILED,
                     borderRadius: 1,
                   }}
                 />
-                <Typography variant="body2">Abaixo de {MINIMUM_PASSING_GRADE} (&lt;{MINIMUM_PASSING_GRADE})</Typography>
+                <Typography variant="body2">Reprovado (&lt;{MINIMUM_PASSING_GRADE})</Typography>
               </Stack>
               <Stack direction="row" alignItems="center" spacing={1}>
                 <Box
