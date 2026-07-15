@@ -62,6 +62,12 @@ export default function GradeAssignmentPage() {
   const [assessmentDetails, setAssessmentDetails] = useState(null);
   const [courseDetails, setCourseDetails] = useState({});
   const [grades, setGrades] = useState({});
+  // Valor EM DIGITAÇÃO de cada campo de nota. Fica separado de `grades`
+  // (a nota commitada) porque `grades` alimenta o filtro/status: se o valor
+  // digitado fosse direto para `grades`, a linha sairia da listagem no meio da
+  // digitação (ex.: filtro "sem nota" + digitar "1" removeria o aluno antes de
+  // completar "10"). O commit para `grades` só acontece ao sair do campo (blur).
+  const [draftGrades, setDraftGrades] = useState({});
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
@@ -156,9 +162,14 @@ export default function GradeAssignmentPage() {
     loadData();
   }, [courseId, assessmentId]);
 
-  // Função para atualizar o valor da nota no estado
+  // Valor exibido no campo: o rascunho em digitação, se houver; senão a nota
+  // já commitada. Usa `??` para preservar corretamente a nota "0".
+  const getFieldValue = (studentId) =>
+    draftGrades[studentId] ?? grades[studentId] ?? "";
+
+  // Função para atualizar o valor da nota EM DIGITAÇÃO (não commita ainda).
   const handleGradeChange = (studentId, value) => {
-    setGrades((prev) => ({
+    setDraftGrades((prev) => ({
       ...prev,
       [studentId]: value,
     }));
@@ -220,6 +231,19 @@ export default function GradeAssignmentPage() {
         studentId,
         numValue
       );
+
+      // Commit da nota para o estado usado pelo filtro/status e limpeza do
+      // rascunho. Só agora (após o blur) a linha pode sair da listagem — com o
+      // valor correto (ex.: "10"), e não com um valor parcial digitado.
+      setGrades((prev) => ({
+        ...prev,
+        [studentId]: String(numValue),
+      }));
+      setDraftGrades((prev) => {
+        const next = { ...prev };
+        delete next[studentId];
+        return next;
+      });
 
       // Atualizar status de salvamento
       setSaveStatus((prev) => ({
@@ -437,10 +461,10 @@ export default function GradeAssignmentPage() {
       if (e.key === 'Enter') {
         e.preventDefault();
       }
-      // Salvar nota atual
+      // Salvar nota atual (usa o valor em digitação, se houver)
       const student = filteredStudents[index];
       const studentId = student.userId || student.id;
-      handleSaveGrade(studentId, grades[studentId] || '');
+      handleSaveGrade(studentId, getFieldValue(studentId));
       
       // Ir para o próximo
       if (index < totalStudents - 1) {
@@ -777,7 +801,7 @@ export default function GradeAssignmentPage() {
                                 }}
                               >
                                 <TextField
-                                  value={grades[studentId] || ""}
+                                  value={getFieldValue(studentId)}
                                   disabled={!isCourseOwner}
                                   onChange={(e) =>
                                     handleGradeChange(studentId, e.target.value)
@@ -938,7 +962,7 @@ export default function GradeAssignmentPage() {
                           }}
                         >
                           <TextField
-                            value={grades[studentId] || ""}
+                            value={getFieldValue(studentId)}
                             disabled={!isCourseOwner}
                             onChange={(e) =>
                               handleGradeChange(studentId, e.target.value)
