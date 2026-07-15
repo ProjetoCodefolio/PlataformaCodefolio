@@ -364,7 +364,14 @@ export const fetchQuizStudentResults = async (courseId, quizId) => {
  * @param {number} minPercentage - Porcentagem mínima para aprovação
  * @returns {Promise<Object>} - Novo quiz criado
  */
-export const addQuiz = async (courseId, videoId, minPercentage = 0, isDiagnostic = false) => {
+export const addQuiz = async (
+  courseId,
+  videoId,
+  minPercentage = 0,
+  isDiagnostic = false,
+  allowRetry = true,
+  maxAttempts = null
+) => {
   try {
     if (!courseId || !videoId) {
       throw new Error("IDs de curso e vídeo são obrigatórios");
@@ -381,8 +388,8 @@ export const addQuiz = async (courseId, videoId, minPercentage = 0, isDiagnostic
       videoId,
       minPercentage,
       isDiagnostic: normalizeDiagnosticFlag(isDiagnostic),
-      // Por padrão o quiz permite repetição e não tem limite de tentativas.
-      allowRetry: true,
+      // Config de tentativas (padrão: permite repetição, sem limite).
+      ...persistableQuizSettings({ allowRetry, maxAttempts }),
       questions: [],
       courseId,
     };

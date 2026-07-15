@@ -188,17 +188,15 @@ const QuizForm = ({
           </Grid>
         )}
 
-        {editQuiz && (
-          <Grid item xs={12}>
-            <QuizAttemptsSettings
-              allowRetry={newQuizAllowRetry}
-              maxAttempts={newQuizMaxAttempts}
-              setMaxAttempts={setNewQuizMaxAttempts}
-              onToggle={handleAllowRetryToggle}
-              onBlurSave={handleBlurSaveMaxAttempts}
-            />
-          </Grid>
-        )}
+        <Grid item xs={12}>
+          <QuizAttemptsSettings
+            allowRetry={newQuizAllowRetry}
+            maxAttempts={newQuizMaxAttempts}
+            setMaxAttempts={setNewQuizMaxAttempts}
+            onToggle={handleAllowRetryToggle}
+            onBlurSave={handleBlurSaveMaxAttempts}
+          />
+        </Grid>
 
         {!editQuiz && (
           <Grid item xs={12}>

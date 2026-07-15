@@ -263,13 +263,17 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           courseId,
           newQuizVideoId,
           newQuizMinPercentage,
-          newQuizIsDiagnostic
+          newQuizIsDiagnostic,
+          newQuizAllowRetry,
+          newQuizMaxAttempts
         );
 
         setQuizzes((prev) => [...prev, newQuiz]);
         setNewQuizVideoId(videosState[0]?.id || "");
         setNewQuizMinPercentage(0);
         setNewQuizIsDiagnostic(false);
+        setNewQuizAllowRetry(true);
+        setNewQuizMaxAttempts("");
         setShowAddQuizModal(true);
         toast.success("Quiz adicionado com sucesso!");
       } catch (error) {
@@ -294,7 +298,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           courseId,
           slidePrefix,
           newQuizMinPercentage,
-          newQuizIsDiagnostic
+          newQuizIsDiagnostic,
+          newQuizAllowRetry,
+          newQuizMaxAttempts
         );
 
         newQuiz.isSlideQuiz = true;
@@ -304,6 +310,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         setNewQuizSlideId(slidesState[0]?.id || "");
         setNewQuizMinPercentage(0);
         setNewQuizIsDiagnostic(false);
+        setNewQuizAllowRetry(true);
+        setNewQuizMaxAttempts("");
         setShowAddQuizModal(true);
         toast.success("Quiz do slide adicionado com sucesso!");
       } catch (error) {
@@ -1174,17 +1182,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                     </Grid>
                   )}
 
-                  {editQuiz && (
-                    <Grid item xs={12}>
-                      <QuizAttemptsSettings
-                        allowRetry={newQuizAllowRetry}
-                        maxAttempts={newQuizMaxAttempts}
-                        setMaxAttempts={setNewQuizMaxAttempts}
-                        onToggle={handleAllowRetryToggle}
-                        onBlurSave={handleBlurSaveMaxAttempts}
-                      />
-                    </Grid>
-                  )}
+                  <Grid item xs={12}>
+                    <QuizAttemptsSettings
+                      allowRetry={newQuizAllowRetry}
+                      maxAttempts={newQuizMaxAttempts}
+                      setMaxAttempts={setNewQuizMaxAttempts}
+                      onToggle={handleAllowRetryToggle}
+                      onBlurSave={handleBlurSaveMaxAttempts}
+                    />
+                  </Grid>
 
                   {!editQuiz && (
                     <Grid item xs={12}>
