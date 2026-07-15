@@ -1,4 +1,4 @@
-import { ref as databaseRef, set, get, update } from "firebase/database";
+import { ref as databaseRef, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
 import { isNearEnd } from "../../utils/videoUtils";
 
@@ -75,14 +75,11 @@ export const saveVideoProgress = async (
     };
 
 
-    // Salva no banco
-    const userProgressRef = databaseRef(
-      database,
-      `videoProgress/${userId}/${courseId}`
-    );
-    await update(userProgressRef, {
-      [videoId]: progressData,
-    });
+    // Mescla no próprio nó do vídeo. Atualizar o nó PAI com o objeto inteiro
+    // (`update(pai, { [videoId]: progressData })`) substituiria o filho por
+    // completo — no RTDB, update troca o valor de cada caminho informado —,
+    // apagando `quizPassed`/`hasQuizData`, que são gravados por saveQuizResults.
+    await update(progressRef, progressData);
 
     // Verify the data was saved
     const verifySnapshot = await get(progressRef);
@@ -188,7 +185,9 @@ export const markVideoAsCompleted = async (
       videoId: videoId,
     };
 
-    await set(progressRef, progressData);
+    // update, e não set: set substituiria o nó inteiro e apagaria
+    // `quizPassed`/`hasQuizData`, gravados ali por saveQuizResults.
+    await update(progressRef, progressData);
 
     return { success: true };
   } catch (error) {
