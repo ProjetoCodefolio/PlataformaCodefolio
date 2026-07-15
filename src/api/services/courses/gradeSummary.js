@@ -15,6 +15,22 @@ import {
  * testes. `grades.js` reexporta tudo daqui, então quem consome não muda.
  */
 
+// A nota final é apresentada com 2 casas decimais, então é com 2 casas que ela
+// vale. Arredondar antes de comparar com a nota mínima resolve dois problemas:
+//
+// 1. ruído de ponto flutuante: notas 9,6 e 5,6 com pesos 10/90 dão exatamente 60
+//    ponderado no papel, mas 59.99999999999999 em JS — o aluno reprovava com um
+//    6 legítimo;
+// 2. divergência entre o que é julgado e o que é exibido: uma final de 5,995
+//    aparece como "6,00" na tela e no CSV, e reprovar quem a tela mostra
+//    aprovado é indefensável para o aluno.
+const GRADE_DECIMALS = 2;
+
+const roundGrade = (value) => {
+  const factor = 10 ** GRADE_DECIMALS;
+  return Math.round(value * factor) / factor;
+};
+
 /**
  * Determina o status do estudante baseado na nota final
  * @param {number} finalGrade - Nota final do estudante
@@ -106,8 +122,9 @@ export const computeStudentGradeSummary = (gradesByAssessmentId, assessments) =>
     }
   });
 
-  const finalGrade =
-    totalPercentage > 0 ? (totalWeighted * MAXIMUM_GRADE) / totalPercentage : 0;
+  const finalGrade = roundGrade(
+    totalPercentage > 0 ? (totalWeighted * MAXIMUM_GRADE) / totalPercentage : 0
+  );
 
   const status = determineStudentStatus(
     finalGrade,

@@ -104,12 +104,104 @@ describe("computeStudentGradeSummary", () => {
     });
   });
 
+  it("aprova nota final que só não fecha em 6 por ruído de ponto flutuante", () => {
+    // 9,6 com peso 10 + 5,6 com peso 90 dá exatamente 60 ponderado no papel,
+    // mas 59.99999999999999 em JS — reprovava um 6 legítimo.
+    const summary = computeStudentGradeSummary(
+      { a1: { grade: 9.6 }, a2: { grade: 5.6 } },
+      [
+        { id: "a1", name: "Prova 1", percentage: 10 },
+        { id: "a2", name: "Prova 2", percentage: 90 },
+      ]
+    );
+
+    expect(summary.finalGrade).toBe(6);
+    expect(summary.status).toBe(GRADE_STATUS.APPROVED);
+  });
+
+  it("aprova quando a nota final exibida como 6,00 arredonda para a mínima", () => {
+    // Final real de 5,995: a tela e o CSV mostram "6,00", então reprovar seria
+    // julgar por um valor que o professor não vê.
+    const summary = computeStudentGradeSummary(
+      { a1: { grade: 0.2 }, a2: { grade: 6.3 } },
+      [
+        { id: "a1", name: "Prova 1", percentage: 5 },
+        { id: "a2", name: "Prova 2", percentage: 95 },
+      ]
+    );
+
+    expect(summary.finalGrade).toBe(6);
+    expect(summary.status).toBe(GRADE_STATUS.APPROVED);
+  });
+
+  it("reprova quando a nota final fica abaixo da mínima já arredondada", () => {
+    const summary = computeStudentGradeSummary(
+      { a1: { grade: 5.99 }, a2: { grade: 5.99 } },
+      assessments
+    );
+
+    expect(summary.finalGrade).toBe(5.99);
+    expect(summary.status).toBe(GRADE_STATUS.FAILED);
+  });
+
+  it("devolve a nota final já arredondada em 2 casas", () => {
+    const summary = computeStudentGradeSummary(
+      { a1: { grade: 7.777 }, a2: { grade: 7.777 } },
+      assessments
+    );
+
+    expect(summary.finalGrade).toBe(7.78);
+  });
+
   it("não quebra quando o curso não tem avaliações", () => {
     const summary = computeStudentGradeSummary({}, []);
 
     expect(summary.finalGrade).toBe(0);
     expect(summary.totalPercentage).toBe(0);
     expect(summary.status).toBe(GRADE_STATUS.PENDING);
+  });
+});
+
+describe("coerência entre a nota exibida e o status", () => {
+  // Como a tela e o CSV mostram a nota final com 2 casas, o status nunca pode
+  // discordar do que o professor lê. Era exatamente aqui que um aluno com
+  // "6,00" na tela aparecia reprovado.
+  // Mesmo formato do fmt() da tela. Uma instância só: criar um Intl a cada
+  // iteração domina o tempo da varredura.
+  const formatador = new Intl.NumberFormat("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const exibir = (nota) => formatador.format(nota);
+
+  it("nenhuma combinação de pesos e notas reprova um aluno exibido com 6,00 ou mais", () => {
+    const divergentes = [];
+
+    for (let peso1 = 5; peso1 <= 95; peso1 += 5) {
+      const pesos = [
+        { id: "a1", name: "Prova 1", percentage: peso1 },
+        { id: "a2", name: "Prova 2", percentage: 100 - peso1 },
+      ];
+
+      for (let n1 = 0; n1 <= 100; n1 += 1) {
+        for (let n2 = 0; n2 <= 100; n2 += 1) {
+          const summary = computeStudentGradeSummary(
+            { a1: { grade: n1 / 10 }, a2: { grade: n2 / 10 } },
+            pesos
+          );
+
+          const exibida = parseFloat(exibir(summary.finalGrade).replace(",", "."));
+          const aprovadoNaTela = exibida >= MINIMUM_PASSING_GRADE;
+          const aprovadoNoStatus = summary.status === GRADE_STATUS.APPROVED;
+
+          if (aprovadoNaTela !== aprovadoNoStatus) {
+            divergentes.push(`pesos ${peso1}/${100 - peso1}, notas ${n1 / 10}/${n2 / 10} → exibe ${exibir(summary.finalGrade)} mas status é ${summary.status}`);
+          }
+        }
+      }
+    }
+
+    expect(divergentes).toEqual([]);
   });
 });
 
