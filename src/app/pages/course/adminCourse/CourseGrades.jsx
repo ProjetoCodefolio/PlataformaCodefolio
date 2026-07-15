@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useTransition } from "react";
 import {
   Box,
   Typography,
@@ -53,6 +53,18 @@ import {
   GRADE_COLORS,
 } from "$api/constants/gradeConstants";
 
+// Estilos do campo de nota fora do componente: são iguais para todas as células
+// e recriá-los a cada render faria o emotion re-serializar o estilo uma vez por
+// campo, a cada tecla digitada.
+const GRADE_INPUT_STYLE = { textAlign: "center", padding: "6px 8px" };
+const GRADE_FIELD_SX = {
+  width: 80,
+  // :not(.Mui-error) para a borda vermelha da nota inválida continuar vencendo
+  "& .MuiOutlinedInput-root.Mui-focused:not(.Mui-error) fieldset": {
+    borderColor: "#9041c1",
+  },
+};
+
 export default function CourseGrades() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -85,6 +97,10 @@ export default function CourseGrades() {
   const [savingCells, setSavingCells] = useState({});
   const [invalidCells, setInvalidCells] = useState({});
   const [importOpen, setImportOpen] = useState(false);
+  // Trocar de modo remonta a coluna de notas inteira. Marcar a troca como
+  // transição deixa o clique responder na hora, com o botão indicando o
+  // processamento, em vez de a tela travar até a tabela terminar de montar.
+  const [isSwitchingMode, startModeTransition] = useTransition();
 
   // Só o dono do curso (ou admin) pode lançar nota — é o que as regras do banco
   // permitem escrever em courseAssessments.
@@ -187,10 +203,10 @@ export default function CourseGrades() {
   const cellKey = (studentId, assessmentId) => `${studentId}_${assessmentId}`;
 
   const handleToggleEditMode = () => {
-    setEditMode((prev) => !prev);
     // Rascunhos não commitados não sobrevivem à troca de modo
     setDraftGrades({});
     setInvalidCells({});
+    startModeTransition(() => setEditMode((prev) => !prev));
   };
 
   // Valor exibido no campo: o rascunho em digitação, se houver; senão a nota já
@@ -335,29 +351,21 @@ export default function CourseGrades() {
     setFilterStatus("all");
   };
 
-  // Filtrar e ordenar estudantes
-  const filteredAndSortedStudents = studentsGrades
-    .filter((student) => {
-      // Filtro de busca
-      const matchesSearch = student.name
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+  // Filtrar e ordenar estudantes. Memoizado porque roda a cada render — e no
+  // modo edição isso é a cada tecla digitada em qualquer nota.
+  const filteredAndSortedStudents = useMemo(() => {
+    const term = searchTerm.toLowerCase();
 
-      // Filtro de status
-      let matchesStatus = true;
-      if (filterStatus !== "all") {
-        matchesStatus = student.status === filterStatus;
-      }
+    const filtered = studentsGrades.filter((student) => {
+      const matchesSearch = student.name.toLowerCase().includes(term);
+      const matchesStatus =
+        filterStatus === "all" || student.status === filterStatus;
 
       return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      return gradesService.sortStudentsGrades(
-        [a, b],
-        sortField,
-        sortOrder
-      )[0] === a ? -1 : 1;
     });
+
+    return gradesService.sortStudentsGrades(filtered, sortField, sortOrder);
+  }, [studentsGrades, searchTerm, filterStatus, sortField, sortOrder]);
 
   // Determinar ícone de status
   const getStatusIcon = (status) => {
@@ -411,16 +419,9 @@ export default function CourseGrades() {
         inputProps={{
           inputMode: "decimal",
           "aria-label": `Nota de ${student.name}`,
-          style: { textAlign: "center", padding: "6px 8px" },
+          style: GRADE_INPUT_STYLE,
         }}
-        sx={{
-          width: 80,
-          "& .MuiOutlinedInput-root": {
-            "&.Mui-focused fieldset": {
-              borderColor: isInvalid ? undefined : "#9041c1",
-            },
-          },
-        }}
+        sx={GRADE_FIELD_SX}
       />
     );
   };
@@ -478,9 +479,17 @@ export default function CourseGrades() {
                   <span>
                     <Button
                       variant={editMode ? "contained" : "outlined"}
-                      startIcon={editMode ? <VisibilityIcon /> : <EditIcon />}
+                      startIcon={
+                        isSwitchingMode ? (
+                          <CircularProgress size={16} color="inherit" />
+                        ) : editMode ? (
+                          <VisibilityIcon />
+                        ) : (
+                          <EditIcon />
+                        )
+                      }
                       onClick={handleToggleEditMode}
-                      disabled={loading || assessments.length === 0}
+                      disabled={loading || assessments.length === 0 || isSwitchingMode}
                       sx={{
                         borderColor: "#9041c1",
                         color: editMode ? "#fff" : "#9041c1",
@@ -784,10 +793,10 @@ export default function CourseGrades() {
         )}
 
         {/* Tabela de notas - Desktop */}
+        {!isMobile && (
         <Paper
           elevation={0}
           sx={{
-            display: { xs: 'none', md: 'block' },
             backgroundColor: "#ffffff",
             borderRadius: "12px",
             boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
@@ -933,9 +942,11 @@ export default function CourseGrades() {
             </TableContainer>
           )}
         </Paper>
+        )}
 
         {/* Cards - Mobile */}
-        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {isMobile && (
+        <Box>
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
               <CircularProgress sx={{ color: "#9041c1" }} />
@@ -1093,6 +1104,7 @@ export default function CourseGrades() {
             </Stack>
           )}
         </Box>
+        )}
 
         {/* Rodapé com contagem */}
         {!loading && studentsGrades.length > 0 && (
