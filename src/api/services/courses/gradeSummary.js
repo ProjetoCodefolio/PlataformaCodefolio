@@ -197,35 +197,6 @@ export const translateStatus = (status) => {
 };
 
 /**
- * Exporta as notas para CSV
- * @param {Array} studentsGrades - Lista de notas dos estudantes
- * @param {Array} assessments - Lista de avaliações
- * @returns {string} - Conteúdo CSV
- */
-export const exportGradesToCSV = (studentsGrades, assessments) => {
-  if (!studentsGrades || studentsGrades.length === 0) return "";
-
-  // Cabeçalho
-  let csv = "Nome,Email,Status";
-  assessments.forEach(assessment => {
-    csv += `,${assessment.name} (${assessment.percentage}%)`;
-  });
-  csv += ",Nota Final\n";
-
-  // Linhas de dados
-  studentsGrades.forEach(student => {
-    csv += `${student.name},${student.email},${translateStatus(student.status)}`;
-    assessments.forEach(assessment => {
-      const grade = student.grades[assessment.id];
-      csv += `,${grade && grade.grade !== null ? grade.grade.toFixed(2) : ""}`;
-    });
-    csv += `,${student.finalGrade.toFixed(2)}\n`;
-  });
-
-  return csv;
-};
-
-/**
  * Ordena e filtra as notas dos estudantes
  * @param {Array} studentsGrades - Lista de notas dos estudantes
  * @param {string} sortField - Campo a ordenar

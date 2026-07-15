@@ -2,10 +2,11 @@ import { database } from '$api/config/firebase';
 import { ref, get } from 'firebase/database';
 import { computeStudentGradeSummary } from './gradeSummary';
 
-// O cálculo e a formatação das notas vivem em `gradeSummary.js`, sem dependência
-// do Firebase. Reexportados aqui para que os consumidores continuem importando
-// tudo de um lugar só.
+// O cálculo (`gradeSummary.js`) e o formato CSV (`gradesCsv.js`) não dependem do
+// Firebase. Reexportados aqui para que os consumidores continuem importando tudo
+// de um lugar só.
 export * from './gradeSummary';
+export * from './gradesCsv';
 
 /**
  * Busca todas as notas de um estudante em um curso
