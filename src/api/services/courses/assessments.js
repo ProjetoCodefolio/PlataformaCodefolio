@@ -124,6 +124,41 @@ export const assignGrade = async (courseId, assessmentId, studentId, grade) => {
 };
 
 /**
+ * Assign several grades at once, across assessments and students.
+ *
+ * Uses a single multi-path update so the whole import is atomic: chamar
+ * assignGrade uma vez por nota deixaria a turma com notas pela metade se uma
+ * das escritas falhasse no meio.
+ *
+ * @param {string} courseId - The ID of the course
+ * @param {Array} changes - `[{ assessmentId, userId, newGrade }]`
+ */
+export const assignGradesBatch = async (courseId, changes) => {
+  if (!courseId) throw new Error("ID do curso é obrigatório");
+  if (!changes || changes.length === 0) return;
+
+  const assignedAt = new Date().toISOString();
+  const updates = {};
+
+  changes.forEach(({ assessmentId, userId, newGrade }) => {
+    if (!assessmentId || !userId) {
+      throw new Error("IDs da avaliação e do estudante são obrigatórios");
+    }
+    updates[`courseAssessments/${courseId}/${assessmentId}/grades/${userId}`] = {
+      grade: newGrade,
+      assignedAt,
+    };
+  });
+
+  try {
+    await update(ref(database), updates);
+  } catch (error) {
+    console.error("Error assigning grades in batch:", error);
+    throw new Error("Falha ao importar as notas");
+  }
+};
+
+/**
  * Get grades for a specific assessment
  * @param {string} courseId - The ID of the course
  * @param {string} assessmentId - The assessment ID

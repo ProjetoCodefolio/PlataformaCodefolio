@@ -35,8 +35,10 @@ import PendingIcon from "@mui/icons-material/Pending";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
 import EditIcon from "@mui/icons-material/Edit";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
 import Topbar from "$components/topbar/Topbar";
 import BreadcrumbsComponent from "$components/common/BreadcrumbsComponent";
+import GradesImportModal from "./GradesImportModal";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
@@ -82,6 +84,7 @@ export default function CourseGrades() {
   const [draftGrades, setDraftGrades] = useState({});
   const [savingCells, setSavingCells] = useState({});
   const [invalidCells, setInvalidCells] = useState({});
+  const [importOpen, setImportOpen] = useState(false);
 
   // Só o dono do curso (ou admin) pode lançar nota — é o que as regras do banco
   // permitem escrever em courseAssessments.
@@ -168,6 +171,15 @@ export default function CourseGrades() {
   // Voltar para página anterior
   const handleBack = () => {
     navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
+  };
+
+  // Importação concluída: relê as notas do banco, que agora são a verdade
+  const handleImported = async (importedCount) => {
+    setImportOpen(false);
+    toast.success(
+      `${importedCount} nota(s) importada(s) com sucesso!`
+    );
+    await loadCourseGrades();
   };
 
   // --- Modo edição ---
@@ -500,6 +512,28 @@ export default function CourseGrades() {
               >
                 Exportar CSV
               </Button>
+              {canEditGrades && (
+                <Tooltip title="Importar um CSV de notas exportado desta tela">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      startIcon={<UploadFileIcon />}
+                      onClick={() => setImportOpen(true)}
+                      disabled={loading || assessments.length === 0}
+                      sx={{
+                        borderColor: "#9041c1",
+                        color: "#9041c1",
+                        "&:hover": {
+                          borderColor: "#7a35a3",
+                          backgroundColor: "#f5f0fa",
+                        },
+                      }}
+                    >
+                      Importar CSV
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
             </Stack>
           }
         />
@@ -1121,6 +1155,15 @@ export default function CourseGrades() {
             </Stack>
           </Paper>
         )}
+
+        <GradesImportModal
+          open={importOpen}
+          onClose={() => setImportOpen(false)}
+          courseId={courseId}
+          students={studentsGrades}
+          assessments={assessments}
+          onImported={handleImported}
+        />
       </Box>
     </Box>
   );
