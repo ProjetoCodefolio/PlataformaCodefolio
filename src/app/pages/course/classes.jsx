@@ -215,7 +215,14 @@ const Classes = ({ alias = null }) => {
               // após os vídeos, preservando o comportamento anterior.
               order: typeof slide.order === "number" ? slide.order : 1000 + index,
               quizId: hasQuiz ? `${courseId}/slide_${slide.id}` : null,
-              quizPassed: false, // Inicialmente não completado
+              // Resultado do quiz do slide legado (chaveado por `slide_<id>`).
+              // Necessário porque slides agora contam no progresso: sem isto, um
+              // slide legado com quiz nunca seria considerado concluído.
+              quizPassed: hasQuiz
+                ? courseData.userQuizzesResults?.[`slide_${slide.id}`]?.isPassed ||
+                  courseData.userQuizzesResults?.[`slide_${slide.id}`]?.passed ||
+                  false
+                : false,
             };
           })
         );
@@ -252,12 +259,13 @@ const Classes = ({ alias = null }) => {
         setCourseOwnerUid(courseData.courseOwnerUid);
         setVideos(combinedContent);
 
-        // Recalcula o progresso do curso com a lista completa. Contam apenas
-        // vídeos (novos, legados E de entrega/sala invertida); slides e itens
-        // independentes ficam fora do denominador.
+        // Recalcula o progresso do curso com a lista completa: todo o conteúdo
+        // (vídeos novos/legados/entrega + slides), exceto itens independentes.
+        // Um item só conta como concluído se assistido e, havendo quiz, aprovado
+        // (a lógica fica em updateCourseProgress).
         if (userDetails?.userId) {
           const progressVideos = combinedContent.filter(
-            (v) => v && !v.isSlide && !v.isIndependent
+            (v) => v && !v.isIndependent
           );
           updateCourseProgress(userDetails.userId, courseId, progressVideos);
         }
@@ -567,6 +575,14 @@ const Classes = ({ alias = null }) => {
           if (result?.attempts) {
             setUserAttempts(result.attempts);
           }
+
+          // Passar no quiz pode concluir o conteúdo (watched + quizPassed), então
+          // recalcula o progresso agregado em tempo real — antes o valor só
+          // mudava ao recarregar o curso.
+          const progressVideos = updatedVideos.filter(
+            (v) => v && !v.isIndependent
+          );
+          updateCourseProgress(userDetails.userId, courseId, progressVideos);
         } else {
           // Salva progresso local para usuários não logados
           sessionStorage.setItem(
@@ -709,10 +725,10 @@ const Classes = ({ alias = null }) => {
       // Recalcula o progresso agregado do curso em tempo real. Antes isso só
       // acontecia ao (re)carregar a tela do curso, então o percentual exibido
       // nos cards/lista de cursos ficava defasado até o aluno sair e voltar.
-      // Contam apenas vídeos (não slides nem conteúdo independente).
+      // Conta todo o conteúdo exceto itens independentes (slides incluídos).
       if (userDetails?.userId) {
         const progressVideos = updatedVideos.filter(
-          (v) => v && !v.isSlide && !v.isIndependent
+          (v) => v && !v.isIndependent
         );
         updateCourseProgress(userDetails.userId, courseId, progressVideos);
       }

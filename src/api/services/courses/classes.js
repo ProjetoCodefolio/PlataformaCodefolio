@@ -238,12 +238,10 @@ export const checkCourseCompletion = async (videos, userId, courseId) => {
 
     if (progressPercentage === 100) {
       if (userId) {
-        // Grava o progresso usando o MESMO denominador do cálculo de carga
-        // (apenas vídeos: sem slides nem conteúdo independente), para não
-        // conflitar/piscar com o valor calculado em classes.jsx.
-        const progressVideos = videos.filter(
-          (v) => v && !v.isSlide && !v.isIndependent
-        );
+        // Grava o progresso com a MESMA definição do cálculo de carga: todo o
+        // conteúdo (vídeos + slides), exceto itens independentes. A própria
+        // updateCourseProgress deduplica e exige quiz aprovado quando houver.
+        const progressVideos = videos.filter((v) => v && !v.isIndependent);
         await updateCourseProgress(userId, courseId, progressVideos);
       }
       return true;

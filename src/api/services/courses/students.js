@@ -2,21 +2,83 @@ import { database } from '../../config/firebase';
 import { ref, get, set, update, remove } from 'firebase/database';
 
 /**
- * Atualiza o progresso de um curso para um estudante específico
+ * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
+ * entram como vistos) e, havendo quiz associado, o quiz foi aprovado.
+ * É a mesma definição usada pelo check verde da lista e pela conclusão do curso.
+ * @param {Object} item - item de conteúdo com { watched, quizId, quizPassed }
+ * @returns {boolean}
  */
-export const updateCourseProgress = async (userId, courseId, videos, totalVideos = null) => {
+export const isContentCompleted = (item) =>
+  !!item && !!item.watched && (!item.quizId || !!item.quizPassed);
+
+/**
+ * Atualiza o progresso de um curso para um estudante a partir da lista de
+ * conteúdo JÁ carregada com o estado do aluno (watched/quizPassed). É a fonte
+ * única de verdade do progresso:
+ *  - considera todo o conteúdo (vídeos + slides), exceto itens independentes;
+ *  - deduplica por id (conteúdo pode existir na coleção nova e na legada);
+ *  - um item só conta como concluído via `isContentCompleted` (assistido e,
+ *    havendo quiz, aprovado).
+ * Não relê o Firebase: o array recebido já reflete o estado do aluno, o que
+ * mantém o cálculo alinhado com a UI e evita regressões por leituras vazias.
+ */
+export const updateCourseProgress = async (userId, courseId, videos = []) => {
+  if (!userId || !courseId) return;
+
+  try {
+    // Deduplica por id; em caso de duplicata, prevalece a versão "mais concluída".
+    const contentById = new Map();
+    for (const item of videos) {
+      if (!item || item.isIndependent || item.id == null) continue;
+      const prev = contentById.get(item.id);
+      if (!prev || (isContentCompleted(item) && !isContentCompleted(prev))) {
+        contentById.set(item.id, item);
+      }
+    }
+
+    const total = contentById.size;
+    let completed = 0;
+    contentById.forEach((item) => {
+      if (isContentCompleted(item)) completed += 1;
+    });
+
+    const newProgress = total > 0 ? (completed / total) * 100 : 0;
+    const status = newProgress >= 100 ? "completed" : "in_progress";
+
+    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
+      progress: newProgress,
+      status,
+      lastUpdated: new Date().toISOString(),
+    });
+
+    return { progress: newProgress, status };
+  } catch (error) {
+    console.error("Erro ao atualizar progresso do curso:", error);
+    throw error;
+  }
+};
+
+/**
+ * Recálculo em massa (disparado quando o professor edita os vídeos do curso):
+ * calcula o progresso apenas a partir dos vídeos ASSISTIDOS no Firebase, sem
+ * considerar quizzes nem slides — pois aqui só temos a lista genérica de vídeos,
+ * não o estado por-aluno. O valor é reconciliado com a definição completa
+ * (`updateCourseProgress`) no próximo carregamento do curso pelo aluno.
+ */
+export const recalcCourseProgressFromWatched = async (
+  userId,
+  courseId,
+  videos,
+  totalVideos = null
+) => {
   if (!userId || !courseId) return;
 
   try {
     let newProgress = 0;
-    
-    // Se não for informado o total de vídeos, calcular baseado no array de vídeos
+
     if (totalVideos === null) {
       totalVideos = videos.length;
     }
-    
-    const studentCoursesRef = ref(database, `studentCourses/${userId}/${courseId}`);
-    const studentCoursesSnapshot = await get(studentCoursesRef);
 
     if (totalVideos === 0) {
       newProgress = 0;
@@ -24,32 +86,26 @@ export const updateCourseProgress = async (userId, courseId, videos, totalVideos
       const videosRef = ref(database, `videoProgress/${userId}/${courseId}`);
       const videosSnapshot = await get(videosRef);
       const videosData = videosSnapshot.val() || {};
-      
-      // Apenas contar vídeos assistidos que ainda existem no curso atual
-      const currentVideoIds = new Set(videos.map(video => video.id));
-      const watchedVideos = Object.entries(videosData)
-        .filter(([videoId, data]) => currentVideoIds.has(videoId) && data.watched)
-        .length;
-      
+
+      const currentVideoIds = new Set(videos.map((video) => video.id));
+      const watchedVideos = Object.entries(videosData).filter(
+        ([videoId, data]) => currentVideoIds.has(videoId) && data.watched
+      ).length;
+
       newProgress = (watchedVideos / totalVideos) * 100;
     }
 
-    // Determinar o status do curso baseado no progresso
-    let status = 'in_progress';
-    if (newProgress === 100) {
-      status = 'completed';
-    }
+    const status = newProgress === 100 ? "completed" : "in_progress";
 
-    // Atualizar o progresso do curso para o estudante
-    await update(studentCoursesRef, { 
-      progress: newProgress, 
-      status: status,
-      lastUpdated: new Date().toISOString()
+    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
+      progress: newProgress,
+      status,
+      lastUpdated: new Date().toISOString(),
     });
-    
+
     return { progress: newProgress, status };
   } catch (error) {
-    console.error("Erro ao atualizar progresso do curso:", error);
+    console.error("Erro ao recalcular progresso do curso:", error);
     throw error;
   }
 };

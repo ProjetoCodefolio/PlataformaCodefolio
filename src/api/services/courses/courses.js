@@ -1,6 +1,6 @@
 import { ref, get, set, push, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
-import { updateCourseProgress } from './students';
+import { recalcCourseProgressFromWatched } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
 import { isAliasAvailable } from "./alias";
 
@@ -377,7 +377,7 @@ export const updateAllUsersCourseProgress = async (courseId, videos) => {
     
     for (const userId in studentCourses) {
       if (studentCourses[userId][courseId]) {
-        await updateCourseProgress(userId, courseId, videos, totalVideos);
+        await recalcCourseProgressFromWatched(userId, courseId, videos, totalVideos);
       }
     }
   } catch (error) {
