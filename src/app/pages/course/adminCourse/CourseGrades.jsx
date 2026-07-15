@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Typography,
@@ -33,6 +33,8 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import PendingIcon from "@mui/icons-material/Pending";
 import UnfoldMoreIcon from "@mui/icons-material/UnfoldMore";
+import EditIcon from "@mui/icons-material/Edit";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import Topbar from "$components/topbar/Topbar";
 import BreadcrumbsComponent from "$components/common/BreadcrumbsComponent";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -41,9 +43,10 @@ import { toast } from "react-toastify";
 import * as gradesService from "$api/services/courses/grades";
 import * as assessmentService from "$api/services/courses/assessments";
 import * as courseService from "$api/services/courses/courses";
-import { checkUserCourseRole } from "$api/services/courses/students";
+import { canAssignGrades } from "$api/utils/permissions";
 import {
   MINIMUM_PASSING_GRADE,
+  MAXIMUM_GRADE,
   GRADE_STATUS,
   GRADE_COLORS,
 } from "$api/constants/gradeConstants";
@@ -51,7 +54,7 @@ import {
 export default function CourseGrades() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userDetails, currentUser } = useAuth();
+  const { userDetails } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -63,15 +66,26 @@ export default function CourseGrades() {
   const [studentsGrades, setStudentsGrades] = useState([]);
   const [assessments, setAssessments] = useState([]);
   const [courseDetails, setCourseDetails] = useState(null);
-  const [statistics, setStatistics] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [error, setError] = useState(null);
-  const [isCourseOwner, setIsCourseOwner] = useState(false);
-  const [isTeacher, setIsTeacher] = useState(false);
   const [activeFilters, setActiveFilters] = useState(0);
+
+  // Modo edição: permite lançar notas direto na tabela geral
+  const [editMode, setEditMode] = useState(false);
+  // Nota EM DIGITAÇÃO de cada célula, separada da nota já commitada em
+  // `studentsGrades` — que alimenta ordenação, filtro e status. Se o valor
+  // digitado fosse direto para lá, a linha se moveria (ou sairia da lista) no
+  // meio da digitação. O commit só acontece ao sair do campo (blur).
+  const [draftGrades, setDraftGrades] = useState({});
+  const [savingCells, setSavingCells] = useState({});
+  const [invalidCells, setInvalidCells] = useState({});
+
+  // Só o dono do curso (ou admin) pode lançar nota — é o que as regras do banco
+  // permitem escrever em courseAssessments.
+  const canEditGrades = canAssignGrades(userDetails, courseDetails?.userId);
 
   // Atualizar contagem de filtros
   useEffect(() => {
@@ -86,7 +100,6 @@ export default function CourseGrades() {
     if (courseId && userDetails?.userId) {
       loadCourseGrades();
       loadCourseDetails();
-      checkPermissions();
     }
   }, [courseId, userDetails?.userId]);
 
@@ -96,25 +109,6 @@ export default function CourseGrades() {
       setCourseDetails(details);
     } catch (err) {
       console.error("Erro ao carregar detalhes do curso:", err);
-    }
-  };
-
-  const checkPermissions = async () => {
-    try {
-      if (!currentUser) return;
-
-      const details = await courseService.fetchCourseDetails(courseId);
-      const isOwner = currentUser.uid === details.userId;
-      const isTeacherOnly = await checkUserCourseRole(
-        currentUser.uid,
-        courseId,
-        details.userId
-      );
-
-      setIsCourseOwner(isOwner);
-      setIsTeacher(isTeacherOnly);
-    } catch (err) {
-      console.error("Erro ao verificar permissões:", err);
     }
   };
 
@@ -129,10 +123,6 @@ export default function CourseGrades() {
       // Carregar todas as notas
       const gradesData = await gradesService.fetchAllCourseGrades(courseId);
       setStudentsGrades(gradesData);
-
-      // Calcular estatísticas
-      const stats = gradesService.calculateGradeStatistics(gradesData);
-      setStatistics(stats);
     } catch (err) {
       console.error("Erro ao carregar notas:", err);
       setError("Não foi possível carregar as notas do curso.");
@@ -141,6 +131,16 @@ export default function CourseGrades() {
       setLoading(false);
     }
   };
+
+  // Derivadas das notas em memória: ao editar uma nota, os cards do topo se
+  // atualizam sozinhos, sem reler o banco.
+  const statistics = useMemo(
+    () =>
+      loading || error
+        ? null
+        : gradesService.calculateGradeStatistics(studentsGrades),
+    [loading, error, studentsGrades]
+  );
 
   // Exportar para CSV
   const handleExportCSV = () => {
@@ -168,6 +168,134 @@ export default function CourseGrades() {
   // Voltar para página anterior
   const handleBack = () => {
     navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
+  };
+
+  // --- Modo edição ---
+
+  const cellKey = (studentId, assessmentId) => `${studentId}_${assessmentId}`;
+
+  const handleToggleEditMode = () => {
+    setEditMode((prev) => !prev);
+    // Rascunhos não commitados não sobrevivem à troca de modo
+    setDraftGrades({});
+    setInvalidCells({});
+  };
+
+  // Valor exibido no campo: o rascunho em digitação, se houver; senão a nota já
+  // commitada. Usa `??` para preservar corretamente a nota "0".
+  const getGradeFieldValue = (student, assessmentId) => {
+    const draft = draftGrades[cellKey(student.userId, assessmentId)];
+    if (draft !== undefined) return draft;
+    return student.grades[assessmentId]?.grade ?? "";
+  };
+
+  const parseGrade = (value) => parseFloat(String(value).replace(",", "."));
+
+  const isGradeOutOfRange = (value) => {
+    const numValue = parseGrade(value);
+    return isNaN(numValue) || numValue < 0 || numValue > MAXIMUM_GRADE;
+  };
+
+  const clearDraft = (key) => {
+    setDraftGrades((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const markCellValid = (key) => {
+    setInvalidCells((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleGradeChange = (studentId, assessmentId, value) => {
+    const key = cellKey(studentId, assessmentId);
+    setDraftGrades((prev) => ({ ...prev, [key]: value }));
+
+    // Validação instantânea, sem toast (o campo já fica vermelho)
+    if (value.trim() !== "" && isGradeOutOfRange(value)) {
+      setInvalidCells((prev) => ({ ...prev, [key]: true }));
+    } else {
+      markCellValid(key);
+    }
+  };
+
+  // Recalcula o aluno inteiro a partir das notas já em memória: nota final, cor
+  // e status acompanham a edição sem ida ao banco.
+  const applyGradeToState = (studentId, assessmentId, grade, assignedAt) => {
+    setStudentsGrades((prev) =>
+      prev.map((student) => {
+        if (student.userId !== studentId) return student;
+
+        const updatedGrades = {
+          ...student.grades,
+          [assessmentId]: { grade, assignedAt },
+        };
+
+        return {
+          ...student,
+          ...gradesService.computeStudentGradeSummary(updatedGrades, assessments),
+        };
+      })
+    );
+  };
+
+  const handleGradeBlur = async (student, assessmentId, value) => {
+    const key = cellKey(student.userId, assessmentId);
+    const raw = String(value).trim();
+
+    // Campo esvaziado não apaga a nota já lançada — apenas descarta o rascunho.
+    // Para remover uma nota, o caminho é a tela de atribuição da avaliação.
+    if (raw === "") {
+      clearDraft(key);
+      markCellValid(key);
+      return;
+    }
+
+    if (isGradeOutOfRange(raw)) {
+      setInvalidCells((prev) => ({ ...prev, [key]: true }));
+      return;
+    }
+
+    const numValue = parseGrade(raw);
+    markCellValid(key);
+
+    // Nada mudou: não gasta escrita no banco
+    if (numValue === (student.grades[assessmentId]?.grade ?? null)) {
+      clearDraft(key);
+      return;
+    }
+
+    setSavingCells((prev) => ({ ...prev, [key]: true }));
+
+    try {
+      await assessmentService.assignGrade(
+        courseId,
+        assessmentId,
+        student.userId,
+        numValue
+      );
+
+      applyGradeToState(
+        student.userId,
+        assessmentId,
+        numValue,
+        new Date().toISOString()
+      );
+      clearDraft(key);
+    } catch (err) {
+      toast.error(`Erro ao salvar nota: ${err.message}`);
+    } finally {
+      setSavingCells((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
   };
 
   // Lidar com clique em cabeçalho para ordenação
@@ -247,6 +375,44 @@ export default function CourseGrades() {
     }
   };
 
+  // Campo de nota do modo edição. É uma função de render, e não um componente
+  // declarado aqui dentro: um componente novo a cada render faria o React
+  // remontar o input a cada tecla, perdendo o foco.
+  const renderGradeField = (student, assessmentId) => {
+    const key = cellKey(student.userId, assessmentId);
+    const isInvalid = Boolean(invalidCells[key]);
+
+    return (
+      <TextField
+        size="small"
+        value={getGradeFieldValue(student, assessmentId)}
+        onChange={(e) =>
+          handleGradeChange(student.userId, assessmentId, e.target.value)
+        }
+        onBlur={(e) => handleGradeBlur(student, assessmentId, e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.target.blur();
+        }}
+        error={isInvalid}
+        disabled={Boolean(savingCells[key])}
+        placeholder="—"
+        inputProps={{
+          inputMode: "decimal",
+          "aria-label": `Nota de ${student.name}`,
+          style: { textAlign: "center", padding: "6px 8px" },
+        }}
+        sx={{
+          width: 80,
+          "& .MuiOutlinedInput-root": {
+            "&.Mui-focused fieldset": {
+              borderColor: isInvalid ? undefined : "#9041c1",
+            },
+          },
+        }}
+      />
+    );
+  };
+
   // Componente de cabeçalho de coluna com ordenação
   const SortableHeader = ({ label, field, width = "auto" }) => (
     <TableCell
@@ -288,22 +454,53 @@ export default function CourseGrades() {
           ]}
           onBack={handleBack}
           actionButtons={
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={handleExportCSV}
-              disabled={studentsGrades.length === 0}
-              sx={{
-                borderColor: "#9041c1",
-                color: "#9041c1",
-                "&:hover": {
-                  borderColor: "#7a35a3",
-                  backgroundColor: "#f5f0fa",
-                },
-              }}
-            >
-              Exportar CSV
-            </Button>
+            <Stack direction="row" spacing={1}>
+              {canEditGrades && (
+                <Tooltip
+                  title={
+                    editMode
+                      ? "Sair da edição e apenas conferir as notas"
+                      : "Ativar edição para atribuir notas direto na tabela"
+                  }
+                >
+                  <span>
+                    <Button
+                      variant={editMode ? "contained" : "outlined"}
+                      startIcon={editMode ? <VisibilityIcon /> : <EditIcon />}
+                      onClick={handleToggleEditMode}
+                      disabled={loading || assessments.length === 0}
+                      sx={{
+                        borderColor: "#9041c1",
+                        color: editMode ? "#fff" : "#9041c1",
+                        backgroundColor: editMode ? "#9041c1" : undefined,
+                        "&:hover": {
+                          borderColor: "#7a35a3",
+                          backgroundColor: editMode ? "#7a35a3" : "#f5f0fa",
+                        },
+                      }}
+                    >
+                      {editMode ? "Modo Visualização" : "Modo Edição"}
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={handleExportCSV}
+                disabled={studentsGrades.length === 0}
+                sx={{
+                  borderColor: "#9041c1",
+                  color: "#9041c1",
+                  "&:hover": {
+                    borderColor: "#7a35a3",
+                    backgroundColor: "#f5f0fa",
+                  },
+                }}
+              >
+                Exportar CSV
+              </Button>
+            </Stack>
           }
         />
 
@@ -543,6 +740,15 @@ export default function CourseGrades() {
           </Alert>
         )}
 
+        {/* Instruções do modo edição */}
+        {editMode && !loading && (
+          <Alert severity="info" sx={{ mb: 3, borderRadius: "12px" }}>
+            Digite a nota (de 0 a {MAXIMUM_GRADE}) e clique fora do campo para
+            salvar. A nota final e o status são recalculados automaticamente.
+            Deixar o campo em branco não apaga uma nota já lançada.
+          </Alert>
+        )}
+
         {/* Tabela de notas - Desktop */}
         <Paper
           elevation={0}
@@ -644,7 +850,9 @@ export default function CourseGrades() {
                         
                         return (
                           <TableCell key={assessment.id} align="center">
-                            {gradeData && gradeData.grade !== null ? (
+                            {editMode ? (
+                              renderGradeField(student, assessment.id)
+                            ) : gradeData && gradeData.grade !== null ? (
                               <Chip
                                 label={fmt(gradeData.grade)}
                                 size="small"
@@ -790,7 +998,9 @@ export default function CourseGrades() {
                                   {assessment.percentage}% da nota final
                                 </Typography>
                               </Box>
-                              {gradeData && gradeData.grade !== null ? (
+                              {editMode ? (
+                                renderGradeField(student, assessment.id)
+                              ) : gradeData && gradeData.grade !== null ? (
                                 <Chip
                                   label={fmt(gradeData.grade)}
                                   size="small"
