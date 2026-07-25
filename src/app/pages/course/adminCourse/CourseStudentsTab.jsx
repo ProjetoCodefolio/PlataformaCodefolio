@@ -1,8 +1,9 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+import HowToRegIcon from "@mui/icons-material/HowToReg";
+import SearchField from "$components/common/SearchField";
 import React, { useEffect, useState, forwardRef } from "react";
 import {
     Box,
-    TextField,
     Button,
     IconButton,
     List,
@@ -75,6 +76,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const { currentUser, userDetails } = useAuth();
 
     const location = useLocation();
+    const navigate = useNavigate();
     const params = new URLSearchParams(location.search);
     const courseId = params.get("courseId");
 
@@ -288,31 +290,27 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
     return (
         <Box sx={{ padding: { xs: 1, sm: 2 } }}>
-            <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                Estudantes do Curso
-            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 1, mb: 1 }}>
+                <Typography variant="h4" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' }, mb: 0 }}>
+                    Estudantes do Curso
+                </Typography>
+                <Button
+                    variant="outlined"
+                    startIcon={<HowToRegIcon />}
+                    onClick={() => navigate(`/course/presenca?courseId=${courseId}`)}
+                    sx={{ color: "#9041c1", borderColor: "#9041c1", "&:hover": { borderColor: "#7d37a7" }, whiteSpace: 'nowrap' }}
+                >
+                    Presença por Vídeos
+                </Button>
+            </Box>
 
             {/* Barra de pesquisa */}
             <Box sx={{ mb: 3 }}>
-                <TextField
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                    placeholder="Buscar estudante por nome ou email..."
+                <SearchField
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    sx={{
-                        mb: 2,
-                        "& .MuiOutlinedInput-root": {
-                            borderRadius: 2,
-                            "& fieldset": { borderColor: "#9041c1" },
-                            "&:hover fieldset": { borderColor: "#7d37a7" },
-                            "&.Mui-focused fieldset": { borderColor: "#9041c1" },
-                        },
-                        "& .MuiInputBase-input": {
-                            fontSize: { xs: '0.875rem', sm: '1rem' }
-                        }
-                    }}
+                    placeholder="Buscar estudante por nome ou email..."
+                    sx={{ mb: 2 }}
                 />
 
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">

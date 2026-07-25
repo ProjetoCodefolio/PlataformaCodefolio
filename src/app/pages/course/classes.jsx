@@ -44,6 +44,11 @@ import {
   recoverUnsavedProgress,
 } from "$api/services/courses/classes";
 import { getCourseIdByAlias } from "$api/services/courses/alias";
+import {
+  fetchCourseDetails,
+  checkStudentCourseEnrollment,
+} from "$api/services/courses/courses";
+import PinAccessModal from "$components/modals/PinAccessModal";
 import { updateCourseProgress } from "$api/services/courses/students";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
@@ -71,6 +76,17 @@ const Classes = ({ alias = null }) => {
     seekTo: () => { },
   });
   const [loadingVideos, setLoadingVideos] = useState(false);
+  // Controle de acesso ao curso (fonte única de verdade da sala de aula).
+  // - accessChecking: ainda decidindo se o aluno pode entrar (mostra loader).
+  // - accessGranted: liberado a ver o conteúdo (curso aberto, dono/admin,
+  //   aluno já matriculado ou PIN validado).
+  // - showPinModal: curso fechado e o aluno precisa informar o PIN.
+  const [accessChecking, setAccessChecking] = useState(true);
+  const [accessGranted, setAccessGranted] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  // Evita que o onClose do PinAccessModal (chamado também após um envio válido)
+  // redirecione o aluno recém-liberado para fora da sala.
+  const accessGrantedRef = useRef(false);
   const navigate = useNavigate();
   const modalRef = useRef(null);
   const [modalDimensions, setModalDimensions] = useState({
@@ -157,6 +173,100 @@ const Classes = ({ alias = null }) => {
     }
 
   }, [alias, navigate]);
+
+  // Controle de acesso (fonte única): decide se o aluno pode entrar na sala,
+  // independentemente de como chegou aqui (link/alias direto, ?courseId= ou
+  // pelas telas de listagem). Regras:
+  //   - Curso aberto (sem pinEnabled): acesso livre, sem controle.
+  //   - Curso fechado: dono/admin e alunos JÁ matriculados entram direto;
+  //     integrantes novos precisam informar o PIN (PinAccessModal).
+  // A verificação roda ANTES do carregamento do conteúdo, para que o progresso
+  // (que cria o vínculo em studentCourses) nunca seja gravado sem liberação.
+  useEffect(() => {
+    if (!courseId) return;
+
+    let cancelled = false;
+
+    const resolveAccess = async () => {
+      setAccessChecking(true);
+      accessGrantedRef.current = false;
+      try {
+        const course = await fetchCourseDetails(courseId);
+        if (cancelled) return;
+
+        const grant = () => {
+          accessGrantedRef.current = true;
+          setAccessGranted(true);
+          setShowPinModal(false);
+        };
+
+        // Curso aberto: nenhum controle de acesso.
+        if (!course?.pinEnabled) {
+          grant();
+          return;
+        }
+
+        // Dono do curso ou admin nunca precisam do PIN.
+        const isOwner = course?.userId && course.userId === userDetails?.userId;
+        const isAdmin = userDetails?.role === "admin";
+        if (isOwner || isAdmin) {
+          grant();
+          return;
+        }
+
+        // Já ingressou antes: acessa normalmente, sem pedir o PIN de novo.
+        let alreadyEnrolled = false;
+        if (userDetails?.userId) {
+          alreadyEnrolled = await checkStudentCourseEnrollment(
+            userDetails.userId,
+            courseId
+          );
+        }
+        if (cancelled) return;
+
+        if (alreadyEnrolled) {
+          grant();
+          return;
+        }
+
+        // Integrante novo em curso fechado: exige o PIN.
+        setAccessGranted(false);
+        setShowPinModal(true);
+      } catch (error) {
+        console.error("Erro ao verificar acesso ao curso:", error);
+        // Em caso de falha na verificação, não libera o acesso.
+        setAccessGranted(false);
+        setShowPinModal(false);
+        toast.error("Não foi possível verificar o acesso ao curso.");
+      } finally {
+        if (!cancelled) setAccessChecking(false);
+      }
+    };
+
+    resolveAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, userDetails?.userId, userDetails?.role]);
+
+  // PIN validado com sucesso: libera a sala. O vínculo em studentCourses é
+  // criado naturalmente ao gravar o progresso no carregamento do conteúdo, então
+  // em acessos futuros o aluno cai na regra "já matriculado" e não vê mais o PIN.
+  const handlePinAccessGranted = () => {
+    accessGrantedRef.current = true;
+    setShowPinModal(false);
+    setAccessGranted(true);
+  };
+
+  // Modal fechado. Se foi por um PIN válido, o acesso já foi liberado; caso
+  // contrário (backdrop/ESC sem PIN), o aluno não entra e volta para a lista.
+  const handlePinModalClose = () => {
+    setShowPinModal(false);
+    if (!accessGrantedRef.current) {
+      navigate("/cursos");
+    }
+  };
 
   // Carrega os dados iniciais do curso
   useEffect(() => {
@@ -263,11 +373,22 @@ const Classes = ({ alias = null }) => {
         // (vídeos novos/legados/entrega + slides), exceto itens independentes.
         // Um item só conta como concluído se assistido e, havendo quiz, aprovado
         // (a lógica fica em updateCourseProgress).
+        //
+        // Só persiste se a leitura do progresso foi CONFIÁVEL: se a busca do
+        // progresso de qualquer item falhou (progressError), aquele item vem com
+        // watched:false falso-negativo — persistir aqui gravaria um percentual
+        // rebaixado (e poderia virar completed→in_progress). Neste caso pulamos a
+        // gravação; o valor é reconciliado no próximo carregamento bem-sucedido.
         if (userDetails?.userId) {
           const progressVideos = combinedContent.filter(
             (v) => v && !v.isIndependent
           );
-          updateCourseProgress(userDetails.userId, courseId, progressVideos);
+          const progressReliable = combinedContent.every(
+            (v) => !v?.progressError
+          );
+          if (progressReliable) {
+            updateCourseProgress(userDetails.userId, courseId, progressVideos);
+          }
         }
         setUserAttempts(courseData.userQuizzesResults);
 
@@ -309,17 +430,18 @@ const Classes = ({ alias = null }) => {
       }
     };
 
-    if (courseId) {
+    // Só carrega o conteúdo (e grava progresso) após o acesso ser liberado.
+    if (courseId && accessGranted) {
       fetchData();
     }
-  }, [courseId, userDetails?.userId]);
+  }, [courseId, userDetails?.userId, accessGranted]);
 
   // Recupera progresso não salvo da sessão anterior
   useEffect(() => {
-    if (courseId && userDetails?.userId) {
+    if (courseId && userDetails?.userId && accessGranted) {
       recoverUnsavedProgress(courseId, userDetails?.userId);
     }
-  }, [courseId, userDetails?.userId]);
+  }, [courseId, userDetails?.userId, accessGranted]);
 
   // Salva progresso ao fechar a página
   useEffect(() => {
@@ -407,7 +529,7 @@ const Classes = ({ alias = null }) => {
   useEffect(() => {
     const loadSlides = async () => {
       try {
-        if (courseId) {
+        if (courseId && accessGranted) {
           const slidesData = await loadCourseSlides(courseId);
 
           // Verificar quais slides têm quiz associado e adicionar a propriedade quizId
@@ -434,7 +556,7 @@ const Classes = ({ alias = null }) => {
     };
 
     loadSlides();
-  }, [courseId]);
+  }, [courseId, accessGranted]);
 
   // Verifica conclusão do curso quando os vídeos mudam
   useEffect(() => {
@@ -925,6 +1047,71 @@ const Classes = ({ alias = null }) => {
 
     loadAdvancedSettings();
   }, [courseId]);
+
+  // Enquanto o acesso não é liberado, não renderiza a sala. Mostra um loader
+  // durante a verificação e, para curso fechado, o modal de PIN por cima.
+  if (!accessGranted) {
+    return (
+      <>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+        />
+        <style>{`body { background: #F5F5FA }`}</style>
+        <Box
+          sx={{
+            minHeight: "100vh",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "#F5F5FA",
+          }}
+        >
+          <Topbar hideSearch={true} />
+          <Box
+            sx={{
+              minHeight: "calc(100vh - 64px)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 2,
+              px: 2,
+              textAlign: "center",
+              color: "#888",
+            }}
+          >
+            {accessChecking ? (
+              <>
+                <CircularProgress color="secondary" />
+                <Typography variant="body1">
+                  Verificando acesso ao curso...
+                </Typography>
+              </>
+            ) : (
+              <Typography variant="body1">
+                Este curso requer uma chave de acesso.
+              </Typography>
+            )}
+          </Box>
+        </Box>
+
+        <PinAccessModal
+          open={showPinModal}
+          onClose={handlePinModalClose}
+          onSubmit={handlePinAccessGranted}
+          selectedCourse={{ courseId }}
+        />
+      </>
+    );
+  }
 
   return (
     <>

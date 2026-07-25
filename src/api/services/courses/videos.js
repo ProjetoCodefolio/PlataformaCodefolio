@@ -290,8 +290,15 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
     // Buscar vídeos atualizados após a remoção
     const allVideos = await fetchCourseVideos(courseId);
 
-    // Criar um objeto de atualizações: reordenação dos vídeos remanescentes +
-    // limpeza do progresso deste vídeo para TODOS os usuários (não só o atual).
+    // Reordenar os vídeos remanescentes (fechar o "buraco" na ordem global).
+    //
+    // IMPORTANTE: NÃO apagamos o progresso (videoProgress) deste vídeo dos
+    // alunos. O progresso do curso é recalculado a partir da lista de conteúdo
+    // carregada (updateCourseProgress em classes.jsx), que já não inclui itens
+    // deletados — então nós de progresso "órfãos" não inflam o progresso. Apagá-
+    // los era destrutivo: um professor que deletava um vídeo para recadastrar
+    // uma versão corrigida eliminava silenciosamente o progresso de TODOS os
+    // alunos naquele vídeo, sem chance de recuperação.
     const updates = {};
 
     // Atualizar a ordem de cada vídeo remanescente
@@ -301,119 +308,20 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
       }
     });
 
-    // Deletar o progresso deste vídeo (videoProgress/{userId}/{courseId}/{videoId})
-    // para todos os usuários que tenham registro dele. Limpar só o usuário atual
-    // deixaria o progresso dos demais alunos contando um vídeo inexistente.
-    const videoProgressSnapshot = await get(ref(database, `videoProgress`));
-    const videoProgressData = videoProgressSnapshot.val();
-    if (videoProgressData) {
-      Object.keys(videoProgressData).forEach((uid) => {
-        if (
-          videoProgressData[uid] &&
-          videoProgressData[uid][courseId] &&
-          videoProgressData[uid][courseId][videoId] !== undefined
-        ) {
-          updates[`videoProgress/${uid}/${courseId}/${videoId}`] = null;
-        }
-      });
-    }
-
     // Aplicar as atualizações se houver alguma
     if (Object.keys(updates).length > 0) {
       await update(ref(database), updates);
     }
 
-    // Buscar vídeos atualizados
-    const updatedVideos = await fetchCourseVideos(courseId);
-
-    // Atualizar progresso do curso para todos os usuários
-    await updateAllUsersCourseProgress(courseId, updatedVideos);
+    // O progresso agregado de cada aluno é reconciliado no próximo carregamento
+    // do curso (updateCourseProgress, com a lista completa e a definição única).
+    // Não fazemos recálculo em massa aqui: o antigo recalcCourseProgressFromWatched
+    // considerava só os vídeos legados como universo, ignorando courseContent e
+    // slides, o que gerava um agregado errado até o aluno reabrir o curso.
 
     return true;
   } catch (error) {
     console.error("Erro ao excluir vídeo:", error);
-    throw error;
-  }
-};
-
-/**
- * Salva todos os vídeos de um curso
- * @param {string} courseId - ID do curso
- * @param {Array} videos - Array de vídeos
- * @returns {Promise<boolean>} - Verdadeiro se os vídeos foram salvos com sucesso
- */
-export const saveAllCourseVideos = async (courseId, videos) => {
-  try {
-    if (!courseId) {
-      throw new Error("ID do curso não disponível");
-    }
-    
-    // Filtrar vídeos nulos ou inválidos
-    const validVideos = videos.filter(video => video && typeof video === 'object');
-    
-    if (validVideos.length === 0 && videos.length > 0) {
-      throw new Error("Nenhum vídeo válido foi encontrado");
-    }
-    
-    // Verificar se todos os vídeos têm URLs válidas
-    const invalidVideos = validVideos.filter(video => !isValidYouTubeUrl(video.url));
-    if (invalidVideos.length > 0) {
-      // Construir mensagem de erro com títulos dos vídeos inválidos
-      const invalidVideoTitles = invalidVideos.map(v => `"${v.title || 'Sem título'}"`).join(", ");
-      throw new Error(`O curso contém vídeos com URLs inválidas: ${invalidVideoTitles}`);
-    }
-    
-    const courseVideosRef = ref(database, `courseVideos/${courseId}`);
-    const snapshot = await get(courseVideosRef);
-    const existingVideos = snapshot.val() || {};
-    
-    const existingVideoIds = new Set(Object.keys(existingVideos));
-    const currentVideoIds = new Set(validVideos.map(video => video.id).filter(id => id));
-    
-    // Remover vídeos que não existem mais
-    for (const id of existingVideoIds) {
-      if (!currentVideoIds.has(id)) {
-        await remove(ref(database, `courseVideos/${courseId}/${id}`));
-      }
-    }
-    
-    // Base de ordem para vídeos que ainda não possuem `order` (ex.: criados só
-    // neste bulk save). Vídeos existentes preservam sua ordem global para não
-    // sobrescrever a ordenação arrastável unificada (vídeos + slides).
-    let nextOrderBase = null;
-
-    // Adicionar ou atualizar vídeos
-    for (const [index, video] of validVideos.entries()) {
-      let order;
-      if (typeof video.order === "number") {
-        order = video.order;
-      } else {
-        if (nextOrderBase === null) {
-          nextOrderBase = await getNextContentOrder(courseId);
-        }
-        order = nextOrderBase + index;
-      }
-
-      const videoData = {
-        title: video.title || "Vídeo sem título",
-        url: video.url,
-        description: video.description || "",
-        order,
-        requiresPrevious: video.requiresPrevious !== undefined ? video.requiresPrevious : true,
-      };
-
-      if (video.id && existingVideoIds.has(video.id)) {
-        await set(ref(database, `courseVideos/${courseId}/${video.id}`), videoData);
-      } else {
-        const newVideoRef = push(courseVideosRef);
-        await set(newVideoRef, videoData);
-        video.id = newVideoRef.key;
-      }
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Erro ao salvar vídeos:", error);
     throw error;
   }
 };
@@ -463,8 +371,12 @@ export const isVideoLocked = (video, videos) => {
   if (!previousVideo || typeof previousVideo !== 'object') return false;
   
   // Um vídeo está bloqueado se requerer o anterior E
-  // o anterior não foi assistido OU tem um quiz não concluído
-  return video.requiresPrevious === true && 
-         previousVideo && 
-         (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed));
+  // o anterior não foi assistido OU tem um quiz não concluído.
+  // Coage para booleano: sem o `!!`, a expressão pode devolver null/"" (ex.:
+  // quizId ausente), o que funciona como "falsy" na UI mas suja o contrato.
+  return !!(
+    video.requiresPrevious === true &&
+    previousVideo &&
+    (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed))
+  );
 };

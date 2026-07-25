@@ -16,12 +16,8 @@ import { useNavigate } from "react-router-dom";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
 import LockIcon from "@mui/icons-material/Lock";
-import PinAccessModal from "$components/modals/PinAccessModal";
 import { filterCoursesBySearchTerm } from "$api/services/courses/courses";
-import {
-  fetchCategorizedCourses,
-  courseRequiresPin,
-} from "$api/services/courses/list";
+import { fetchCategorizedCourses } from "$api/services/courses/list";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0); // Tab 0 = Em Andamento agora
@@ -31,8 +27,6 @@ const MyCourses = () => {
   const [filteredAvailableCourses, setFilteredAvailableCourses] = useState([]);
   const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
   const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [showPinModal, setShowPinModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const { userDetails } = useAuth();
   const navigate = useNavigate();
@@ -84,18 +78,10 @@ const MyCourses = () => {
     );
   };
 
-  // Manipulador para iniciar um curso
+  // Manipulador para iniciar um curso. O controle de acesso (PIN de cursos
+  // fechados) é feito na própria sala (Classes), fonte única de verdade — aqui
+  // apenas navegamos.
   const handleStartCourse = (course) => {
-    if (courseRequiresPin(course)) {
-      setSelectedCourse(course);
-      setShowPinModal(true);
-    } else {
-      navigate(`/classes?courseId=${course.courseId}`);
-    }
-  };
-
-  // Manipulador para submissão de PIN
-  const handlePinSubmit = (course) => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
@@ -317,13 +303,6 @@ const MyCourses = () => {
           </>
         )}
       </Paper>
-
-      <PinAccessModal
-        open={showPinModal}
-        onClose={() => setShowPinModal(false)}
-        onSubmit={handlePinSubmit}
-        selectedCourse={selectedCourse}
-      />
     </Box>
   );
 };

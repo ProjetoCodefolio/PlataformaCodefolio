@@ -11,18 +11,10 @@ import { ref, get } from "firebase/database";
 import { database } from "$api/config/firebase";
 import { useNavigate } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
-import { useAuth } from "$context/AuthContext";
-import PinAccessModal from "$components/modals/PinAccessModal";
-import {
-  fetchCourses,
-  checkStudentCourseEnrollment,
-} from "$api/services/courses/courses";
+import { fetchCourses } from "$api/services/courses/courses";
 
 const CourseListSidebar = ({ onSelectCourse }) => {
   const [courses, setCourses] = useState([]);
-  const [selectedCourse, setSelectedCourse] = useState(null);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const { userDetails } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -46,33 +38,9 @@ const CourseListSidebar = ({ onSelectCourse }) => {
     loadCourses();
   }, []);
 
-  const handleContinueCourse = async (course) => {
-    let isEnrolled = false;
-    // if (!userDetails?.userId) {
-    //   return;
-    // }
-
-    if (userDetails?.userId) {
-      isEnrolled = await checkStudentCourseEnrollment(
-        userDetails.userId,
-        course.courseId
-      );
-      // return;
-    }
-
-    if (isEnrolled) {
-      navigate(`/classes?courseId=${course.courseId}`);
-    } else {
-      if (course.pinEnabled) {
-        setSelectedCourse(course);
-        setShowPinModal(true);
-      } else {
-        navigate(`/classes?courseId=${course.courseId}`);
-      }
-    }
-  };
-
-  const handlePinSubmit = (course) => {
+  // O controle de acesso (matrícula prévia / PIN de cursos fechados) é feito na
+  // própria sala (Classes), fonte única de verdade — aqui apenas navegamos.
+  const handleContinueCourse = (course) => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
@@ -209,16 +177,6 @@ const CourseListSidebar = ({ onSelectCourse }) => {
           </Grid>
         ))}
       </Grid>
-
-      <Box>
-        {/* ... */}
-        <PinAccessModal
-          open={showPinModal}
-          onClose={() => setShowPinModal(false)}
-          onSubmit={handlePinSubmit}
-          selectedCourse={selectedCourse}
-        />
-      </Box>
     </Box>
   );
 };

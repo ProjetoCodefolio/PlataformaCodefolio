@@ -122,18 +122,23 @@ const VideoList = ({
         // Pegar o vídeo anterior para verificações de bloqueio
         const previousVideo = index > 0 ? videos[index - 1] : null;
         
-        // Adicionamos logs e uma verificação explícita
+        // Trava sequencial: vale para qualquer CONTEÚDO (vídeo ou slide) que
+        // tenha requiresPrevious. Só é aplicada quando a config global
+        // `requirePreviousCompletion` não está desligada.
         let locked = false;
         if (advancedSettings?.videos?.requirePreviousCompletion === false) {
           locked = false;
         } else {
-          // Caso contrário, usamos a lógica padrão
-          locked = !video.isSlide && isVideoLocked(video, videos);
+          locked = isVideoLocked(video, videos);
         }
-        const completed = video.isSlide
-          ? true
-          : video.watched && (!video.quizId || video.quizPassed);
+        // Concluído = (assistido; slide conta como visto) E, havendo quiz,
+        // aprovado. Igual à definição do agregado (isContentCompleted).
+        const completed =
+          (video.isSlide ? true : video.watched) &&
+          (!video.quizId || video.quizPassed);
         const isCurrent = video.id === currentVideoId;
+        // Quiz do slide fica disponível assim que o slide é acessível (não há
+        // vídeo para "assistir"); o quiz do vídeo só libera após assistir.
         const quizLocked = video.isSlide ? false : isQuizLocked(video);
         // Limite efetivo por quiz (allowRetry=false → 1; maxAttempts; ou Infinity).
         const attemptLimit = getVideoAttemptLimit(video);
@@ -198,7 +203,7 @@ const VideoList = ({
                       {isSlide ? "Slide atual" : "Vídeo atual"}
                     </Typography>
                   )}
-                  {locked && !isSlide && (
+                  {locked && (
                     <Typography
                       variant="body2"
                       sx={{
@@ -208,7 +213,7 @@ const VideoList = ({
                         display: { xs: "none", sm: "block" },
                       }}
                     >
-                      Vídeo bloqueado
+                      {isSlide ? "Slide bloqueado" : "Vídeo bloqueado"}
                     </Typography>
                   )}
                   {video.quizId && !locked && !isCurrent && !isSlide && (
@@ -225,7 +230,7 @@ const VideoList = ({
                     </Typography>
                   )}
                 </Box>
-                {completed && !isSlide && (
+                {completed && (
                   <CheckCircleIcon
                     sx={{
                       color: "#4caf50",
@@ -234,7 +239,7 @@ const VideoList = ({
                     }}
                   />
                 )}
-                {isSlide && (
+                {isSlide && !completed && (
                   <ViewCarouselIcon
                     sx={{
                       color: "#9041c1",
@@ -243,7 +248,7 @@ const VideoList = ({
                     }}
                   />
                 )}
-                {locked && !isSlide && (
+                {locked && (
                   <LockIcon
                     sx={{
                       color: "#d32f2f",
@@ -267,7 +272,18 @@ const VideoList = ({
             >
               {/* Layout para telas menores (xs) */}
               <Box sx={{ display: { xs: "flex", sm: "none" }, gap: 1 }}>
-                {isSlide ? (
+                {locked ? (
+                  <Tooltip title="Bloqueado">
+                    <IconButton
+                      onClick={() => handleLockedClick(video, previousVideo)}
+                      sx={{
+                        color: "#666",
+                      }}
+                    >
+                      <LockIcon sx={{ fontSize: { xs: 24 } }} />
+                    </IconButton>
+                  </Tooltip>
+                ) : isSlide ? (
                   // Ícone para slides em telas pequenas
                   <Tooltip title="Ver Slide">
                     <IconButton
@@ -280,7 +296,7 @@ const VideoList = ({
                       <ViewCarouselIcon sx={{ fontSize: { xs: 24 } }} />
                     </IconButton>
                   </Tooltip>
-                ) : !locked ? (
+                ) : (
                   <Tooltip
                     title={
                       isCurrent
@@ -302,20 +318,9 @@ const VideoList = ({
                       </IconButton>
                     </span>
                   </Tooltip>
-                ) : (
-                  <Tooltip title="Bloqueado">
-                    <IconButton
-                      onClick={() => handleLockedClick(video, previousVideo)}
-                      sx={{
-                        color: "#666",
-                      }}
-                    >
-                      <LockIcon sx={{ fontSize: { xs: 24 } }} />
-                    </IconButton>
-                  </Tooltip>
                 )}
 
-                {!isSlide &&
+                {!locked &&
                   video.quizId &&
                   !video.quizPassed &&
                   (quizLocked ? (
@@ -343,7 +348,7 @@ const VideoList = ({
                     </Tooltip>
                   ))}
 
-                {!isSlide && video.quizId && video.quizPassed && !locked && (
+                {!locked && video.quizId && video.quizPassed && (
                   <Tooltip
                     title={
                       attemptsExhausted
@@ -383,8 +388,9 @@ const VideoList = ({
                   justifyContent: "space-between",
                 }}
               >
-                {isSlide ? (
-                  // Para slides em telas maiores
+                {!locked && isSlide ? (
+                  // Para slides em telas maiores (respeitam a trava: quando
+                  // travado, cai no botão "Bloqueado" abaixo, como um vídeo)
                   <Box sx={{ display: "flex", gap: 2, width: "100%" }}>
                     <Button
                       variant="contained"
@@ -491,6 +497,7 @@ const VideoList = ({
 
                 {/* Para vídeos com quiz, manter a lógica original */}
                 {!isSlide &&
+                  !locked &&
                   video.quizId &&
                   !video.quizPassed &&
                   (quizLocked ? (

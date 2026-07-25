@@ -146,12 +146,16 @@ export const fetchVideoProgress = async (userId, courseId, videoId) => {
     };
   } catch (error) {
     console.error("Erro ao buscar progresso:", error);
+    // readError distingue "leitura falhou" de "não há registro" (ambos retornam
+    // watched:false). Quem agrega o progresso do curso usa isso para NÃO
+    // persistir um percentual rebaixado a partir de uma leitura que falhou.
     return {
       watchedTime: 0,
       percentageWatched: 0,
       watched: false,
       completed: false,
       quizPassed: false,
+      readError: true,
     };
   }
 };

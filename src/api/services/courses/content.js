@@ -161,8 +161,14 @@ export const updateCourseContent = async (courseId, contentId, data) => {
 
 /**
  * Remove um item de conteúdo. Bloqueia se houver quiz associado (mesma regra do
- * vídeo legado) e limpa o progresso registrado para esse conteúdo em todos os
- * alunos.
+ * vídeo legado).
+ *
+ * IMPORTANTE: NÃO apaga o progresso (videoProgress) dos alunos para este
+ * conteúdo. O progresso do curso é recalculado a partir da lista de conteúdo
+ * carregada (updateCourseProgress em classes.jsx), que já não inclui itens
+ * deletados — então nós de progresso "órfãos" não inflam o progresso. Apagá-los
+ * era destrutivo: deletar um conteúdo para recadastrar uma versão corrigida
+ * eliminava silenciosamente o progresso de TODOS os alunos, sem recuperação.
  * @param {string} courseId
  * @param {string} contentId
  * @returns {Promise<boolean>}
@@ -178,26 +184,7 @@ export const deleteCourseContent = async (courseId, contentId) => {
     );
   }
 
-  const updates = {};
-  updates[`courseContent/${courseId}/${contentId}`] = null;
-
-  // Limpa o progresso deste conteúdo (videoProgress/{uid}/{courseId}/{contentId})
-  // para todos os usuários que o tenham, evitando registros órfãos.
-  const progressSnapshot = await get(ref(database, `videoProgress`));
-  const progressData = progressSnapshot.val();
-  if (progressData) {
-    Object.keys(progressData).forEach((uid) => {
-      if (
-        progressData[uid] &&
-        progressData[uid][courseId] &&
-        progressData[uid][courseId][contentId] !== undefined
-      ) {
-        updates[`videoProgress/${uid}/${courseId}/${contentId}`] = null;
-      }
-    });
-  }
-
-  await update(ref(database), updates);
+  await remove(ref(database, `courseContent/${courseId}/${contentId}`));
   return true;
 };
 
@@ -226,13 +213,18 @@ export const loadCourseContentForStudent = async (courseId, deps = {}) => {
       // progresso salvo (se o aluno estiver logado).
       let watched = isSlide;
       let progress = isSlide ? 100 : 0;
+      // Marca quando a leitura do progresso deste item falhou, para que o
+      // cálculo agregado saiba que `watched:false` aqui pode ser falso-negativo.
+      let progressError = false;
       if (!isSlide && userId && typeof fetchVideoProgress === "function") {
         try {
           const userProgress = await fetchVideoProgress(userId, courseId, item.id);
           watched = userProgress?.watched || false;
           progress = userProgress?.percentageWatched || 0;
+          if (userProgress?.readError) progressError = true;
         } catch (error) {
           console.error(`Erro ao buscar progresso do conteúdo ${item.id}:`, error);
+          progressError = true;
         }
       }
 
@@ -248,7 +240,9 @@ export const loadCourseContentForStudent = async (courseId, deps = {}) => {
         isContentItem: true, // marca itens da nova collection
         watched,
         progress,
-        requiresPrevious: isSlide ? false : item.requiresPrevious,
+        progressError,
+        // Trava (requiresPrevious) pertence ao CONTEÚDO, seja vídeo ou slide.
+        requiresPrevious: !!item.requiresPrevious,
         quizId: hasQuiz ? `${courseId}/${item.id}` : null,
         quizPassed,
       };

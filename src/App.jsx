@@ -35,6 +35,7 @@ import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDiss
 import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage";
 import TeacherAssessmentsPage from "./app/pages/course/TeacherAssessmentsPage";
 import QuizGradesOverview from "./app/pages/course/adminCourse/QuizGradesOverview";
+import CoursePresence from "./app/pages/course/adminCourse/CoursePresence";
 import AssignmentSubmissionsDashboard from "./app/pages/course/adminCourse/AssignmentSubmissionsDashboard";
 
 function App() {
@@ -200,6 +201,17 @@ function App() {
                 <PrivateRoute>
                   <TeacherRoute>
                     <QuizGradesOverview />
+                  </TeacherRoute>
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/course/presenca"
+              element={
+                <PrivateRoute>
+                  <TeacherRoute>
+                    <CoursePresence />
                   </TeacherRoute>
                 </PrivateRoute>
               }

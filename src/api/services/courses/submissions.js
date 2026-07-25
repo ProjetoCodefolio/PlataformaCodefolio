@@ -313,13 +313,16 @@ export const loadFlippedClassroomForStudent = async (courseId, deps = {}) => {
 
       let watched = false;
       let progress = 0;
+      let progressError = false;
       if (userId && typeof fetchVideoProgress === "function") {
         try {
           const up = await fetchVideoProgress(userId, courseId, v.id);
           watched = up?.watched || false;
           progress = up?.percentageWatched || 0;
+          if (up?.readError) progressError = true;
         } catch (error) {
           console.error(`Erro ao buscar progresso do vídeo de entrega ${v.id}:`, error);
+          progressError = true;
         }
       }
 
@@ -335,6 +338,7 @@ export const loadFlippedClassroomForStudent = async (courseId, deps = {}) => {
         requiresPrevious: false,
         watched,
         progress,
+        progressError,
         // Sem ordem definida ainda → vai para o fim (mas com valor finito e
         // estável, para não "embaralhar" a cada carregamento).
         order: typeof v.order === "number" ? v.order : 100000 + i,

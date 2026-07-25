@@ -56,6 +56,7 @@ export const loadCourseData = async (
 
         // Obter progresso do vídeo
         let userProgress = {};
+        let progressError = false;
         if (userDetails?.userId) {
           try {
             userProgress = await fetchVideoProgress(
@@ -63,11 +64,13 @@ export const loadCourseData = async (
               courseId,
               video.id
             );
+            if (userProgress?.readError) progressError = true;
           } catch (error) {
             console.error(
               `Erro ao buscar progresso do vídeo ${video.id}:`,
               error
             );
+            progressError = true;
           }
         } else {
           // Usar progresso local se não estiver logado
@@ -87,6 +90,7 @@ export const loadCourseData = async (
           quizPassed: quizPassed,
           watchedTime: userProgress.watchedTime || 0,
           progress: userProgress.percentageWatched || 0,
+          progressError,
           quizId: quizData ? `${courseId}/${video.id}` : null,
           minPercentage: quizData ? quizData.minPercentage : 70,
         };
