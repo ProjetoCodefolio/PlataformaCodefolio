@@ -167,7 +167,13 @@ export const saveVideoProgressWithUrgency = async (userData) => {
 };
 
 /**
- * Processa a conclusão de um quiz
+ * Processa a conclusão de um quiz.
+ *
+ * ATENÇÃO: com `isPassed = true` esta função ESCREVE — marca o conteúdo como
+ * assistido/concluído e registra a aprovação no quiz. Só deve ser chamada
+ * quando o aluno realmente foi aprovado numa submissão. Para apenas LER as
+ * tentativas do aluno, use `fetchUserQuizResults` diretamente.
+ *
  * @param {boolean} isPassed - Se o usuário passou no quiz
  * @param {string} userId - ID do usuário
  * @param {string} courseId - ID do curso

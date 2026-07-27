@@ -954,7 +954,13 @@ export const validateQuizAnswers = async (
 };
 
 /**
- * Marca um quiz como completo
+ * Marca um quiz como completo.
+ *
+ * NÃO conta tentativa: `attemptCount` é escrito exclusivamente por
+ * `saveQuizResults`, a única função que sabe que houve uma submissão de fato.
+ * Semear a contagem aqui fazia com que qualquer caminho que "marcasse
+ * conclusão" (inclusive por engano) queimasse uma tentativa do aluno.
+ *
  * @param {string} userId - ID do usuário
  * @param {string} courseId - ID do curso
  * @param {string} videoId - ID do vídeo
@@ -979,20 +985,17 @@ export const markQuizAsCompleted = async (
     
     if (existingSnapshot.exists()) {
       const existingData = existingSnapshot.val();
-      // Only update, don't replace existing fields
+      // Only update, don't replace existing fields. A contagem de tentativas
+      // gravada por saveQuizResults é preservada como está.
       completeData = {
         ...existingData,
         ...quizResult,
-        // Make sure attemptCount exists and is incremented if needed
-        attemptCount: existingData.attemptCount 
-          ? existingData.attemptCount 
-          : (quizResult.attemptCount || 1)
       };
     } else {
-      // Ensure minimal required fields
+      // Sem submissão anterior não há tentativa a registrar: grava só a marca
+      // de conclusão, sem inventar attemptCount.
       completeData = {
         ...quizResult,
-        attemptCount: quizResult.attemptCount || 1,
         lastAttempt: quizResult.completedAt || new Date().toISOString()
       };
     }
