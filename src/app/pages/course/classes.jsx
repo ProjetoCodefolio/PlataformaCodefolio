@@ -642,25 +642,11 @@ const Classes = ({ alias = null }) => {
       // Identifica se é um slide ou um vídeo que estamos atualizando
       const contentId = videoId || currentVideoId;
 
-      // Immediately update attempts for the UI - we'll do this regardless of pass/fail
-      // to ensure the "Limite Atingido" message appears right away
-      if (userDetails?.userId) {
-        // Create a synthetic attempt update that will be replaced by the real one later
-        const updatedAttempts = { ...userAttempts };
-        const quizIdForAttempts = quizResultId || (contentId.includes("/") ? contentId.split("/")[1] : contentId);
-
-        if (!updatedAttempts[quizIdForAttempts]) {
-          updatedAttempts[quizIdForAttempts] = { attemptCount: 1 };
-        } else {
-          updatedAttempts[quizIdForAttempts] = {
-            ...updatedAttempts[quizIdForAttempts],
-            attemptCount: (updatedAttempts[quizIdForAttempts].attemptCount || 0) + 1
-          };
-        }
-
-        // Update the attempts immediately to trigger UI changes
-        setUserAttempts(updatedAttempts);
-      }
+      // As tentativas exibidas vêm do banco (refreshUserAttempts). Não somamos
+      // +1 aqui: uma única submissão passa por este handler até três vezes
+      // (onComplete → onSubmit → botão "Voltar ao Vídeo"), o que inflava o
+      // contador e podia mostrar "Limite Atingido" antes da hora. Quem conta a
+      // tentativa é saveQuizResults, dentro do componente do quiz.
 
       // Continue with the rest of the function
       if (wasApproved) {
@@ -827,6 +813,11 @@ const Classes = ({ alias = null }) => {
       );
 
       await handleQuizComplete(isPassed, null, currentVideoId, quizResultId, quizSource === "slide");
+
+      // A submissão acabou de incrementar a tentativa no banco (saveQuizResults):
+      // relê para a lista de conteúdos refletir o número real, inclusive quando
+      // o aluno é reprovado.
+      await refreshUserAttempts();
     } catch (error) {
       console.error("Erro ao validar respostas do quiz:", error);
       toast.error("Erro ao processar o quiz. Por favor, tente novamente.");
