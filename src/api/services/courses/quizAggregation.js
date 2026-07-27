@@ -1,6 +1,6 @@
 import { database } from "../../config/firebase";
 import { ref, get } from "firebase/database";
-import { normalizeDiagnosticFlag } from "./quizzes";
+import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizzes";
 import { fetchFlippedClassroomVideos } from "./submissions";
 
 /**
@@ -28,6 +28,9 @@ export const fetchAllCourseQuizzes = async (courseId) => {
         isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
         questions: quizData.questions || [],
         isSlideQuiz: quizId.startsWith("slide_"),
+        // Limite efetivo de tentativas (Infinity quando ilimitado), para a tela
+        // de notas mostrar quantas o aluno ainda tem.
+        attemptLimit: getQuizAttemptLimit(quizData),
       });
     });
 
@@ -224,6 +227,10 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
     quizId: quiz.id,
     quizName: quiz.videoId,
     isSlideQuiz: quiz.isSlideQuiz,
+    // Tentativas consumidas e limite: um aluno pode ter tentativas gastas mesmo
+    // sem nenhum acerto (hasAttempt olha só os acertos).
+    attemptCount: Number(regularResult?.attemptCount) || 0,
+    attemptLimit: quiz.attemptLimit,
     isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
     totalQuestions, // Apenas questões de múltipla escolha
     totalOpenEnded, // Número de questões abertas (apenas informativo)

@@ -50,10 +50,12 @@ import { toast } from "react-toastify";
 import Topbar from "../../../components/topbar/Topbar";
 import BreadcrumbsComponent from "../../../components/common/BreadcrumbsComponent";
 import SortableHeader from "../../../components/common/SortableHeader";
+import ReplayIcon from "@mui/icons-material/Replay";
 import {
   fetchAggregatedQuizGrades,
   exportQuizGradesToCSV,
 } from "../../../../api/services/courses/quizAggregation";
+import { restoreQuizAttempt } from "../../../../api/services/courses/quizzes";
 
 export default function QuizGradesOverview() {
   const navigate = useNavigate();
@@ -69,6 +71,9 @@ export default function QuizGradesOverview() {
   const [sortOrder, setSortOrder] = useState("asc");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  // Quiz cuja tentativa o professor pediu para devolver (aguardando confirmação).
+  const [attemptToRestore, setAttemptToRestore] = useState(null);
+  const [restoringAttempt, setRestoringAttempt] = useState(false);
 
   // Carregar dados
   useEffect(() => {
@@ -93,6 +98,36 @@ export default function QuizGradesOverview() {
 
     loadData();
   }, [courseId]);
+
+  // Devolve uma tentativa ao aluno e recarrega os dados, mantendo o modal do
+  // aluno aberto com os números atualizados.
+  const handleConfirmRestoreAttempt = async () => {
+    if (!attemptToRestore) return;
+    const { userId, quizId } = attemptToRestore;
+
+    try {
+      setRestoringAttempt(true);
+      const result = await restoreQuizAttempt(userId, courseId, quizId);
+
+      if (!result.success) {
+        toast.error(result.error || "Não foi possível devolver a tentativa.");
+        return;
+      }
+
+      toast.success("Tentativa devolvida ao aluno.");
+      const refreshed = await fetchAggregatedQuizGrades(courseId);
+      setData(refreshed);
+      setSelectedStudent(
+        refreshed?.students?.find((s) => s.userId === userId) || null
+      );
+    } catch (error) {
+      console.error("Erro ao devolver tentativa:", error);
+      toast.error("Erro ao devolver a tentativa.");
+    } finally {
+      setRestoringAttempt(false);
+      setAttemptToRestore(null);
+    }
+  };
 
   // Filtrar e ordenar estudantes
   const getFilteredAndSortedStudents = () => {
@@ -986,6 +1021,46 @@ export default function QuizGradesOverview() {
                           </Box>
                         </Box>
 
+                        {/* Tentativas consumidas — aparece mesmo quando o aluno
+                            não acertou nada (hasAttempt olha só os acertos). */}
+                        {quiz.attemptCount > 0 && (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              flexWrap: "wrap",
+                              gap: 1,
+                              mb: 1.5,
+                            }}
+                          >
+                            <Typography variant="caption" color="text.secondary">
+                              Tentativas usadas: <strong>{quiz.attemptCount}</strong>
+                              {Number.isFinite(quiz.attemptLimit)
+                                ? ` de ${quiz.attemptLimit}`
+                                : " (ilimitadas)"}
+                            </Typography>
+                            {Number.isFinite(quiz.attemptLimit) && (
+                              <Button
+                                size="small"
+                                startIcon={<ReplayIcon />}
+                                onClick={() =>
+                                  setAttemptToRestore({
+                                    userId: selectedStudent.userId,
+                                    studentName: selectedStudent.name,
+                                    quizId: quiz.quizId,
+                                    quizName: getQuizDisplayName(quiz),
+                                    attemptCount: quiz.attemptCount,
+                                  })
+                                }
+                                sx={{ textTransform: "none", color: "#9041c1" }}
+                              >
+                                Devolver tentativa
+                              </Button>
+                            )}
+                          </Box>
+                        )}
+
                         {quiz.hasAttempt ? (
                           <>
                             {/* Barra de progresso */}
@@ -1113,6 +1188,42 @@ export default function QuizGradesOverview() {
               </DialogActions>
             </>
           )}
+        </Dialog>
+
+        {/* Confirmação: devolver uma tentativa ao aluno */}
+        <Dialog
+          open={Boolean(attemptToRestore)}
+          onClose={() => !restoringAttempt && setAttemptToRestore(null)}
+        >
+          <DialogTitle sx={{ fontWeight: "bold" }}>Devolver uma tentativa?</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              {attemptToRestore?.studentName} poderá refazer o quiz{" "}
+              <strong>{attemptToRestore?.quizName}</strong>: as tentativas usadas
+              passam de {attemptToRestore?.attemptCount} para{" "}
+              {Math.max((attemptToRestore?.attemptCount || 1) - 1, 0)}.
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
+              A nota e as respostas já registradas são preservadas.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setAttemptToRestore(null)}
+              disabled={restoringAttempt}
+              sx={{ color: "#666", textTransform: "none" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleConfirmRestoreAttempt}
+              disabled={restoringAttempt}
+              sx={{ bgcolor: "#9041c1", textTransform: "none" }}
+            >
+              {restoringAttempt ? "Devolvendo..." : "Devolver tentativa"}
+            </Button>
+          </DialogActions>
         </Dialog>
       </Box>
     </>

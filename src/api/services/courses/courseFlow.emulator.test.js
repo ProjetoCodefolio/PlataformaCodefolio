@@ -51,6 +51,7 @@ const {
   saveQuizResults,
   fetchUserQuizResults,
   hasUserReachedQuizAttemptLimit,
+  restoreQuizAttempt,
 } = await import("./quizzes");
 const { updateCourseProgress } = await import("./students");
 const { saveCourseContentOrder, fetchCourseContent } = await import("./contentOrder");
@@ -188,6 +189,26 @@ describe.runIf(emuladorNoAr)("fluxo vídeo→quiz→progresso (emulador)", () =>
       const attempts = await fetchUserQuizResults(U, C);
       expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 2)).toBe(true);
       expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 3)).toBe(false);
+    });
+
+    it("o professor devolve uma tentativa sem apagar a nota do aluno", async () => {
+      await saveQuizResults(U, C, "v1", notaReprovado, respostaErrada, questions, null, "v1");
+
+      const r = await restoreQuizAttempt(U, C, "v1");
+      expect(r).toMatchObject({ success: true, attemptCount: 0 });
+
+      const node = (await get(ref(database, `quizResults/${U}/${C}/v1`))).val();
+      expect(node.attemptCount).toBe(0);
+      expect(node.scorePercentage).toBe(0); // nota preservada
+      expect(node.detailedAnswers).toBeTruthy(); // respostas preservadas
+
+      // Com a tentativa devolvida, o quiz de tentativa única volta a liberar.
+      const attempts = await fetchUserQuizResults(U, C);
+      expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 1)).toBe(false);
+
+      // Sem tentativa a devolver, não faz nada e avisa.
+      expect((await restoreQuizAttempt(U, C, "v1")).success).toBe(false);
+      expect((await restoreQuizAttempt(U, C, "inexistente")).success).toBe(false);
     });
 
     it("marcar aprovação depois de submeter preserva a contagem", async () => {

@@ -1173,6 +1173,50 @@ export const saveQuizResults = async (
 };
 
 /**
+ * Devolve UMA tentativa de quiz a um aluno (ação do professor).
+ *
+ * Só mexe no contador: nota, respostas e aprovação continuam gravadas, então o
+ * histórico da tentativa já feita não se perde. Serve para casos legítimos de
+ * tentativa perdida (queda de conexão, engano, problema técnico).
+ *
+ * @param {string} userId - ID do aluno
+ * @param {string} courseId - ID do curso
+ * @param {string} quizResultKey - chave do resultado (id do conteúdo; slides
+ *   legados usam o prefixo `slide_`)
+ * @returns {Promise<{success: boolean, attemptCount?: number, error?: string}>}
+ */
+export const restoreQuizAttempt = async (userId, courseId, quizResultKey) => {
+  try {
+    if (!userId || !courseId || !quizResultKey) {
+      return { success: false, error: "Dados insuficientes." };
+    }
+
+    const resultRef = ref(
+      database,
+      `quizResults/${userId}/${courseId}/${quizResultKey}`
+    );
+    const snapshot = await get(resultRef);
+
+    if (!snapshot.exists()) {
+      return { success: false, error: "Este aluno não tem tentativas registradas neste quiz." };
+    }
+
+    const current = Number(snapshot.val()?.attemptCount) || 0;
+    if (current <= 0) {
+      return { success: false, error: "Não há tentativa a devolver neste quiz." };
+    }
+
+    const attemptCount = current - 1;
+    await update(resultRef, { attemptCount });
+
+    return { success: true, attemptCount };
+  } catch (error) {
+    console.error("Erro ao devolver tentativa de quiz:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * ==============================
  * FUNÇÕES AUXILIARES
  * ==============================
