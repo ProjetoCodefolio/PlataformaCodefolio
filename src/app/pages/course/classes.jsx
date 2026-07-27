@@ -17,6 +17,11 @@ import {
   Card,
   CardContent,
   CardActions,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
@@ -105,6 +110,9 @@ const Classes = ({ alias = null }) => {
   // Configuração de tentativas por quiz (allowRetry/maxAttempts), chaveada pelo
   // id do conteúdo (mesma chave usada em userAttempts e em video.quizId).
   const [quizSettings, setQuizSettings] = useState({});
+  // Quiz aguardando confirmação do aluno (só para quizzes com tentativas
+  // limitadas): { attemptLimit, attemptsUsed, start }.
+  const [pendingQuizStart, setPendingQuizStart] = useState(null);
   const [slides, setSlides] = useState([]); // Novo estado para armazenar slides independentes
   // Adicionar uma verificação para determinar se o quiz é de vídeo ou slide
   const [quizSource, setQuizSource] = useState("video"); // Pode ser "video" ou "slide"
@@ -789,18 +797,38 @@ const Classes = ({ alias = null }) => {
     return false;
   };
 
-  const handleQuizStart = (quizId, videoId) => {
+  // Quizzes com tentativas contadas pedem confirmação antes de abrir: um clique
+  // errado não deve custar nada, e o aluno precisa saber quantas tentativas
+  // ainda tem. Quizzes ilimitados abrem direto.
+  const requestQuizStart = (quizId, start) => {
     if (!canEnterQuiz(quizId)) return;
 
-    setCurrentVideoId(videoId);
+    const quizKey = quizId?.includes("/") ? quizId.split("/")[1] : quizId;
+    const attemptLimit = getQuizAttemptLimit(quizSettings[quizKey]);
+    if (Number.isFinite(attemptLimit)) {
+      setPendingQuizStart({
+        attemptLimit,
+        attemptsUsed: userAttempts[quizKey]?.attemptCount || 0,
+        start,
+      });
+      return;
+    }
 
-    // Detectar se é um quiz de slide ou de vídeo
-    const isSlideQuiz =
-      quizId.includes("slide_") ||
-      videos.find((v) => v.id === videoId)?.isSlide;
-    setQuizSource(isSlideQuiz ? "slide" : "video");
+    start();
+  };
 
-    setShowQuiz(true);
+  const handleQuizStart = (quizId, videoId) => {
+    requestQuizStart(quizId, () => {
+      setCurrentVideoId(videoId);
+
+      // Detectar se é um quiz de slide ou de vídeo
+      const isSlideQuiz =
+        quizId.includes("slide_") ||
+        videos.find((v) => v.id === videoId)?.isSlide;
+      setQuizSource(isSlideQuiz ? "slide" : "video");
+
+      setShowQuiz(true);
+    });
   };
 
   const handleQuizSubmit = async (userAnswers) => {
@@ -1005,13 +1033,14 @@ const Classes = ({ alias = null }) => {
     // Este caminho (botões do player/slide) também respeita o limite de
     // tentativas — antes só a lista de conteúdos verificava.
     const contentId = typeof videoId === "string" ? videoId : currentVideoId;
-    if (!canEnterQuiz(getQuizResultKey(contentId))) return;
 
-    if (typeof videoId === "string") {
-      setCurrentVideoId(videoId);
-    }
-    setQuizSource(source);
-    setShowQuiz(true);
+    requestQuizStart(getQuizResultKey(contentId), () => {
+      if (typeof videoId === "string") {
+        setCurrentVideoId(videoId);
+      }
+      setQuizSource(source);
+      setShowQuiz(true);
+    });
   };
 
   // Função para verificar se um slide possui quiz
@@ -1382,6 +1411,51 @@ const Classes = ({ alias = null }) => {
           userName={userDetails?.firstName}
           courseTitle={courseTitle}
         /> */}
+
+        <Dialog
+          open={Boolean(pendingQuizStart)}
+          onClose={() => setPendingQuizStart(null)}
+          aria-labelledby="confirmar-inicio-quiz"
+        >
+          <DialogTitle id="confirmar-inicio-quiz" sx={{ fontWeight: 600 }}>
+            Este quiz tem tentativas limitadas
+          </DialogTitle>
+          <DialogContent>
+            <DialogContentText component="div">
+              {pendingQuizStart?.attemptLimit === 1
+                ? "Você tem apenas 1 tentativa neste quiz."
+                : `Você tem ${pendingQuizStart?.attemptLimit} tentativas neste quiz e já usou ${pendingQuizStart?.attemptsUsed}.`}
+              <Box sx={{ mt: 1.5 }}>
+                A tentativa só é contada quando você <strong>envia</strong> as
+                respostas — sair antes disso não consome nada.
+              </Box>
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={() => setPendingQuizStart(null)}
+              sx={{ color: "#666", textTransform: "none" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                const { start } = pendingQuizStart || {};
+                setPendingQuizStart(null);
+                start?.();
+              }}
+              sx={{
+                backgroundColor: "#9041c1",
+                borderRadius: "12px",
+                "&:hover": { backgroundColor: "#7d37a7" },
+                textTransform: "none",
+              }}
+            >
+              Começar quiz
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {showQuizGigi && (
           <QuizGigi
