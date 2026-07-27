@@ -382,6 +382,22 @@ A tabela mostra para cada aluno:
    - Nota obtida
    - Status (Aprovado/Reprovado/Não realizado)
    - Tipo de quiz (Vídeo/Slide/Diagnóstico)
+   - Tentativas usadas (quando o quiz tem limite)
+
+
+#### Devolver uma Tentativa
+
+Quando um quiz tem número limitado de tentativas, cada quiz do aluno mostra
+**"Tentativas usadas: X de Y"** e o botão **"Devolver tentativa"**.
+
+1. Clique em **"Devolver tentativa"** no quiz desejado
+2. Confirme na janela que aparece
+
+O aluno volta a poder refazer aquele quiz. A **nota e as respostas já
+registradas são preservadas** — apenas o contador de tentativas diminui em 1.
+
+> Use quando o aluno perdeu a tentativa por um problema técnico, queda de
+> conexão ou engano.
 
 
 #### Navegar para Conteúdo
