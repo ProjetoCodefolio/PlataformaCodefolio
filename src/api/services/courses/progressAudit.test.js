@@ -13,7 +13,36 @@ import {
   buildQuizPassedById,
   findOrphanQuizResults,
   mergeQuizResultNode,
+  hasQuizSubmissionEvidence,
+  isPhantomQuizResult,
+  findPhantomQuizResults,
+  isPhantomWatchedNode,
 } from "./progressAudit.js";
+
+/** Resultado como gravado por saveQuizResults (submissão real). */
+const resultadoReal = (extra = {}) => ({
+  name: "Aluno Teste",
+  scorePercentage: 80,
+  correctAnswers: 4,
+  totalQuestions: 5,
+  isPassed: true,
+  passed: true,
+  submittedAt: "2026-07-20T10:00:00.000Z",
+  attemptCount: 1,
+  detailedAnswers: { q1: { isCorrect: true } },
+  isComplete: true,
+  ...extra,
+});
+
+/** Resultado como gravado ao apenas ABRIR e SAIR do quiz (fantasma). */
+const resultadoFantasma = (extra = {}) => ({
+  isPassed: true,
+  completedAt: "2026-07-26T14:07:00.000Z",
+  lastAttempt: "2026-07-26T14:07:00.000Z",
+  isSlide: false,
+  attemptCount: 1,
+  ...extra,
+});
 
 describe("extractYouTubeId", () => {
   it("extrai de watch?v=, youtu.be e /embed/", () => {
@@ -192,5 +221,48 @@ describe("mergeProgressNode", () => {
     const merged = mergeProgressNode({ watched: true, percentageWatched: 100 }, undefined);
     expect(merged.watched).toBe(true);
     expect(merged.percentageWatched).toBe(100);
+  });
+});
+
+describe("detecção de resultados de quiz fantasma", () => {
+  it("reconhece a submissão real pelos vestígios de resposta", () => {
+    expect(hasQuizSubmissionEvidence(resultadoReal())).toBe(true);
+    expect(hasQuizSubmissionEvidence(resultadoFantasma())).toBe(false);
+    expect(hasQuizSubmissionEvidence(null)).toBe(false);
+  });
+
+  it("basta UM vestígio para não ser fantasma (nota zero é submissão)", () => {
+    expect(isPhantomQuizResult({ isPassed: false, scorePercentage: 0 })).toBe(false);
+    expect(isPhantomQuizResult({ isPassed: true, detailedAnswers: { q1: {} } })).toBe(false);
+    expect(isPhantomQuizResult({ isPassed: true, isComplete: true })).toBe(false);
+  });
+
+  it("classifica como fantasma o registro criado ao abrir e sair do quiz", () => {
+    expect(isPhantomQuizResult(resultadoFantasma())).toBe(true);
+    expect(isPhantomQuizResult(resultadoReal())).toBe(false);
+  });
+
+  it("lista os fantasmas com a tentativa a devolver, normalizando slide_", () => {
+    const phantoms = findPhantomQuizResults({
+      v1: resultadoReal(),
+      v2: resultadoFantasma(),
+      slide_s1: resultadoFantasma({ isSlide: true, attemptCount: 1 }),
+    });
+    expect(phantoms).toHaveLength(2);
+    expect(phantoms).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "v2", contentId: "v2", attemptCount: 1, passed: true }),
+        expect.objectContaining({ key: "slide_s1", contentId: "s1" }),
+      ])
+    );
+  });
+
+  it("não confunde progresso real com o 'assistido' forjado (100% em 0s)", () => {
+    expect(isPhantomWatchedNode({ percentageWatched: 100, watchedTimeInSeconds: 0 })).toBe(true);
+    // Assistido de verdade: 100% com tempo de vídeo > 0.
+    expect(isPhantomWatchedNode({ percentageWatched: 100, watchedTimeInSeconds: 600 })).toBe(false);
+    // Parcial: nem 100%, nem forjado.
+    expect(isPhantomWatchedNode({ percentageWatched: 40, watchedTimeInSeconds: 0 })).toBe(false);
+    expect(isPhantomWatchedNode(null)).toBe(false);
   });
 });

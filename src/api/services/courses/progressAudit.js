@@ -228,6 +228,81 @@ export const mergeQuizResultNode = (source, target) => {
   return { ...target, isPassed: true, passed: true };
 };
 
+// --- Quiz: resultados FANTASMA ----------------------------------------------
+//
+// Até a correção do efeito de fechamento do quiz (classes.jsx), sair da tela do
+// quiz chamava `processQuizCompletion(true, ...)` só para reler as tentativas.
+// Como aquela função escreve, o simples ato de abrir e sair do quiz gravava:
+//   quizResults/{uid}/{c}/{id} = { isPassed: true, attemptCount: 1, ... }
+//   videoProgress/{uid}/{c}/{id} = { watched: true, percentageWatched: 100,
+//                                    watchedTimeInSeconds: 0, quizPassed: true }
+// Isso queimava a tentativa do aluno, forjava aprovação (nota 0 no relatório),
+// progresso e presença. Os helpers abaixo identificam esses registros para o
+// script de reparo.
+
+/**
+ * Indícios de que houve uma submissão REAL do quiz. `saveQuizResults` — a única
+ * função que grava respostas — sempre escreve nota, contagem de questões,
+ * respostas detalhadas e a flag isComplete.
+ * @param {Object} node - resultado de quizResults
+ * @returns {boolean}
+ */
+export const hasQuizSubmissionEvidence = (node) => {
+  if (!node || typeof node !== "object") return false;
+  return (
+    typeof node.scorePercentage === "number" ||
+    typeof node.correctAnswers === "number" ||
+    typeof node.totalQuestions === "number" ||
+    node.isComplete === true ||
+    typeof node.submittedAt === "string" ||
+    (!!node.detailedAnswers && typeof node.detailedAnswers === "object")
+  );
+};
+
+/**
+ * Um resultado é FANTASMA quando registra conclusão/aprovação sem nenhum
+ * vestígio de submissão. Não é um caso ambíguo: sem respostas nem nota, não há
+ * nota a preservar — só uma tentativa indevidamente consumida.
+ * @param {Object} node - resultado de quizResults
+ * @returns {boolean}
+ */
+export const isPhantomQuizResult = (node) =>
+  !!node && typeof node === "object" && !hasQuizSubmissionEvidence(node);
+
+/**
+ * Lista os resultados fantasma de um aluno num curso.
+ * @param {Object} userQuizResults - key → resultado (quizResults/{uid}/{courseId})
+ * @returns {Array<{key:string, contentId:string, attemptCount:number, passed:boolean}>}
+ */
+export const findPhantomQuizResults = (userQuizResults = {}) => {
+  const phantoms = [];
+  if (!userQuizResults || typeof userQuizResults !== "object") return phantoms;
+  for (const [key, node] of Object.entries(userQuizResults)) {
+    if (!isPhantomQuizResult(node)) continue;
+    phantoms.push({
+      key,
+      contentId: normalizeQuizResultId(key),
+      attemptCount: typeof node.attemptCount === "number" ? node.attemptCount : 0,
+      passed: isQuizPassedResult(node),
+    });
+  }
+  return phantoms;
+};
+
+/**
+ * Assinatura do "assistido" forjado junto com o resultado fantasma:
+ * `markVideoAsCompleted(..., duration = 0)` grava 100% assistido com ZERO
+ * segundo de vídeo — combinação que o player nunca produz (ele só chega a 100%
+ * tendo assistido tempo > 0).
+ * @param {Object} node - nó de videoProgress
+ * @returns {boolean}
+ */
+export const isPhantomWatchedNode = (node) =>
+  !!node &&
+  typeof node === "object" &&
+  node.watchedTimeInSeconds === 0 &&
+  node.percentageWatched === 100;
+
 /**
  * Faz o merge MONOTÔNICO de um nó de progresso de origem sobre o destino: nunca
  * rebaixa o que já existe no destino e preserva quizPassed/hasQuizData. Retorna
