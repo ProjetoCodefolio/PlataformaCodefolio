@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "$components/courses/videoPlayerClasses";
 import VideoList from "$components/courses/videoList";
@@ -30,6 +30,7 @@ import { validateQuizAnswers } from "$api/services/courses/quizzes";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
 import {
   fetchCourseQuizzes,
+  fetchUserQuizResults,
   getQuizAttemptLimit,
   hasUserReachedQuizAttemptLimit,
 } from "$api/services/courses/quizzes";
@@ -576,32 +577,31 @@ const Classes = ({ alias = null }) => {
     verifyCourseCompletion();
   }, [videos]);
 
-  // Atualiza tentativas de quiz quando fecha o quiz
+  // Espelha em `userAttempts` o que está GRAVADO no banco. É uma leitura pura:
+  // nenhuma tentativa é criada/incrementada aqui — isso é exclusividade de
+  // saveQuizResults, que só roda quando o aluno realmente submete o quiz.
+  const refreshUserAttempts = useCallback(async () => {
+    if (!userDetails?.userId || !courseId) return;
+    try {
+      const attempts = await fetchUserQuizResults(userDetails.userId, courseId);
+      setUserAttempts(attempts || {});
+    } catch (error) {
+      console.error("Erro ao atualizar tentativas:", error);
+    }
+  }, [userDetails?.userId, courseId]);
+
+  // Atualiza tentativas de quiz quando fecha o quiz.
+  //
+  // ATENÇÃO: aqui já se chamava `processQuizCompletion(true, ...)` só para
+  // aproveitar o retorno com as tentativas. Aquela função ESCREVE (marca vídeo
+  // concluído + quiz aprovado), então sair do quiz sem responder criava um
+  // resultado fantasma (isPassed: true, attemptCount: 1) e queimava a tentativa
+  // do aluno — além de forjar aprovação, progresso e presença. Fechar o quiz
+  // não é um evento de conclusão: só relê o que já está no banco.
   const [previousShowQuiz, setPreviousShowQuiz] = useState(showQuiz);
   useEffect(() => {
-    if (previousShowQuiz && !showQuiz && userDetails?.userId && courseId) {
-      const updateAttempts = async () => {
-        try {
-          const quizResultId = getQuizResultKey(currentVideoId);
-
-          const result = await processQuizCompletion(
-            true,
-            userDetails.userId,
-            courseId,
-            currentVideoId,
-            0,
-            quizSource === "slide",
-            quizResultId
-          );
-          if (result.attempts) {
-            setUserAttempts(result.attempts);
-          }
-        } catch (error) {
-          console.error("Erro ao atualizar tentativas:", error);
-        }
-      };
-
-      updateAttempts();
+    if (previousShowQuiz && !showQuiz) {
+      refreshUserAttempts();
     }
 
     setPreviousShowQuiz(showQuiz);
