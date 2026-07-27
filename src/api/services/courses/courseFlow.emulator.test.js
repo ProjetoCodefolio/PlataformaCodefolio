@@ -46,7 +46,12 @@ if (!emuladorNoAr) {
 
 const { saveVideoProgress, markVideoAsCompleted, fetchVideoProgress } =
   await import("./videoProgress");
-const { markQuizAsCompleted } = await import("./quizzes");
+const {
+  markQuizAsCompleted,
+  saveQuizResults,
+  fetchUserQuizResults,
+  hasUserReachedQuizAttemptLimit,
+} = await import("./quizzes");
 const { updateCourseProgress } = await import("./students");
 const { saveCourseContentOrder, fetchCourseContent } = await import("./contentOrder");
 const { database } = await import("../../config/firebase");
@@ -135,6 +140,64 @@ describe.runIf(emuladorNoAr)("fluxo vídeo→quiz→progresso (emulador)", () =>
       const p = await fetchVideoProgress(U, C, "v1");
       expect(p).toMatchObject({ watched: true, completed: true, quizPassed: true });
       expect(p.readError).toBeUndefined();
+    });
+  });
+
+  describe("tentativas: só a submissão consome (regressão do quiz fantasma)", () => {
+    const questions = [
+      { id: "q1", question: "1+1?", options: ["1", "2"], correctOption: 1 },
+    ];
+    const respostaErrada = { q1: 0 };
+    const notaReprovado = {
+      isPassed: false,
+      scorePercentage: 0,
+      earnedPoints: 0,
+      totalPoints: 1,
+      minPercentage: 70,
+    };
+
+    beforeEach(async () => {
+      // saveQuizResults precisa do cadastro do aluno para compor o resultado.
+      await set(ref(database, `users/${U}`), {
+        firstName: "Aluno",
+        lastName: "Teste",
+        email: "aluno@teste.dev",
+      });
+    });
+
+    it("marcar conclusão sem submeter NÃO cria tentativa nem esgota o limite", async () => {
+      // Era este o caminho que o efeito de fechar o quiz disparava: bastava
+      // abrir e sair para o aluno perder a tentativa.
+      await markQuizAsCompleted(U, C, "v1", { isPassed: true, completedAt: "now" });
+
+      const r = (await get(ref(database, `quizResults/${U}/${C}/v1`))).val();
+      expect(r.attemptCount).toBeUndefined();
+
+      const attempts = await fetchUserQuizResults(U, C);
+      // Quiz de tentativa única: o aluno continua podendo fazer.
+      expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 1)).toBe(false);
+    });
+
+    it("cada submissão incrementa exatamente uma tentativa", async () => {
+      await saveQuizResults(U, C, "v1", notaReprovado, respostaErrada, questions, null, "v1");
+      expect((await get(ref(database, `quizResults/${U}/${C}/v1`))).val().attemptCount).toBe(1);
+
+      await saveQuizResults(U, C, "v1", notaReprovado, respostaErrada, questions, null, "v1");
+      expect((await get(ref(database, `quizResults/${U}/${C}/v1`))).val().attemptCount).toBe(2);
+
+      const attempts = await fetchUserQuizResults(U, C);
+      expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 2)).toBe(true);
+      expect(hasUserReachedQuizAttemptLimit(attempts, `${C}/v1`, 3)).toBe(false);
+    });
+
+    it("marcar aprovação depois de submeter preserva a contagem", async () => {
+      await saveQuizResults(U, C, "v1", notaReprovado, respostaErrada, questions, null, "v1");
+      await markQuizAsCompleted(U, C, "v1", { isPassed: true });
+
+      const r = (await get(ref(database, `quizResults/${U}/${C}/v1`))).val();
+      expect(r.attemptCount).toBe(1);
+      expect(r.isPassed).toBe(true);
+      expect(r.scorePercentage).toBe(0); // nota da submissão preservada
     });
   });
 
