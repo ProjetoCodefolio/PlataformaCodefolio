@@ -771,19 +771,26 @@ const Classes = ({ alias = null }) => {
     }
   };
 
-  const handleQuizStart = (quizId, videoId) => {
-    // Bloqueia o início/repetição quando o aluno já esgotou as tentativas
-    // configuradas para este quiz (allowRetry=false → 1; ou maxAttempts).
+  // Porta ÚNICA do limite de tentativas: todo caminho que abre o quiz passa por
+  // aqui. Devolve true quando o aluno ainda pode entrar; avisa e devolve false
+  // quando já esgotou (allowRetry=false → 1; ou maxAttempts).
+  const canEnterQuiz = (quizId) => {
+    if (!quizId) return true;
     const quizKey = quizId.includes("/") ? quizId.split("/")[1] : quizId;
     const attemptLimit = getQuizAttemptLimit(quizSettings[quizKey]);
-    if (hasUserReachedQuizAttemptLimit(userAttempts, quizId, attemptLimit)) {
-      toast.info(
-        attemptLimit === 1
-          ? "Este quiz permite apenas 1 tentativa, que você já utilizou."
-          : `Você já atingiu o limite de ${attemptLimit} tentativas para este quiz.`
-      );
-      return;
+    if (!hasUserReachedQuizAttemptLimit(userAttempts, quizKey, attemptLimit)) {
+      return true;
     }
+    toast.info(
+      attemptLimit === 1
+        ? "Este quiz permite apenas 1 tentativa, que você já utilizou."
+        : `Você já atingiu o limite de ${attemptLimit} tentativas para este quiz.`
+    );
+    return false;
+  };
+
+  const handleQuizStart = (quizId, videoId) => {
+    if (!canEnterQuiz(quizId)) return;
 
     setCurrentVideoId(videoId);
 
@@ -995,6 +1002,11 @@ const Classes = ({ alias = null }) => {
 
   // Modificar a função que mostra o quiz
   const handleShowQuiz = (videoId, source = "video") => {
+    // Este caminho (botões do player/slide) também respeita o limite de
+    // tentativas — antes só a lista de conteúdos verificava.
+    const contentId = typeof videoId === "string" ? videoId : currentVideoId;
+    if (!canEnterQuiz(getQuizResultKey(contentId))) return;
+
     if (typeof videoId === "string") {
       setCurrentVideoId(videoId);
     }
