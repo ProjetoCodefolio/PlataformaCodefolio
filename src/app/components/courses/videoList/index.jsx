@@ -462,6 +462,7 @@ const VideoList = ({
 
                     {/* Botão de quiz para slides quando houver quiz associado */}
                     {video.quizId && (
+                      <Tooltip title={quizOutOfWindow ? quizWindowMessage : ""} arrow>
                       <Button
                         variant="outlined"
                         onClick={
@@ -501,6 +502,7 @@ const VideoList = ({
                           ? "Refazer Quiz"
                           : "Fazer Quiz"}
                       </Button>
+                      </Tooltip>
                     )}
                   </Box>
                 ) : !locked ? (
@@ -582,28 +584,30 @@ const VideoList = ({
                       Quiz Bloqueado
                     </Button>
                   ) : quizOutOfWindow ? (
-                    <Button
-                      variant="contained"
-                      onClick={() => handleQuizWindowClick(quizWindowMessage)}
-                      startIcon={
-                        <EventBusyIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
-                      }
-                      sx={{
-                        backgroundColor: "#e0e0e0",
-                        borderRadius: "12px",
-                        color: "#666",
-                        "&:hover": { backgroundColor: "#e0e0e0" },
-                        textTransform: "none",
-                        fontWeight: 500,
-                        fontSize: "0.875rem",
-                        py: 1,
-                        px: 3,
-                        width: "100%",
-                        minHeight: "45px",
-                      }}
-                    >
-                      {quizWindowLabel}
-                    </Button>
+                    <Tooltip title={quizWindowMessage} arrow>
+                      <Button
+                        variant="contained"
+                        onClick={() => handleQuizWindowClick(quizWindowMessage)}
+                        startIcon={
+                          <EventBusyIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                        }
+                        sx={{
+                          backgroundColor: "#e0e0e0",
+                          borderRadius: "12px",
+                          color: "#666",
+                          "&:hover": { backgroundColor: "#e0e0e0" },
+                          textTransform: "none",
+                          fontWeight: 500,
+                          fontSize: "0.875rem",
+                          py: 1,
+                          px: 3,
+                          width: "100%",
+                          minHeight: "45px",
+                        }}
+                      >
+                        {quizWindowLabel}
+                      </Button>
+                    </Tooltip>
                   ) : (
                     <Button
                       variant="contained"
@@ -629,6 +633,8 @@ const VideoList = ({
                   ))}
 
                 {!isSlide && video.quizId && video.quizPassed && !locked && (
+                  <Tooltip title={quizOutOfWindow ? quizWindowMessage : ""} arrow>
+                  <span style={{ width: "100%" }}>
                   <Button
                     variant="outlined"
                     onClick={
@@ -681,6 +687,8 @@ const VideoList = ({
                       ? "Limite Atingido"
                       : "Refazer Quiz"}
                   </Button>
+                  </span>
+                  </Tooltip>
                 )}
               </Box>
             </CardActions>

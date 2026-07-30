@@ -39,6 +39,7 @@ import {
   getQuizAttemptLimit,
   hasUserReachedQuizAttemptLimit,
   getQuizWindowMessage,
+  isQuizAfterClose,
 } from "$api/services/courses/quizzes";
 import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {
@@ -125,7 +126,25 @@ const Classes = ({ alias = null }) => {
   });
   const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
 
-  const currentVideo = videos.find((video) => video.id === currentVideoId);
+  // Conteúdo com a situação da janela do quiz anexada (`quizClosed`). A trava
+  // sequencial e a navegação do player precisam saber que um quiz encerrado não
+  // bloqueia mais o curso — quem perdeu o prazo não tem como fazê-lo.
+  const contentItems = React.useMemo(
+    () =>
+      videos.map((item) => {
+        if (!item?.quizId) return item;
+        const quizKey = item.quizId.includes("/")
+          ? item.quizId.split("/")[1]
+          : item.quizId;
+        return {
+          ...item,
+          quizClosed: isQuizAfterClose(quizSettings[quizKey]),
+        };
+      }),
+    [videos, quizSettings]
+  );
+
+  const currentVideo = contentItems.find((video) => video.id === currentVideoId);
   const activeSlide =
     slideData || (currentVideo?.isSlide ? currentVideo : null);
   const shouldShowSlidePlayer = showSlidePlayer || Boolean(activeSlide);
@@ -1300,7 +1319,7 @@ const Classes = ({ alias = null }) => {
                     }}
                     courseId={courseId}
                     onProgress={handleProgress}
-                    videos={videos}
+                    videos={contentItems}
                     onVideoChange={handleVideoSelect}
                     setShowQuiz={(videoId) => handleShowQuiz(videoId, "video")}
                     setCurrentVideoId={setCurrentVideoId}
@@ -1379,7 +1398,7 @@ const Classes = ({ alias = null }) => {
               >
                 {selectedTab === 0 ? (
                   <VideoList
-                    videos={videos}
+                    videos={contentItems}
                     setCurrentVideo={handleVideoSelect}
                     onQuizStart={handleQuizStart}
                     currentVideoId={currentVideoId}

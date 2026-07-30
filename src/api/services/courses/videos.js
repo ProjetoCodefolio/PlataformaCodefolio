@@ -372,11 +372,20 @@ export const isVideoLocked = (video, videos) => {
   
   // Um vídeo está bloqueado se requerer o anterior E
   // o anterior não foi assistido OU tem um quiz não concluído.
+  //
+  // Exceção: um quiz cuja janela já ENCERROU (`quizClosed`) não trava mais nada.
+  // Quem perdeu o prazo não tem como fazê-lo, e prender o aluno no resto do
+  // curso por causa disso seria uma punição sem saída. Não assistir ao vídeo
+  // anterior continua travando — o prazo do quiz não desculpa isso.
+  //
   // Coage para booleano: sem o `!!`, a expressão pode devolver null/"" (ex.:
   // quizId ausente), o que funciona como "falsy" na UI mas suja o contrato.
   return !!(
     video.requiresPrevious === true &&
     previousVideo &&
-    (!previousVideo.watched || (previousVideo.quizId && !previousVideo.quizPassed))
+    (!previousVideo.watched ||
+      (previousVideo.quizId &&
+        !previousVideo.quizPassed &&
+        !previousVideo.quizClosed))
   );
 };

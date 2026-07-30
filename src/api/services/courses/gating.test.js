@@ -80,6 +80,32 @@ describe("isVideoLocked (próximo vídeo só libera após concluir o anterior)",
     expect(isVideoLocked(V(), null)).toBe(false);
   });
 
+  // Quem perdeu o prazo do quiz não tem como fazê-lo: prender o aluno no resto
+  // do curso seria uma punição sem saída.
+  it("anterior assistido, quiz ENCERRADO e não aprovado → liberado", () => {
+    const list = [
+      V({ id: "v0", watched: true, quizId: "c/v0", quizPassed: false, quizClosed: true }),
+      V({ id: "v1" }),
+    ];
+    expect(isVideoLocked(list[1], list)).toBe(false);
+  });
+
+  it("quiz encerrado NÃO desculpa não ter assistido o vídeo anterior", () => {
+    const list = [
+      V({ id: "v0", watched: false, quizId: "c/v0", quizPassed: false, quizClosed: true }),
+      V({ id: "v1" }),
+    ];
+    expect(isVideoLocked(list[1], list)).toBe(true);
+  });
+
+  it("quiz ainda ABERTO e não aprovado continua travando", () => {
+    const list = [
+      V({ id: "v0", watched: true, quizId: "c/v0", quizPassed: false, quizClosed: false }),
+      V({ id: "v1" }),
+    ];
+    expect(isVideoLocked(list[1], list)).toBe(true);
+  });
+
   it("um SLIDE também pode ser travado (trava pertence ao conteúdo)", () => {
     const list = [
       V({ id: "v0", watched: false }), // vídeo anterior incompleto

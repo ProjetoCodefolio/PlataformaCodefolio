@@ -371,7 +371,12 @@ export function VideoWatcher({
         }
       }
 
-      if (previousItem.quizId && !previousItem.quizPassed) {
+      // Mesmo critério do "Próximo": quiz encerrado não é mais exigível.
+      if (
+        previousItem.quizId &&
+        !previousItem.quizPassed &&
+        !previousItem.quizClosed
+      ) {
         setShowQuiz(true);
         setCurrentVideoId(previousItem.id);
       } else {
@@ -382,20 +387,20 @@ export function VideoWatcher({
 
   const handleNext = () => {
     if (hasNext) {
-      // Verificar se precisa fazer o quiz atual
-      if (
+      // Um quiz cuja janela já encerrou não é mais exigível: mandar o aluno
+      // fazê-lo deixaria o botão "Próximo" sem efeito nenhum, já que a entrada
+      // no quiz seria recusada. Nesse caso seguimos direto para o próximo item.
+      const quizPendente =
         currentVideo.quizId &&
         !currentVideo.quizPassed &&
-        percentageWatched >= 90
-      ) {
+        !currentVideo.quizClosed;
+
+      // Verificar se precisa fazer o quiz atual
+      if (quizPendente && percentageWatched >= 90) {
         setShowQuiz(true);
         setCurrentVideoId(currentVideo.id);
         return;
-      } else if (
-        currentVideo.quizId &&
-        !currentVideo.quizPassed &&
-        percentageWatched < 90
-      ) {
+      } else if (quizPendente && percentageWatched < 90) {
         toast.warn(
           "Você precisa assistir pelo menos 90% do vídeo para acessar o quiz!"
         );
