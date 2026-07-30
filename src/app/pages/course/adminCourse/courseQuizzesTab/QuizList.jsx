@@ -70,6 +70,7 @@ const QuizList = ({
   editQuiz,
   onToggleQuestionEditor,
   renderQuestionEditor,
+  onReorderQuestions,
 }) => {
   const navigate = useNavigate();
 
@@ -203,23 +204,9 @@ const QuizList = ({
               unmountOnExit
             >
               <CardContent>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ color: "#666", mb: 1, fontWeight: 600 }}
-                >
-                  Questões ({quiz.questions.length})
-                </Typography>
-
-                <QuestionList
-                  quiz={quiz}
-                  handleEditQuestion={handleEditQuestion}
-                  handleRemoveQuestion={handleRemoveQuestion}
-                  questionFormRef={questionFormRef}
-                  courseId={courseId}
-                  onAutoSaveQuestion={onAutoSaveQuestion}
-                />
-
-                <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 1, sm: 2 } }}>
+                {/* Adicionar vem ANTES da lista: é a ação que se procura ao
+                    abrir o card, e não algo a caçar depois de rolar 20 questões. */}
+                <CardActions sx={{ px: 0, pt: 0, pb: 1 }}>
                   <Button
                     variant={editingQuestions ? "outlined" : "contained"}
                     onClick={() => onToggleQuestionEditor(quiz)}
@@ -245,7 +232,7 @@ const QuizList = ({
                           }
                     }
                   >
-                    {editingQuestions ? "Fechar editor" : "Editar questões"}
+                    {editingQuestions ? "Fechar" : "Adicionar questões"}
                   </Button>
                 </CardActions>
 
@@ -254,7 +241,7 @@ const QuizList = ({
                 <Collapse in={editingQuestions} timeout="auto" unmountOnExit>
                   <Box
                     sx={{
-                      mt: 1,
+                      mb: 2,
                       p: { xs: 1, sm: 2 },
                       borderRadius: 2,
                       border: "1px solid #e0e0e0",
@@ -264,6 +251,32 @@ const QuizList = ({
                     {editingQuestions && renderQuestionEditor?.(quiz)}
                   </Box>
                 </Collapse>
+
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#666", mb: 1, fontWeight: 600 }}
+                >
+                  Questões ({quiz.questions.length})
+                  {quiz.questions.length > 1 && (
+                    <Typography
+                      component="span"
+                      variant="caption"
+                      sx={{ color: "#999", fontWeight: 400, ml: 1 }}
+                    >
+                      — arraste pela alça para reordenar
+                    </Typography>
+                  )}
+                </Typography>
+
+                <QuestionList
+                  quiz={quiz}
+                  handleEditQuestion={handleEditQuestion}
+                  handleRemoveQuestion={handleRemoveQuestion}
+                  questionFormRef={questionFormRef}
+                  courseId={courseId}
+                  onAutoSaveQuestion={onAutoSaveQuestion}
+                  onReorderQuestions={onReorderQuestions}
+                />
               </CardContent>
             </Collapse>
           </Card>
