@@ -206,6 +206,24 @@ opcionais, no mesmo formato usado nos trabalhos:
 quiz fora do prazo não abre nem para quem ainda tem tentativas sobrando. Sair de
 um quiz aberto sem enviar continua não consumindo tentativa.
 
+#### Notificação aos alunos
+
+Ao clicar em **"Adicionar Quiz"**, todos os alunos matriculados recebem uma
+notificação no sino da barra superior, do mesmo jeito que acontece com os
+trabalhos. A mensagem já informa a situação do quiz:
+
+- sem data de abertura → *"Já está disponível."*
+- com abertura agendada → *"Abre em dd/mm/aaaa às hh:mm."*
+- com encerramento → *"Disponível até dd/mm/aaaa às hh:mm."*
+
+**Dica:** preencha a data de abertura **antes** de criar o quiz. Assim o aviso
+que chega para a turma é *"abre em tal dia"*, e você cadastra as questões com
+calma sem ninguém entrando num quiz pela metade.
+
+Cada aluno pode desativar esse aviso em **Preferências de notificação** (menu do
+sino), na opção **"Novos quizzes"**, curso a curso. A notificação só é enviada na
+criação do quiz — alterar as datas depois não dispara um novo aviso.
+
 #### Passo 3: Adicionar Questões
 
 Para cada questão:
