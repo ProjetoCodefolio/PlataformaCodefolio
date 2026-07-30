@@ -179,6 +179,33 @@ A plataforma oferece **3 tipos de quizzes**:
 
 ![Geração de quiz](../src/app/assets/docs-img/quiz.png)
 
+#### Janela de disponibilidade (datas de abertura e encerramento)
+
+Todo quiz tem uma seção **"Janela de disponibilidade"** com duas datas
+opcionais, no mesmo formato usado nos trabalhos:
+
+- **Abertura do quiz**: antes dessa data o aluno vê o botão *"Quiz Agendado"* e
+  não consegue entrar. Serve para você cadastrar as questões com calma sem que a
+  turma comece a responder um quiz pela metade.
+- **Encerramento do quiz**: depois dessa data o botão vira *"Quiz Encerrado"* e
+  novas tentativas são recusadas. Evita que a turma deixe todos os quizzes para
+  a última semana.
+
+**Como funciona:**
+- Campo vazio = sem restrição (abertura vazia → disponível já; encerramento
+  vazio → sem prazo). Quizzes antigos continuam sempre abertos.
+- As datas usam o **fuso local** de quem preenche.
+- A abertura precisa ser anterior ao encerramento — a plataforma recusa o
+  contrário.
+- Ao editar um quiz existente, as datas são salvas ao sair do campo (igual à
+  nota mínima e ao limite de tentativas).
+- A lista de quizzes mostra uma etiqueta com o estado atual: *Abre em…*,
+  *Aberto até…* ou *Encerrado em…*.
+
+**Interação com o limite de tentativas:** a janela é verificada primeiro. Um
+quiz fora do prazo não abre nem para quem ainda tem tentativas sobrando. Sair de
+um quiz aberto sem enviar continua não consumindo tentativa.
+
 #### Passo 3: Adicionar Questões
 
 Para cada questão:
