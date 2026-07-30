@@ -206,6 +206,14 @@ opcionais, no mesmo formato usado nos trabalhos:
 quiz fora do prazo não abre nem para quem ainda tem tentativas sobrando. Sair de
 um quiz aberto sem enviar continua não consumindo tentativa.
 
+**Quem perde o prazo não fica preso no curso.** Normalmente o aluno só avança
+para o próximo conteúdo depois de passar no quiz do anterior. Quando o quiz
+encerra, essa trava é liberada: quem não fez a tempo segue para os próximos
+vídeos normalmente — não haveria como fazê-lo, e prendê-lo ali seria uma punição
+sem saída. O que continua valendo é **assistir ao vídeo anterior**; o prazo do
+quiz não desculpa isso. Passando o mouse sobre o botão **"Quiz Encerrado"**, o
+aluno vê a data em que o quiz fechou.
+
 #### Notificação aos alunos
 
 Ao clicar em **"Adicionar Quiz"**, todos os alunos matriculados recebem uma
@@ -245,10 +253,29 @@ Para cada questão:
 
 #### Passo 4: Gerenciar Questões
 
+Editar um quiz e editar as questões dele são duas coisas separadas:
+
+- **Ícone de lápis** no quiz → abre a configuração (nota mínima, diagnóstico,
+  tentativas e janela de disponibilidade). Cada campo é gravado ao sair dele, e
+  o botão **"Salvar"** regrava tudo e fecha.
+- **Ícone de expandir** (seta) no quiz → abre a lista de questões, com o botão
+  **"Adicionar questões"** logo acima dela.
+
+**Adicionar questões:**
+1. Expanda o quiz e clique em **"Adicionar questões"**
+2. O gerador de PDF e o formulário de questão aparecem ali mesmo, dentro do quiz
+3. Clique em **"Fechar"** quando terminar
+
 **Editar uma questão:**
 1. Clique no ícone de **lápis** ao lado da questão
-2. Modifique os campos desejados
-3. Clique em **"Salvar Alterações"**
+2. Modifique os campos desejados — as alterações são **salvas automaticamente**
+
+**Reordenar as questões:**
+1. Arraste a questão pela **alça** (⣿, à esquerda do item)
+2. A nova ordem é gravada assim que você solta — não há botão de salvar
+
+A ordem definida aqui é a ordem em que o aluno responde. O arraste só funciona
+pela alça: o resto do item continua clicável para edição.
 
 **Remover uma questão:**
 1. Clique no ícone de **lixeira**
