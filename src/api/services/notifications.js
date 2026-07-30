@@ -2,13 +2,14 @@ import { database } from "$api/config/firebase";
 import { ref, push, set, get, update, query, orderByChild, onValue } from "firebase/database";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
+import { formatQuizDate } from "$api/services/courses/quizzes";
 
 /**
  * Notificações in-app por usuário.
  *
  * Estrutura:
  *   notifications/{userId}/{notificationId}
- *     type, courseId, assignmentId, title, message, link, read, createdAt
+ *     type, courseId, assignmentId, quizId, title, message, link, read, createdAt
  *
  * E-mail: mantido DESLIGADO por padrão. O envio de e-mail atual (reportes) usa
  * um template fixo do EmailJS e não serve para e-mailar alunos. Quando houver
@@ -31,6 +32,7 @@ export const createNotification = async (userId, notification) => {
       type: notification.type || "info",
       courseId: notification.courseId || "",
       assignmentId: notification.assignmentId || "",
+      quizId: notification.quizId || "",
       title: notification.title || "",
       message: notification.message || "",
       link: notification.link || "",
@@ -144,6 +146,66 @@ export const notifyNewAssignment = async (courseId, assignment, courseTitle = ""
     await sendNotificationEmail();
   } catch (error) {
     console.error("Erro ao notificar novo enunciado:", error);
+  }
+};
+
+/**
+ * Monta a segunda linha da notificação de quiz a partir da janela de
+ * disponibilidade: quando abre e até quando dá para responder.
+ */
+const quizWindowSummary = (quiz) => {
+  const opensAt = formatQuizDate(quiz?.openDate);
+  const closesAt = formatQuizDate(quiz?.closeDate);
+  // Só anuncia a abertura quando ela ainda está por vir — uma data já passada
+  // significa que o quiz está disponível agora.
+  const opensLater =
+    opensAt && new Date(quiz.openDate).getTime() > Date.now();
+
+  if (opensLater && closesAt) return ` Abre em ${opensAt} e encerra em ${closesAt}.`;
+  if (opensLater) return ` Abre em ${opensAt}.`;
+  if (closesAt) return ` Disponível até ${closesAt}.`;
+  return " Já está disponível.";
+};
+
+/**
+ * Notifica todos os alunos matriculados sobre um novo quiz, respeitando as
+ * preferências individuais por curso — mesmo caminho dos enunciados.
+ *
+ * O disparo acontece na CRIAÇÃO do quiz: com a janela de disponibilidade, é o
+ * professor quem decide se aquilo já está no ar (sem data de abertura) ou se é
+ * um aviso do que vem (abertura agendada).
+ *
+ * @param {string} courseId
+ * @param {Object} quiz - { id, title, openDate, closeDate }
+ * @param {string} [courseTitle]
+ */
+export const notifyNewQuiz = async (courseId, quiz, courseTitle = "") => {
+  if (!courseId || !quiz?.id) return;
+  try {
+    const students = await fetchCourseStudentsEnriched(courseId);
+    const message = `${courseTitle ? courseTitle + ": " : ""}${
+      quiz.title || "Novo quiz"
+    }.${quizWindowSummary(quiz)}`;
+
+    await Promise.all(
+      students
+        .filter((s) => s.role !== "teacher")
+        .map(async (student) => {
+          const prefs = await fetchPrefs(student.userId, courseId);
+          if (!acceptsInApp(prefs, "newQuiz")) return;
+          await createNotification(student.userId, {
+            type: "new_quiz",
+            courseId,
+            quizId: quiz.id,
+            title: "Novo quiz publicado",
+            message,
+            link: `/classes?courseId=${courseId}`,
+          });
+        })
+    );
+    await sendNotificationEmail();
+  } catch (error) {
+    console.error("Erro ao notificar novo quiz:", error);
   }
 };
 

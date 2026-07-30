@@ -54,11 +54,12 @@ import {
   normalizeMaxAttempts,
   normalizeQuizDate,
 } from "$api/services/courses/quizzes";
+import { notifyNewQuiz } from "$api/services/notifications";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
 import { fetchFlippedClassroomVideos } from "$api/services/courses/submissions";
 
-const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
+const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slides }, ref) => {
   // Estados existentes
   const [newQuizVideoId, setNewQuizVideoId] = useState("");
   const [newQuizMinPercentage, setNewQuizMinPercentage] = useState(0);
@@ -297,6 +298,22 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
         );
 
+        // Avisa a turma. Com a janela de disponibilidade, criar o quiz é o
+        // momento do lançamento: sem data de abertura ele já está no ar; com
+        // data, o aviso diz quando abre.
+        notifyNewQuiz(
+          courseId,
+          {
+            id: newQuizVideoId,
+            title:
+              videosState.find((v) => v.id === newQuizVideoId)?.title ||
+              "Novo quiz",
+            openDate: newQuizOpenDate,
+            closeDate: newQuizCloseDate,
+          },
+          courseTitle
+        );
+
         setQuizzes((prev) => [...prev, newQuiz]);
         setNewQuizVideoId(videosState[0]?.id || "");
         setNewQuizMinPercentage(0);
@@ -339,6 +356,19 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
 
         newQuiz.isSlideQuiz = true;
         newQuiz.slideId = newQuizSlideId;
+
+        notifyNewQuiz(
+          courseId,
+          {
+            id: slidePrefix,
+            title:
+              slidesState.find((s) => s.id === newQuizSlideId)?.title ||
+              "Novo quiz",
+            openDate: newQuizOpenDate,
+            closeDate: newQuizCloseDate,
+          },
+          courseTitle
+        );
 
         setSlideQuizzes((prev) => [...prev, newQuiz]);
         setNewQuizSlideId(slidesState[0]?.id || "");

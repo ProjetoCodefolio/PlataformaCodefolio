@@ -662,7 +662,11 @@ const CourseForm = () => {
                 />
               )}
               {selectedTab === 2 && (
-                <CourseQuizzesTab ref={courseQuizzesRef} courseId={courseId} />
+                <CourseQuizzesTab
+                  ref={courseQuizzesRef}
+                  courseId={courseId}
+                  courseTitle={courseTitle}
+                />
               )}
               {selectedTab === 3 && (
                 <CourseStudentsTab
