@@ -110,12 +110,11 @@ const VideoList = ({
     setCurrentVideo(video);
   };
 
-  // Handler para clicar num quiz fora da janela (ainda não abriu ou já encerrou)
+  // Handler para clicar num quiz fora da janela (ainda não abriu ou já encerrou).
+  // Sem override de posição: todo toast do sistema usa o canto superior direito
+  // definido no ToastContainer.
   const handleQuizWindowClick = (windowMessage) => {
-    toast.info(windowMessage, {
-      position: "bottom-center",
-      autoClose: 5000,
-    });
+    toast.info(windowMessage, { autoClose: 5000 });
   };
 
   // Handler para limite de tentativas atingido
@@ -124,10 +123,7 @@ const VideoList = ({
       attemptLimit === 1
         ? "Este quiz permite apenas 1 tentativa, que você já utilizou."
         : `Você já atingiu o limite de ${attemptLimit} tentativas para este quiz.`,
-      {
-        position: "bottom-center",
-        autoClose: 5000,
-      }
+      { autoClose: 5000 }
     );
   };
 
