@@ -16,6 +16,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import PersonIcon from "@mui/icons-material/Person";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import QuestionList from "./QuestionList";
 import { useNavigate } from "react-router-dom";
 import {
@@ -55,7 +56,6 @@ const QuizList = ({
   handleEditQuiz,
   handleRemoveQuiz,
   handleViewStudents,
-  quizSettingsRef,
   questionFormRef,
   handleEditQuestion,
   handleRemoveQuestion,
@@ -64,6 +64,12 @@ const QuizList = ({
   entityItems,
   courseId,
   onAutoSaveQuestion,
+  // Quiz cujas QUESTÕES estão em edição, e o alternador desse modo. O editor em
+  // si vem de fora (renderQuestionEditor) para que todo o estado do formulário
+  // de questões continue num lugar só.
+  editQuiz,
+  onToggleQuestionEditor,
+  renderQuestionEditor,
 }) => {
   const navigate = useNavigate();
 
@@ -84,6 +90,7 @@ const QuizList = ({
       <List ref={quizzesListEndRef}>
         {quizzes.map((quiz) => {
           const windowChip = windowChipProps(quiz);
+          const editingQuestions = editQuiz?.videoId === quiz.videoId;
           return (
           <Card
             key={quiz.videoId}
@@ -166,14 +173,10 @@ const QuizList = ({
                   <ExpandMoreIcon fontSize="small" />
                 </IconButton>
                 <IconButton
-                  onClick={() => {
-                    handleEditQuiz(quiz);
-                    quizSettingsRef.current.scrollIntoView({
-                      behavior: "smooth",
-                    });
-                  }}
+                  onClick={() => handleEditQuiz(quiz)}
                   sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
                   size="small"
+                  title="Editar informações do quiz"
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -200,6 +203,13 @@ const QuizList = ({
               unmountOnExit
             >
               <CardContent>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#666", mb: 1, fontWeight: 600 }}
+                >
+                  Questões ({quiz.questions.length})
+                </Typography>
+
                 <QuestionList
                   quiz={quiz}
                   handleEditQuestion={handleEditQuestion}
@@ -208,27 +218,52 @@ const QuizList = ({
                   courseId={courseId}
                   onAutoSaveQuestion={onAutoSaveQuestion}
                 />
+
                 <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: { xs: 1, sm: 2 } }}>
                   <Button
-                    variant="contained"
-                    onClick={() => {
-                      handleEditQuiz(quiz);
-                      questionFormRef.current.scrollIntoView({
-                        behavior: "smooth",
-                      });
-                    }}
-                    startIcon={<AddIcon />}
+                    variant={editingQuestions ? "outlined" : "contained"}
+                    onClick={() => onToggleQuestionEditor(quiz)}
+                    startIcon={editingQuestions ? <CloseIcon /> : <AddIcon />}
                     fullWidth={false}
-                    sx={{
-                      backgroundColor: "#9041c1",
-                      "&:hover": { backgroundColor: "#7d37a7" },
-                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                      minWidth: { xs: '100%', sm: 'auto' }
-                    }}
+                    sx={
+                      editingQuestions
+                        ? {
+                            borderColor: "#9041c1",
+                            color: "#9041c1",
+                            "&:hover": {
+                              borderColor: "#7d37a7",
+                              backgroundColor: "#f5f0fa",
+                            },
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            minWidth: { xs: '100%', sm: 'auto' },
+                          }
+                        : {
+                            backgroundColor: "#9041c1",
+                            "&:hover": { backgroundColor: "#7d37a7" },
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            minWidth: { xs: '100%', sm: 'auto' },
+                          }
+                    }
                   >
-                    Adicionar Questão
+                    {editingQuestions ? "Fechar editor" : "Editar questões"}
                   </Button>
                 </CardActions>
+
+                {/* Editor de questões (gerador de PDF + formulário) no contexto
+                    do próprio quiz, e não solto no rodapé da página. */}
+                <Collapse in={editingQuestions} timeout="auto" unmountOnExit>
+                  <Box
+                    sx={{
+                      mt: 1,
+                      p: { xs: 1, sm: 2 },
+                      borderRadius: 2,
+                      border: "1px solid #e0e0e0",
+                      backgroundColor: "#fafafa",
+                    }}
+                  >
+                    {editingQuestions && renderQuestionEditor?.(quiz)}
+                  </Box>
+                </Collapse>
               </CardContent>
             </Collapse>
           </Card>

@@ -7,29 +7,12 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import {
-  Box,
-  Typography,
-  Tabs,
-  Tab,
-  Divider,
-  Grid,
-  FormControl,
-  FormHelperText,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  FormControlLabel,
-  Checkbox,
-} from "@mui/material";
-import InfoIcon from "@mui/icons-material/Info";
+import { Box, Typography, Tabs, Tab, Button } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
-import QuizAttemptsSettings from "./QuizAttemptsSettings";
-import QuizScheduleSettings from "./QuizScheduleSettings";
+import QuizSettingsModal from "./QuizSettingsModal";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import { ConfirmationModal, SuccessModal } from "./Modals";
@@ -43,16 +26,9 @@ import {
   addQuestionToQuiz,
   updateQuizQuestion,
   removeQuizQuestion,
-  updateQuizMinPercentage,
-  updateQuizDiagnosticStatus,
-  updateQuizRetrySettings,
-  updateQuizSchedule,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
-  normalizeAllowRetry,
-  normalizeMaxAttempts,
-  normalizeQuizDate,
 } from "$api/services/courses/quizzes";
 import { notifyNewQuiz } from "$api/services/notifications";
 import { fetchCourseSlides } from "$api/services/courses/slides";
@@ -86,8 +62,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [newQuizSlideId, setNewQuizSlideId] = useState("");
   const [slideQuizzes, setSlideQuizzes] = useState([]);
 
-  // Estados existentes continuação
+  // `editQuiz` = quiz cujas QUESTÕES estão em edição (editor dentro do card).
+  // A configuração do quiz (nota, diagnóstico, tentativas, janela) fica no
+  // modal, controlado por `settingsQuiz`. São dois fluxos separados de propósito.
   const [editQuiz, setEditQuiz] = useState(null);
+  const [settingsQuiz, setSettingsQuiz] = useState(null);
   const [editQuestion, setEditQuestion] = useState(null);
   const [showAddQuizModal, setShowAddQuizModal] = useState(false);
   const [showDeleteQuizModal, setShowDeleteQuizModal] = useState(false);
@@ -95,17 +74,19 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
   const [questionToDelete, setQuestionToDelete] = useState(null);
   const [draftQuestionId, setDraftQuestionId] = useState(null);
+  // Campos do formulário de CRIAÇÃO (a edição vive no QuizSettingsModal).
   const [newQuizIsDiagnostic, setNewQuizIsDiagnostic] = useState(false);
-  // Configuração de tentativas do quiz em edição.
   const [newQuizAllowRetry, setNewQuizAllowRetry] = useState(true);
   const [newQuizMaxAttempts, setNewQuizMaxAttempts] = useState("");
-  // Janela de disponibilidade do quiz em edição (datas ISO; "" = sem restrição).
+  // Janela de disponibilidade do novo quiz (datas ISO; "" = sem restrição).
   const [newQuizOpenDate, setNewQuizOpenDate] = useState("");
   const [newQuizCloseDate, setNewQuizCloseDate] = useState("");
 
   // Refs existentes
   const questionFormRef = useRef(null);
   const quizzesListEndRef = useRef(null);
+  // Âncora do topo da aba, usada para levar o professor de volta ao formulário
+  // de criação depois de adicionar um quiz.
   const quizSettingsRef = useRef(null);
   const questionRef = useRef(null);
   const optionsRefs = useRef([]);
@@ -121,23 +102,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       (_, i) => optionsRefs.current[i] || React.createRef()
     );
   }, [newQuizOptions.length]);
-
-  useEffect(() => {
-    if (editQuiz) {
-      setNewQuizIsDiagnostic(normalizeDiagnosticFlag(editQuiz.isDiagnostic));
-      setNewQuizAllowRetry(normalizeAllowRetry(editQuiz.allowRetry));
-      const max = normalizeMaxAttempts(editQuiz.maxAttempts);
-      setNewQuizMaxAttempts(max == null ? "" : max);
-      setNewQuizOpenDate(normalizeQuizDate(editQuiz.openDate));
-      setNewQuizCloseDate(normalizeQuizDate(editQuiz.closeDate));
-    } else {
-      setNewQuizIsDiagnostic(false);
-      setNewQuizAllowRetry(true);
-      setNewQuizMaxAttempts("");
-      setNewQuizOpenDate("");
-      setNewQuizCloseDate("");
-    }
-  }, [editQuiz]);
 
   // Função para carregar os alvos de quiz da aba "Quizzes de Conteúdo":
   // itens da nova collection unificada (vídeos e slides) + vídeos legados.
@@ -406,33 +370,45 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     }
   };
 
+  // Excluir uma questão NÃO abre o editor de questões: a exclusão sai da própria
+  // lista, e o quiz alvo viaja junto em `questionToDelete`.
   const handleRemoveQuestion = (quiz, questionId) => {
-    setEditQuiz(quiz);
     setQuestionToDelete({ quiz, id: questionId });
     setShowDeleteQuestionModal(true);
   };
 
   const confirmRemoveQuestion = async () => {
     try {
-      if (!questionToDelete || !editQuiz) return;
+      if (!questionToDelete?.quiz) return;
+
+      // Parte da versão mais recente do quiz na lista: o objeto guardado no
+      // modal pode ter envelhecido (outra questão editada nesse meio-tempo).
+      const target = questionToDelete.quiz;
+      const latestQuiz =
+        (target.isSlideQuiz ? slideQuizzes : quizzes).find(
+          (q) => q.videoId === target.videoId
+        ) || target;
 
       const updatedQuiz = await removeQuizQuestion(
         courseId,
-        editQuiz,
+        latestQuiz,
         questionToDelete.id
       );
 
-      if (editQuiz.isSlideQuiz) {
+      if (target.isSlideQuiz) {
         setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+          prev.map((q) => (q.videoId === target.videoId ? updatedQuiz : q))
         );
       } else {
         setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
+          prev.map((q) => (q.videoId === target.videoId ? updatedQuiz : q))
         );
       }
 
-      setEditQuiz(updatedQuiz);
+      // Só atualiza o editor se ele estiver aberto NESTE quiz.
+      setEditQuiz((prev) =>
+        prev?.videoId === target.videoId ? updatedQuiz : prev
+      );
 
       toast.success("Questão deletada com sucesso!");
     } catch (error) {
@@ -444,19 +420,34 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     }
   };
 
+  // Lápis na lista: abre APENAS a configuração do quiz, num modal. Questões não
+  // entram aqui — elas ficam no editor do card expandido.
   const handleEditQuiz = (quiz) => {
-    setEditQuiz(quiz);
+    setSettingsQuiz(quiz);
+  };
 
-    if (quiz.isSlideQuiz) {
-      setNewQuizSlideId(quiz.slideId);
-      setActiveTab(1);
+  // Reflete na lista (e no editor de questões, se for o mesmo quiz) o quiz
+  // atualizado por uma gravação do modal de configuração.
+  const handleQuizSettingsSaved = (updatedQuiz) => {
+    const applyTo = (prev) =>
+      prev.map((q) => (q.videoId === updatedQuiz.videoId ? updatedQuiz : q));
+
+    if (updatedQuiz.isSlideQuiz) {
+      setSlideQuizzes(applyTo);
     } else {
-      setNewQuizVideoId(quiz.videoId);
-      setActiveTab(0);
+      setQuizzes(applyTo);
     }
+    setEditQuiz((prev) =>
+      prev?.videoId === updatedQuiz.videoId ? updatedQuiz : prev
+    );
+  };
 
-    setNewQuizMinPercentage(quiz.minPercentage);
-    setNewQuizIsDiagnostic(normalizeDiagnosticFlag(quiz.isDiagnostic));
+  // Botão "Editar questões" do card expandido: alterna o editor e garante que o
+  // card esteja aberto para o professor ver a lista junto.
+  const handleToggleQuestionEditor = (quiz) => {
+    setEditQuestion(null);
+    setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? null : quiz));
+    setExpandedQuiz(quiz.videoId);
   };
 
   const handleRemoveQuiz = (quiz) => {
@@ -636,188 +627,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     [courseId, quizzes, slideQuizzes]
   );
 
-  // Função para salvar a porcentagem mínima quando o campo perde o foco
-  const handleBlurSaveMinPercentage = async () => {
-    if (!editQuiz) return;
-
-    try {
-      const updatedQuiz = await updateQuizMinPercentage(
-        courseId,
-        editQuiz,
-        newQuizMinPercentage
-      );
-
-      // Atualiza o quiz na lista correta (vídeos ou slides)
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz(updatedQuiz);
-      toast.success("Porcentagem mínima atualizada!");
-    } catch (error) {
-      console.error("Erro ao atualizar porcentagem mínima:", error);
-      toast.error("Erro ao salvar a porcentagem mínima");
-    }
-  };
-
-  const handleBlurSaveDiagnosticStatus = async () => {
-    if (!editQuiz) return;
-    try {
-      const updatedQuiz = await updateQuizDiagnosticStatus(
-        courseId,
-        editQuiz,
-        newQuizIsDiagnostic
-      );
-      
-      // Atualiza o quiz na lista correta (vídeos ou slides)
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-      setEditQuiz(updatedQuiz);
-      toast.success("Status de diagnóstico atualizado!");
-    } catch (error) {
-      console.error("Erro ao atualizar status de diagnóstico:", error);
-      toast.error("Erro ao salvar o status de diagnóstico");
-    }
-  };
-
-  const handleDiagnosticToggle = async (checked) => {
-    const previousValue = newQuizIsDiagnostic;
-    setNewQuizIsDiagnostic(checked);
-
-    if (!editQuiz) {
-      return;
-    }
-
-    try {
-      const updatedQuiz = await updateQuizDiagnosticStatus(
-        courseId,
-        editQuiz,
-        checked
-      );
-
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz(updatedQuiz);
-      toast.success(
-        checked ? "Quiz marcado como diagnóstico!" : "Quiz desmarcado como diagnóstico!"
-      );
-    } catch (error) {
-      console.error("Erro ao atualizar status de diagnóstico:", error);
-      setNewQuizIsDiagnostic(previousValue);
-      toast.error("Erro ao salvar o status de diagnóstico");
-    }
-  };
-
-  // Aplica um quiz atualizado na lista correta (vídeos ou slides) e no estado
-  // de edição. Usado pelos handlers de configuração de tentativas.
-  const applyQuizUpdate = (updatedQuiz) => {
-    if (editQuiz?.isSlideQuiz) {
-      setSlideQuizzes((prev) =>
-        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-      );
-    } else {
-      setQuizzes((prev) =>
-        prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-      );
-    }
-    setEditQuiz(updatedQuiz);
-  };
-
-  // Alterna "permitir repetição". Ao desativar, o limite de tentativas deixa de
-  // se aplicar (só há 1 tentativa), então limpamos o campo.
-  const handleAllowRetryToggle = async (checked) => {
-    const previousAllow = newQuizAllowRetry;
-    const previousMax = newQuizMaxAttempts;
-
-    setNewQuizAllowRetry(checked);
-    if (!checked) setNewQuizMaxAttempts("");
-
-    if (!editQuiz) return;
-
-    try {
-      const updatedQuiz = await updateQuizRetrySettings(courseId, editQuiz, {
-        allowRetry: checked,
-        maxAttempts: checked ? newQuizMaxAttempts : null,
-      });
-      applyQuizUpdate(updatedQuiz);
-      toast.success(
-        checked ? "Repetição do quiz ativada!" : "Repetição do quiz desativada!"
-      );
-    } catch (error) {
-      console.error("Erro ao atualizar repetição do quiz:", error);
-      setNewQuizAllowRetry(previousAllow);
-      setNewQuizMaxAttempts(previousMax);
-      toast.error("Erro ao salvar a configuração de tentativas");
-    }
-  };
-
-  // Salva o limite de tentativas ao sair do campo. Só faz sentido quando a
-  // repetição está ativada; em branco = ilimitado.
-  const handleBlurSaveMaxAttempts = async () => {
-    if (!editQuiz || !newQuizAllowRetry) return;
-
-    try {
-      const updatedQuiz = await updateQuizRetrySettings(courseId, editQuiz, {
-        allowRetry: true,
-        maxAttempts: newQuizMaxAttempts,
-      });
-      // Reflete o valor normalizado (ex.: campo inválido vira "ilimitado").
-      const normalizedMax = normalizeMaxAttempts(updatedQuiz.maxAttempts);
-      setNewQuizMaxAttempts(normalizedMax == null ? "" : normalizedMax);
-      applyQuizUpdate(updatedQuiz);
-      toast.success("Limite de tentativas atualizado!");
-    } catch (error) {
-      console.error("Erro ao atualizar limite de tentativas:", error);
-      toast.error("Erro ao salvar o limite de tentativas");
-    }
-  };
-
-  // Salva a janela de disponibilidade ao sair de um dos campos de data.
-  const handleBlurSaveSchedule = async () => {
-    if (!editQuiz) return;
-    if (!isScheduleValid()) return;
-
-    // Nada a salvar se a janela não mudou (evita um toast a cada blur).
-    if (
-      normalizeQuizDate(editQuiz.openDate) === newQuizOpenDate &&
-      normalizeQuizDate(editQuiz.closeDate) === newQuizCloseDate
-    ) {
-      return;
-    }
-
-    try {
-      const updatedQuiz = await updateQuizSchedule(courseId, editQuiz, {
-        openDate: newQuizOpenDate,
-        closeDate: newQuizCloseDate,
-      });
-      applyQuizUpdate(updatedQuiz);
-      toast.success("Janela de disponibilidade atualizada!");
-    } catch (error) {
-      console.error("Erro ao atualizar a janela do quiz:", error);
-      toast.error(error.message || "Erro ao salvar a janela de disponibilidade");
-    }
-  };
 
   // Adicione esta função ao componente CourseQuizzesTab (antes do return)
   const handleBlurSave = async (field) => {
@@ -1028,6 +837,55 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     </Button>
   );
 
+  // Editor de questões renderizado DENTRO do card do quiz expandido (a lista o
+  // chama só para o card em edição). Mantém aqui todo o estado do formulário,
+  // em vez de espalhar duas dúzias de props pela QuizList.
+  const renderQuestionEditor = () => (
+    <>
+      <PdfQuizGenerator
+        onQuestionsGenerated={handleQuestionsFromPdf}
+        setEditQuestion={setEditQuestion}
+        setNewQuizQuestion={setNewQuizQuestion}
+        setNewQuizOptions={setNewQuizOptions}
+        setNewQuizCorrectOption={setNewQuizCorrectOption}
+      />
+
+      <Box id="question-form" sx={{ scrollMarginTop: "20px" }}>
+        <QuestionForm
+          editQuiz={editQuiz}
+          newQuizQuestion={newQuizQuestion}
+          setNewQuizQuestion={setNewQuizQuestion}
+          newQuizOptions={newQuizOptions}
+          setNewQuizOptions={setNewQuizOptions}
+          newQuizCorrectOption={newQuizCorrectOption}
+          setNewQuizCorrectOption={setNewQuizCorrectOption}
+          newQuestionType={newQuestionType}
+          setNewQuestionType={setNewQuestionType}
+          newQuizImageUrl={newQuizImageUrl}
+          setNewQuizImageUrl={setNewQuizImageUrl}
+          newQuizImageWidth={newQuizImageWidth}
+          setNewQuizImageWidth={setNewQuizImageWidth}
+          newQuizImageHeight={newQuizImageHeight}
+          setNewQuizImageHeight={setNewQuizImageHeight}
+          handleBlurSave={handleBlurSave}
+          handleKeyDown={handleKeyDown}
+          questionRef={questionRef}
+          optionsRefs={optionsRefs}
+          addOptionButtonRef={addOptionButtonRef}
+          saveButtonRef={saveButtonRef}
+          cancelButtonRef={cancelButtonRef}
+          handleAddQuizOption={handleAddQuizOption}
+          handleRemoveQuizOption={handleRemoveQuizOption}
+          editQuestion={editQuestion}
+          handleSaveEditQuestion={handleSaveEditQuestion}
+          handleAddQuestion={handleAddQuestion}
+          setEditQuiz={setEditQuiz}
+          setEditQuestion={setEditQuestion}
+        />
+      </Box>
+    </>
+  );
+
   // Interface modificada com tabs para separar quizzes de vídeos e slides
   return (
     <Box
@@ -1062,21 +920,15 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             setNewQuizMinPercentage={setNewQuizMinPercentage}
             newQuizIsDiagnostic={newQuizIsDiagnostic}
             setNewQuizIsDiagnostic={setNewQuizIsDiagnostic}
-            editQuiz={editQuiz && !editQuiz.isSlideQuiz ? editQuiz : null}
             handleAddQuiz={handleAddQuiz}
-            handleBlurSaveMinPercentage={handleBlurSaveMinPercentage}
-            handleBlurSaveDiagnosticStatus={handleBlurSaveDiagnosticStatus}
-            handleDiagnosticToggle={handleDiagnosticToggle}
             newQuizAllowRetry={newQuizAllowRetry}
+            setNewQuizAllowRetry={setNewQuizAllowRetry}
             newQuizMaxAttempts={newQuizMaxAttempts}
             setNewQuizMaxAttempts={setNewQuizMaxAttempts}
-            handleAllowRetryToggle={handleAllowRetryToggle}
-            handleBlurSaveMaxAttempts={handleBlurSaveMaxAttempts}
             newQuizOpenDate={newQuizOpenDate}
             setNewQuizOpenDate={setNewQuizOpenDate}
             newQuizCloseDate={newQuizCloseDate}
             setNewQuizCloseDate={setNewQuizCloseDate}
-            handleBlurSaveSchedule={handleBlurSaveSchedule}
             questionFormRef={questionFormRef}
             entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
@@ -1090,7 +942,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             setExpandedQuiz={setExpandedQuiz}
             handleEditQuiz={handleEditQuiz}
             handleRemoveQuiz={handleRemoveQuiz}
-            quizSettingsRef={quizSettingsRef}
             questionFormRef={questionFormRef}
             handleEditQuestion={handleEditQuestion}
             handleRemoveQuestion={handleRemoveQuestion}
@@ -1099,6 +950,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             entityItems={videosState}
             courseId={courseId}
             onAutoSaveQuestion={handleAutoSaveQuestion}
+            editQuiz={editQuiz}
+            onToggleQuestionEditor={handleToggleQuestionEditor}
+            renderQuestionEditor={renderQuestionEditor}
           />
         </>
       )}
@@ -1116,222 +970,29 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             </Box>
           ) : (
             <>
-              {/* Formulário para criar quiz para slide */}
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant="h6"
-                  sx={{
-                    mb: 2,
-                    fontWeight: "bold",
-                    color: "#333",
-                    fontSize: { xs: "1.1rem", sm: "1.25rem" },
-                  }}
-                >
-                  {editQuiz && editQuiz.isSlideQuiz
-                    ? "Editar Quiz"
-                    : "Criar Novo Quiz"}
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth>
-                      <InputLabel
-                        sx={{
-                          color: "#666",
-                          "&.Mui-focused": { color: "#9041c1" },
-                          fontSize: { xs: "0.875rem", sm: "1rem" },
-                        }}
-                      >
-                        Slide
-                      </InputLabel>
-                      <Select
-                        value={newQuizSlideId}
-                        onChange={(e) => setNewQuizSlideId(e.target.value)}
-                        label="Slide"
-                        disabled={editQuiz && editQuiz.isSlideQuiz}
-                        sx={{
-                          "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#666",
-                          },
-                          "&:hover .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#9041c1",
-                          },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#9041c1",
-                          },
-                          fontSize: { xs: "0.875rem", sm: "1rem" },
-                        }}
-                      >
-                        {slidesState.map((slide) => (
-                          <MenuItem
-                            key={slide.id}
-                            value={slide.id}
-                            sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
-                          >
-                            {slide.title || `Slide ${slide.id.substring(0, 6)}`}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      <FormHelperText sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
-                        {editQuiz && editQuiz.isSlideQuiz
-                          ? "Não é possível alterar o slide de um quiz existente"
-                          : "Selecione o slide para este quiz"}
-                      </FormHelperText>
-                    </FormControl>
-                  </Grid>
-
-                  <Grid item xs={12} md={6}>
-                    <FormControl fullWidth>
-                      <InputLabel
-                        sx={{
-                          color: "#666",
-                          "&.Mui-focused": { color: "#9041c1" },
-                          fontSize: { xs: "0.875rem", sm: "1rem" },
-                        }}
-                      >
-                        Nota Mínima (%)
-                      </InputLabel>
-                      <Select
-                        value={newQuizMinPercentage}
-                        onChange={(e) => setNewQuizMinPercentage(e.target.value)}
-                        label="Nota Mínima (%)"
-                        onBlur={
-                          editQuiz && editQuiz.isSlideQuiz
-                            ? handleBlurSaveMinPercentage
-                            : undefined
-                        }
-                        sx={{
-                          "& .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#666",
-                          },
-                          "&:hover .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#9041c1",
-                          },
-                          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                            borderColor: "#9041c1",
-                          },
-                          fontSize: { xs: "0.875rem", sm: "1rem" },
-                        }}
-                        ref={questionFormRef}
-                      >
-                        {[0, 50, 60, 70, 80, 90, 100].map((value) => (
-                          <MenuItem key={value} value={value}>
-                            {value}%
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      <FormHelperText sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}>
-                        0 a 100%. Se 0, o quiz não será obrigatório.
-                      </FormHelperText>
-                    </FormControl>
-                  </Grid>
-
-                  {editQuiz && (
-                    <Grid item xs={12}>
-                      <Box
-                        sx={{
-                          p: 2,
-                          borderRadius: 1,
-                          backgroundColor: newQuizIsDiagnostic
-                            ? "rgba(33, 150, 243, 0.08)"
-                            : "transparent",
-                          border: "1px solid",
-                          borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
-                          transition: "all 0.3s ease",
-                        }}
-                      >
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={newQuizIsDiagnostic}
-                              onChange={(e) => handleDiagnosticToggle(e.target.checked)}
-                              sx={{
-                                color: "#9041c1",
-                                "&.Mui-checked": {
-                                  color: "#2196f3",
-                                },
-                              }}
-                            />
-                          }
-                          label={
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Typography sx={{ fontWeight: 500 }}>
-                                Quiz Diagnóstico
-                              </Typography>
-                              <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
-                            </Box>
-                          }
-                        />
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            display: "block",
-                            ml: 4,
-                            color: "#666",
-                            mt: 0.5,
-                            fontSize: { xs: "0.7rem", sm: "0.75rem" },
-                          }}
-                        >
-                          Quizzes diagnósticos registram a nota do aluno, mas não
-                          são considerados em somatórios de avaliação do curso.
-                        </Typography>
-                      </Box>
-                    </Grid>
-                  )}
-
-                  <Grid item xs={12}>
-                    <QuizAttemptsSettings
-                      allowRetry={newQuizAllowRetry}
-                      maxAttempts={newQuizMaxAttempts}
-                      setMaxAttempts={setNewQuizMaxAttempts}
-                      onToggle={handleAllowRetryToggle}
-                      onBlurSave={handleBlurSaveMaxAttempts}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <QuizScheduleSettings
-                      openDate={newQuizOpenDate}
-                      closeDate={newQuizCloseDate}
-                      setOpenDate={setNewQuizOpenDate}
-                      setCloseDate={setNewQuizCloseDate}
-                      onBlurSave={handleBlurSaveSchedule}
-                    />
-                  </Grid>
-
-                  {!editQuiz && (
-                    <Grid item xs={12}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: { xs: "column", sm: "row" },
-                          gap: 2,
-                          alignItems: { xs: "stretch", sm: "center" },
-                        }}
-                      >
-                        <Button
-                          variant="contained"
-                          onClick={handleAddQuiz}
-                          disabled={!newQuizSlideId}
-                          sx={{
-                            backgroundColor: "#9041c1",
-                            "&:hover": { backgroundColor: "#7d37a7" },
-                            "&.Mui-disabled": {
-                              backgroundColor: "rgba(0, 0, 0, 0.12)",
-                              color: "rgba(0, 0, 0, 0.26)",
-                            },
-                            fontSize: { xs: "0.875rem", sm: "1rem" },
-                            minWidth: { xs: "100%", sm: "auto" },
-                          }}
-                        >
-                          Adicionar Quiz
-                        </Button>
-                        {gradesOverviewButton}
-                      </Box>
-                    </Grid>
-                  )}
-                </Grid>
-          </Box>
+              {/* Mesmo formulário de criação da aba de conteúdo: a aba legada
+                  tinha uma cópia manual dos mesmos campos. */}
+              <QuizForm
+                videos={slidesState}
+                newQuizVideoId={newQuizSlideId}
+                setNewQuizVideoId={setNewQuizSlideId}
+                newQuizMinPercentage={newQuizMinPercentage}
+                setNewQuizMinPercentage={setNewQuizMinPercentage}
+                newQuizIsDiagnostic={newQuizIsDiagnostic}
+                setNewQuizIsDiagnostic={setNewQuizIsDiagnostic}
+                handleAddQuiz={handleAddQuiz}
+                newQuizAllowRetry={newQuizAllowRetry}
+                setNewQuizAllowRetry={setNewQuizAllowRetry}
+                newQuizMaxAttempts={newQuizMaxAttempts}
+                setNewQuizMaxAttempts={setNewQuizMaxAttempts}
+                newQuizOpenDate={newQuizOpenDate}
+                setNewQuizOpenDate={setNewQuizOpenDate}
+                newQuizCloseDate={newQuizCloseDate}
+                setNewQuizCloseDate={setNewQuizCloseDate}
+                questionFormRef={questionFormRef}
+                entityType="slide"
+                additionalButtons={gradesOverviewButton}
+              />
 
               {/* Lista de quizzes de slides */}
               <QuizList
@@ -1341,7 +1002,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 setExpandedQuiz={setExpandedQuiz}
                 handleEditQuiz={handleEditQuiz}
                 handleRemoveQuiz={handleRemoveQuiz}
-                quizSettingsRef={quizSettingsRef}
                 questionFormRef={questionFormRef}
                 handleEditQuestion={handleEditQuestion}
                 handleRemoveQuestion={handleRemoveQuestion}
@@ -1350,71 +1010,31 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 entityItems={slidesState || []}
                 courseId={courseId}
                 onAutoSaveQuestion={handleAutoSaveQuestion}
+                editQuiz={editQuiz}
+                onToggleQuestionEditor={handleToggleQuestionEditor}
+                renderQuestionEditor={renderQuestionEditor}
               />
             </>
           )}
         </>
       )}
 
-      {/* Seção de edição de quiz - comum para ambos os tipos */}
-      {editQuiz && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 500 }}>
-            Editar Questões -{" "}
-            {editQuiz.isSlideQuiz ? "Quiz do Slide" : "Quiz do Vídeo"}{" "}
-            {editQuiz.isSlideQuiz
-              ? slidesState.find((s) => s.id === editQuiz.slideId)?.title ||
-              editQuiz.slideId
-              : videosState.find((v) => v.id === editQuiz.videoId)?.title ||
-              editQuiz.videoId}
-          </Typography>
-
-          <PdfQuizGenerator
-            onQuestionsGenerated={handleQuestionsFromPdf}
-            setEditQuestion={setEditQuestion}
-            setNewQuizQuestion={setNewQuizQuestion}
-            setNewQuizOptions={setNewQuizOptions}
-            setNewQuizCorrectOption={setNewQuizCorrectOption}
-          />
-
-          <Box id="question-form" sx={{ scrollMarginTop: "20px" }}>
-            <QuestionForm
-              editQuiz={editQuiz}
-              newQuizQuestion={newQuizQuestion}
-              setNewQuizQuestion={setNewQuizQuestion}
-              newQuizOptions={newQuizOptions}
-              setNewQuizOptions={setNewQuizOptions}
-              newQuizCorrectOption={newQuizCorrectOption}
-              setNewQuizCorrectOption={setNewQuizCorrectOption}
-              newQuestionType={newQuestionType}
-              setNewQuestionType={setNewQuestionType}
-              newQuizImageUrl={newQuizImageUrl}
-              setNewQuizImageUrl={setNewQuizImageUrl}
-              newQuizImageWidth={newQuizImageWidth}
-              setNewQuizImageWidth={setNewQuizImageWidth}
-              newQuizImageHeight={newQuizImageHeight}
-              setNewQuizImageHeight={setNewQuizImageHeight}
-              handleBlurSave={handleBlurSave}
-              handleKeyDown={handleKeyDown}
-              questionRef={questionRef}
-              optionsRefs={optionsRefs}
-              addOptionButtonRef={addOptionButtonRef}
-              saveButtonRef={saveButtonRef}
-              cancelButtonRef={cancelButtonRef}
-              handleAddQuizOption={handleAddQuizOption}
-              handleRemoveQuizOption={handleRemoveQuizOption}
-              editQuestion={editQuestion}
-              handleSaveEditQuestion={handleSaveEditQuestion}
-              handleAddQuestion={handleAddQuestion}
-              setEditQuiz={setEditQuiz}
-              setEditQuestion={setEditQuestion}
-            />
-          </Box>
-        </>
-      )}
-
       {/* Modais */}
+      <QuizSettingsModal
+        open={Boolean(settingsQuiz)}
+        onClose={() => setSettingsQuiz(null)}
+        courseId={courseId}
+        quiz={settingsQuiz}
+        contentTitle={
+          settingsQuiz?.isSlideQuiz
+            ? slidesState.find((s) => s.id === settingsQuiz?.slideId)?.title ||
+              settingsQuiz?.slideId
+            : videosState.find((v) => v.id === settingsQuiz?.videoId)?.title ||
+              settingsQuiz?.videoId
+        }
+        onSaved={handleQuizSettingsSaved}
+      />
+
       <SuccessModal
         open={showAddQuizModal}
         onClose={() => {

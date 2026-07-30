@@ -14,10 +14,14 @@ import {
   Box,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
-import { toast } from "react-toastify";
 import QuizAttemptsSettings from "./QuizAttemptsSettings";
 import QuizScheduleSettings from "./QuizScheduleSettings";
 
+/**
+ * Formulário de CRIAÇÃO de quiz. A edição de um quiz existente acontece no
+ * QuizSettingsModal (botão de lápis na lista) e a edição das questões dentro do
+ * card expandido — este formulário não faz nem uma coisa nem outra.
+ */
 const QuizForm = ({
   videos,
   newQuizVideoId,
@@ -26,21 +30,15 @@ const QuizForm = ({
   setNewQuizMinPercentage,
   newQuizIsDiagnostic,
   setNewQuizIsDiagnostic,
-  editQuiz,
   handleAddQuiz,
-  handleBlurSaveMinPercentage,
-  handleBlurSaveDiagnosticStatus,
-  handleDiagnosticToggle,
   newQuizAllowRetry,
+  setNewQuizAllowRetry,
   newQuizMaxAttempts,
   setNewQuizMaxAttempts,
-  handleAllowRetryToggle,
-  handleBlurSaveMaxAttempts,
   newQuizOpenDate,
   setNewQuizOpenDate,
   newQuizCloseDate,
   setNewQuizCloseDate,
-  handleBlurSaveSchedule,
   questionFormRef,
   entityType,
   additionalButtons,
@@ -49,13 +47,19 @@ const QuizForm = ({
   const entityName = entityType || "vídeo";
   const entityLabel = entityName.charAt(0).toUpperCase() + entityName.slice(1);
 
+  // Ao desativar a repetição o limite deixa de fazer sentido: só há 1 tentativa.
+  const handleAllowRetryToggle = (checked) => {
+    setNewQuizAllowRetry(checked);
+    if (!checked) setNewQuizMaxAttempts("");
+  };
+
   return (
     <>
       <Typography
         variant="h6"
         sx={{ mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
       >
-        {editQuiz ? "Editar Quiz" : "Criar Novo Quiz"}
+        Criar Novo Quiz
       </Typography>
 
       <Grid container spacing={3}>
@@ -74,7 +78,6 @@ const QuizForm = ({
               value={newQuizVideoId}
               onChange={(e) => setNewQuizVideoId(e.target.value)}
               label={entityLabel}
-              disabled={!!editQuiz}
               sx={{
                 "& .MuiOutlinedInput-notchedOutline": {
                   borderColor: "#666",
@@ -95,9 +98,7 @@ const QuizForm = ({
               ))}
             </Select>
             <FormHelperText sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-              {editQuiz
-                ? `Não é possível alterar o ${entityName} de um quiz existente`
-                : `Selecione o ${entityName} para este quiz`}
+              {`Selecione o ${entityName} para este quiz`}
             </FormHelperText>
           </FormControl>
         </Grid>
@@ -115,7 +116,6 @@ const QuizForm = ({
               );
               setNewQuizMinPercentage(value);
             }}
-            onBlur={handleBlurSaveMinPercentage}
             inputProps={{ min: 0, max: 100 }}
             variant="outlined"
             sx={{
@@ -141,58 +141,56 @@ const QuizForm = ({
           />
         </Grid>
 
-        {editQuiz && (
-          <Grid item xs={12}>
-            <Box
+        <Grid item xs={12}>
+          <Box
+            sx={{
+              p: 2,
+              borderRadius: 1,
+              backgroundColor: newQuizIsDiagnostic
+                ? "rgba(33, 150, 243, 0.08)"
+                : "transparent",
+              border: "1px solid",
+              borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={newQuizIsDiagnostic}
+                  onChange={(e) => setNewQuizIsDiagnostic(e.target.checked)}
+                  sx={{
+                    color: "#9041c1",
+                    "&.Mui-checked": {
+                      color: "#2196f3",
+                    },
+                  }}
+                />
+              }
+              label={
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography sx={{ fontWeight: 500 }}>
+                    Quiz Diagnóstico
+                  </Typography>
+                  <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
+                </Box>
+              }
+            />
+            <Typography
+              variant="caption"
               sx={{
-                p: 2,
-                borderRadius: 1,
-                backgroundColor: newQuizIsDiagnostic
-                  ? "rgba(33, 150, 243, 0.08)"
-                  : "transparent",
-                border: "1px solid",
-                borderColor: newQuizIsDiagnostic ? "#2196f3" : "#e0e0e0",
-                transition: "all 0.3s ease",
+                display: "block",
+                ml: 4,
+                color: "#666",
+                mt: 0.5,
+                fontSize: { xs: '0.7rem', sm: '0.75rem' }
               }}
             >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={newQuizIsDiagnostic}
-                    onChange={(e) => handleDiagnosticToggle(e.target.checked)}
-                    sx={{
-                      color: "#9041c1",
-                      "&.Mui-checked": {
-                        color: "#2196f3",
-                      },
-                    }}
-                  />
-                }
-                label={
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography sx={{ fontWeight: 500 }}>
-                      Quiz Diagnóstico
-                    </Typography>
-                    <InfoIcon sx={{ fontSize: 18, color: "#666" }} />
-                  </Box>
-                }
-              />
-              <Typography
-                variant="caption"
-                sx={{
-                  display: "block",
-                  ml: 4,
-                  color: "#666",
-                  mt: 0.5,
-                  fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                }}
-              >
-                Quizzes diagnósticos registram a nota do aluno, mas não são
-                considerados em somatórios de avaliação do curso.
-              </Typography>
-            </Box>
-          </Grid>
-        )}
+              Quizzes diagnósticos registram a nota do aluno, mas não são
+              considerados em somatórios de avaliação do curso.
+            </Typography>
+          </Box>
+        </Grid>
 
         <Grid item xs={12}>
           <QuizAttemptsSettings
@@ -200,7 +198,6 @@ const QuizForm = ({
             maxAttempts={newQuizMaxAttempts}
             setMaxAttempts={setNewQuizMaxAttempts}
             onToggle={handleAllowRetryToggle}
-            onBlurSave={handleBlurSaveMaxAttempts}
           />
         </Grid>
 
@@ -210,35 +207,32 @@ const QuizForm = ({
             closeDate={newQuizCloseDate}
             setOpenDate={setNewQuizOpenDate}
             setCloseDate={setNewQuizCloseDate}
-            onBlurSave={handleBlurSaveSchedule}
           />
         </Grid>
 
-        {!editQuiz && (
-          <Grid item xs={12}>
-            <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'stretch', sm: 'center' } }}>
-              <Button
-                variant="contained"
-                onClick={handleAddQuiz}
-                disabled={!newQuizVideoId}
-                fullWidth={false}
-                sx={{
-                  backgroundColor: "#9041c1",
-                  "&:hover": { backgroundColor: "#7d37a7" },
-                  "&.Mui-disabled": {
-                    backgroundColor: "rgba(0, 0, 0, 0.12)",
-                    color: "rgba(0, 0, 0, 0.26)",
-                  },
-                  fontSize: { xs: '0.875rem', sm: '1rem' },
-                  minWidth: { xs: '100%', sm: 'auto' }
-                }}
-              >
-                Adicionar Quiz
-              </Button>
-              {additionalButtons}
-            </Box>
-          </Grid>
-        )}
+        <Grid item xs={12}>
+          <Box sx={{ display: "flex", flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { xs: 'stretch', sm: 'center' } }}>
+            <Button
+              variant="contained"
+              onClick={handleAddQuiz}
+              disabled={!newQuizVideoId}
+              fullWidth={false}
+              sx={{
+                backgroundColor: "#9041c1",
+                "&:hover": { backgroundColor: "#7d37a7" },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(0, 0, 0, 0.12)",
+                  color: "rgba(0, 0, 0, 0.26)",
+                },
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                minWidth: { xs: '100%', sm: 'auto' }
+              }}
+            >
+              Adicionar Quiz
+            </Button>
+            {additionalButtons}
+          </Box>
+        </Grid>
       </Grid>
     </>
   );
