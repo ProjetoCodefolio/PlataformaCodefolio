@@ -26,6 +26,7 @@ import {
   addQuestionToQuiz,
   updateQuizQuestion,
   removeQuizQuestion,
+  reorderQuizQuestions,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
@@ -442,8 +443,37 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     );
   };
 
-  // Botão "Editar questões" do card expandido: alterna o editor e garante que o
-  // card esteja aberto para o professor ver a lista junto.
+  // Reordena as questões de um quiz (arraste na lista). A ordem é a própria
+  // ordem do array `questions`, gravada na hora do "soltar" — igual ao
+  // reordenamento de conteúdos, sem depender de um botão de salvar.
+  const handleReorderQuestions = async (quiz, orderedQuestions) => {
+    const lista = quiz.isSlideQuiz ? slideQuizzes : quizzes;
+    const setList = quiz.isSlideQuiz ? setSlideQuizzes : setQuizzes;
+    const anterior = lista.find((q) => q.videoId === quiz.videoId) || quiz;
+
+    // Atualização otimista: o arraste precisa parecer instantâneo.
+    const otimista = { ...anterior, questions: orderedQuestions };
+    setList((prev) =>
+      prev.map((q) => (q.videoId === quiz.videoId ? otimista : q))
+    );
+    setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? otimista : prev));
+
+    try {
+      await reorderQuizQuestions(courseId, anterior, orderedQuestions);
+      toast.success("Ordem das questões salva!", { autoClose: 1200 });
+    } catch (error) {
+      console.error("Erro ao reordenar as questões:", error);
+      // Desfaz: a lista na tela não pode mentir sobre o que está no banco.
+      setList((prev) =>
+        prev.map((q) => (q.videoId === quiz.videoId ? anterior : q))
+      );
+      setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? anterior : prev));
+      toast.error(error.message || "Erro ao salvar a ordem das questões");
+    }
+  };
+
+  // Botão "Adicionar questões" do card expandido: alterna o editor e garante
+  // que o card esteja aberto para o professor ver a lista junto.
   const handleToggleQuestionEditor = (quiz) => {
     setEditQuestion(null);
     setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? null : quiz));
@@ -953,6 +983,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             editQuiz={editQuiz}
             onToggleQuestionEditor={handleToggleQuestionEditor}
             renderQuestionEditor={renderQuestionEditor}
+            onReorderQuestions={handleReorderQuestions}
           />
         </>
       )}
@@ -1013,6 +1044,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 editQuiz={editQuiz}
                 onToggleQuestionEditor={handleToggleQuestionEditor}
                 renderQuestionEditor={renderQuestionEditor}
+                onReorderQuestions={handleReorderQuestions}
               />
             </>
           )}

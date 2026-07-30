@@ -743,6 +743,61 @@ export const removeQuizQuestion = async (courseId, quiz, questionId) => {
 };
 
 /**
+ * Reordena as questões de um quiz. A ordem é a própria ordem do array
+ * `questions` no nó do quiz — não há campo `order` por questão.
+ *
+ * Recebe a lista JÁ reordenada e valida que ela é uma permutação da atual: sem
+ * isso, um estado de UI defasado poderia gravar uma lista com questões a menos
+ * e apagar trabalho do professor.
+ *
+ * @param {string} courseId - ID do curso
+ * @param {Object} quiz - Quiz a reordenar
+ * @param {Array} orderedQuestions - Questões na nova ordem
+ * @returns {Promise<Object>} - Quiz atualizado
+ */
+export const reorderQuizQuestions = async (
+  courseId,
+  quiz,
+  orderedQuestions
+) => {
+  try {
+    if (!courseId || !quiz || !Array.isArray(orderedQuestions)) {
+      throw new Error("Parâmetros inválidos para reordenar as questões");
+    }
+
+    const atuais = Array.isArray(quiz.questions) ? quiz.questions : [];
+    const mesmaQuantidade = atuais.length === orderedQuestions.length;
+    const mesmosIds =
+      mesmaQuantidade &&
+      new Set(atuais.map((q) => q.id)).size === atuais.length &&
+      orderedQuestions.every((q) => atuais.some((a) => a.id === q.id));
+
+    if (!mesmosIds) {
+      throw new Error(
+        "A lista reordenada não corresponde às questões atuais do quiz"
+      );
+    }
+
+    const updatedQuiz = { ...quiz, questions: orderedQuestions };
+
+    const quizRef = ref(database, `courseQuizzes/${courseId}/${quiz.videoId}`);
+    await set(quizRef, {
+      questions: orderedQuestions,
+      minPercentage: quiz.minPercentage,
+      isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
+      ...persistableQuizSettings(quiz),
+      courseId,
+      videoId: quiz.videoId,
+    });
+
+    return updatedQuiz;
+  } catch (error) {
+    console.error("Erro ao reordenar as questões do quiz:", error);
+    throw error;
+  }
+};
+
+/**
  * Atualiza a nota mínima de um quiz
  * @param {string} courseId - ID do curso
  * @param {Object} quiz - Quiz para atualizar a nota mínima

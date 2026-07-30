@@ -4,7 +4,6 @@ import {
   Button,
   Chip,
   Collapse,
-  Divider,
   FormControl,
   IconButton,
   InputLabel,
@@ -20,8 +19,60 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const DEBOUNCE_MS = 650;
+
+/**
+ * Casca arrastável de uma questão. Só a casca: o conteúdo continua sendo
+ * montado pela QuestionList via render prop, para não duplicar as ~200 linhas
+ * do item (leitura + edição inline) só para poder chamar o hook `useSortable`.
+ *
+ * O `handleProps` sai daqui e vai para a alça de arrastar — arrastar pela alça,
+ * e não pelo corpo, é o que deixa a edição inline continuar clicável.
+ */
+const SortableQuestionRow = ({ id, children }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 1 : "auto",
+  };
+
+  return children({
+    setNodeRef,
+    style,
+    isDragging,
+    handleProps: { ref: setActivatorNodeRef, ...attributes, ...listeners },
+  });
+};
 
 const QuestionList = ({
   quiz,
@@ -30,6 +81,7 @@ const QuestionList = ({
   questionFormRef,
   courseId,
   onAutoSaveQuestion,
+  onReorderQuestions,
 }) => {
   const [editingId, setEditingId] = useState(null);
   const [drafts, setDrafts] = useState({});
@@ -127,6 +179,26 @@ const QuestionList = ({
     });
   };
 
+  // Mesmos sensores do reordenamento de conteúdos, para o gesto ser idêntico
+  // nas duas telas (arraste curto no mouse, toque longo no celular).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorderQuestions) return;
+
+    const questions = quiz.questions || [];
+    const oldIndex = questions.findIndex((q) => q.id === active.id);
+    const newIndex = questions.findIndex((q) => q.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    onReorderQuestions(quiz, arrayMove(questions, oldIndex, newIndex));
+  };
+
   const toggleEdit = (question) => {
     setErrorById((prev) => ({ ...prev, [question.id]: "" }));
     setDrafts((prev) => ({
@@ -137,6 +209,15 @@ const QuestionList = ({
   };
 
   return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext
+        items={(quiz.questions || []).map((q) => q.id)}
+        strategy={verticalListSortingStrategy}
+      >
     <List>
       {quiz.questions.map((question, index) => {
         const isEditing = editingId === question.id;
@@ -144,11 +225,18 @@ const QuestionList = ({
         const isOpenEnded = draft.questionType === "open-ended";
 
         return (
-          <React.Fragment key={question.id}>
+          <SortableQuestionRow key={question.id} id={question.id}>
+            {({ setNodeRef, style, isDragging, handleProps }) => (
             <ListItem
+              ref={setNodeRef}
+              style={style}
               sx={{
                 p: 2,
-                borderBottom: "1px solid #e0e0e0",
+                border: isDragging ? "2px solid #9041c1" : "1px solid transparent",
+                borderBottom: isDragging ? "2px solid #9041c1" : "1px solid #e0e0e0",
+                borderRadius: isDragging ? "8px" : 0,
+                backgroundColor: isDragging ? "#fff" : "transparent",
+                boxShadow: isDragging ? "0 6px 16px rgba(0,0,0,0.18)" : "none",
                 display: "flex",
                 alignItems: "stretch",
                 flexDirection: "column",
@@ -156,6 +244,21 @@ const QuestionList = ({
               }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <IconButton
+                  {...handleProps}
+                  aria-label="Arrastar para reordenar"
+                  disableRipple
+                  size="small"
+                  sx={{
+                    color: "#9e9e9e",
+                    cursor: "grab",
+                    touchAction: "none",
+                    "&:active": { cursor: "grabbing" },
+                    "&:hover": { color: "#9041c1" },
+                  }}
+                >
+                  <DragIndicatorIcon fontSize="small" />
+                </IconButton>
                 <Chip
                   label={isOpenEnded ? "Aberta" : "Múltipla Escolha"}
                   size="small"
@@ -469,11 +572,13 @@ const QuestionList = ({
                 </Box>
               </Collapse>
             </ListItem>
-            <Divider />
-          </React.Fragment>
+            )}
+          </SortableQuestionRow>
         );
       })}
     </List>
+      </SortableContext>
+    </DndContext>
   );
 };
 
