@@ -1,16 +1,18 @@
 /**
  * Utilitários de texto rico (rich text) para enunciados e entregas.
  *
- * O editor (RichTextEditor) produz HTML simples via contentEditable. Como esse
- * HTML é criado por usuários e depois exibido para outros (professor vê a
- * entrega do aluno; alunos veem o enunciado do professor), ele PRECISA ser
- * sanitizado antes de ir para dentro de dangerouslySetInnerHTML.
+ * O HTML exibido vem de duas origens: do RichTextEditor (contentEditable, usado
+ * nas entregas) e da conversão de markdown ($utils/markdown, usado no enunciado
+ * do trabalho). Como esse HTML é criado por usuários e depois exibido para
+ * outros (professor vê a entrega do aluno; alunos veem o enunciado do
+ * professor), ele PRECISA ser sanitizado antes de ir para dentro de
+ * dangerouslySetInnerHTML.
  *
  * A sanitização aqui é por lista branca (whitelist): apenas tags de formatação
- * são mantidas e TODOS os atributos são descartados, exceto um href validado em
- * <a>. Isso elimina scripts, handlers de evento (onclick...), estilos e
- * qualquer outro vetor de XSS. O parsing é feito com DOMParser, que não executa
- * scripts nem carrega recursos.
+ * são mantidas e TODOS os atributos são descartados, exceto href/src/alt
+ * validados em <a> e <img>. Isso elimina scripts, handlers de evento
+ * (onclick...), estilos e qualquer outro vetor de XSS. O parsing é feito com
+ * DOMParser, que não executa scripts nem carrega recursos.
  */
 
 // Tags de formatação permitidas (o restante é "desembrulhado", mantendo o texto).
@@ -25,16 +27,33 @@ const ALLOWED_TAGS = new Set([
   "U",
   "S",
   "STRIKE",
+  "DEL",
   "UL",
   "OL",
   "LI",
   "A",
+  "H1",
+  "H2",
   "H3",
   "H4",
+  "H5",
+  "H6",
   "BLOCKQUOTE",
+  // Vindas do markdown
+  "PRE",
+  "CODE",
+  "HR",
+  "IMG",
+  "TABLE",
+  "THEAD",
+  "TBODY",
+  "TR",
+  "TH",
+  "TD",
 ]);
 
 const SAFE_HREF = /^(https?:|mailto:)/i;
+const SAFE_IMG_SRC = /^(https?:|data:image\/(png|jpe?g|gif|webp);)/i;
 
 const escapeHtml = (str) =>
   String(str)
@@ -63,7 +82,7 @@ const sanitizeNode = (node, outDoc) => {
 
   const el = outDoc.createElement(tag.toLowerCase());
 
-  // Único atributo mantido: href seguro em links.
+  // Únicos atributos mantidos: href seguro em links e src/alt em imagens.
   if (tag === "A") {
     const href = (node.getAttribute("href") || "").trim();
     if (SAFE_HREF.test(href)) {
@@ -71,6 +90,12 @@ const sanitizeNode = (node, outDoc) => {
       el.setAttribute("target", "_blank");
       el.setAttribute("rel", "noopener noreferrer");
     }
+  } else if (tag === "IMG") {
+    const src = (node.getAttribute("src") || "").trim();
+    // Imagem com origem não confiável vira nada (nem o elemento sobra).
+    if (!SAFE_IMG_SRC.test(src)) return null;
+    el.setAttribute("src", src);
+    el.setAttribute("alt", node.getAttribute("alt") || "");
   }
 
   node.childNodes.forEach((child) => {

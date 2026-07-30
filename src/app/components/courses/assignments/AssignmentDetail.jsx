@@ -39,6 +39,7 @@ import {
 import SubmissionForm from "./SubmissionForm";
 import GroupPicker from "./GroupPicker";
 import { RichTextView } from "$components/common/RichTextEditor";
+import { MarkdownView } from "$components/common/MarkdownEditor";
 
 const fmtDate = (iso) =>
   iso
@@ -252,8 +253,13 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
         {/* Prazo em destaque com tempo restante */}
         <DeadlineBanner assignment={assignment} />
 
-        {assignment.descriptionHtml && (
-          <RichTextView html={assignment.descriptionHtml} sx={{ mt: 2.5, fontSize: "1rem" }} />
+        {/* Enunciado: markdown renderizado (ou HTML legado, para os antigos). */}
+        {assignment.descriptionMarkdown ? (
+          <MarkdownView markdown={assignment.descriptionMarkdown} sx={{ mt: 2.5, fontSize: "1rem" }} />
+        ) : (
+          assignment.descriptionHtml && (
+            <RichTextView html={assignment.descriptionHtml} sx={{ mt: 2.5, fontSize: "1rem" }} />
+          )
         )}
 
         {Array.isArray(assignment.attachments) && assignment.attachments.length > 0 && (

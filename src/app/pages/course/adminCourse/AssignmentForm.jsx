@@ -33,8 +33,8 @@ import {
 import { setupGroups, fetchGroups } from "$api/services/courses/assignmentGroups";
 import * as assessmentService from "$api/services/courses/assessments";
 import { compressImageToBase64 } from "$api/services/storageService";
-import RichTextEditor from "$components/common/RichTextEditor";
-import { sanitizeRichHtml } from "$utils/richText";
+import MarkdownEditor from "$components/common/MarkdownEditor";
+import { markdownToHtml, htmlToMarkdown } from "$utils/markdown";
 import { toast } from "react-toastify";
 
 const purpleField = {
@@ -89,7 +89,7 @@ export default function AssignmentForm({
   const isEditing = !!assignment;
 
   const [title, setTitle] = useState("");
-  const [descriptionHtml, setDescriptionHtml] = useState("");
+  const [descriptionMarkdown, setDescriptionMarkdown] = useState("");
   const [attachments, setAttachments] = useState([]);
   const [openDate, setOpenDate] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -120,7 +120,9 @@ export default function AssignmentForm({
     // Reset / carregar valores
     const a = assignment || DEFAULT_ASSIGNMENT;
     setTitle(a.title || "");
-    setDescriptionHtml(a.descriptionHtml || "");
+    // Enunciados criados antes do markdown guardam só HTML: converte para que
+    // sigam editáveis sem perder o conteúdo.
+    setDescriptionMarkdown(a.descriptionMarkdown || htmlToMarkdown(a.descriptionHtml));
     setAttachments(Array.isArray(a.attachments) ? a.attachments : []);
     setOpenDate(isoToLocalInput(a.openDate));
     setDueDate(isoToLocalInput(a.dueDate));
@@ -248,7 +250,9 @@ export default function AssignmentForm({
 
       const payload = {
         title: title.trim(),
-        descriptionHtml: sanitizeRichHtml(descriptionHtml),
+        // Fonte da verdade é o markdown; o HTML é derivado dele (compatibilidade).
+        descriptionMarkdown,
+        descriptionHtml: markdownToHtml(descriptionMarkdown),
         attachments,
         openDate: localInputToIso(openDate),
         dueDate: localInputToIso(dueDate),
@@ -339,12 +343,16 @@ export default function AssignmentForm({
             <Typography variant="caption" sx={{ color: "#666", fontWeight: 600, display: "block", mb: 0.5 }}>
               Enunciado (descrição, instruções, critérios)
             </Typography>
-            <RichTextEditor
-              value={descriptionHtml}
-              onChange={setDescriptionHtml}
-              editableRef={descriptionRef}
-              placeholder="Descreva o objetivo, as instruções e os critérios de avaliação. Use a barra acima para negrito, itálico e listas."
-              minHeight={140}
+            <MarkdownEditor
+              value={descriptionMarkdown}
+              onChange={setDescriptionMarkdown}
+              inputRef={descriptionRef}
+              placeholder={
+                "Descreva o objetivo, as instruções e os critérios de avaliação.\n\n" +
+                "## Instruções\n1. Primeiro passo\n2. Segundo passo\n\n" +
+                "Use a aba Pré-visualizar para ver como o aluno vai enxergar."
+              }
+              minHeight={180}
             />
           </Box>
         </Stack>

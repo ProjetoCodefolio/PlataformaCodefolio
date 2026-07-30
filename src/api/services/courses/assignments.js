@@ -6,7 +6,10 @@ import { ref, push, set, get, update, remove } from "firebase/database";
  *
  * Estrutura no Realtime Database:
  *   courseAssignments/{courseId}/{assignmentId}
- *     title, descriptionHtml, createdBy, createdAt, updatedAt
+ *     title, descriptionMarkdown, descriptionHtml, createdBy, createdAt, updatedAt
+ *     // descriptionMarkdown é o enunciado como o professor escreveu (fonte da
+ *     // verdade); descriptionHtml é a renderização derivada dele, mantida por
+ *     // compatibilidade com os enunciados criados antes do markdown.
  *     attachments: [{ name, url }]
  *     openDate (ISO)   // a partir de quando a entrega abre (vazio = já aberta)
  *     dueDate (ISO), allowLate (bool)
@@ -19,6 +22,7 @@ import { ref, push, set, get, update, remove } from "firebase/database";
 
 export const DEFAULT_ASSIGNMENT = {
   title: "",
+  descriptionMarkdown: "",
   descriptionHtml: "",
   attachments: [],
   openDate: "",
