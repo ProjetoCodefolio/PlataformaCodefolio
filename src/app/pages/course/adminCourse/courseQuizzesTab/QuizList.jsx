@@ -18,6 +18,34 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import QuestionList from "./QuestionList";
 import { useNavigate } from "react-router-dom";
+import {
+  getQuizWindowState,
+  formatQuizDate,
+} from "$api/services/courses/quizzes";
+
+// Chip da janela de disponibilidade: só aparece quando o professor definiu
+// alguma data. Cores: azul = agendado, verde = aberto, cinza = encerrado.
+const windowChipProps = (quiz) => {
+  if (!quiz?.openDate && !quiz?.closeDate) return null;
+
+  const state = getQuizWindowState(quiz);
+  if (state === "scheduled")
+    return {
+      label: `Abre em ${formatQuizDate(quiz.openDate)}`,
+      color: "#1565c0",
+    };
+  if (state === "closed")
+    return {
+      label: `Encerrado em ${formatQuizDate(quiz.closeDate)}`,
+      color: "#616161",
+    };
+  return {
+    label: quiz.closeDate
+      ? `Aberto até ${formatQuizDate(quiz.closeDate)}`
+      : "Aberto",
+    color: "#2e7d32",
+  };
+};
 
 const QuizList = ({
   quizzes,
@@ -54,7 +82,9 @@ const QuizList = ({
       </Typography>
 
       <List ref={quizzesListEndRef}>
-        {quizzes.map((quiz) => (
+        {quizzes.map((quiz) => {
+          const windowChip = windowChipProps(quiz);
+          return (
           <Card
             key={quiz.videoId}
             sx={{
@@ -96,19 +126,32 @@ const QuizList = ({
                 <Typography variant="body2" sx={{ color: "#666", fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                   Questões: {quiz.questions.length}
                 </Typography>
-                {quiz.isDiagnostic && (
-                  <Chip
-                    label="Diagnóstico"
-                    size="small"
-                    sx={{
-                      mt: 1,
-                      backgroundColor: "#2196f3",
-                      color: "#fff",
-                      fontWeight: 500,
-                      fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                    }}
-                  />
-                )}
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 1 }}>
+                  {quiz.isDiagnostic && (
+                    <Chip
+                      label="Diagnóstico"
+                      size="small"
+                      sx={{
+                        backgroundColor: "#2196f3",
+                        color: "#fff",
+                        fontWeight: 500,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                      }}
+                    />
+                  )}
+                  {windowChip && (
+                    <Chip
+                      label={windowChip.label}
+                      size="small"
+                      sx={{
+                        backgroundColor: windowChip.color,
+                        color: "#fff",
+                        fontWeight: 500,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                      }}
+                    />
+                  )}
+                </Box>
               </Box>
               <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
                 <IconButton
@@ -189,7 +232,8 @@ const QuizList = ({
               </CardContent>
             </Collapse>
           </Card>
-        ))}
+          );
+        })}
       </List>
     </>
   );

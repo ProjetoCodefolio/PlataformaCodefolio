@@ -19,12 +19,15 @@ import ViewCarouselIcon from "@mui/icons-material/ViewCarousel"; // Ícone para 
 import LockIcon from "@mui/icons-material/Lock";
 import ReplayIcon from "@mui/icons-material/Replay";
 import QuizIcon from "@mui/icons-material/Quiz";
+import EventBusyIcon from "@mui/icons-material/EventBusy";
 import { toast } from "react-toastify";
 import { isVideoLocked } from "$api/services/courses/videos";
 import {
   hasUserReachedQuizAttemptLimit,
   getQuizAttemptLimit,
   isQuizLocked,
+  getQuizWindowState,
+  getQuizWindowMessage,
 } from "$api/services/courses/quizzes";
 
 const VideoList = ({
@@ -49,7 +52,11 @@ const VideoList = ({
   // o número configurado, ou Infinity se ilimitado).
   const getVideoAttemptLimit = (video) =>
     getQuizAttemptLimit(quizSettings[getQuizKey(video?.quizId)]);
-  
+
+  // Config completa do quiz de um vídeo (usada para a janela de disponibilidade).
+  const getVideoQuizConfig = (video) =>
+    quizSettings[getQuizKey(video?.quizId)];
+
   // Make sure to initialize properly when component mounts or userQuizAttempts changes
   useEffect(() => {
     if (Object.keys(userQuizAttempts).length > 0) {
@@ -103,6 +110,14 @@ const VideoList = ({
     setCurrentVideo(video);
   };
 
+  // Handler para clicar num quiz fora da janela (ainda não abriu ou já encerrou)
+  const handleQuizWindowClick = (windowMessage) => {
+    toast.info(windowMessage, {
+      position: "bottom-center",
+      autoClose: 5000,
+    });
+  };
+
   // Handler para limite de tentativas atingido
   const handleMaxAttemptsReached = (attemptLimit) => {
     toast.info(
@@ -152,6 +167,17 @@ const VideoList = ({
 
         // Include both permanent exhaustion and pending updates
         const attemptsExhausted = permanentlyExhausted || pendingLimitUpdates[video.quizId];
+
+        // Janela de disponibilidade do quiz (openDate/closeDate). Fora dela o
+        // botão fica desabilitado e explica o motivo ao ser clicado.
+        const quizConfig = video.quizId ? getVideoQuizConfig(video) : null;
+        const quizWindowState = getQuizWindowState(quizConfig);
+        const quizWindowMessage = video.quizId
+          ? getQuizWindowMessage(quizConfig)
+          : null;
+        const quizOutOfWindow = Boolean(quizWindowMessage);
+        const quizWindowLabel =
+          quizWindowState === "scheduled" ? "Quiz Agendado" : "Quiz Encerrado";
 
         // Determinar se é um slide
         const isSlide = video.isSlide || video.type === "slide";
@@ -334,6 +360,15 @@ const VideoList = ({
                         <LockIcon sx={{ fontSize: { xs: 24 } }} />
                       </IconButton>
                     </Tooltip>
+                  ) : quizOutOfWindow ? (
+                    <Tooltip title={quizWindowMessage}>
+                      <IconButton
+                        onClick={() => handleQuizWindowClick(quizWindowMessage)}
+                        sx={{ color: "#bdbdbd" }}
+                      >
+                        <EventBusyIcon sx={{ fontSize: { xs: 24 } }} />
+                      </IconButton>
+                    </Tooltip>
                   ) : (
                     <Tooltip title="Fazer Quiz">
                       <IconButton
@@ -351,7 +386,9 @@ const VideoList = ({
                 {!locked && video.quizId && video.quizPassed && (
                   <Tooltip
                     title={
-                      attemptsExhausted
+                      quizOutOfWindow
+                        ? quizWindowMessage
+                        : attemptsExhausted
                         ? "Limite de tentativas atingido"
                         : "Refazer Quiz"
                     }
@@ -359,19 +396,31 @@ const VideoList = ({
                     <span>
                       <IconButton
                         onClick={
-                          attemptsExhausted
+                          quizOutOfWindow
+                            ? () => handleQuizWindowClick(quizWindowMessage)
+                            : attemptsExhausted
                             ? () => handleMaxAttemptsReached(attemptLimit)
                             : () => onQuizStart(video.quizId, video.id)
                         }
                         sx={{
-                          color: attemptsExhausted ? "#bdbdbd" : "#9041c1",
+                          color:
+                            attemptsExhausted || quizOutOfWindow
+                              ? "#bdbdbd"
+                              : "#9041c1",
                           "&:hover": {
-                            color: attemptsExhausted ? "#bdbdbd" : "#7d37a7",
+                            color:
+                              attemptsExhausted || quizOutOfWindow
+                                ? "#bdbdbd"
+                                : "#7d37a7",
                           },
                         }}
                         disabled={attemptsExhausted}
                       >
-                        <ReplayIcon sx={{ fontSize: { xs: 24 } }} />
+                        {quizOutOfWindow ? (
+                          <EventBusyIcon sx={{ fontSize: { xs: 24 } }} />
+                        ) : (
+                          <ReplayIcon sx={{ fontSize: { xs: 24 } }} />
+                        )}
                       </IconButton>
                     </span>
                   </Tooltip>
@@ -419,17 +468,27 @@ const VideoList = ({
                     {video.quizId && (
                       <Button
                         variant="outlined"
-                        onClick={() => onQuizStart(video.quizId, video.id)}
+                        onClick={
+                          quizOutOfWindow
+                            ? () => handleQuizWindowClick(quizWindowMessage)
+                            : () => onQuizStart(video.quizId, video.id)
+                        }
                         startIcon={
-                          <QuizIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                          quizOutOfWindow ? (
+                            <EventBusyIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                          ) : (
+                            <QuizIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                          )
                         }
                         sx={{
-                          borderColor: "#9041c1",
-                          color: "#9041c1",
+                          borderColor: quizOutOfWindow ? "#bdbdbd" : "#9041c1",
+                          color: quizOutOfWindow ? "#9e9e9e" : "#9041c1",
                           borderRadius: "12px",
                           "&:hover": {
-                            borderColor: "#7d37a7",
-                            backgroundColor: "rgba(144, 65, 193, 0.04)",
+                            borderColor: quizOutOfWindow ? "#bdbdbd" : "#7d37a7",
+                            backgroundColor: quizOutOfWindow
+                              ? "transparent"
+                              : "rgba(144, 65, 193, 0.04)",
                           },
                           textTransform: "none",
                           fontWeight: 500,
@@ -440,7 +499,11 @@ const VideoList = ({
                           minHeight: "45px",
                         }}
                       >
-                        {video.quizPassed ? "Refazer Quiz" : "Fazer Quiz"}
+                        {quizOutOfWindow
+                          ? quizWindowLabel
+                          : video.quizPassed
+                          ? "Refazer Quiz"
+                          : "Fazer Quiz"}
                       </Button>
                     )}
                   </Box>
@@ -522,6 +585,29 @@ const VideoList = ({
                     >
                       Quiz Bloqueado
                     </Button>
+                  ) : quizOutOfWindow ? (
+                    <Button
+                      variant="contained"
+                      onClick={() => handleQuizWindowClick(quizWindowMessage)}
+                      startIcon={
+                        <EventBusyIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                      }
+                      sx={{
+                        backgroundColor: "#e0e0e0",
+                        borderRadius: "12px",
+                        color: "#666",
+                        "&:hover": { backgroundColor: "#e0e0e0" },
+                        textTransform: "none",
+                        fontWeight: 500,
+                        fontSize: "0.875rem",
+                        py: 1,
+                        px: 3,
+                        width: "100%",
+                        minHeight: "45px",
+                      }}
+                    >
+                      {quizWindowLabel}
+                    </Button>
                   ) : (
                     <Button
                       variant="contained"
@@ -550,20 +636,38 @@ const VideoList = ({
                   <Button
                     variant="outlined"
                     onClick={
-                      attemptsExhausted
+                      quizOutOfWindow
+                        ? () => handleQuizWindowClick(quizWindowMessage)
+                        : attemptsExhausted
                         ? () => handleMaxAttemptsReached(attemptLimit)
                         : () => onQuizStart(video.quizId, video.id)
                     }
                     startIcon={
-                      <ReplayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                      quizOutOfWindow ? (
+                        <EventBusyIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                      ) : (
+                        <ReplayIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
+                      )
                     }
                     sx={{
-                      borderColor: attemptsExhausted ? "#bdbdbd" : "#9041c1",
-                      color: attemptsExhausted ? "#bdbdbd" : "#9041c1",
+                      borderColor:
+                        attemptsExhausted || quizOutOfWindow
+                          ? "#bdbdbd"
+                          : "#9041c1",
+                      color:
+                        attemptsExhausted || quizOutOfWindow
+                          ? "#9e9e9e"
+                          : "#9041c1",
                       borderRadius: "12px",
                       "&:hover": {
-                        borderColor: attemptsExhausted ? "#bdbdbd" : "#7d37a7",
-                        color: attemptsExhausted ? "#bdbdbd" : "#7d37a7",
+                        borderColor:
+                          attemptsExhausted || quizOutOfWindow
+                            ? "#bdbdbd"
+                            : "#7d37a7",
+                        color:
+                          attemptsExhausted || quizOutOfWindow
+                            ? "#9e9e9e"
+                            : "#7d37a7",
                       },
                       textTransform: "none",
                       fontWeight: 500,
@@ -575,7 +679,11 @@ const VideoList = ({
                     }}
                     disabled={attemptsExhausted}
                   >
-                    {attemptsExhausted ? "Limite Atingido" : "Refazer Quiz"}
+                    {quizOutOfWindow
+                      ? quizWindowLabel
+                      : attemptsExhausted
+                      ? "Limite Atingido"
+                      : "Refazer Quiz"}
                   </Button>
                 )}
               </Box>

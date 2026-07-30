@@ -38,6 +38,7 @@ import {
   fetchUserQuizResults,
   getQuizAttemptLimit,
   hasUserReachedQuizAttemptLimit,
+  getQuizWindowMessage,
 } from "$api/services/courses/quizzes";
 import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {
@@ -779,12 +780,21 @@ const Classes = ({ alias = null }) => {
     }
   };
 
-  // Porta ÚNICA do limite de tentativas: todo caminho que abre o quiz passa por
-  // aqui. Devolve true quando o aluno ainda pode entrar; avisa e devolve false
-  // quando já esgotou (allowRetry=false → 1; ou maxAttempts).
+  // Porta ÚNICA de entrada no quiz: todo caminho que abre o quiz passa por aqui.
+  // Devolve true quando o aluno pode entrar; avisa e devolve false quando o quiz
+  // está fora da janela de disponibilidade (openDate/closeDate) ou quando as
+  // tentativas já esgotaram (allowRetry=false → 1; ou maxAttempts).
   const canEnterQuiz = (quizId) => {
     if (!quizId) return true;
     const quizKey = quizId.includes("/") ? quizId.split("/")[1] : quizId;
+
+    // Janela primeiro: fora dela nem faz sentido falar de tentativas.
+    const windowMessage = getQuizWindowMessage(quizSettings[quizKey]);
+    if (windowMessage) {
+      toast.info(windowMessage);
+      return false;
+    }
+
     const attemptLimit = getQuizAttemptLimit(quizSettings[quizKey]);
     if (!hasUserReachedQuizAttemptLimit(userAttempts, quizKey, attemptLimit)) {
       return true;

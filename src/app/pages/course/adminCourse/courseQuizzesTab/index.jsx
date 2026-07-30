@@ -29,6 +29,7 @@ import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
 import QuizAttemptsSettings from "./QuizAttemptsSettings";
+import QuizScheduleSettings from "./QuizScheduleSettings";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import { ConfirmationModal, SuccessModal } from "./Modals";
@@ -45,11 +46,13 @@ import {
   updateQuizMinPercentage,
   updateQuizDiagnosticStatus,
   updateQuizRetrySettings,
+  updateQuizSchedule,
   addMultipleQuestionsToQuiz,
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
   normalizeAllowRetry,
   normalizeMaxAttempts,
+  normalizeQuizDate,
 } from "$api/services/courses/quizzes";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
@@ -95,6 +98,9 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
   // Configuração de tentativas do quiz em edição.
   const [newQuizAllowRetry, setNewQuizAllowRetry] = useState(true);
   const [newQuizMaxAttempts, setNewQuizMaxAttempts] = useState("");
+  // Janela de disponibilidade do quiz em edição (datas ISO; "" = sem restrição).
+  const [newQuizOpenDate, setNewQuizOpenDate] = useState("");
+  const [newQuizCloseDate, setNewQuizCloseDate] = useState("");
 
   // Refs existentes
   const questionFormRef = useRef(null);
@@ -121,10 +127,14 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
       setNewQuizAllowRetry(normalizeAllowRetry(editQuiz.allowRetry));
       const max = normalizeMaxAttempts(editQuiz.maxAttempts);
       setNewQuizMaxAttempts(max == null ? "" : max);
+      setNewQuizOpenDate(normalizeQuizDate(editQuiz.openDate));
+      setNewQuizCloseDate(normalizeQuizDate(editQuiz.closeDate));
     } else {
       setNewQuizIsDiagnostic(false);
       setNewQuizAllowRetry(true);
       setNewQuizMaxAttempts("");
+      setNewQuizOpenDate("");
+      setNewQuizCloseDate("");
     }
   }, [editQuiz]);
 
@@ -244,6 +254,22 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     editQuizRef.current = editQuiz;
   }, [editQuiz]);
 
+  // A abertura precisa vir antes do encerramento — senão o quiz nasceria
+  // impossível de responder.
+  const isScheduleValid = () => {
+    if (
+      newQuizOpenDate &&
+      newQuizCloseDate &&
+      new Date(newQuizOpenDate).getTime() >= new Date(newQuizCloseDate).getTime()
+    ) {
+      toast.error(
+        "A data de abertura deve ser anterior à data de encerramento."
+      );
+      return false;
+    }
+    return true;
+  };
+
   // Função para adicionar quiz (adaptada para vídeos e slides)
   const handleAddQuiz = async () => {
     if (activeTab === 0) {
@@ -258,6 +284,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         return;
       }
 
+      if (!isScheduleValid()) return;
+
       try {
         const newQuiz = await addQuiz(
           courseId,
@@ -265,7 +293,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           newQuizMinPercentage,
           newQuizIsDiagnostic,
           newQuizAllowRetry,
-          newQuizMaxAttempts
+          newQuizMaxAttempts,
+          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
         );
 
         setQuizzes((prev) => [...prev, newQuiz]);
@@ -274,6 +303,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         setNewQuizIsDiagnostic(false);
         setNewQuizAllowRetry(true);
         setNewQuizMaxAttempts("");
+        setNewQuizOpenDate("");
+        setNewQuizCloseDate("");
         setShowAddQuizModal(true);
         toast.success("Quiz adicionado com sucesso!");
       } catch (error) {
@@ -292,6 +323,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         return;
       }
 
+      if (!isScheduleValid()) return;
+
       try {
         const slidePrefix = `slide_${newQuizSlideId}`;
         const newQuiz = await addQuiz(
@@ -300,7 +333,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
           newQuizMinPercentage,
           newQuizIsDiagnostic,
           newQuizAllowRetry,
-          newQuizMaxAttempts
+          newQuizMaxAttempts,
+          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
         );
 
         newQuiz.isSlideQuiz = true;
@@ -312,6 +346,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
         setNewQuizIsDiagnostic(false);
         setNewQuizAllowRetry(true);
         setNewQuizMaxAttempts("");
+        setNewQuizOpenDate("");
+        setNewQuizCloseDate("");
         setShowAddQuizModal(true);
         toast.success("Quiz do slide adicionado com sucesso!");
       } catch (error) {
@@ -727,6 +763,32 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
     }
   };
 
+  // Salva a janela de disponibilidade ao sair de um dos campos de data.
+  const handleBlurSaveSchedule = async () => {
+    if (!editQuiz) return;
+    if (!isScheduleValid()) return;
+
+    // Nada a salvar se a janela não mudou (evita um toast a cada blur).
+    if (
+      normalizeQuizDate(editQuiz.openDate) === newQuizOpenDate &&
+      normalizeQuizDate(editQuiz.closeDate) === newQuizCloseDate
+    ) {
+      return;
+    }
+
+    try {
+      const updatedQuiz = await updateQuizSchedule(courseId, editQuiz, {
+        openDate: newQuizOpenDate,
+        closeDate: newQuizCloseDate,
+      });
+      applyQuizUpdate(updatedQuiz);
+      toast.success("Janela de disponibilidade atualizada!");
+    } catch (error) {
+      console.error("Erro ao atualizar a janela do quiz:", error);
+      toast.error(error.message || "Erro ao salvar a janela de disponibilidade");
+    }
+  };
+
   // Adicione esta função ao componente CourseQuizzesTab (antes do return)
   const handleBlurSave = async (field) => {
     if (!editQuiz || !editQuestion) return;
@@ -980,6 +1042,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
             setNewQuizMaxAttempts={setNewQuizMaxAttempts}
             handleAllowRetryToggle={handleAllowRetryToggle}
             handleBlurSaveMaxAttempts={handleBlurSaveMaxAttempts}
+            newQuizOpenDate={newQuizOpenDate}
+            setNewQuizOpenDate={setNewQuizOpenDate}
+            newQuizCloseDate={newQuizCloseDate}
+            setNewQuizCloseDate={setNewQuizCloseDate}
+            handleBlurSaveSchedule={handleBlurSaveSchedule}
             questionFormRef={questionFormRef}
             entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
@@ -1189,6 +1256,16 @@ const CourseQuizzesTab = forwardRef(({ courseId, videos, slides }, ref) => {
                       setMaxAttempts={setNewQuizMaxAttempts}
                       onToggle={handleAllowRetryToggle}
                       onBlurSave={handleBlurSaveMaxAttempts}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <QuizScheduleSettings
+                      openDate={newQuizOpenDate}
+                      closeDate={newQuizCloseDate}
+                      setOpenDate={setNewQuizOpenDate}
+                      setCloseDate={setNewQuizCloseDate}
+                      onBlurSave={handleBlurSaveSchedule}
                     />
                   </Grid>
 

@@ -16,6 +16,7 @@ import {
 import InfoIcon from "@mui/icons-material/Info";
 import { toast } from "react-toastify";
 import QuizAttemptsSettings from "./QuizAttemptsSettings";
+import QuizScheduleSettings from "./QuizScheduleSettings";
 
 const QuizForm = ({
   videos,
@@ -35,6 +36,11 @@ const QuizForm = ({
   setNewQuizMaxAttempts,
   handleAllowRetryToggle,
   handleBlurSaveMaxAttempts,
+  newQuizOpenDate,
+  setNewQuizOpenDate,
+  newQuizCloseDate,
+  setNewQuizCloseDate,
+  handleBlurSaveSchedule,
   questionFormRef,
   entityType,
   additionalButtons,
@@ -195,6 +201,16 @@ const QuizForm = ({
             setMaxAttempts={setNewQuizMaxAttempts}
             onToggle={handleAllowRetryToggle}
             onBlurSave={handleBlurSaveMaxAttempts}
+          />
+        </Grid>
+
+        <Grid item xs={12}>
+          <QuizScheduleSettings
+            openDate={newQuizOpenDate}
+            closeDate={newQuizCloseDate}
+            setOpenDate={setNewQuizOpenDate}
+            setCloseDate={setNewQuizCloseDate}
+            onBlurSave={handleBlurSaveSchedule}
           />
         </Grid>
 
