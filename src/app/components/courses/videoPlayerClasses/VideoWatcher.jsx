@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { Box, Typography, IconButton, LinearProgress } from "@mui/material";
 import { toast } from "react-toastify";
 import { debounce } from "lodash";
@@ -35,19 +35,33 @@ export function VideoWatcher({
 }) {
   const { userDetails } = useAuth();
   const progressInterval = useRef(null);
-  const [lastSavedPercentage, setLastSavedPercentage] =
-    useState(percentageWatched);
 
-  // Usar objetos para armazenar os estados por vídeo
+  // Estado por vídeo. Este componente NÃO desmonta ao trocar de conteúdo (o
+  // player do YouTube é recriado pela `key`, mas `player` nunca volta a ser
+  // nulo), então o ref sobrevive à troca e cada entrada é semeada uma única vez.
   const videoStates = useRef({});
+
+  // A semente vem do progresso DESTE vídeo, nunca de `percentageWatched`:
+  // aquele é estado compartilhado do player e, no primeiro render após a troca
+  // de conteúdo, ainda carrega o percentual do vídeo ANTERIOR (os efeitos que
+  // buscam o progresso do novo só rodam depois). Semear com ele marcava o vídeo
+  // novo como já concluído e desligava o monitoramento, os salvamentos por
+  // marco de 10% e — o pior — o aviso de "assistido" para a lista de conteúdos,
+  // que ficava mostrando "Quiz Bloqueado" até recarregar a página.
+  const seedPercentage =
+    typeof currentVideo?.progress === "number" ? currentVideo.progress : 0;
 
   // Inicializar estado para o vídeo atual se ainda não existir
   if (!videoStates.current[videoId]) {
     videoStates.current[videoId] = {
-      hasNotified90Percent: percentageWatched >= 90,
-      videoCompleted: percentageWatched >= 100,
-      lastTime: watchTime || 0,
-      lastSaved10Percentage: Math.floor(percentageWatched / 10) * 10,
+      hasNotified90Percent: seedPercentage >= 90,
+      videoCompleted: seedPercentage >= 100,
+      lastTime: currentVideo?.watchedTime || 0,
+      lastSaved10Percentage: Math.floor(seedPercentage / 10) * 10,
+      // Também por vídeo: como estado do React (inicializado só na montagem),
+      // ficava congelado no percentual do primeiro vídeo aberto e, a partir de
+      // um vídeo já assistido, travava para sempre o marco de 90%.
+      lastSavedPercentage: seedPercentage,
     };
   }
 
@@ -95,7 +109,7 @@ export function VideoWatcher({
         if (percentage >= 100 && !videoState.videoCompleted) {
           handleVideoCompletion(duration);
         } else if (
-          lastSavedPercentage < 90 &&
+          videoState.lastSavedPercentage < 90 &&
           percentage >= 90 &&
           !videoState.hasNotified90Percent
         ) {
@@ -121,7 +135,7 @@ export function VideoWatcher({
       );
     }
 
-    setLastSavedPercentage(100);
+    videoState.lastSavedPercentage = 100;
     toast.success("Vídeo concluído com sucesso!");
 
     // Marcar APENAS o vídeo atual como completo
@@ -145,7 +159,7 @@ export function VideoWatcher({
     // Persistir imediatamente (sem debounce) para que o `watched` já esteja
     // gravado no Firebase quando o pai recalcular o progresso agregado do curso.
     await saveProgress(currentTime, duration);
-    setLastSavedPercentage(percentage);
+    videoState.lastSavedPercentage = percentage;
 
     if (onVideoProgressUpdate) {
       onVideoProgressUpdate(videoId, percentage, true);
@@ -170,7 +184,7 @@ export function VideoWatcher({
       if (result.success) {
         videoState.lastSaved10Percentage =
           Math.floor(result.newPercentage / 10) * 10;
-        setLastSavedPercentage(result.newPercentage);
+        videoState.lastSavedPercentage = result.newPercentage;
       }
 
       if (onProgress) {
@@ -278,7 +292,7 @@ export function VideoWatcher({
           setPercentageWatched(newPercentage);
 
           if (
-            lastSavedPercentage < 90 &&
+            videoState.lastSavedPercentage < 90 &&
             newPercentage >= 90 &&
             !videoState.hasNotified90Percent
           ) {
