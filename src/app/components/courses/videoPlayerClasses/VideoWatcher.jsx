@@ -391,7 +391,10 @@ export function VideoWatcher({
         !previousItem.quizPassed &&
         !previousItem.quizClosed
       ) {
-        setShowQuiz(true);
+        // Passa o id explicitamente: com `true`, a porta única caía em
+        // `currentVideoId` — ainda o vídeo ATUAL neste ponto — e validava a
+        // trava do quiz errado.
+        setShowQuiz(previousItem.id);
         setCurrentVideoId(previousItem.id);
       } else {
         onVideoChange(previousItem);
@@ -409,15 +412,14 @@ export function VideoWatcher({
         !currentVideo.quizPassed &&
         !currentVideo.quizClosed;
 
-      // Verificar se precisa fazer o quiz atual
-      if (quizPendente && percentageWatched >= 90) {
-        setShowQuiz(true);
-        setCurrentVideoId(currentVideo.id);
-        return;
-      } else if (quizPendente && percentageWatched < 90) {
-        toast.warn(
-          "Você precisa assistir pelo menos 90% do vídeo para acessar o quiz!"
-        );
+      // Havendo quiz pendente, o "Próximo" leva ao quiz — e QUEM decide se o
+      // aluno entra é `canEnterQuiz` (porta única em classes.jsx), que já avisa
+      // o motivo da recusa. Aqui existia uma segunda regra (`percentageWatched
+      // >= 90`, lida do estado do player): ela discordava da lista de conteúdos
+      // — que usa `video.watched` — e abria por esta seta um quiz que o card ao
+      // lado mostrava como "Quiz Bloqueado".
+      if (quizPendente) {
+        setShowQuiz(currentVideo.id);
         return;
       }
 
