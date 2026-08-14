@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -27,12 +27,18 @@ import {
   Tab,
   Divider,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { useTheme, useMediaQuery } from '@mui/material';
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import SortIcon from "@mui/icons-material/Sort";
+import AutorenewIcon from "@mui/icons-material/Autorenew";
+import { toast } from "react-toastify";
 import { useAuth } from "$context/AuthContext";
 import Topbar from "$components/topbar/Topbar";
 import {
@@ -40,6 +46,8 @@ import {
   capitalizeWords,
   getSortedStudentResults,
 } from "$api/services/courses/studentDashboard";
+import { recalculateQuizResults } from "$api/services/courses/quizzes";
+import { canAssignGrades } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
 
@@ -66,6 +74,17 @@ const StudentDashboard = () => {
   const [liveQuizResults, setLiveQuizResults] = useState({});
   const [customQuizResults, setCustomQuizResults] = useState({});
   const [expandedStudentId, setExpandedStudentId] = useState(null);
+  // Recálculo das notas depois que o professor corrige uma questão.
+  // 'idle' | 'previewing' (simulando) | 'confirming' | 'applying'
+  const [recalcState, setRecalcState] = useState("idle");
+  const [recalcPreview, setRecalcPreview] = useState(null);
+  // Recarga após o recálculo: separada de `loading` para a tela não virar um
+  // spinner de página inteira e o professor não perder o contexto.
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Só o dono do curso (ou admin) recalcula — é o que as regras do banco
+  // permitem escrever em quizResults de outro usuário.
+  const canRecalculate = canAssignGrades(userDetails, courseData?.userId);
 
   // Definir o fundo da página
   useEffect(() => {
@@ -75,16 +94,18 @@ const StudentDashboard = () => {
     };
   }, []);
 
-  // Carregar dados do quiz
-  useEffect(() => {
-    const loadQuizData = async () => {
+  // Carregar dados do quiz. Extraído do efeito porque o recálculo de notas
+  // também precisa reler os resultados depois de gravar.
+  const loadQuizData = useCallback(
+    async ({ silent = false } = {}) => {
       if (!quizId) {
         setLoading(false);
         return;
       }
 
       try {
-        setLoading(true);
+        if (silent) setRefreshing(true);
+        else setLoading(true);
 
         // Usa o serviço para carregar dados do quiz e resultados dos estudantes
         const data = await fetchQuizData(quizId);
@@ -98,12 +119,74 @@ const StudentDashboard = () => {
       } catch (error) {
         console.error("Erro ao carregar dados do quiz:", error);
       } finally {
+        setRefreshing(false);
         setLoading(false);
       }
-    };
+    },
+    [quizId]
+  );
 
+  useEffect(() => {
     loadQuizData();
-  }, [quizId]);
+  }, [loadQuizData]);
+
+  // --- Recálculo das notas ---
+
+  // Primeiro passo: simula o recálculo (sem escrever) para o professor decidir
+  // com os números na frente, em vez de confirmar às cegas.
+  const handleOpenRecalculate = async () => {
+    setRecalcState("previewing");
+
+    const result = await recalculateQuizResults(courseData?.courseId, quizId, {
+      actorUserId: userDetails?.userId,
+      dryRun: true,
+    });
+
+    if (!result.success) {
+      setRecalcState("idle");
+      toast.error(result.error || "Não foi possível simular o recálculo.");
+      return;
+    }
+
+    if (result.report.updated === 0) {
+      setRecalcState("idle");
+      toast.info("As notas já estão atualizadas — nada a recalcular.");
+      return;
+    }
+
+    setRecalcPreview(result.report);
+    setRecalcState("confirming");
+  };
+
+  const handleConfirmRecalculate = async () => {
+    setRecalcState("applying");
+
+    const result = await recalculateQuizResults(courseData?.courseId, quizId, {
+      actorUserId: userDetails?.userId,
+    });
+
+    if (!result.success) {
+      setRecalcState("confirming");
+      toast.error(result.error || "Não foi possível recalcular as notas.");
+      return;
+    }
+
+    const { updated, errors } = result.report;
+    toast.success(
+      `Notas recalculadas: ${updated} aluno(s) atualizado(s).` +
+        (errors.length > 0 ? ` ${errors.length} falharam.` : "")
+    );
+
+    setRecalcState("idle");
+    setRecalcPreview(null);
+    await loadQuizData({ silent: true });
+  };
+
+  const handleCloseRecalculate = () => {
+    if (recalcState === "applying") return;
+    setRecalcState("idle");
+    setRecalcPreview(null);
+  };
 
   // Manipuladores de eventos
   const handleGoBack = () => {
@@ -388,6 +471,32 @@ const StudentDashboard = () => {
                 alignItems="center"
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
+                {activeTab === 0 && canRecalculate && studentResults.length > 0 && (
+                  <Button
+                    variant="outlined"
+                    startIcon={
+                      recalcState === "previewing" ? (
+                        <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                      ) : (
+                        <AutorenewIcon />
+                      )
+                    }
+                    onClick={handleOpenRecalculate}
+                    disabled={recalcState !== "idle" || refreshing}
+                    sx={{
+                      whiteSpace: "nowrap",
+                      textTransform: "none",
+                      borderColor: "#9041c1",
+                      color: "#9041c1",
+                      "&:hover": {
+                        borderColor: "#7d37a7",
+                        backgroundColor: "rgba(144, 65, 193, 0.06)",
+                      },
+                    }}
+                  >
+                    Recalcular notas
+                  </Button>
+                )}
                 <SortIcon sx={{ color: "#9041c1", display: { xs: 'none', sm: 'block' } }} />
                 <FormControl
                   variant="outlined"
@@ -1270,6 +1379,109 @@ const StudentDashboard = () => {
             </Box>
           )}
         </Paper>
+
+        {/* Confirmação do recálculo, com a prévia do que muda */}
+        <Dialog
+          open={recalcState === "confirming" || recalcState === "applying"}
+          onClose={handleCloseRecalculate}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle sx={{ fontWeight: "bold" }}>
+            Recalcular as notas deste quiz?
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="body2">
+              As respostas já enviadas por{" "}
+              <strong>{recalcPreview?.processed || 0} aluno(s)</strong> serão
+              reavaliadas contra as{" "}
+              <strong>
+                {recalcPreview?.multipleChoiceQuestions || 0} questão(ões) de
+                múltipla escolha
+              </strong>{" "}
+              atuais e a nota mínima de{" "}
+              <strong>{recalcPreview?.minPercentage || 0}%</strong>.
+            </Typography>
+
+            <Box component="ul" sx={{ pl: 2.5, mt: 1.5, mb: 1.5 }}>
+              <Typography component="li" variant="body2">
+                <strong>{recalcPreview?.updated || 0}</strong> aluno(s) mudam de nota
+              </Typography>
+              <Typography component="li" variant="body2">
+                <strong>{recalcPreview?.promoted || 0}</strong> passam a ser aprovados
+              </Typography>
+              {(recalcPreview?.keptPassed || 0) > 0 && (
+                <Typography component="li" variant="body2">
+                  <strong>{recalcPreview.keptPassed}</strong> ficam com a nota
+                  abaixo do mínimo, mas mantêm a aprovação (não perdem acesso ao
+                  conteúdo já liberado)
+                </Typography>
+              )}
+            </Box>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+              Tentativas usadas, datas de envio e as respostas do aluno não são
+              alteradas.
+            </Typography>
+
+            {(recalcPreview?.ambiguousAnswers || 0) > 0 && (
+              <Typography
+                variant="caption"
+                sx={{ display: "block", mt: 1, color: "#b26a00" }}
+              >
+                ⚠ {recalcPreview.ambiguousAnswers} resposta(s) não puderam ser
+                reconhecidas com certeza (alternativa editada): foi mantida a
+                alternativa pela posição original. Confira
+                {recalcPreview.studentsWithAmbiguity?.length > 0
+                  ? `: ${recalcPreview.studentsWithAmbiguity.join(", ")}`
+                  : "."}
+              </Typography>
+            )}
+
+            {(recalcPreview?.orphanAnswers || 0) > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                {recalcPreview.orphanAnswers} resposta(s) se referem a questões
+                removidas do quiz: ficam registradas, mas não contam mais na nota.
+              </Typography>
+            )}
+
+            {(recalcPreview?.unansweredQuestions || 0) > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                {recalcPreview.unansweredQuestions} questão(ões) sem resposta
+                (acrescentadas depois da tentativa) contam como erro.
+              </Typography>
+            )}
+
+            {(recalcPreview?.skipped || 0) > 0 && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+                {recalcPreview.skipped} resultado(s) antigos, sem respostas
+                gravadas, ficam de fora do recálculo.
+              </Typography>
+            )}
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+              O percentual de progresso no curso de cada aluno é reconciliado no
+              próximo acesso dele ao curso.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button
+              onClick={handleCloseRecalculate}
+              disabled={recalcState === "applying"}
+              sx={{ color: "#666", textTransform: "none" }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleConfirmRecalculate}
+              disabled={recalcState === "applying"}
+              sx={{ bgcolor: "#9041c1", textTransform: "none" }}
+            >
+              {recalcState === "applying" ? "Recalculando..." : "Recalcular"}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </>
   );
@@ -1352,6 +1564,23 @@ const StudentAnswersDetail = ({ student }) => (
                   >
                     Questão Aberta
                   </Box>
+                )}
+                {/* Marcas deixadas pelo recálculo de notas */}
+                {detail.removedFromQuiz && (
+                  <Chip
+                    size="small"
+                    label="Removida do quiz"
+                    title="Esta questão não existe mais no quiz e não conta na nota"
+                    sx={{ bgcolor: "#eeeeee", color: "#555", fontWeight: 600 }}
+                  />
+                )}
+                {detail.recalcAmbiguous && (
+                  <Chip
+                    size="small"
+                    label="Reconhecida pela posição"
+                    title="A alternativa foi editada depois da resposta; o recálculo manteve a posição original marcada pelo aluno"
+                    sx={{ bgcolor: "#fff3e0", color: "#b26a00", fontWeight: 600 }}
+                  />
                 )}
               </Box>
 

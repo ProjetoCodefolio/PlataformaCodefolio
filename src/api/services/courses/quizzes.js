@@ -2,6 +2,12 @@ import { ref, set, get, remove, update, push } from "firebase/database";
 import { database } from "../../config/firebase";
 import { v4 as uuidv4 } from "uuid";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { normalizeQuizResultId } from "./progressAudit";
+import {
+  normalizeQuestionList,
+  recomputeQuizResult,
+  summarizeRecalculation,
+} from "./quizRecalculation";
 
 export const normalizeDiagnosticFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
@@ -1412,6 +1418,170 @@ export const restoreQuizAttempt = async (userId, courseId, quizResultKey) => {
     return { success: true, attemptCount };
   } catch (error) {
     console.error("Erro ao devolver tentativa de quiz:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+/** Alunos processados por vez, para não abrir uma conexão por aluno de uma vez só. */
+const RECALC_BATCH_SIZE = 25;
+
+/**
+ * Reprocessa as notas JÁ GRAVADAS de um quiz contra as questões ATUAIS.
+ *
+ * Ação do professor, para depois de corrigir uma ou mais questões: a nota é
+ * calculada uma única vez, na submissão, então trocar o gabarito não muda nada
+ * para quem já fez. O cálculo em si é puro e vive em `quizRecalculation.js`;
+ * aqui só há o I/O.
+ *
+ * Escreve com `update()` no nó de cada aluno — é o único caminho que as regras
+ * do banco liberam para o dono do curso (o nível `$courseId` só aceita escrita
+ * quando o dado é removido) e preserva tentativas, datas e campos desconhecidos.
+ *
+ * ATENÇÃO: `saveQuizResults` regrava o nó inteiro 1,5s depois de uma submissão.
+ * Um aluno que submeta exatamente durante o recálculo pode ter o recálculo
+ * sobrescrito — o recálculo é idempotente, basta rodar de novo (de preferência
+ * fora da janela do quiz).
+ *
+ * @param {string} courseId - ID do curso
+ * @param {string} quizResultKey - chave do quiz/resultado (slides legados usam
+ *   o prefixo `slide_`)
+ * @param {Object} [opts]
+ * @param {string} [opts.actorUserId] - quem disparou (gravado em recalculatedBy)
+ * @param {boolean} [opts.dryRun=false] - só simula, para a prévia da confirmação
+ * @param {boolean} [opts.keepOrphans=true] - manter respostas de questões removidas
+ * @returns {Promise<{success: boolean, error?: string, report?: Object}>}
+ */
+export const recalculateQuizResults = async (
+  courseId,
+  quizResultKey,
+  opts = {}
+) => {
+  const { actorUserId = null, dryRun = false, keepOrphans = true } = opts;
+
+  try {
+    if (!courseId || !quizResultKey) {
+      return { success: false, error: "Dados insuficientes." };
+    }
+
+    const quizSnapshot = await get(
+      ref(database, `courseQuizzes/${courseId}/${quizResultKey}`)
+    );
+    if (!quizSnapshot.exists()) {
+      return { success: false, error: "Quiz não encontrado." };
+    }
+
+    const quiz = quizSnapshot.val();
+    const questions = normalizeQuestionList(quiz.questions);
+
+    // Trava contra o quiz meio-editado: sem questões, recalcular zeraria a nota
+    // da turma inteira.
+    if (questions.length === 0) {
+      return {
+        success: false,
+        error: "O quiz está sem questões — recalcular zeraria a nota de todos.",
+      };
+    }
+
+    const minPercentage = Number(quiz.minPercentage) || 0;
+
+    const enrolledSnapshot = await get(ref(database, "studentCourses"));
+    const enrolled = enrolledSnapshot.exists() ? enrolledSnapshot.val() : {};
+    const userIds = Object.entries(enrolled)
+      .filter(([, courses]) => courses && courses[courseId])
+      .map(([userId]) => userId);
+
+    const usersSnapshot = await get(ref(database, "users"));
+    const usersData = usersSnapshot.exists() ? usersSnapshot.val() : {};
+
+    const perStudent = [];
+    const changes = [];
+    const errors = [];
+
+    for (let i = 0; i < userIds.length; i += RECALC_BATCH_SIZE) {
+      const batch = userIds.slice(i, i + RECALC_BATCH_SIZE);
+
+      await Promise.all(
+        batch.map(async (userId) => {
+          const resultRef = ref(
+            database,
+            `quizResults/${userId}/${courseId}/${quizResultKey}`
+          );
+
+          try {
+            const snapshot = await get(resultRef);
+            if (!snapshot.exists()) return; // aluno não fez o quiz
+
+            const current = snapshot.val();
+            const recalc = recomputeQuizResult(current, questions, minPercentage, {
+              keepOrphans,
+            });
+
+            const userData = usersData[userId] || {};
+            const name =
+              userData.displayName ||
+              `${userData.firstName || ""} ${userData.lastName || ""}`.trim() ||
+              current.name ||
+              userData.email ||
+              userId;
+
+            perStudent.push({ ...recalc, userId, name });
+
+            if (recalc.skipped || !recalc.changed) return;
+
+            changes.push({
+              userId,
+              name,
+              before: recalc.before,
+              after: recalc.after,
+            });
+
+            if (dryRun) return;
+
+            await update(resultRef, {
+              ...recalc.updates,
+              recalculatedAt: new Date().toISOString(),
+              recalculatedBy: actorUserId,
+              // Estado anterior gravado junto: torna a operação auditável e
+              // explicável para o aluno que questionar a mudança de nota.
+              recalculatedFrom: recalc.before,
+            });
+
+            // Espelho usado pela lista de conteúdos. Como `isPassed` nunca é
+            // rebaixado, este espelho também não é.
+            const progressId = current.videoId || normalizeQuizResultId(quizResultKey);
+            await update(
+              ref(database, `videoProgress/${userId}/${courseId}/${progressId}`),
+              { quizPassed: recalc.updates.isPassed, hasQuizData: true }
+            );
+          } catch (error) {
+            // Falha de um aluno não pode abortar a turma.
+            console.error(`Erro ao recalcular quiz de ${userId}:`, error);
+            errors.push({ userId, error: error.message });
+          }
+        })
+      );
+    }
+
+    // O percentual em studentCourses NÃO é escrito aqui: `updateCourseProgress`
+    // é a fonte única e precisa da lista completa de conteúdo já resolvida com o
+    // estado do aluno. Ele se reconcilia no próximo acesso do aluno ao curso.
+    return {
+      success: true,
+      report: {
+        quizId: quizResultKey,
+        dryRun,
+        totalQuestions: questions.length,
+        multipleChoiceQuestions: questions.filter(
+          (q) => q.questionType !== "open-ended"
+        ).length,
+        minPercentage,
+        ...summarizeRecalculation(perStudent),
+        changes,
+        errors,
+      },
+    };
+  } catch (error) {
+    console.error("Erro ao recalcular notas do quiz:", error);
     return { success: false, error: error.message };
   }
 };
