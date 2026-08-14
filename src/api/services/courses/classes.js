@@ -193,8 +193,12 @@ export const processQuizCompletion = async (
   try {
     if (isPassed) {
       // Para slides, salvar em uma estrutura específica ou usar o mesmo caminho
-      // Marcar como concluído (vídeo ou slide)
-      await markVideoAsCompleted(userId, courseId, videoId, duration);
+      // Marcar como concluído (vídeo ou slide). `origem: "quiz"` impede que a
+      // aprovação carimbe `watchedAt`: o conteúdo é liberado, mas não houve
+      // visualização para datar.
+      await markVideoAsCompleted(userId, courseId, videoId, duration, {
+        origem: "quiz",
+      });
 
       // Marcar quiz como concluído
       const quizResult = {

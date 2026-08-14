@@ -112,7 +112,7 @@ describe.runIf(emuladorNoAr)(
   }
 );
 
-describe.runIf(emuladorNoAr)("lastUpdated só se move quando o progresso avança", () => {
+describe.runIf(emuladorNoAr)("data de assistido: lastUpdated e watchedAt", () => {
   const novoCaminho = (sufixo) =>
     `videoProgress/${USER}/${COURSE}/${VIDEO}_${sufixo}`;
   const lerNo = async (sufixo) => (await get(ref(database, novoCaminho(sufixo)))).val();
@@ -161,17 +161,51 @@ describe.runIf(emuladorNoAr)("lastUpdated só se move quando o progresso avança
 
     const dados = await lerNo("primeiro");
     expect(typeof dados.lastUpdated).toBe("string");
+    // 5% não cruza o limiar de assistido: ainda não há watchedAt.
+    expect(dados.watchedAt).toBeUndefined();
   });
 
-  it("markVideoAsCompleted não move lastUpdated se já estava em 100%", async () => {
-    await set(ref(database, novoCaminho("recompletar")), null);
+  it("watchedAt é carimbado ao cruzar 90% e não muda ao reassistir", async () => {
+    await set(ref(database, novoCaminho("limiar")), null);
 
-    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_recompletar`, 600);
-    const primeiro = await lerNo("recompletar");
+    // Abaixo do limiar: sem carimbo.
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_limiar`, 300, 600);
+    expect((await lerNo("limiar")).watchedAt).toBeUndefined();
 
-    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_recompletar`, 600);
-    const segundo = await lerNo("recompletar");
+    // Cruza os 90%: carimba.
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_limiar`, 550, 600);
+    const carimbo = (await lerNo("limiar")).watchedAt;
+    expect(typeof carimbo).toBe("string");
 
+    // Reassistir depois — inclusive até o fim — não reescreve o carimbo.
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_limiar`, 60, 600);
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_limiar`, 600);
+    expect((await lerNo("limiar")).watchedAt).toBe(carimbo);
+  });
+
+  it("markVideoAsCompleted com origem 'quiz' não grava watchedAt", async () => {
+    await set(ref(database, novoCaminho("via_quiz")), null);
+
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_via_quiz`, 1, {
+      origem: "quiz",
+    });
+
+    const dados = await lerNo("via_quiz");
+    expect(dados.completed).toBe(true);
+    expect(dados.watchedAt).toBeUndefined();
+  });
+
+  it("markVideoAsCompleted pelo player carimba watchedAt uma vez só", async () => {
+    await set(ref(database, novoCaminho("via_player")), null);
+
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_via_player`, 600);
+    const primeiro = await lerNo("via_player");
+    expect(typeof primeiro.watchedAt).toBe("string");
+
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_via_player`, 600);
+    const segundo = await lerNo("via_player");
+    expect(segundo.watchedAt).toBe(primeiro.watchedAt);
+    // Já estava em 100%: reassistir até o fim também não move lastUpdated.
     expect(segundo.lastUpdated).toBe(primeiro.lastUpdated);
   });
 });

@@ -339,13 +339,24 @@ export const mergeProgressNode = (source, target = {}) => {
   if (t.quizPassed === true || source.quizPassed === true) merged.quizPassed = true;
   if (t.hasQuizData === true || source.hasQuizData === true) merged.hasQuizData = true;
 
+  // `watchedAt` é gravado uma única vez e nunca reescrito: ao mesclar, vale a
+  // MENOR data conhecida (a conclusão mais antiga). Sem isto, mesclar um órfão
+  // apagaria o carimbo do destino, já que o merge é gravado com update().
+  const carimbos = [source.watchedAt, t.watchedAt].filter(
+    (d) => typeof d === "string" && d
+  );
+  if (carimbos.length > 0) {
+    merged.watchedAt = carimbos.reduce((a, b) => (a < b ? a : b));
+  }
+
   // Se o destino já cobre tudo (>= origem em tudo), não há o que gravar.
   const nothingToDo =
     percentageWatched === tgtPct &&
     watched === (t.watched === true) &&
     completed === (t.completed === true) &&
     (merged.quizPassed === true) === (t.quizPassed === true) &&
-    (merged.hasQuizData === true) === (t.hasQuizData === true);
+    (merged.hasQuizData === true) === (t.hasQuizData === true) &&
+    (merged.watchedAt || "") === (t.watchedAt || "");
   if (nothingToDo) return null;
 
   return merged;

@@ -83,6 +83,14 @@ export const saveVideoProgress = async (
       progressData.lastUpdated = agora;
     }
 
+    // `watchedAt` é gravado UMA única vez, na travessia dos 90% (o limiar de
+    // "assistido" em toda a plataforma). Ao contrário de `lastUpdated`, ele
+    // nunca é reescrito: é a data em que o vídeo foi concluído de fato.
+    const cruzouOLimiar = currentDbPercentage < 90 && newPercentage >= 90;
+    if (cruzouOLimiar && !dadosAtuais?.watchedAt) {
+      progressData.watchedAt = agora;
+    }
+
 
     // Mescla no próprio nó do vídeo. Atualizar o nó PAI com o objeto inteiro
     // (`update(pai, { [videoId]: progressData })`) substituiria o filho por
@@ -175,13 +183,16 @@ export const fetchVideoProgress = async (userId, courseId, videoId) => {
  * @param {string} courseId - ID do curso
  * @param {string} videoId - ID do vídeo
  * @param {number} duration - Duração total do vídeo
+ * @param {{origem?: "player"|"quiz"}} opcoes - `origem` diz o que concluiu o
+ *   conteúdo. Só `"player"` (padrão) registra `watchedAt`.
  * @returns {Promise<Object>} - Resultado da operação
  */
 export const markVideoAsCompleted = async (
   userId,
   courseId,
   videoId,
-  duration
+  duration,
+  { origem = "player" } = {}
 ) => {
   try {
     const progressRef = databaseRef(
@@ -189,8 +200,9 @@ export const markVideoAsCompleted = async (
       `videoProgress/${userId}/${courseId}/${videoId}`
     );
 
-    // Lê antes de gravar para não mover `lastUpdated` quando o nó já estava
-    // concluído: reassistir até o fim não é progresso novo.
+    // Lê antes de gravar por dois motivos: não mover `lastUpdated` quando o nó
+    // já estava concluído (reassistir até o fim não é progresso novo) e não
+    // sobrescrever um `watchedAt` já carimbado.
     const snapshot = await get(progressRef);
     const dadosAtuais = snapshot.exists() ? snapshot.val() : null;
     const jaEstavaCompleto = (dadosAtuais?.percentageWatched || 0) >= 100;
@@ -206,6 +218,14 @@ export const markVideoAsCompleted = async (
 
     if (!jaEstavaCompleto) {
       progressData.lastUpdated = agora;
+    }
+
+    // A aprovação no quiz marca o conteúdo como concluído sem que ele tenha
+    // sido assistido — é daí que saem os registros de 100% com ~1 segundo.
+    // Carimbar `watchedAt` nesse caminho seria registrar uma visualização que
+    // não houve; a data da aprovação já vive em `quizResults`.
+    if (origem === "player" && !dadosAtuais?.watchedAt) {
+      progressData.watchedAt = agora;
     }
 
     // update, e não set: set substituiria o nó inteiro e apagaria
