@@ -22,6 +22,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
@@ -84,6 +86,12 @@ const Classes = ({ alias = null }) => {
     getDuration: () => 0,
     seekTo: () => { },
   });
+  // Topo da área de conteúdo (vídeo, slide ou quiz). No mobile o layout é uma
+  // coluna com a lista de conteúdos ABAIXO do player: sem rolar até aqui, o
+  // clique na lista parece não fazer nada.
+  const contentTopRef = useRef(null);
+  const theme = useTheme();
+  const isMobileLayout = useMediaQuery(theme.breakpoints.down("md"));
   const [loadingVideos, setLoadingVideos] = useState(false);
   // Controle de acesso ao curso (fonte única de verdade da sala de aula).
   // - accessChecking: ainda decidindo se o aluno pode entrar (mostra loader).
@@ -756,6 +764,21 @@ const Classes = ({ alias = null }) => {
     }
   };
 
+  // Leva o aluno até o conteúdo escolhido. Só no mobile: no desktop a lista
+  // fica ao lado do player, então rolar seria só um solavanco. O atraso deixa o
+  // novo conteúdo montar antes de medir a posição (mesmo padrão de
+  // CourseSlidesTab/CourseContentTab). Só é chamado nos caminhos de sucesso —
+  // conteúdo bloqueado continua apenas avisando por toast, sem rolar a página.
+  const scrollToContent = useCallback(() => {
+    if (!isMobileLayout) return;
+    setTimeout(() => {
+      contentTopRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
+  }, [isMobileLayout]);
+
   // Função para navegar para o próximo vídeo
   const handleNextVideo = () => {
     const currentVideoIndex = videos.findIndex((v) => v.id === currentVideoId);
@@ -763,6 +786,7 @@ const Classes = ({ alias = null }) => {
       const nextVideo = videos[currentVideoIndex + 1];
       setCurrentVideoId(nextVideo.id);
       setShowQuiz(false);
+      scrollToContent();
     }
   };
 
@@ -780,6 +804,7 @@ const Classes = ({ alias = null }) => {
         setVideoIdBeforeSlide(currentVideoId);
       }
       setCurrentVideoId(video.id);
+      scrollToContent();
       return;
     }
 
@@ -795,6 +820,7 @@ const Classes = ({ alias = null }) => {
       !video.requiresPrevious
     ) {
       setCurrentVideoId(video.id);
+      scrollToContent();
     } else {
       toast.warning("Você precisa assistir ao vídeo anterior primeiro!");
     }
@@ -872,6 +898,10 @@ const Classes = ({ alias = null }) => {
       setQuizSource(isSlideQuiz ? "slide" : "video");
 
       setShowQuiz(true);
+      // Dentro do callback, e não no clique: quizzes com tentativas contadas
+      // abrem um diálogo de confirmação antes, e rolar com ele aberto seria
+      // rolar a página por trás do modal.
+      scrollToContent();
     });
   };
 
@@ -1084,6 +1114,7 @@ const Classes = ({ alias = null }) => {
       }
       setQuizSource(source);
       setShowQuiz(true);
+      scrollToContent();
     });
   };
 
@@ -1259,6 +1290,7 @@ const Classes = ({ alias = null }) => {
           }}
         >
           <Box
+            ref={contentTopRef}
             sx={{
               flex: { xs: 1, md: 3 },
               display: "flex",
@@ -1267,6 +1299,9 @@ const Classes = ({ alias = null }) => {
               backgroundColor: "#F5F5FA",
               width: "100%",
               marginRight: { md: "16px" },
+              // A Topbar é fixa: sem esta margem o scrollIntoView encosta o topo
+              // do conteúdo atrás dela.
+              scrollMarginTop: { xs: "72px", md: 0 },
             }}
           >
             {showQuiz ? (
