@@ -465,10 +465,13 @@ const StudentDashboard = () => {
                 Resultados dos Estudantes
               </Typography>
 
-              <Stack 
-                direction="row" 
-                spacing={2} 
-                alignItems="center"
+              {/* No mobile empilha: o Select ao lado pede minWidth 100%, e numa
+                  linha só ele espremia o botão — que, com whiteSpace nowrap,
+                  deixava o texto vazar para fora da borda. */}
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
                 sx={{ width: { xs: '100%', sm: 'auto' } }}
               >
                 {activeTab === 0 && canRecalculate && studentResults.length > 0 && (
@@ -486,6 +489,7 @@ const StudentDashboard = () => {
                     sx={{
                       whiteSpace: "nowrap",
                       textTransform: "none",
+                      width: { xs: "100%", sm: "auto" },
                       borderColor: "#9041c1",
                       color: "#9041c1",
                       "&:hover": {
