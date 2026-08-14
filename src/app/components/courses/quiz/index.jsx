@@ -24,6 +24,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import QuestionImage from "$components/common/QuestionImage";
+import { MarkdownView } from "$components/common/MarkdownEditor";
 
 const Quiz = ({
   quizId,
@@ -546,16 +547,27 @@ const Quiz = ({
                         flexWrap: "wrap",
                       }}
                     >
-                      <Typography
-                        variant="subtitle1"
+                      {/* Mesmo markdown que o aluno viu ao responder. */}
+                      <Box
                         sx={{
-                          fontWeight: 600,
                           flex: 1,
                           minWidth: "200px",
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 0.5,
                         }}
                       >
-                        Questão {index + 1}: {answer.question}
-                      </Typography>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, flexShrink: 0 }}
+                        >
+                          Questão {index + 1}:
+                        </Typography>
+                        <MarkdownView
+                          markdown={answer.question}
+                          sx={{ fontWeight: 600, fontSize: "1rem", color: "inherit" }}
+                        />
+                      </Box>
 
                       {isOpenEndedQuestion ? (
                         <Box
@@ -884,21 +896,21 @@ const Quiz = ({
             },
           }}
         />
-        <Typography
-          variant="h6"
+        {/* O enunciado é markdown: o professor formata negrito, links, listas e
+            código. Renderizado pelo mesmo MarkdownView do enunciado do trabalho,
+            que sanitiza o HTML — sem isso, um `<script>` digitado na questão
+            chegaria ao aluno. */}
+        <MarkdownView
+          markdown={currentQuestion?.question || "Pergunta indisponível"}
           sx={{
             mb: { xs: 2, sm: 4 },
             color: "#333",
             fontWeight: 500,
             fontSize: { xs: "1rem", sm: "1.25rem" },
-            wordWrap: "break-word",
-            overflowWrap: "break-word",
             hyphens: "auto",
             maxWidth: "100%",
           }}
-        >
-          {currentQuestion?.question || "Pergunta indisponível"}
-        </Typography>
+        />
 
         <QuestionImage
           imageUrl={currentQuestion?.imageUrl}

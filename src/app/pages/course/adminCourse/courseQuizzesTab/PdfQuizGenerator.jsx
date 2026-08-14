@@ -878,6 +878,7 @@ const PdfQuizGenerator = ({
                       onChange={(e) =>
                         updateGeneratedQuestion(index, { question: e.target.value })
                       }
+                      helperText="Aceita markdown: **negrito**, *itálico*, [link](url)"
                     />
 
                     {/* Imagem opcional da questão */}

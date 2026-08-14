@@ -49,6 +49,7 @@ import {
 import { recalculateQuizResults } from "$api/services/courses/quizzes";
 import { canAssignGrades } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
+import { MarkdownView } from "$components/common/MarkdownEditor";
 import { sortRows, getNextSort } from "$utils/tableSort";
 
 const StudentDashboard = () => {
@@ -1548,12 +1549,16 @@ const StudentAnswersDetail = ({ student }) => (
               }}
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Typography
-                  variant="subtitle1"
-                  sx={{ fontWeight: 500, flex: 1 }}
-                >
-                  {index + 1}. {detail.question}
-                </Typography>
+                {/* Mesmo markdown que o aluno viu ao responder. */}
+                <Box sx={{ flex: 1, display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 500, flexShrink: 0 }}>
+                    {index + 1}.
+                  </Typography>
+                  <MarkdownView
+                    markdown={detail.question}
+                    sx={{ fontWeight: 500, fontSize: '1rem', color: 'inherit' }}
+                  />
+                </Box>
                 {isOpenEnded && (
                   <Box
                     sx={{

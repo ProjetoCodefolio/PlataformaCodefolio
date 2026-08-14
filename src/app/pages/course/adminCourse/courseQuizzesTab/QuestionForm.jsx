@@ -90,6 +90,7 @@ const QuestionForm = ({
             onKeyDown={(e) => handleKeyDown(e, optionsRefs.current[0])}
             inputRef={questionRef}
             size="small"
+            helperText="Aceita markdown: **negrito**, *itálico*, [link](url)"
           />
         </Grid>
 

@@ -416,6 +416,7 @@ const QuestionList = ({
                     onChange={(e) =>
                       updateDraft(question.id, { question: e.target.value })
                     }
+                    helperText="Aceita markdown: **negrito**, *itálico*, [link](url)"
                   />
 
                   {/* Imagem opcional da questão */}
