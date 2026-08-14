@@ -111,3 +111,67 @@ describe.runIf(emuladorNoAr)(
     });
   }
 );
+
+describe.runIf(emuladorNoAr)("lastUpdated só se move quando o progresso avança", () => {
+  const novoCaminho = (sufixo) =>
+    `videoProgress/${USER}/${COURSE}/${VIDEO}_${sufixo}`;
+  const lerNo = async (sufixo) => (await get(ref(database, novoCaminho(sufixo)))).val();
+
+  it("gravar sem avanço de percentual NÃO move lastUpdated", async () => {
+    const anterior = "2026-01-01T00:00:00.000Z";
+    await set(ref(database, novoCaminho("sem_avanco")), {
+      videoId: `${VIDEO}_sem_avanco`,
+      percentageWatched: 100,
+      watched: true,
+      completed: true,
+      watchedTimeInSeconds: 600,
+      lastUpdated: anterior,
+    });
+
+    // Reabrir o vídeo já concluído: o intervalo de 30s grava, sem avanço nenhum.
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_sem_avanco`, 12, 600);
+
+    const dados = await lerNo("sem_avanco");
+    expect(dados.lastUpdated).toBe(anterior);
+    // A posição do playhead continua sendo salva (retomada do vídeo).
+    expect(dados.watchedTimeInSeconds).toBe(12);
+  });
+
+  it("gravar COM avanço move lastUpdated", async () => {
+    const anterior = "2026-01-01T00:00:00.000Z";
+    await set(ref(database, novoCaminho("com_avanco")), {
+      videoId: `${VIDEO}_com_avanco`,
+      percentageWatched: 20,
+      watched: false,
+      watchedTimeInSeconds: 120,
+      lastUpdated: anterior,
+    });
+
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_com_avanco`, 300, 600);
+
+    const dados = await lerNo("com_avanco");
+    expect(dados.percentageWatched).toBe(50);
+    expect(dados.lastUpdated).not.toBe(anterior);
+  });
+
+  it("nó sem registro recebe lastUpdated na primeira gravação", async () => {
+    await set(ref(database, novoCaminho("primeiro")), null);
+
+    await saveVideoProgress(USER, COURSE, `${VIDEO}_primeiro`, 30, 600);
+
+    const dados = await lerNo("primeiro");
+    expect(typeof dados.lastUpdated).toBe("string");
+  });
+
+  it("markVideoAsCompleted não move lastUpdated se já estava em 100%", async () => {
+    await set(ref(database, novoCaminho("recompletar")), null);
+
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_recompletar`, 600);
+    const primeiro = await lerNo("recompletar");
+
+    await markVideoAsCompleted(USER, COURSE, `${VIDEO}_recompletar`, 600);
+    const segundo = await lerNo("recompletar");
+
+    expect(segundo.lastUpdated).toBe(primeiro.lastUpdated);
+  });
+});

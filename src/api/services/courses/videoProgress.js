@@ -49,12 +49,8 @@ export const saveVideoProgress = async (
     );
     const snapshot = await get(progressRef);
 
-    let currentDbPercentage = 0;
-
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      currentDbPercentage = data.percentageWatched || 0;
-    }
+    const dadosAtuais = snapshot.exists() ? snapshot.val() : null;
+    const currentDbPercentage = dadosAtuais?.percentageWatched || 0;
 
     // Usa o maior valor entre o atual e o do banco
     newPercentage = Math.max(newPercentage, currentDbPercentage);
@@ -65,14 +61,27 @@ export const saveVideoProgress = async (
       videoState.videoCompleted = true;
     }
 
+    const agora = new Date().toISOString();
+
+    // `lastUpdated` só se mexe quando o progresso REALMENTE avança. Vários
+    // caminhos gravam sem avanço nenhum — o intervalo de 30s de classes.jsx, o
+    // debounce do pause, os dois beforeunload e o recoverUnsavedProgress — e,
+    // como o percentual é monotônico (Math.max acima), essas gravações não
+    // mudam nada além da data. Deixá-las carimbar transformava "reabriu o
+    // vídeo" em "assistiu hoje", apagando a data verdadeira do acervo.
+    const avancou = !dadosAtuais || newPercentage > currentDbPercentage;
+
     const progressData = {
       watchedTimeInSeconds: currentTime,
       percentageWatched: newPercentage,
       watched: newPercentage >= 90,
-      lastUpdated: new Date().toISOString(),
       completed: newPercentage >= 100,
       videoId: videoId,
     };
+
+    if (avancou) {
+      progressData.lastUpdated = agora;
+    }
 
 
     // Mescla no próprio nó do vídeo. Atualizar o nó PAI com o objeto inteiro
@@ -180,14 +189,24 @@ export const markVideoAsCompleted = async (
       `videoProgress/${userId}/${courseId}/${videoId}`
     );
 
+    // Lê antes de gravar para não mover `lastUpdated` quando o nó já estava
+    // concluído: reassistir até o fim não é progresso novo.
+    const snapshot = await get(progressRef);
+    const dadosAtuais = snapshot.exists() ? snapshot.val() : null;
+    const jaEstavaCompleto = (dadosAtuais?.percentageWatched || 0) >= 100;
+    const agora = new Date().toISOString();
+
     const progressData = {
       watchedTimeInSeconds: duration,
       percentageWatched: 100,
       watched: true,
-      lastUpdated: new Date().toISOString(),
       completed: true,
       videoId: videoId,
     };
+
+    if (!jaEstavaCompleto) {
+      progressData.lastUpdated = agora;
+    }
 
     // update, e não set: set substituiria o nó inteiro e apagaria
     // `quizPassed`/`hasQuizData`, gravados ali por saveQuizResults.
