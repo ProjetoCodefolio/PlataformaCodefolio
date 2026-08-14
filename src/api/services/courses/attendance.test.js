@@ -4,6 +4,8 @@ import {
   computeStudentPresence,
   computeCoursePresence,
   formatWatchedTime,
+  formatWatchedDate,
+  resolveWatchedDate,
   exportPresenceToCSV,
   DEFAULT_WATCHED_THRESHOLD,
 } from "./attendance.js";
@@ -112,6 +114,42 @@ describe("formatWatchedTime", () => {
   });
 });
 
+describe("resolveWatchedDate", () => {
+  it("prefere watchedAt e o marca como medido", () => {
+    expect(
+      resolveWatchedDate({
+        watchedAt: "2026-08-13T23:19:00.000Z",
+        lastUpdated: "2026-08-14T10:00:00.000Z",
+      })
+    ).toEqual({ data: "2026-08-13T23:19:00.000Z", origem: "medido" });
+  });
+
+  it("cai para lastUpdated como estimado quando não há watchedAt", () => {
+    expect(resolveWatchedDate({ lastUpdated: "2026-08-14T10:00:00.000Z" })).toEqual({
+      data: "2026-08-14T10:00:00.000Z",
+      origem: "estimado",
+    });
+  });
+
+  it("nó sem data nenhuma, nulo ou inválido devolve origem vazia", () => {
+    expect(resolveWatchedDate({ percentageWatched: 50 })).toEqual({ data: "", origem: "" });
+    expect(resolveWatchedDate(null)).toEqual({ data: "", origem: "" });
+    expect(resolveWatchedDate({ watchedAt: "" })).toEqual({ data: "", origem: "" });
+  });
+});
+
+describe("formatWatchedDate", () => {
+  it("devolve vazio para ausente ou inválido", () => {
+    expect(formatWatchedDate("")).toBe("");
+    expect(formatWatchedDate(null)).toBe("");
+    expect(formatWatchedDate("não é data")).toBe("");
+  });
+
+  it("formata uma data válida", () => {
+    expect(formatWatchedDate("2026-08-13T23:19:00.000Z")).not.toBe("");
+  });
+});
+
 describe("exportPresenceToCSV", () => {
   it("gera cabeçalho e uma linha por aluno, com colunas por vídeo", () => {
     const videos = [
@@ -131,6 +169,43 @@ describe("exportPresenceToCSV", () => {
     expect(lines[1]).toContain("100%");
     expect(lines[1]).toContain('"1/2"'); // vídeos assistidos
     expect(lines[1]).toContain('"4/8"'); // presenças
+  });
+
+  it("traz uma coluna de data por vídeo, marcando a data estimada", () => {
+    const videos = [
+      { id: "v1", title: "Aula 1" },
+      { id: "v2", title: "Aula 2" },
+    ];
+    const students = [
+      {
+        userId: "u1",
+        name: "Ana",
+        email: "ana@x.com",
+        progressById: {
+          // v1 tem carimbo medido; v2 só tem o lastUpdated (geração antiga).
+          v1: {
+            percentageWatched: 100,
+            watchedAt: "2026-08-13T23:19:00.000Z",
+            lastUpdated: "2026-08-14T10:00:00.000Z",
+          },
+          v2: { percentageWatched: 95, lastUpdated: "2026-08-13T23:19:00.000Z" },
+        },
+      },
+    ];
+    const presence = computeCoursePresence(students, videos, { presencesPerVideo: 1 });
+    const csv = exportPresenceToCSV(presence, videos, { presencesPerVideo: 1 });
+    const [cabecalho, linha] = csv.split("\n");
+
+    expect(cabecalho).toContain("Aula 1 - Data");
+    expect(cabecalho).toContain("Aula 2 - Data");
+    // Formatação vem da própria função para o teste não depender do fuso da
+    // máquina; o que se verifica aqui é qual campo venceu e o sufixo.
+    const medida = formatWatchedDate("2026-08-13T23:19:00.000Z");
+    const posterior = formatWatchedDate("2026-08-14T10:00:00.000Z");
+    expect(linha).toContain(`"${medida}"`);
+    expect(linha).toContain(`"${medida} (estimado)"`);
+    // watchedAt vence o lastUpdated mais recente do mesmo nó.
+    expect(linha).not.toContain(posterior);
   });
 
   it("escapa aspas em nomes", () => {

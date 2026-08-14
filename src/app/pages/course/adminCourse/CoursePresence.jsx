@@ -36,6 +36,7 @@ import {
   computeCoursePresence,
   exportPresenceToCSV,
   formatWatchedTime,
+  formatWatchedDate,
   DEFAULT_PRESENCES_PER_VIDEO,
 } from "../../../../api/services/courses/attendance";
 
@@ -333,7 +334,25 @@ export default function CoursePresence() {
                           const watched = p ? p.watched : false;
                           return (
                             <TableCell key={v.id} align="center">
-                              <Tooltip title={`${v.title} — ${formatWatchedTime(p ? p.watchedTimeInSeconds : 0)}`}>
+                              <Tooltip
+                                title={
+                                  <>
+                                    {v.title}
+                                    <br />
+                                    Tempo: {formatWatchedTime(p ? p.watchedTimeInSeconds : 0)}
+                                    <br />
+                                    {/* "Assistido em" só quando a data foi medida
+                                        na travessia dos 90%; do contrário é o
+                                        último acesso, que aproxima a conclusão
+                                        mas pode ter sido movido por uma revisão. */}
+                                    {p && p.dataAssistido
+                                      ? `${p.origemData === "medido" ? "Assistido em" : "Último acesso em"} ${formatWatchedDate(p.dataAssistido)}`
+                                      : pct > 0
+                                        ? "Sem data registrada"
+                                        : "Sem registro"}
+                                  </>
+                                }
+                              >
                                 <Box
                                   sx={{
                                     display: "inline-block",
@@ -385,8 +404,10 @@ export default function CoursePresence() {
             </TableContainer>
             <Typography variant="caption" sx={{ color: "#333", display: "block", mt: 1 }}>
               Passe o mouse sobre o número da coluna para ver o título do vídeo, e
-              sobre cada célula para ver o tempo assistido. Colunas: % assistido de
-              cada vídeo.
+              sobre cada célula para ver o tempo e a data. Colunas: % assistido de
+              cada vídeo. “Assistido em” é a data medida na conclusão; “último
+              acesso em” é uma aproximação, usada nos registros anteriores a esse
+              controle.
             </Typography>
           </>
         )}

@@ -37,6 +37,47 @@ export const isVideoWatched = (node, threshold = DEFAULT_WATCHED_THRESHOLD) => {
 };
 
 /**
+ * Resolve a data de "assistido" de um nó de progresso, junto da sua procedência.
+ *
+ * Existem duas gerações do dado convivendo no banco, e a diferença importa:
+ *  - `watchedAt` é gravado uma única vez, na travessia dos 90%, e nunca
+ *    reescrito — é a data medida da conclusão ("medido");
+ *  - `lastUpdated` é a última gravação de progresso. Coincide com a conclusão
+ *    para quem assistiu uma vez e não voltou, mas caminhos antigos o moviam ao
+ *    reabrir o vídeo. Serve como aproximação ("estimado").
+ *
+ * Resolver na LEITURA (em vez de preencher `watchedAt` retroativamente) dá
+ * valor para todo registro sem misturar, no mesmo campo, o que foi medido com o
+ * que foi inferido.
+ *
+ * @param {Object|null} node - nó de videoProgress do aluno para o vídeo
+ * @returns {{data: string, origem: "medido"|"estimado"|""}}
+ */
+export const resolveWatchedDate = (node) => {
+  if (!node || typeof node !== "object") return { data: "", origem: "" };
+  if (typeof node.watchedAt === "string" && node.watchedAt) {
+    return { data: node.watchedAt, origem: "medido" };
+  }
+  if (typeof node.lastUpdated === "string" && node.lastUpdated) {
+    return { data: node.lastUpdated, origem: "estimado" };
+  }
+  return { data: "", origem: "" };
+};
+
+/**
+ * Formata uma data ISO para leitura no relatório/CSV (pt-BR, curta).
+ * Devolve "" para valor ausente ou inválido.
+ * @param {string} iso
+ * @returns {string}
+ */
+export const formatWatchedDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+};
+
+/**
  * Calcula a presença de UM aluno a partir da lista de vídeos-aula do curso e do
  * seu progresso (id do vídeo → nó de videoProgress).
  * @param {Array<{id:string, title?:string}>} videos - vídeos-aula do curso
@@ -58,12 +99,15 @@ export const computeStudentPresence = (
       node && typeof node.percentageWatched === "number" ? node.percentageWatched : 0;
     const watchedTimeInSeconds =
       node && typeof node.watchedTimeInSeconds === "number" ? node.watchedTimeInSeconds : 0;
+    const { data: dataAssistido, origem: origemData } = resolveWatchedDate(node);
     return {
       id: v.id,
       title: v.title || "Vídeo sem título",
       percentageWatched,
       watchedTimeInSeconds,
       watched: isVideoWatched(node, threshold),
+      dataAssistido,
+      origemData,
     };
   });
 
@@ -136,6 +180,7 @@ export const exportPresenceToCSV = (
     const title = v.title || "Vídeo";
     videoHeaders.push(`${title} - %`);
     videoHeaders.push(`${title} - Tempo`);
+    videoHeaders.push(`${title} - Data`);
   });
 
   const headers = [
@@ -154,6 +199,12 @@ export const exportPresenceToCSV = (
       const p = byId.get(v.id);
       videoCells.push(p ? `${p.percentageWatched}%` : "0%");
       videoCells.push(p ? formatWatchedTime(p.watchedTimeInSeconds) : "0:00");
+      // Uma coluna só para a data: o sufixo marca quando ela é aproximada, em
+      // vez de gastar uma segunda coluna por vídeo com a procedência.
+      const data = p ? formatWatchedDate(p.dataAssistido) : "";
+      videoCells.push(
+        data && p.origemData === "estimado" ? `${data} (estimado)` : data
+      );
     });
     return [
       student.name,
