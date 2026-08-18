@@ -68,7 +68,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
     handleSelectStudent,
     handleSearchChange,
     handleAbleStudent,
-    setMenuOpen,
   } = useStudentData(courseId, quizData?.id);
 
   const {
@@ -166,28 +165,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
       document.documentElement.style.removeProperty("--scrollbar-opacity");
     };
   }, []);
-
-  useEffect(() => {
-    const cleanupOrphanElements = () => {
-      const orphanElements = document.querySelectorAll(
-        ".MuiPopover-root:not(.MuiModal-open), .MuiMenu-root:not(.MuiModal-open)"
-      );
-      orphanElements.forEach((elem) => {
-        try {
-          elem.parentNode?.removeChild(elem);
-        } catch (e) {}
-      });
-    };
-
-    cleanupOrphanElements();
-    const interval = setInterval(cleanupOrphanElements, 3000);
-
-    return () => {
-      clearInterval(interval);
-      setMenuOpen(false);
-      setTimeout(cleanupOrphanElements, 100);
-    };
-  }, [setMenuOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {

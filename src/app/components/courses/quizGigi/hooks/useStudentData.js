@@ -118,26 +118,20 @@ export const useStudentData = (courseId, quizId) => {
     }
   };
 
+  // A lista de alunos é um <Popper>, que aparece e some pelo estado `menuOpen`
+  // e não deixa nó nenhum para trás quando fechado. As duas funções abaixo
+  // faziam, antes de abrir e depois de fechar, um querySelectorAll por
+  // '[role="presentation"], .MuiPopover-root, .MuiMenu-root' seguido de
+  // removeChild. Isso nunca alcançou o Popper (essas classes são de
+  // Menu/Popover/Dialog) e arrancava do DOM overlays que o React ainda
+  // considerava seus — qualquer Dialog aberto na tela, como o modal de reporte
+  // —, o que quebra a remontagem e derruba a árvore com NotFoundError.
   const handleOpenMenu = (event) => {
     if (menuOpen && anchorEl === event.currentTarget) {
       handleCloseMenu();
       return;
     }
 
-    const cleanupOldMenus = () => {
-      const oldMenus = document.querySelectorAll(
-        '[role="presentation"], .MuiPopover-root, .MuiMenu-root'
-      );
-      oldMenus.forEach((menu) => {
-        try {
-          menu.parentNode?.removeChild(menu);
-        } catch (e) {
-          // Silenciar erros
-        }
-      });
-    };
-
-    cleanupOldMenus();
     setAnchorEl(event.currentTarget);
     setMenuOpen(true);
   };
@@ -146,20 +140,6 @@ export const useStudentData = (courseId, quizId) => {
     setMenuOpen(false);
     setAnchorEl(null);
     setSearchTerm("");
-
-    // Cleanup para remover elementos órfãos
-    setTimeout(() => {
-      const orphanElements = document.querySelectorAll(
-        ".MuiPopover-root:not(.MuiModal-open), .MuiMenu-root:not(.MuiModal-open)"
-      );
-      orphanElements.forEach((elem) => {
-        try {
-          elem.parentNode?.removeChild(elem);
-        } catch (e) {
-          // Silenciar erros
-        }
-      });
-    }, 100);
   };
 
   // Função para selecionar um estudante
