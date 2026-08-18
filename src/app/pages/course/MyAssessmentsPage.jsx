@@ -165,7 +165,9 @@ export default function MyAssessmentsPage() {
             })
           );
         }
-      } catch {}
+      } catch {
+        // Carga acessória: falhar aqui não impede a tela de renderizar.
+      }
     })();
   }, [courses]);
 

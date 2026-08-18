@@ -390,4 +390,6 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     );
 });
 
+CourseMaterialsTab.displayName = "CourseMaterialsTab";
+
 export default CourseMaterialsTab;

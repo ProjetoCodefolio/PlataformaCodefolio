@@ -1132,7 +1132,6 @@ export const validateQuizAnswers = async (
       // Verificar se a resposta está correta
       if (userAnswer === correctAnswer) {
         earnedPoints++;
-      } else {
       }
     }
 

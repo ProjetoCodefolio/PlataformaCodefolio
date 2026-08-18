@@ -100,8 +100,7 @@ export const saveVideoProgress = async (
 
     // Verify the data was saved
     const verifySnapshot = await get(progressRef);
-    if (verifySnapshot.exists()) {
-    } else {
+    if (!verifySnapshot.exists()) {
       console.warn(
         "⚠️ Failed to verify saved data - snapshot does not exist after save"
       );

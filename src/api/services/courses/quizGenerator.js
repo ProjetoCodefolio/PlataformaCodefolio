@@ -189,9 +189,11 @@ export const preprocessPdfText = (rawText) => {
   // Padrões como "Página X de Y", "Page X"
   text = text.replace(/\b(p[aá]gina|page)\s*\d+\s*(de|of)?\s*\d*\b/gi, '');
   // Data/hora no formato comum
-  text = text.replace(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s*\d{1,2}:\d{2}/g, '');
+  text = text.replace(/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\s*\d{1,2}:\d{2}/g, '');
 
-  // 5. Remover caracteres de controle e não-imprimíveis (exceto espaço e nova linha)
+  // 5. Remover caracteres de controle e não-imprimíveis (exceto espaço e nova linha).
+  // Os caracteres de controle são justamente o alvo aqui.
+  // eslint-disable-next-line no-control-regex
   text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
   // 6. Normalizar caracteres especiais problemáticos
@@ -816,7 +818,7 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
   try {
     let cleanedContent = responseContent
       // Remover texto antes do primeiro [
-      .replace(/^[^\[]*/, '')
+      .replace(/^[^[]*/, '')
       // Remover texto após o último ]
       .replace(/\][^\]]*$/, ']')
       // Corrigir vírgulas extras

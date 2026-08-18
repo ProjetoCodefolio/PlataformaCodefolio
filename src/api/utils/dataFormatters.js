@@ -62,7 +62,7 @@ export const formatName = (name) => {
   export const isValidYouTubeUrl = (url) => {
     if (!url) return false;
     
-    const pattern = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(\&.*)?$/;
+    const pattern = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})(&.*)?$/;
     return pattern.test(url);
   };
   

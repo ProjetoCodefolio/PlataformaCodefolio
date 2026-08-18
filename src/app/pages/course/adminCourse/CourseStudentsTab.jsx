@@ -781,4 +781,6 @@ const getProgressColor = (progress) => {
     return '#f44336';                      // Vermelho para iniciante
 };
 
+CourseStudentsTab.displayName = "CourseStudentsTab";
+
 export default CourseStudentsTab;

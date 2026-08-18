@@ -486,4 +486,6 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   );
 });
 
+CourseSlidesTab.displayName = "CourseSlidesTab";
+
 export default CourseSlidesTab;

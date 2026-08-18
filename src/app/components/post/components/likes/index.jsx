@@ -166,4 +166,6 @@ const Likes = React.memo(({ post, onLikeUpdate }) => {
     );
 });
 
+Likes.displayName = "Likes";
+
 export default Likes;

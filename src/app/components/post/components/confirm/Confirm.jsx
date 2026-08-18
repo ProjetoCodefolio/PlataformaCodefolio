@@ -58,4 +58,4 @@ export default function MyConfirm({ open, onClose, onConfirm, title, message }) 
       </DialogActions>
     </Dialog>
   );
-};
+}

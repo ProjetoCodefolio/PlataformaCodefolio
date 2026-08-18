@@ -1109,4 +1109,6 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   );
 });
 
+CourseQuizzesTab.displayName = "CourseQuizzesTab";
+
 export default CourseQuizzesTab;

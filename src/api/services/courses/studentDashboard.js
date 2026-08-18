@@ -344,13 +344,17 @@ export const fetchStudentResults = async (courseId, videoId, quizObj) => {
             lastAttemptDate = new Date(
               quizResult.submittedAt
             ).toLocaleDateString("pt-BR");
-          } catch (e) { }
+          } catch (e) {
+            // Data inválida: segue sem data de tentativa.
+          }
         } else if (quizResult.lastAttempt) {
           try {
             lastAttemptDate = new Date(
               quizResult.lastAttempt
             ).toLocaleDateString("pt-BR");
-          } catch (e) { }
+          } catch (e) {
+            // Data inválida: segue sem data de tentativa.
+          }
         }
 
         // Adicionar resultado do estudante à lista
