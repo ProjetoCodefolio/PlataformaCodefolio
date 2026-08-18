@@ -256,9 +256,11 @@ const CourseContentTab = ({ courseId }) => {
   );
 
   const loadContent = useCallback(async () => {
+    // Curso ainda não salvo (criação): não há o que carregar. Precisa zerar o
+    // `loading`, senão a aba fica presa no spinner.
     if (!courseId) {
       setItems([]);
-      setNewItemsById({});
+      setFullById({});
       setLoading(false);
       return;
     }
@@ -347,6 +349,13 @@ const CourseContentTab = ({ courseId }) => {
   };
 
   const handleSubmit = async () => {
+    // O conteúdo é gravado sob o id do curso: sem curso salvo não há onde
+    // gravar. Explica isso em vez de deixar o serviço estourar "ID do curso é
+    // obrigatório" na cara do professor.
+    if (!courseId) {
+      toast.warn('Salve o curso primeiro (botão "Salvar Curso") para poder adicionar conteúdo.');
+      return;
+    }
     if (!form.title.trim()) {
       toast.error("O título é obrigatório");
       return;
