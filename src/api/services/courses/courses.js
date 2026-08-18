@@ -289,6 +289,12 @@ export const deleteCourse = async (courseId) => {
     updates[`courseMaterials/${courseId}`] = null;
     updates[`courseAssessments/${courseId}`] = null;
     updates[`courseAdvancedSettings/${courseId}`] = null;
+    updates[`courseAttendanceSettings/${courseId}`] = null;
+
+    // Trabalhos: enunciados, grupos e entregas dos alunos
+    updates[`courseAssignments/${courseId}`] = null;
+    updates[`assignmentGroups/${courseId}`] = null;
+    updates[`assignmentSubmissions/${courseId}`] = null;
 
     // Resultados de quizzes (nós chaveados por courseId)
     updates[`customQuizResults/${courseId}`] = null;
@@ -315,13 +321,23 @@ export const deleteCourse = async (courseId) => {
     // Dados por usuário: matrículas, progresso, resultados e flag de professor.
     // Esses nós são chaveados por userId, então precisamos varrê-los procurando
     // entradas deste curso.
-    const [studentCoursesSnap, videoProgressSnap, quizResultsSnap, usersSnap] =
-      await Promise.all([
-        get(ref(database, "studentCourses")),
-        get(ref(database, "videoProgress")),
-        get(ref(database, "quizResults")),
-        get(ref(database, "users")),
-      ]);
+    const [
+      studentCoursesSnap,
+      videoProgressSnap,
+      quizResultsSnap,
+      usersSnap,
+      notificationPrefsSnap,
+      notificationsSnap,
+      reportsSnap,
+    ] = await Promise.all([
+      get(ref(database, "studentCourses")),
+      get(ref(database, "videoProgress")),
+      get(ref(database, "quizResults")),
+      get(ref(database, "users")),
+      get(ref(database, "notificationPrefs")),
+      get(ref(database, "notifications")),
+      get(ref(database, "reports")),
+    ]);
 
     const addPerUserCourse = (snapshot, buildPath) => {
       const data = snapshot.val();
@@ -336,6 +352,38 @@ export const deleteCourse = async (courseId) => {
     addPerUserCourse(studentCoursesSnap, (u) => `studentCourses/${u}/${courseId}`);
     addPerUserCourse(videoProgressSnap, (u) => `videoProgress/${u}/${courseId}`);
     addPerUserCourse(quizResultsSnap, (u) => `quizResults/${u}/${courseId}`);
+    addPerUserCourse(
+      notificationPrefsSnap,
+      (u) => `notificationPrefs/${u}/${courseId}`
+    );
+
+    // Notificações e reportes não são chaveados por curso: guardam o courseId
+    // como campo, então precisam ser filtrados pelo conteúdo.
+    const addPorCampoCourseId = (snapshot, buildPath) => {
+      const data = snapshot.val();
+      if (!data) return;
+      Object.entries(data).forEach(([chavePai, filhos]) => {
+        if (!filhos || typeof filhos !== "object") return;
+        Object.entries(filhos).forEach(([chaveFilho, item]) => {
+          if (item && item.courseId === courseId) {
+            updates[buildPath(chavePai, chaveFilho)] = null;
+          }
+        });
+      });
+    };
+
+    // notifications/{userId}/{notificationId}
+    addPorCampoCourseId(notificationsSnap, (u, id) => `notifications/${u}/${id}`);
+
+    // reports/{reportId} — um nível só, então embrulhamos para reusar a varredura
+    const reportsData = reportsSnap.val();
+    if (reportsData) {
+      Object.entries(reportsData).forEach(([reportId, report]) => {
+        if (report && report.courseId === courseId) {
+          updates[`reports/${reportId}`] = null;
+        }
+      });
+    }
 
     // Flag de professor: users/{userId}/coursesTeacher/{courseId}
     const usersData = usersSnap.val();
