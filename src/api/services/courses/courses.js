@@ -4,6 +4,29 @@ import { recalcCourseProgressFromWatched } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
 import { isAliasAvailable } from "./alias";
 
+/** PIN de 7 dígitos, o mesmo formato aceito pelo campo do formulário. */
+const gerarPinAleatorio = () =>
+  Math.floor(1000000 + Math.random() * 9000000).toString();
+
+/**
+ * Grava o PIN no objeto do curso e apaga o valor bruto.
+ *
+ * Os DOIS campos precisam andar juntos: `pinHash` é o que valida a entrada do
+ * aluno (mão única) e `encryptedPin` é o que permite ao professor consultar o
+ * PIN depois. Gravar só o hash — como a atualização fazia — deixava o curso com
+ * um PIN que ninguém mais conseguia ler, e o formulário passava a exibir um
+ * texto no lugar dele.
+ *
+ * @param {Object} courseData - objeto que será persistido (alterado no lugar)
+ * @param {string} courseId - id do curso, usado como sal/chave
+ * @param {string} rawPin - PIN em texto puro
+ */
+const aplicarPinAoCurso = (courseData, courseId, rawPin) => {
+  courseData.encryptedPin = encryptPin(rawPin, courseId);
+  courseData.pinHash = hashPin(rawPin, courseId);
+  delete courseData.pin;
+};
+
 export const fetchCourses = async (limit) => {
   try {
     const coursesRef = ref(database, "courses");
@@ -401,22 +424,18 @@ export const fetchCourseDetails = async (courseId) => {
     if (courseSnapshot.exists()) {
       const courseData = courseSnapshot.val();
       
-      // Se o curso tem PIN habilitado, vamos tentar buscar o PIN original
-      // do armazenamento local (se estiver disponível)
-      if (courseData.pinEnabled) {
-        try {
-          // Aqui poderíamos buscar de algum cache local ou estado da aplicação
-          // Por enquanto, apenas indicamos que o PIN está configurado
-          courseData.pin = "[PIN configurado]";
-        } catch (e) {
-          // Se não conseguirmos recuperar, apenas indicamos que está configurado
-          courseData.pin = "[PIN configurado]";
-        }
-      }
-
+      // PIN para exibição ao professor. Só é recuperável quando existe a versão
+      // criptografada; cursos antigos guardam apenas o hash, que é de mão única.
+      // `pinKnown` diz ao formulário qual é o caso — antes devolvíamos aqui o
+      // texto "[PIN configurado]" no lugar do PIN, e esse texto voltava no
+      // salvamento e virava o PIN real do curso.
+      courseData.pinKnown = false;
       if (courseData.pinEnabled && courseData.encryptedPin) {
-        // Descriptografar o PIN para visualização do admin
-        courseData.pin = decryptPin(courseData.encryptedPin, courseId);
+        const pinDecifrado = decryptPin(courseData.encryptedPin, courseId);
+        if (pinDecifrado && pinDecifrado !== "[PIN inválido]") {
+          courseData.pin = pinDecifrado;
+          courseData.pinKnown = true;
+        }
       }
       
       return courseData;
@@ -457,17 +476,10 @@ export const createCourse = async (courseData, userId, courseAlias = null) => {
     
     // Processar o PIN, mas NUNCA salvar o valor bruto
     if (finalCourseData.pinEnabled) {
-      const rawPin = finalCourseData.pin || Math.floor(1000000 + Math.random() * 9000000).toString();
-      
-      // Armazenar o PIN criptografado (não o hash)
-      finalCourseData.encryptedPin = encryptPin(rawPin, courseKey);
-      
-      // Também mantemos o hash para validação rápida
-      finalCourseData.pinHash = hashPin(rawPin, courseKey);
-      
-      // Remover o PIN bruto
-      delete finalCourseData.pin;
-      
+      const rawPin = finalCourseData.pin || gerarPinAleatorio();
+
+      aplicarPinAoCurso(finalCourseData, courseKey, rawPin);
+
       // Salvar no banco
       await set(newCourseRef, finalCourseData);
       
@@ -524,10 +536,26 @@ export const updateCourse = async (courseId, courseData) => {
       userId: currentCourse.userId // Preservar o userId original (owner) - nunca pode mudar
     };
     
-    // Se o PIN foi atualizado, fazer o hash e remover o PIN bruto
-    if (updatedData.pinEnabled && updatedData.pin) {
-      updatedData.pinHash = hashPin(updatedData.pin, courseId);
-      delete updatedData.pin; // Remover o PIN bruto antes de salvar
+    // PIN. O formulário só manda `pin` quando o professor realmente digitou um
+    // valor novo; campo vazio com PIN ligado significa "mantenha o que já
+    // existe". Gravar aqui só o hash (como era feito) deixava o curso com um
+    // PIN que ninguém mais conseguia consultar, porque a versão criptografada
+    // continuava sendo a antiga.
+    if ("pinEnabled" in courseData) {
+      if (updatedData.pinEnabled) {
+        if (updatedData.pin) {
+          aplicarPinAoCurso(updatedData, courseId, updatedData.pin);
+        } else {
+          delete updatedData.pin;
+        }
+      } else {
+        // Curso reaberto: não deixa a credencial antiga para trás, senão
+        // religar o PIN mais tarde ressuscitaria um valor que o professor já
+        // não conhece.
+        delete updatedData.pin;
+        updatedData.pinHash = null;
+        updatedData.encryptedPin = null;
+      }
     }
     
     await update(courseRef, updatedData);

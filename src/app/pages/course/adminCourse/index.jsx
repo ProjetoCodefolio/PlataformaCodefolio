@@ -127,6 +127,10 @@ const CourseForm = () => {
   const [randomPin, setRandomPin] = useState(
     Math.floor(1000000 + Math.random() * 9000000).toString()
   );
+  // Curso com PIN salvo cujo valor não é recuperável (cursos antigos guardam
+  // só o hash). O campo aparece vazio: em branco mantém o PIN atual, digitar
+  // substitui.
+  const [pinNaoRecuperavel, setPinNaoRecuperavel] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
   const [archived, setArchived] = useState(false);
@@ -144,12 +148,13 @@ const CourseForm = () => {
             setCourseAlias(courseData.alias || "");
             setPinRequired(!!courseData.pinEnabled);
             setArchived(!!courseData.archived);
-            
-            // Se tiver pin habilitado e estiver retornando apenas o hash
+
             if (courseData.pinEnabled) {
-              // Vamos mostrar o PIN original para o admin em vez do hash
-              // Se não existir pin, usaremos o randomPin gerado
-              setCoursePin(courseData.pin || "[PIN configurado]");
+              setCoursePin(courseData.pinKnown ? courseData.pin : "");
+              setPinNaoRecuperavel(!courseData.pinKnown);
+            } else {
+              setCoursePin("");
+              setPinNaoRecuperavel(false);
             }
           }
         } catch (error) {
@@ -232,8 +237,11 @@ const CourseForm = () => {
         archived: archived,
       };
 
-      if (pinRequired) {
-        courseData.pin = coursePin || randomPin;
+      // Campo em branco com PIN ligado = manter o PIN que já existe. Antes o
+      // valor caía para `randomPin`, um PIN que o professor nunca via, e o
+      // curso ficava trancado com ele.
+      if (pinRequired && coursePin.trim()) {
+        courseData.pin = coursePin.trim();
       }
 
       // Salvar curso usando a função da API
@@ -444,8 +452,11 @@ const CourseForm = () => {
                       const isChecked = e.target.checked;
                       setPinRequired(isChecked);
 
-                      if (!isChecked) {
-                        setCoursePin((prevPin) => prevPin || "");
+                      // Ao ligar sem PIN à vista, já preenche o valor que será
+                      // salvo — o professor precisa poder ler o PIN antes de
+                      // salvar, senão o curso tranca com um número invisível.
+                      if (isChecked) {
+                        setCoursePin((prevPin) => prevPin || randomPin);
                       }
                     }}
                     sx={{
@@ -481,7 +492,7 @@ const CourseForm = () => {
                   fullWidth
                   variant="outlined"
                   type={showPin ? "text" : "password"}
-                  value={coursePin === "[PIN configurado]" ? "" : coursePin}
+                  value={coursePin}
                   disabled={!pinRequired}
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
@@ -494,9 +505,7 @@ const CourseForm = () => {
                               onClick={() => setShowPin((prev) => !prev)}
                               edge="end"
                               size="small"
-                              disabled={
-                                !coursePin || coursePin === "[PIN configurado]"
-                              }
+                              disabled={!coursePin}
                             >
                               {showPin ? (
                                 <VisibilityOff fontSize="small" />
@@ -510,11 +519,7 @@ const CourseForm = () => {
                           <span>
                             <IconButton
                               onClick={() => {
-                                if (
-                                  !coursePin ||
-                                  coursePin === "[PIN configurado]"
-                                )
-                                  return;
+                                if (!coursePin) return;
                                 navigator.clipboard
                                   ?.writeText(coursePin)
                                   .then(() =>
@@ -526,9 +531,7 @@ const CourseForm = () => {
                               }}
                               edge="end"
                               size="small"
-                              disabled={
-                                !coursePin || coursePin === "[PIN configurado]"
-                              }
+                              disabled={!coursePin}
                             >
                               <ContentCopyIcon fontSize="small" />
                             </IconButton>
@@ -538,9 +541,9 @@ const CourseForm = () => {
                     ),
                   }}
                   helperText={
-                    coursePin === "[PIN configurado]"
-                      ? "O PIN já foi configurado. Para alterá-lo, desmarque e marque novamente a opção de PIN."
-                      : "Digite um PIN para o curso ou deixe em branco para gerar um automaticamente."
+                    pinNaoRecuperavel && !coursePin
+                      ? "Este curso já tem um PIN salvo que não pode ser exibido. Deixe em branco para mantê-lo ou digite um novo para substituí-lo."
+                      : "Este é o PIN que os alunos vão informar para entrar no curso."
                   }
                   sx={{
                     "& .MuiOutlinedInput-root": {
