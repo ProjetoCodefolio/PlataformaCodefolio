@@ -122,6 +122,16 @@
       }
     },
     
+    "courseQuestions": {
+      "$courseId": {
+        ".read": true,
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        "$questionId": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || (!data.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('userId').val() === auth.uid && data.child('discussed').val() !== true))"
+        }
+      }
+    },
+
     "courseAliases": {
       "$aliasId": {
         ".read": true,
