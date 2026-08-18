@@ -184,7 +184,25 @@ export const unenrollStudentFromCourse = async (userId, courseId) => {
     };
     addUserUnderQuiz(customSnap, "customQuizResults");
     addUserUnderQuiz(liveSnap, "liveQuizResults");
-    addUserUnderQuiz(gigiSnap, "quizGigi");
+
+    // O Quiz Gigi tem dois níveis a mais que os outros resultados:
+    // quizGigi/{courseId}/{quizId}/results/{questionId}/{correct|wrong}Answers/{userId}
+    const gigiData = gigiSnap.val();
+    if (gigiData) {
+      Object.entries(gigiData).forEach(([quizId, quiz]) => {
+        const results = quiz?.results;
+        if (!results) return;
+        Object.entries(results).forEach(([questionId, questao]) => {
+          ["correctAnswers", "wrongAnswers"].forEach((balde) => {
+            if (questao?.[balde] && questao[balde][userId] !== undefined) {
+              updates[
+                `quizGigi/${courseId}/${quizId}/results/${questionId}/${balde}/${userId}`
+              ] = null;
+            }
+          });
+        });
+      });
+    }
 
     // openEndedAnswers tem um nível a mais: courseId/quizId/questionId/userId
     const openEndedData = openEndedSnap.val();

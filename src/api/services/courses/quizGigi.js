@@ -9,6 +9,18 @@ import {
 } from "firebase/database";
 import { database } from "../../config/firebase";
 
+// Formato do nó do Quiz Gigi (quiz ao vivo conduzido pelo professor em aula):
+//
+//   quizGigi/{courseId}/{quizId}/
+//     id, courseId, courseName, totalQuestions, questionsData, createdAt...
+//     results/{questionId}/correctAnswers/{userId} = { studentId, studentName, ... }
+//     results/{questionId}/wrongAnswers/{userId}   = { ... }
+//
+// O nível {courseId}/{quizId} é o que as regras do banco cobrem (só o dono do
+// curso ou um admin escrevem) e é o que as cascatas de exclusão varrem
+// (deleteCourse, removeQuiz, removeStudentFromCourse). Não mudar esse formato
+// sem atualizar database.rules.json e essas três cascatas juntas.
+
 /**
  * Inicializa os metadados do quiz na estrutura quizGigi
  * @param {string} courseId - ID do curso
@@ -41,10 +53,7 @@ export const initializeQuizMetadata = async (
       }
     }
 
-    const quizRef = ref(
-      database,
-      `quizGigi/courses/${courseId}/quizzes/${quizData.id}`
-    );
+    const quizRef = ref(database, `quizGigi/${courseId}/${quizData.id}`);
 
     const quizMetadata = {
       id: quizData.id,
@@ -178,7 +187,7 @@ export const registerStudentAnswer = async (
       );
       await set(customRef, answerData);
     } else {
-      const resultsPath = `quizGigi/courses/${courseId}/quizzes/${quizId}/results/${questionId}/${
+      const resultsPath = `quizGigi/${courseId}/${quizId}/results/${questionId}/${
         isCorrect ? "correctAnswers" : "wrongAnswers"
       }/${student.userId}`;
 
@@ -295,7 +304,7 @@ export const updateStudentDrawCount = async (
  */
 export const fetchQuizResults = async (courseId, quizId) => {
   try {
-    const path = `quizGigi/courses/${courseId}/quizzes/${quizId}/results`;
+    const path = `quizGigi/${courseId}/${quizId}/results`;
     const resultsRef = ref(database, path);
 
     const resultsSnapshot = await get(resultsRef);

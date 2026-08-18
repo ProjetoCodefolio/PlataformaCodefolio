@@ -209,11 +209,7 @@
       "$courseId": {
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
-          "$userId": {
-            ".write": "auth != null && auth.uid === $userId",
-            ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
-          }
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },
