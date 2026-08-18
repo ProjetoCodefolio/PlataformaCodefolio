@@ -13,7 +13,10 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
  *  - o aluno registra a PRÓPRIA dúvida e não consegue assinar em nome de outro;
  *  - ele apaga a própria dúvida enquanto ela não foi discutida, mas não a de
  *    ninguém mais — e nem pode marcar a sua como discutida para se safar disso;
- *  - o professor (dono) faz tudo, inclusive a cascata da exclusão do curso.
+ *  - o professor (dono) faz tudo, inclusive a cascata da exclusão do curso;
+ *  - a notificação de nova dúvida sai do ALUNO para a caixa do professor, algo
+ *    que a regra de `notifications` não permitia antes desta funcionalidade
+ *    (só o dono do curso podia escrever na caixa dos outros).
  *
  * Precisa do emulador de pé (`npm run firebase-emulate`). Sem ele, os testes são
  * reportados como pulados, não aprovados. Porta configurável via RTDB_EMULATOR_PORT.
@@ -99,11 +102,13 @@ describe.runIf(emuladorNoAr)("regras do nó courseQuestions", () => {
 
   beforeEach(async () => {
     await comoAdmin(`courseQuestions/${CURSO}`, { method: "DELETE" });
+    await comoAdmin(`notifications/${PROFESSOR}`, { method: "DELETE" });
   });
 
   afterAll(async () => {
     await comoAdmin(`courses/${CURSO}`, { method: "DELETE" });
     await comoAdmin(`courseQuestions/${CURSO}`, { method: "DELETE" });
+    await comoAdmin(`notifications/${PROFESSOR}`, { method: "DELETE" });
   });
 
   it("o aluno registra a própria dúvida", async () => {
@@ -185,4 +190,42 @@ describe.runIf(emuladorNoAr)("regras do nó courseQuestions", () => {
     expect(sobrou).toBeNull();
   });
 
+  it("o aluno avisa o professor da nova dúvida na caixa dele", async () => {
+    const resposta = await comoUsuario(
+      `notifications/${PROFESSOR}/n1`,
+      ALUNO,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          type: "new_question",
+          courseId: CURSO,
+          title: "Nova dúvida de aluno",
+          message: "Aula 1: Como funciona?",
+          link: `/adm-cursos?courseId=${CURSO}&tab=6`,
+          read: false,
+          createdAt: "2026-08-18T12:00:00.000Z",
+        }),
+      }
+    );
+    expect(resposta.status).toBe(200);
+  });
+
+  it("nega o aluno escrever na caixa de quem não é dono do curso citado", async () => {
+    const resposta = await comoUsuario(
+      `notifications/${OUTRO_ALUNO}/n1`,
+      ALUNO,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          type: "new_question",
+          courseId: CURSO,
+          title: "Notificação indevida",
+          message: "spam",
+          read: false,
+          createdAt: "2026-08-18T12:00:00.000Z",
+        }),
+      }
+    );
+    expect(resposta.status).not.toBe(200);
+  });
 });

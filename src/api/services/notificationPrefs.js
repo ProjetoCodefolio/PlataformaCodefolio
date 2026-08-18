@@ -6,7 +6,7 @@ import { ref, get, set } from "firebase/database";
  *
  * Estrutura:
  *   notificationPrefs/{userId}/{courseId}
- *     { newAssignment, newQuiz, grade, groupChanges, deadline, inAppEnabled }
+ *     { newAssignment, newQuiz, newQuestion, grade, groupChanges, deadline, inAppEnabled }
  *
  * Por padrão tudo é `true` (o usuário recebe tudo) e pode desativar por tipo.
  */
@@ -14,6 +14,8 @@ import { ref, get, set } from "firebase/database";
 export const DEFAULT_PREFS = {
   newAssignment: true,
   newQuiz: true,
+  // Só tem efeito para o dono do curso: avisa quando um aluno registra dúvida.
+  newQuestion: true,
   grade: true,
   groupChanges: true,
   deadline: true,
@@ -56,7 +58,7 @@ export const savePrefs = async (userId, courseId, prefs) => {
 /**
  * Verifica se um usuário aceita receber um tipo de notificação para o curso.
  * @param {Object} prefs - resultado de fetchPrefs
- * @param {string} type - 'newAssignment' | 'newQuiz' | 'grade' | 'groupChanges' | 'deadline'
+ * @param {string} type - 'newAssignment' | 'newQuiz' | 'newQuestion' | 'grade' | 'groupChanges' | 'deadline'
  */
 export const acceptsInApp = (prefs, type) => {
   if (!prefs) return true;

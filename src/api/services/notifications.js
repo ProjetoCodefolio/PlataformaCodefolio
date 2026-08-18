@@ -229,3 +229,45 @@ export const notifyGrade = async (userId, courseId, assignment, grade) => {
     console.error("Erro ao notificar nota:", error);
   }
 };
+
+/**
+ * Avisa o DONO do curso que um aluno registrou uma nova dúvida.
+ *
+ * É a única notificação que sai de um aluno para o professor — as demais vão no
+ * sentido contrário. A regra de `notifications` no banco foi ampliada para
+ * aceitar isso: qualquer autenticado pode CRIAR uma notificação na caixa de
+ * quem é dono do curso citado (e nada além disso).
+ *
+ * A dúvida em si é anônima na apresentação; a notificação segue a mesma linha e
+ * não cita o autor — quem precisa saber quem perguntou vê na aba "Dúvidas".
+ *
+ * @param {string} courseId
+ * @param {Object} question - { contentTitle, text }
+ * @param {string} [courseTitle]
+ */
+export const notifyNewCourseQuestion = async (courseId, question, courseTitle = "") => {
+  if (!courseId || !question) return;
+  try {
+    const ownerSnapshot = await get(ref(database, `courses/${courseId}/userId`));
+    const ownerId = ownerSnapshot.val();
+    if (!ownerId) return;
+
+    const prefs = await fetchPrefs(ownerId, courseId);
+    if (!acceptsInApp(prefs, "newQuestion")) return;
+
+    const trecho = String(question.text || "").trim();
+    const resumo = trecho.length > 120 ? `${trecho.slice(0, 120)}…` : trecho;
+
+    await createNotification(ownerId, {
+      type: "new_question",
+      courseId,
+      title: "Nova dúvida de aluno",
+      message: `${courseTitle ? courseTitle + " — " : ""}${
+        question.contentTitle || "Conteúdo"
+      }: ${resumo}`,
+      link: `/adm-cursos?courseId=${courseId}&tab=6`,
+    });
+  } catch (error) {
+    console.error("Erro ao notificar nova dúvida:", error);
+  }
+};

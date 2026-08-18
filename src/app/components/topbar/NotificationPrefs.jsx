@@ -30,6 +30,7 @@ const TYPES = [
   { key: "inAppEnabled", label: "Receber notificações deste curso" },
   { key: "newAssignment", label: "Novos enunciados/trabalhos" },
   { key: "newQuiz", label: "Novos quizzes" },
+  { key: "newQuestion", label: "Novas dúvidas de alunos (cursos que você criou)" },
   { key: "grade", label: "Notas lançadas" },
   { key: "groupChanges", label: "Mudanças de grupo" },
   { key: "deadline", label: "Lembretes de prazo" },
