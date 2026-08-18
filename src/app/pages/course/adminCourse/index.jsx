@@ -41,65 +41,6 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import { checkUserCourseRole } from "$api/services/courses/students";
 import { ALIAS_PERMITIDO } from "$api/services/courses/alias";
 
-/**
- * Estrutura padrão de configurações avançadas
- */
-const DEFAULT_ADVANCED_SETTINGS = {
-  videos: {
-    requirePreviousCompletion: true,
-  },
-  quiz: {
-    allowRetry: true,
-    showResultAfterCompletion: true,
-  },
-};
-
-/**
- * Busca as configurações avançadas de um curso
- * @param {string} courseId - ID do curso
- * @returns {Promise<Object>} - Configurações avançadas
- */
-export const fetchAdvancedSettings = async (courseId) => {
-  try {
-    if (!courseId) throw new Error("ID do curso é obrigatório");
-
-    const settingsRef = ref(database, `courseAdvancedSettings/${courseId}`);
-    const snapshot = await get(settingsRef);
-
-    if (snapshot.exists()) {
-      return snapshot.val();
-    }
-
-    return DEFAULT_ADVANCED_SETTINGS;
-  } catch (error) {
-    console.error("Erro ao buscar configurações avançadas:", error);
-    return DEFAULT_ADVANCED_SETTINGS;
-  }
-};
-
-/**
- * Salva as configurações avançadas de um curso
- * @param {string} courseId - ID do curso
- * @param {Object} settings - Configurações avançadas
- * @returns {Promise<boolean>} - Verdadeiro se bem-sucedido
- */
-export const saveAdvancedSettings = async (courseId, settings) => {
-  try {
-    if (!courseId) throw new Error("ID do curso é obrigatório");
-
-    const settingsRef = ref(database, `courseAdvancedSettings/${courseId}`);
-    await set(settingsRef, {
-      ...DEFAULT_ADVANCED_SETTINGS,
-      ...settings,
-    });
-
-    return true;
-  } catch (error) {
-    console.error("Erro ao salvar configurações avançadas:", error);
-    throw error;
-  }
-};
-
 const CourseForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
