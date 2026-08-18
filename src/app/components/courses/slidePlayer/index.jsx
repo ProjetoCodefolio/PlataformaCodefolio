@@ -26,25 +26,6 @@ const SlidePlayer = ({
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [hasQuiz, setHasQuiz] = useState(Boolean(slideData?.quizId));
 
-  if (!slideData) {
-    return (
-      <Box
-        sx={{
-          p: { xs: 2, sm: 4 },
-          textAlign: "center",
-          backgroundColor: "#F5F5FA",
-        }}
-      >
-        <Typography variant="h6" color="error">
-          Erro: Slide não encontrado
-        </Typography>
-      </Box>
-    );
-  }
-
-  // Assegure-se de que a URL está no formato correto
-  const slideUrl = prepareSlideUrl(slideData);
-
   useEffect(() => {
     let isMounted = true;
 
@@ -96,6 +77,29 @@ const SlidePlayer = ({
     if (!courseId) return;
     navigate(`/adm-cursos?courseId=${courseId}`);
   };
+
+  // A saída antecipada precisa vir DEPOIS de todos os hooks: com ela antes, um
+  // render sem slide chamava menos hooks que o anterior e o React derrubava a
+  // árvore com "Rendered fewer hooks than expected". Os hooks acima já lidam
+  // com slideData ausente (`slideData?.`).
+  if (!slideData) {
+    return (
+      <Box
+        sx={{
+          p: { xs: 2, sm: 4 },
+          textAlign: "center",
+          backgroundColor: "#F5F5FA",
+        }}
+      >
+        <Typography variant="h6" color="error">
+          Erro: Slide não encontrado
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Assegure-se de que a URL está no formato correto
+  const slideUrl = prepareSlideUrl(slideData);
 
   return (
     <Box
