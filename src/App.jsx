@@ -310,24 +310,31 @@ function CourseAliasRoute() {
   return <Classes alias={alias} />;
 }
 
-// Protege rotas de professor, exigindo autenticação e permissão de teacher
+// Protege rotas de professor, exigindo autenticação e permissão de teacher.
+//
+// A decisão de permissão ficava em funções soltas (teacherPermissions /
+// adminPermissions) que chamavam useLocation e useAuth. Como eram invocadas
+// DEPOIS do `return` de usuário não autenticado, a quantidade de hooks mudava
+// de um render para o outro: ao sair da conta dentro de uma rota protegida, o
+// React derrubava a árvore com "Rendered fewer hooks than expected".
 function TeacherRoute({ children }) {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();
-
-  console.log("UserDetails:", userDetails)
-
-  // Verifica se o usuário é admin ou teacher, ou se possui cursos no objeto coursesTeacher
-  const isAdmin = userDetails?.role === "admin";
-  const isTeacher =
-    userDetails?.role === "teacher" || Object.keys(userDetails?.coursesTeacher || {}).length > 0;
 
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
   // Permite acesso se o usuário for admin, teacher ou tiver cursos em coursesTeacher
-  return teacherPermissions(children, isAdmin, isTeacher);
+  const isAdmin = userDetails?.role === "admin";
+  const isTeacher =
+    userDetails?.role === "teacher" || Object.keys(userDetails?.coursesTeacher || {}).length > 0;
+
+  if (!isTeacher && !isAdmin) {
+    return <Navigate to="/dashboard" state={{ from: location }} />;
+  }
+
+  return children;
 }
 
 // Protege rotas de administrador, exigindo autenticação e permissão de admin
@@ -335,34 +342,15 @@ function AdminRoute({ children }) {
   const { currentUser, userDetails } = useAuth();
   const location = useLocation();
 
-  const isAdmin = userDetails?.role === "admin";
-
   if (!currentUser) {
     return <Navigate to="/login" state={{ from: location }} />;
   }
 
-  return adminPermissions(children, isAdmin);
+  if (userDetails?.role !== "admin") {
+    return <Navigate to="/dashboard" state={{ from: location }} />;
+  }
+
+  return children;
 }
-
-const teacherPermissions = (children, isAdmin, isTeacher) => {
-  const location = useLocation();
-
-  if (!isTeacher && !isAdmin) {
-    return <Navigate to="/dashboard" state={{ from: location }} />;
-  }
-
-  return children;
-};
-
-const adminPermissions = (children, isAdmin) => {
-  const { currentUser, userDetails } = useAuth();
-  const location = useLocation();
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" state={{ from: location }} />;
-  }
-
-  return children;
-};
 
 export default App;
