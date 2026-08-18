@@ -20,6 +20,7 @@ import GradeAssignmentPage from "./app/pages/course/adminCourse/GradeAssignment"
 import CourseGrades from "./app/pages/course/adminCourse/CourseGrades";
 import ListCursos from "./app/pages/course/list";
 import Classes from "./app/pages/course/classes";
+import QuestionsPresentation from "./app/pages/course/QuestionsPresentation";
 import StudentDashboard from "./app/pages/course/studentDashboard";
 import ManageMyCourses from "./app/pages/course/ManageMyCourses";
 import AdminPanel from "$pages/adminPowers/adminPanel";
@@ -155,10 +156,48 @@ function App() {
               }
             />
 
+            {/* Link para registrar dúvida: abre a sala com o modal já aberto.
+                Serve para o professor divulgar um endereço curto (e o `?videoId=`
+                opcional já deixa o conteúdo certo selecionado). */}
+            <Route
+              path="/cursos/:alias/questions"
+              element={
+                <CourseAliasRoute openQuestions />
+              }
+            />
+
             <Route
               path="/classes"
               element={
                 <Classes />
+              }
+            />
+
+            <Route
+              path="/classes/questions"
+              element={
+                <Classes openQuestions />
+              }
+            />
+
+            {/* Tela única de apresentação das dúvidas em aula. O ícone "?" do
+                player e o botão "Apresentar" da aba Dúvidas apontam para cá — o
+                professor também pode projetar o endereço direto. */}
+            <Route
+              path="/cursos/:alias/questions/apresentar"
+              element={
+                <PrivateRoute>
+                  <QuestionsPresentationAliasRoute />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/classes/questions/apresentar"
+              element={
+                <PrivateRoute>
+                  <QuestionsPresentation />
+                </PrivateRoute>
               }
             />
 
@@ -304,10 +343,16 @@ function PrivateRoute({ children }) {
   return children;
 }
 
-function CourseAliasRoute() {
+function CourseAliasRoute({ openQuestions = false }) {
   const { alias } = useParams();
 
-  return <Classes alias={alias} />;
+  return <Classes alias={alias} openQuestions={openQuestions} />;
+}
+
+function QuestionsPresentationAliasRoute() {
+  const { alias } = useParams();
+
+  return <QuestionsPresentation alias={alias} />;
 }
 
 // Protege rotas de professor, exigindo autenticação e permissão de teacher.

@@ -67,18 +67,22 @@ import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
 import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 import { loadFlippedClassroomForStudent } from "$api/services/courses/submissions";
 import AssignmentList from "$components/courses/assignments/AssignmentList";
+import QuestionFormModal from "$components/courses/questions/QuestionFormModal";
 
-const Classes = ({ alias = null }) => {
+const Classes = ({ alias = null, openQuestions = false }) => {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
   const [videos, setVideos] = useState([]);
-  const [currentVideoId, setCurrentVideoId] = useState(null);
+  // `?videoId=` permite que um link externo (ex.: /cursos/{apelido}/questions)
+  // abra a sala já no conteúdo certo. Se o id não existir no curso, o
+  // carregamento reverte para a escolha padrão.
+  const [currentVideoId, setCurrentVideoId] = useState(params.get("videoId"));
   const [selectedTab, setSelectedTab] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [showLogInModal, setShowLogInModal] = useState(false);
   const { userDetails } = useAuth();
-  const location = useLocation();
-  const params = new URLSearchParams(location.search);
   const [courseId, setCourseId] = useState(params.get("courseId"));
   const videoPlayerRef = useRef({
     pause: () => { },
@@ -112,6 +116,13 @@ const Classes = ({ alias = null }) => {
   });
   const [showQuizGigi, setShowQuizGigi] = useState(false);
   const [quizData, setQuizData] = useState(null);
+  // Dúvidas dos alunos: aqui fica só o modal de registro. A apresentação em
+  // aula é uma rota própria (/questions/apresentar), para existir uma única
+  // tela de apresentação no sistema.
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  // O link externo (/questions) abre o modal uma única vez: sem isto, fechá-lo
+  // sem sair da rota faria a tela reabrir sozinha a cada render.
+  const questionsLinkHandledRef = useRef(false);
   const [courseOwnerUid, setCourseOwnerUid] = useState("");
   const [showSlidePlayer, setShowSlidePlayer] = useState(false);
   const [slideData, setSlideData] = useState(null);
@@ -442,7 +453,13 @@ const Classes = ({ alias = null }) => {
           );
         }
 
-        if (!currentVideoId) {
+        // Um `?videoId=` inexistente (link antigo, conteúdo excluído) não pode
+        // deixar a sala presa numa tela vazia: nesse caso vale a escolha padrão.
+        const idAtualValido =
+          currentVideoId &&
+          combinedContent.some((item) => item?.id === currentVideoId);
+
+        if (!idAtualValido) {
           // O item inicial deve respeitar a ORDEM GLOBAL da lista combinada
           // (conteúdo novo + legado), e não o `nextVideoId` calculado só com os
           // vídeos legados — senão o aluno abre no vídeo que "antigamente" era o
@@ -957,6 +974,53 @@ const Classes = ({ alias = null }) => {
     }
   };
 
+  // Opções do seletor do modal de dúvidas: todo o conteúdo do curso, na ordem
+  // em que o aluno o vê. O padrão é o item que ele está assistindo.
+  const questionContentOptions = React.useMemo(
+    () =>
+      contentItems
+        .filter((item) => item && item.id)
+        .map((item) => ({ id: item.id, title: item.title })),
+    [contentItems]
+  );
+
+  const handleAskQuestion = () => {
+    if (videoPlayerRef.current && typeof videoPlayerRef.current.pause === "function") {
+      videoPlayerRef.current.pause();
+    }
+    setShowQuestionModal(true);
+  };
+
+  // Link externo (/cursos/{apelido}/questions ou /classes/questions): abre o
+  // modal assim que a sala estiver liberada e com o conteúdo carregado, para
+  // que o seletor já venha preenchido.
+  useEffect(() => {
+    if (!openQuestions || questionsLinkHandledRef.current) return;
+    if (!accessGranted || loadingVideos || videos.length === 0) return;
+
+    questionsLinkHandledRef.current = true;
+    setShowQuestionModal(true);
+  }, [openQuestions, accessGranted, loadingVideos, videos.length]);
+
+  // Apresentação das dúvidas (professor/admin): leva para a tela única de
+  // apresentação, a mesma que o botão "Apresentar" da aba Dúvidas abre. O
+  // conteúdo atual vai só como recorte inicial — lá dentro há o seletor.
+  const handleOpenQuestions = () => {
+    const conteudoAtual = currentVideo?.id || slideData?.id;
+    if (!courseId) return;
+
+    if (videoPlayerRef.current && typeof videoPlayerRef.current.pause === "function") {
+      videoPlayerRef.current.pause();
+    }
+
+    const recorte = conteudoAtual ? `videoId=${conteudoAtual}` : "";
+    navigate(
+      alias
+        ? `/cursos/${alias}/questions/apresentar${recorte ? `?${recorte}` : ""}`
+        : `/classes/questions/apresentar?courseId=${courseId}${recorte ? `&${recorte}` : ""}`
+    );
+  };
+
   const handleOpenQuizGigi = async () => {
     const quizId =
       currentVideo?.quizId ||
@@ -1358,6 +1422,8 @@ const Classes = ({ alias = null }) => {
                     courseId={courseId}
                     courseOwnerUid={courseOwnerUid}
                     onOpenQuizGigi={handleOpenQuizGigi}
+                    onAskQuestion={handleAskQuestion}
+                    onOpenQuestions={handleOpenQuestions}
                   />
                 ) : (
                   <VideoPlayer
@@ -1378,6 +1444,8 @@ const Classes = ({ alias = null }) => {
                     onOpenQuizGigi={
                       currentVideo?.quizId ? handleOpenQuizGigi : undefined
                     }
+                    onAskQuestion={handleAskQuestion}
+                    onOpenQuestions={handleOpenQuestions}
                     onShowSlideQuiz={(slideId) =>
                       handleShowQuiz(slideId, "slide")
                     }
@@ -1535,6 +1603,16 @@ const Classes = ({ alias = null }) => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <QuestionFormModal
+          open={showQuestionModal}
+          onClose={() => setShowQuestionModal(false)}
+          courseId={courseId}
+          courseTitle={courseTitle}
+          contentItems={questionContentOptions}
+          defaultContentId={currentVideo?.id || slideData?.id || ""}
+          userDetails={userDetails}
+        />
 
         {showQuizGigi && (
           <QuizGigi

@@ -21,6 +21,8 @@ import PersonIcon from "@mui/icons-material/Person";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import ReportIcon from "@mui/icons-material/Report";
 import EditIcon from "@mui/icons-material/Edit";
+import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { handleGoogleSignIn } from "$api/services/auth";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
@@ -64,6 +66,8 @@ export const VideoPlayer = forwardRef(
       onOpenSlide,
       hasSlide,
       onShowSlideQuiz,
+      onAskQuestion,
+      onOpenQuestions,
     },
     ref
   ) => {
@@ -563,6 +567,42 @@ export const VideoPlayer = forwardRef(
               </IconButton>
             )}
 
+            {onAskQuestion && (
+              <IconButton
+                onClick={onAskQuestion}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "#9041c1",
+                  mr: 1,
+                  p: 0.8,
+                  "&:hover": {
+                    bgcolor: "#7a35a3",
+                  },
+                }}
+                title="Registrar dúvida sobre este vídeo"
+              >
+                <QuestionAnswerIcon sx={{ fontSize: "18px" }} />
+              </IconButton>
+            )}
+
+            {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid) && (
+              <IconButton
+                onClick={onOpenQuestions}
+                sx={{
+                  color: "#fff",
+                  bgcolor: "#9041c1",
+                  mr: 1,
+                  p: 0.8,
+                  "&:hover": {
+                    bgcolor: "#7a35a3",
+                  },
+                }}
+                title="Ver dúvidas da turma sobre este vídeo"
+              >
+                <HelpOutlineIcon sx={{ fontSize: "18px" }} />
+              </IconButton>
+            )}
+
             {canViewQuizResults(userDetails, courseOwnerUid) && video.quizId && (
               <>
                 <IconButton
@@ -846,6 +886,8 @@ VideoPlayer.propTypes = {
   onOpenQuizGigi: PropTypes.func,
   onOpenSlide: PropTypes.func,
   onShowSlideQuiz: PropTypes.func,
+  onAskQuestion: PropTypes.func,
+  onOpenQuestions: PropTypes.func,
   hasSlide: PropTypes.bool,
   courseOwnerUid: PropTypes.string,
 };

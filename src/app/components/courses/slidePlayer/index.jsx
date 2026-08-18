@@ -6,6 +6,8 @@ import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
 import ReportIcon from "@mui/icons-material/Report";
 import EditIcon from "@mui/icons-material/Edit";
+import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { useNavigate } from "react-router-dom";
 import { prepareSlideUrl } from "$api/services/courses/slides";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
@@ -20,6 +22,8 @@ const SlidePlayer = ({
   courseId,
   courseOwnerUid,
   onOpenQuizGigi,
+  onAskQuestion,
+  onOpenQuestions,
 }) => {
   const navigate = useNavigate();
   const { userDetails } = useAuth();
@@ -144,6 +148,42 @@ const SlidePlayer = ({
         </Typography>
 
         <Box sx={{ display: "flex", ml: "auto" }}>
+          {onAskQuestion && (
+            <IconButton
+              onClick={onAskQuestion}
+              sx={{
+                color: "#fff",
+                bgcolor: "#9041c1",
+                mr: 1,
+                p: 0.8,
+                "&:hover": {
+                  bgcolor: "#7a35a3",
+                },
+              }}
+              title="Registrar dúvida sobre este conteúdo"
+            >
+              <QuestionAnswerIcon sx={{ fontSize: "18px" }} />
+            </IconButton>
+          )}
+
+          {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid) && (
+            <IconButton
+              onClick={onOpenQuestions}
+              sx={{
+                color: "#fff",
+                bgcolor: "#9041c1",
+                mr: 1,
+                p: 0.8,
+                "&:hover": {
+                  bgcolor: "#7a35a3",
+                },
+              }}
+              title="Ver dúvidas da turma sobre este conteúdo"
+            >
+              <HelpOutlineIcon sx={{ fontSize: "18px" }} />
+            </IconButton>
+          )}
+
           {canViewQuizResults(userDetails, courseOwnerUid) && hasQuiz && (
             <>
               <IconButton
@@ -305,6 +345,8 @@ SlidePlayer.propTypes = {
   courseId: PropTypes.string,
   courseOwnerUid: PropTypes.string,
   onOpenQuizGigi: PropTypes.func,
+  onAskQuestion: PropTypes.func,
+  onOpenQuestions: PropTypes.func,
 };
 
 export default SlidePlayer;
