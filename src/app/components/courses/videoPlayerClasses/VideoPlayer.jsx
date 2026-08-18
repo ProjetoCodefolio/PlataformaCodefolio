@@ -30,7 +30,7 @@ import { fetchVideoProgress } from "$api/services/courses/videoProgress";
 import { isVideoLocked } from "$api/utils/videoUtils";
 import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
-import { prepareSlideUrl } from "$api/services/courses/slides";
+import { prepareSlideUrl, checkSlideHasQuiz } from "$api/services/courses/slides";
 import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
 
 export const styles = `
@@ -63,6 +63,7 @@ export const VideoPlayer = forwardRef(
       courseOwnerUid,
       onOpenSlide,
       hasSlide,
+      onShowSlideQuiz,
     },
     ref
   ) => {
@@ -789,7 +790,7 @@ export const VideoPlayer = forwardRef(
         {isSlide && hasSlideQuiz && (
           <Button
             variant="contained"
-            onClick={() => onShowQuiz && onShowQuiz(video.id)}
+            onClick={() => onShowSlideQuiz && onShowSlideQuiz(video.id)}
             sx={{
               backgroundColor: "#9041c1",
               color: "#fff",
@@ -844,6 +845,7 @@ VideoPlayer.propTypes = {
   onVideoProgressUpdate: PropTypes.func,
   onOpenQuizGigi: PropTypes.func,
   onOpenSlide: PropTypes.func,
+  onShowSlideQuiz: PropTypes.func,
   hasSlide: PropTypes.bool,
   courseOwnerUid: PropTypes.string,
 };
