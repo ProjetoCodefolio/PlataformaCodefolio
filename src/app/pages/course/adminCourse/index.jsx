@@ -39,6 +39,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { checkUserCourseRole } from "$api/services/courses/students";
+import { ALIAS_PERMITIDO } from "$api/services/courses/alias";
 
 /**
  * Estrutura padrão de configurações avançadas
@@ -285,14 +286,19 @@ const CourseForm = () => {
     archived,
   ]);
 
+  // Mesmo formato exigido por validateCourseData no salvamento — aqui só para
+  // o professor ver o erro enquanto digita, em vez de descobrir ao salvar.
+  const aliasInvalido = courseAlias !== "" && !ALIAS_PERMITIDO.test(courseAlias);
+
   const isFormValid = useCallback(() => {
     const quizzes = courseQuizzesRef.current?.getQuizzes?.() || [];
     return (
       courseTitle.trim() !== "" &&
       courseDescription.trim() !== "" &&
+      !aliasInvalido &&
       !quizzes.some((quiz) => quiz.questions.length === 0)
     );
-  }, [courseTitle, courseDescription, courseAlias]);
+  }, [courseTitle, courseDescription, aliasInvalido]);
 
   // Funções de manipulação de menu
   const handleAdvancedSettingsClick = () => {
@@ -425,6 +431,14 @@ const CourseForm = () => {
                 value={courseAlias}
                 onChange={(e) => setCourseAlias(e.target.value.replace(/\s/g, ''))}
                 variant="outlined"
+                error={!!aliasInvalido}
+                helperText={
+                  aliasInvalido
+                    ? "O apelido só pode conter letras, números, hífens e underscores."
+                    : courseAlias
+                    ? `Link direto do curso: ${window.location.origin}/cursos/${courseAlias}`
+                    : "Opcional. Cria um link curto para o curso, no lugar do endereço com o id."
+                }
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     "& fieldset": { borderColor: "#666" },

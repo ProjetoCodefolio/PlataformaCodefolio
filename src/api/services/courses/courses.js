@@ -1,8 +1,8 @@
-import { ref, get, set, push, update, remove } from "firebase/database";
+import { ref, get, set, push, update } from "firebase/database";
 import { database } from "../../config/firebase";
 import { recalcCourseProgressFromWatched } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
-import { isAliasAvailable } from "./alias";
+import { isAliasAvailable, isAliasFormatValid } from "./alias";
 
 /** PIN de 7 dígitos, o mesmo formato aceito pelo campo do formulário. */
 const gerarPinAleatorio = () =>
@@ -296,13 +296,20 @@ export const deleteCourse = async (courseId) => {
     updates[`openEndedAnswers/${courseId}`] = null;
     updates[`quizGigi/${courseId}`] = null;
 
-    // Alias reverso (courseAliases é chaveado pelo alias, não pelo courseId)
-    const courseSnapshot = await get(ref(database, `courses/${courseId}`));
-    if (courseSnapshot.exists()) {
-      const course = courseSnapshot.val();
-      if (course.alias) {
-        updates[`courseAliases/${course.alias}`] = null;
-      }
+    // Alias reverso (courseAliases é chaveado pelo alias, não pelo courseId).
+    // Varremos o nó procurando QUALQUER chave que aponte para este curso, em
+    // vez de confiar só no campo `alias` do curso: mapeamentos órfãos deixados
+    // por versões anteriores não têm correspondência no campo e sobreviveriam
+    // à exclusão, mantendo /cursos/{apelido} apontando para um curso que não
+    // existe mais.
+    const aliasesSnapshot = await get(ref(database, "courseAliases"));
+    const aliasesData = aliasesSnapshot.val();
+    if (aliasesData) {
+      Object.entries(aliasesData).forEach(([aliasKey, aliasData]) => {
+        if (aliasData && aliasData.courseId === courseId) {
+          updates[`courseAliases/${aliasKey}`] = null;
+        }
+      });
     }
 
     // Dados por usuário: matrículas, progresso, resultados e flag de professor.
@@ -490,9 +497,12 @@ export const createCourse = async (courseData, userId, courseAlias = null) => {
       await set(newCourseRef, finalCourseData);
     }
 
-    if(courseAlias) {
-      const courseAliasRef = ref(database, `courseAliases/${courseAlias}`);
-      await set(courseAliasRef, {
+    // O apelido pode chegar pelo parâmetro ou dentro dos dados do curso — o
+    // formulário manda nos dois lugares. Aceitar os dois evita um curso salvo
+    // com `alias` no registro e sem o mapeamento correspondente.
+    const aliasFinal = String(courseAlias || finalCourseData.alias || "").trim();
+    if (aliasFinal && isAliasFormatValid(aliasFinal)) {
+      await set(ref(database, `courseAliases/${aliasFinal}`), {
         courseId: courseKey,
       });
     }
@@ -558,30 +568,39 @@ export const updateCourse = async (courseId, courseData) => {
       }
     }
     
-    await update(courseRef, updatedData);
-    
-    // Atualizar alias se fornecido
-    if (courseData.alias) {
-      // Procurar e remover alias antigo do mesmo courseId
-      const courseAliasesRef = ref(database, `courseAliases`);
-      const aliasesSnapshot = await get(courseAliasesRef);
-      
-      if (aliasesSnapshot.exists()) {
-        const aliases = aliasesSnapshot.val();
-        for (const [aliasKey, aliasData] of Object.entries(aliases)) {
-          if (aliasData.courseId === courseId && aliasKey !== courseData.alias) {
-            await remove(ref(database, `courseAliases/${aliasKey}`));
-          }
-        }
-      }
+    // Apelido. `courseAliases` é um índice reverso chaveado PELO apelido, então
+    // trocá-lo é apagar uma chave e criar outra. Duas coisas mudaram aqui:
+    //
+    //  - limpar o campo agora REMOVE o mapeamento. Antes o bloco todo estava
+    //    sob `if (courseData.alias)`: apagar o apelido deixava o curso com
+    //    alias vazio mas /cursos/{antigo} continuava resolvendo, e como a
+    //    exclusão do curso se guia pelo campo (vazio), o mapeamento ficava no
+    //    banco para sempre, apontando para um curso que não existe mais;
+    //  - a troca vai junto com o curso num único update de múltiplos caminhos,
+    //    em vez de remove() e set() soltos, que podiam falhar no meio e deixar
+    //    o curso sem apelido nenhum.
+    const updates = {};
+    Object.entries(updatedData).forEach(([campo, valor]) => {
+      updates[`courses/${courseId}/${campo}`] = valor === undefined ? null : valor;
+    });
 
-      // Criar o novo alias com o novo nome
-      const newCourseAliasRef = ref(database, `courseAliases/${courseData.alias}`);
-      await set(newCourseAliasRef, {
-        courseId: courseId,
-        alias: courseData.alias
-      });
+    if ("alias" in courseData) {
+      const aliasAtual = currentCourse.alias;
+      const novoAlias = String(courseData.alias || "").trim();
+
+      updates[`courses/${courseId}/alias`] = novoAlias || null;
+
+      if (aliasAtual && aliasAtual !== novoAlias && isAliasFormatValid(aliasAtual)) {
+        updates[`courseAliases/${aliasAtual}`] = null;
+      }
+      if (novoAlias && isAliasFormatValid(novoAlias)) {
+        // A chave já é o apelido; guardar só o courseId evita que os dois
+        // campos divirjam (a criação gravava um formato, a atualização outro).
+        updates[`courseAliases/${novoAlias}`] = { courseId };
+      }
     }
+
+    await update(ref(database), updates);
     
     return { 
       success: true,

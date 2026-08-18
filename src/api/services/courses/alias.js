@@ -1,6 +1,20 @@
 import { ref, get } from "firebase/database";
 import { database } from "../../config/firebase";
 
+// Caracteres aceitos num apelido de curso. Vale como validação de entrada do
+// professor E como guarda antes de montar o caminho no banco: o alias vem da
+// URL (/cursos/:alias) e chaves do Realtime Database não podem conter
+// . # $ [ ] / — montar um ref com isso lança exceção.
+export const ALIAS_PERMITIDO = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Verifica se o alias tem um formato utilizável como chave no banco.
+ * @param {string} alias
+ * @returns {boolean}
+ */
+export const isAliasFormatValid = (alias) =>
+    typeof alias === "string" && ALIAS_PERMITIDO.test(alias);
+
 /**
  * Verifica se um alias existe para um curso
  * @param {string} alias - Alias a ser verificado
@@ -8,17 +22,21 @@ import { database } from "../../config/firebase";
  */
 export const checkCourseAliasExists = async (alias) => {
     try {
-        const courseAliasesRef = ref(database, "courseAliases");
-        const snapshot = await get(courseAliasesRef);
-        if (snapshot.exists()) {
-            const aliases = snapshot.val();
-            for (const [aliasKey, aliasData] of Object.entries(aliases)) {
-                if (aliasKey === alias) {
-                    return { exists: true, courseId: aliasData.courseId };
-                }
-            } 
+        // Alias fora do formato nunca foi gravado — e viraria um caminho
+        // inválido. Responde "não existe" sem tocar no banco.
+        if (!isAliasFormatValid(alias)) {
+            return { exists: false, courseId: null };
         }
-        return { exists: false, courseId: null };
+
+        // Leitura direta da chave. Varrer o nó `courseAliases` inteiro só para
+        // achar uma chave fazia o custo de abrir um link amigável crescer com o
+        // número de cursos da plataforma.
+        const snapshot = await get(ref(database, `courseAliases/${alias}`));
+        if (!snapshot.exists()) {
+            return { exists: false, courseId: null };
+        }
+
+        return { exists: true, courseId: snapshot.val()?.courseId ?? null };
     } catch (error) {
         console.error("Erro ao verificar alias do curso:", error);
         throw error;
@@ -59,16 +77,15 @@ export const getCourseIdByAlias = async (alias) => {
 export const isAliasAvailable = async (alias, currentCourseId = null) => {
   try {
     if (!alias?.trim()) return true;
-    
-    const aliasRef = ref(database, `courseAliases/${alias}`);
-    const snapshot = await get(aliasRef);
-    
+    if (!isAliasFormatValid(alias)) return false;
+
+    const { exists, courseId } = await checkCourseAliasExists(alias);
+
     // Se não existe, o alias está disponível
-    if (!snapshot.exists()) return true;
-    
+    if (!exists) return true;
+
     // Se o alias existe e não é do curso atual, não está disponível
-    const aliasData = snapshot.val();
-        return Boolean(currentCourseId && aliasData.courseId === currentCourseId);
+    return Boolean(currentCourseId && courseId === currentCourseId);
   } catch (error) {
     console.error("Erro ao verificar disponibilidade do alias:", error);
     return false;
