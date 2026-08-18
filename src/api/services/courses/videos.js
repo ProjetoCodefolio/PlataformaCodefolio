@@ -284,34 +284,29 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
       throw new Error("Dados do vídeo inválidos");
     }
 
-    const videoOrder = video.order ?? 0;
     await remove(videoRef);
 
-    // Buscar vídeos atualizados após a remoção
-    const allVideos = await fetchCourseVideos(courseId);
-
-    // Reordenar os vídeos remanescentes (fechar o "buraco" na ordem global).
+    // NÃO reindexamos a ordem dos vídeos remanescentes. O `order` é uma
+    // sequência GLOBAL, compartilhada com courseContent, courseSlides e os
+    // vídeos de entrega (ver contentOrder.js) — decrementar só os vídeos
+    // legados fazia com que eles colidissem com slides/conteúdo na mesma
+    // posição e o desempate ("vídeo antes de slide") reordenava a lista sozinho:
     //
-    // IMPORTANTE: NÃO apagamos o progresso (videoProgress) deste vídeo dos
-    // alunos. O progresso do curso é recalculado a partir da lista de conteúdo
-    // carregada (updateCourseProgress em classes.jsx), que já não inclui itens
-    // deletados — então nós de progresso "órfãos" não inflam o progresso. Apagá-
-    // los era destrutivo: um professor que deletava um vídeo para recadastrar
-    // uma versão corrigida eliminava silenciosamente o progresso de TODOS os
-    // alunos naquele vídeo, sem chance de recuperação.
-    const updates = {};
-
-    // Atualizar a ordem de cada vídeo remanescente
-    allVideos.forEach(v => {
-      if (v && v.order !== undefined && v.order > videoOrder) {
-        updates[`courseVideos/${courseId}/${v.id}/order`] = v.order - 1;
-      }
-    });
-
-    // Aplicar as atualizações se houver alguma
-    if (Object.keys(updates).length > 0) {
-      await update(ref(database), updates);
-    }
+    //   0=vídeo A, 1=slide S, 2=vídeo B  →  apaga A  →  B vira 1, empata com S
+    //   e passa na frente dele, sem o professor ter tocado no arrastar.
+    //
+    // Só o valor RELATIVO de `order` importa, então o "buraco" deixado pela
+    // exclusão é inofensivo e preserva exatamente a ordem montada pelo
+    // professor. É também o que courseContent e courseSlides já fazem ao
+    // excluir (content.js/slides.js).
+    //
+    // IMPORTANTE: também NÃO apagamos o progresso (videoProgress) deste vídeo
+    // dos alunos. O progresso do curso é recalculado a partir da lista de
+    // conteúdo carregada (updateCourseProgress em classes.jsx), que já não
+    // inclui itens deletados — então nós de progresso "órfãos" não inflam o
+    // progresso. Apagá-los era destrutivo: um professor que deletava um vídeo
+    // para recadastrar uma versão corrigida eliminava silenciosamente o
+    // progresso de TODOS os alunos naquele vídeo, sem chance de recuperação.
 
     // O progresso agregado de cada aluno é reconciliado no próximo carregamento
     // do curso (updateCourseProgress, com a lista completa e a definição única).
