@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "firebase-emulate": "firebase emulators:start",
-    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint . --ext js,jsx,mjs,cjs --report-unused-disable-directives",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest"
