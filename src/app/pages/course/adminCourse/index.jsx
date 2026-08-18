@@ -32,6 +32,7 @@ import CourseQuizzesTab from "./courseQuizzesTab/";
 import CourseStudentsTab from "./CourseStudentsTab";
 import CourseAssessmentsTab from "./CourseAssessmentsTab";
 import CourseAssignmentsTab from "./CourseAssignmentsTab";
+import CourseQuestionsTab from "./CourseQuestionsTab";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdvancedSettingsModal from "../../../components/courses/AdvancedSettingsModal";
@@ -55,11 +56,12 @@ const CourseForm = () => {
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
   const [courseAlias, setCourseAlias] = useState("");
-  // Abas: 0 Conteúdo, 1 Materiais Extras, 2 Quiz, 3 Alunos, 4 Avaliações, 5 Trabalhos.
+  // Abas: 0 Conteúdo, 1 Materiais Extras, 2 Quiz, 3 Alunos, 4 Avaliações,
+  // 5 Trabalhos, 6 Dúvidas (esta só para o dono do curso e admins).
   // Clamp para links antigos que apontavam para índices que não existem mais.
   const [selectedTab, setSelectedTab] = useState(() => {
     const tab = parseInt(params.get("tab")) || 0;
-    return tab >= 0 && tab <= 5 ? tab : 0;
+    return tab >= 0 && tab <= 6 ? tab : 0;
   });
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
@@ -140,6 +142,14 @@ const CourseForm = () => {
       setIsCurrentUserTeacher(false);
     }
   };
+
+  // A aba "Dúvidas" não existe para o co-professor. Um link direto para ela
+  // (…&tab=6) deixaria a barra sem nenhuma aba selecionada, então volta ao começo.
+  useEffect(() => {
+    if (isCurrentUserTeacher && selectedTab === 6) {
+      setSelectedTab(0);
+    }
+  }, [isCurrentUserTeacher, selectedTab]);
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -578,6 +588,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
+                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
                 </Tabs>
               </Box>
 
@@ -607,6 +618,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
+                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
                 </Tabs>
               </Box>
 
@@ -638,6 +650,9 @@ const CourseForm = () => {
                 </Typography>
               )}
               {selectedTab === 5 && <CourseAssignmentsTab />}
+              {selectedTab === 6 && !isCurrentUserTeacher && (
+                <CourseQuestionsTab courseId={courseId} />
+              )}
             </>
           )}
         </Paper>
