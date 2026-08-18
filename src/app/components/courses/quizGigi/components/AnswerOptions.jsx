@@ -132,15 +132,20 @@ const AnswerOptions = ({
               justifyContent: "flex-start",
               alignItems: "center",
               position: "relative",
-              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.15)",
               transition: "all 0.2s ease-in-out",
               overflow: "hidden",
               mx: "auto",
               backgroundColor,
 
-              // Aplicar efeito de hover para opção pré-selecionada (via teclado)
+              // Aplicar efeito de hover para opção pré-selecionada (via teclado).
+              // A sombra tem que ser UMA chave só: declarada duas vezes, a
+              // segunda (undefined fora do destaque) sobrescrevia a sombra base
+              // e o botão ficava chapado no estado normal.
               transform: isHighlighted && !showFeedback ? "translateY(-2px)" : "none",
-              boxShadow: isHighlighted && !showFeedback ? "0 6px 12px rgba(0, 0, 0, 0.2)" : undefined,
+              boxShadow:
+                isHighlighted && !showFeedback
+                  ? "0 6px 12px rgba(0, 0, 0, 0.2)"
+                  : "0 4px 10px rgba(0, 0, 0, 0.15)",
 
               // Mostrar outline apenas para seleção real, não para pré-seleção
               outline: isSelected && !showFeedback ? "2px solid white" : "none",

@@ -132,7 +132,6 @@ const CustomQuizRanking = ({ onBack, customResults, liveQuizResults = {} }) => {
           <Typography
             variant="h4"
             sx={{
-              color: "#fff",
               fontWeight: 600,
               fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
               backgroundImage:
