@@ -84,10 +84,12 @@ export const addCourseQuestion = async (courseId, data, user) => {
 
 /**
  * Converte o nó cru do Firebase na lista de dúvidas usada pelas telas, da mais
- * recente para a mais antiga. Fica separada da leitura porque as duas formas de
- * ler o nó — a busca pontual e o observador em tempo real — precisam entregar
- * exatamente o mesmo formato: uma tela que troca `get` por `onValue` não pode
- * mudar de comportamento por causa disso.
+ * antiga para a mais nova — como uma fila: quem perguntou primeiro é discutido
+ * primeiro, e uma dúvida nova entra no FINAL da lista, sem empurrar as
+ * anteriores. Fica separada da leitura porque as duas formas de ler o nó — a
+ * busca pontual e o observador em tempo real — precisam entregar exatamente o
+ * mesmo formato: uma tela que troca `get` por `onValue` não pode mudar de
+ * comportamento por causa disso.
  * @param {Object|null} raw - valor do nó `courseQuestions/{courseId}`
  * @returns {Array}
  */
@@ -108,11 +110,11 @@ export const normalizeCourseQuestions = (raw) => {
       discussed: !!item.discussed,
       discussedAt: item.discussedAt || null,
     }))
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
 };
 
 /**
- * Busca todas as dúvidas de um curso, da mais recente para a mais antiga.
+ * Busca todas as dúvidas de um curso, da mais antiga para a mais nova.
  * @param {string} courseId
  * @returns {Promise<Array>}
  */
@@ -227,6 +229,33 @@ export const deleteCourseQuestion = async (courseId, questionId) => {
 
   await remove(ref(database, `courseQuestions/${courseId}/${questionId}`));
   return true;
+};
+
+/**
+ * Monta o link que o aluno usa para registrar uma dúvida: abre a sala já
+ * matriculando o aluno automaticamente (rota `.../questions`, ver
+ * `classes.jsx`) e leva direto ao formulário. Compartilhado entre o campo
+ * "link direto" da aba Dúvidas e o QR code da apresentação — as duas telas
+ * precisam divulgar exatamente o mesmo endereço.
+ *
+ * Prefere o apelido do curso (endereço curto, ditável em voz alta) e cai no
+ * `?courseId=` quando o curso não tem apelido. `contentId`, quando informado,
+ * pré-seleciona o vídeo no formulário do aluno.
+ * @param {string} courseId
+ * @param {{ alias?: string, contentId?: string, origin?: string }} [options]
+ * @returns {string}
+ */
+export const buildStudentQuestionLink = (courseId, options = {}) => {
+  const { alias = "", contentId = "", origin = "" } = options;
+  if (!courseId) return "";
+
+  const base = origin || (typeof window !== "undefined" ? window.location.origin : "");
+  if (alias) {
+    return `${base}/cursos/${alias}/questions${contentId ? `?videoId=${contentId}` : ""}`;
+  }
+  return `${base}/classes/questions?courseId=${courseId}${
+    contentId ? `&videoId=${contentId}` : ""
+  }`;
 };
 
 /**

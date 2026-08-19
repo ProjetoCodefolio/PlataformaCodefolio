@@ -45,6 +45,7 @@ import {
   summarizeQuestionsByContent,
   setQuestionDiscussed,
   deleteCourseQuestion,
+  buildStudentQuestionLink,
 } from "../../../../api/services/courses/questions";
 
 const PURPLE = "#9041c1";
@@ -209,22 +210,13 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
 
   // Link que o professor divulga para a turma. Abre a sala com o modal de dúvida
   // já aberto e MATRICULA o aluno automaticamente — quem recebe o endereço não
-  // precisa procurar o curso no catálogo antes de escrever.
-  //
-  // Prefere o apelido quando existe (é o endereço curto, ditável em voz alta) e
-  // cai no `?courseId=` quando o curso não tem apelido. O filtro de vídeo entra
-  // no link: divulgar "a dúvida da aula de hoje" já com o conteúdo selecionado
-  // poupa o aluno de escolher na lista.
-  const studentLink = useMemo(() => {
-    if (!courseId) return "";
-    const origem = typeof window !== "undefined" ? window.location.origin : "";
-    if (alias) {
-      return `${origem}/cursos/${alias}/questions${contentId ? `?videoId=${contentId}` : ""}`;
-    }
-    return `${origem}/classes/questions?courseId=${courseId}${
-      contentId ? `&videoId=${contentId}` : ""
-    }`;
-  }, [courseId, alias, contentId]);
+  // precisa procurar o curso no catálogo antes de escrever. O filtro de vídeo
+  // entra no link: divulgar "a dúvida da aula de hoje" já com o conteúdo
+  // selecionado poupa o aluno de escolher na lista.
+  const studentLink = useMemo(
+    () => buildStudentQuestionLink(courseId, { alias, contentId }),
+    [courseId, alias, contentId]
+  );
 
   const handleCopyLink = () => {
     if (!studentLink) return;

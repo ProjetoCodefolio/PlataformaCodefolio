@@ -130,7 +130,7 @@ describe("normalizeCourseQuestions", () => {
     expect(normalizeCourseQuestions("nada")).toEqual([]);
   });
 
-  it("transforma o nó em lista com o id da chave e ordena da mais recente", () => {
+  it("transforma o nó em lista com o id da chave e ordena da mais antiga para a mais nova", () => {
     const lista = normalizeCourseQuestions({
       antiga: {
         contentId: "aula1",
@@ -152,9 +152,9 @@ describe("normalizeCourseQuestions", () => {
       },
     });
 
-    expect(lista.map((d) => d.text)).toEqual(["Segunda", "Primeira"]);
-    expect(lista[0].id).toBe("nova");
-    expect(lista[0].discussed).toBe(true);
+    expect(lista.map((d) => d.text)).toEqual(["Primeira", "Segunda"]);
+    expect(lista[0].id).toBe("antiga");
+    expect(lista[1].discussed).toBe(true);
   });
 
   it("preenche os campos que faltam e descarta entradas quebradas", () => {

@@ -113,7 +113,7 @@ describe.runIf(emuladorNoAr)("dúvidas do curso (courseQuestions)", () => {
     expect(duvida.contentTitle).toBe("Aula 1 - Herança");
   });
 
-  it("lista as mais recentes primeiro", async () => {
+  it("lista as mais antigas primeiro (dúvida nova entra no final da fila)", async () => {
     await addCourseQuestion(
       courseId,
       { contentId: "aula1", contentTitle: "Aula 1", text: "Primeira" },
@@ -129,7 +129,7 @@ describe.runIf(emuladorNoAr)("dúvidas do curso (courseQuestions)", () => {
     );
 
     const duvidas = await fetchCourseQuestions(courseId);
-    expect(duvidas.map((d) => d.text)).toEqual(["Segunda", "Primeira"]);
+    expect(duvidas.map((d) => d.text)).toEqual(["Primeira", "Segunda"]);
   });
 
   it("marcar como discutida preserva o registro", async () => {

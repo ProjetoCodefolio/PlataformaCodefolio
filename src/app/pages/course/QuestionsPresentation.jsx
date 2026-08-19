@@ -202,6 +202,8 @@ const QuestionsPresentation = ({ alias }) => {
       contentOptions={contentOptions}
       initialContentId={initialContentId}
       courseTitle={courseTitle}
+      courseId={courseId}
+      alias={alias}
       onClose={handleClose}
       onMarkDiscussed={handleMarkDiscussed}
     />
