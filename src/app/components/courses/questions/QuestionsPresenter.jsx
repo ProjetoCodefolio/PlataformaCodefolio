@@ -12,12 +12,15 @@ import {
   FormControlLabel,
   Switch,
   TextField,
+  Modal,
+  Button,
   useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteIcon from "@mui/icons-material/Delete";
 import TextIncreaseIcon from "@mui/icons-material/TextIncrease";
 import TextDecreaseIcon from "@mui/icons-material/TextDecrease";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
@@ -367,6 +370,7 @@ const QuestionsPresenter = ({
   alias,
   onClose,
   onMarkDiscussed,
+  onDeleteQuestion,
 }) => {
   // O recorte inicial só vale se aquele vídeo realmente tiver dúvidas: o ícone
   // "?" manda o conteúdo que está em tela, que pode não ter nenhuma. Nesse caso
@@ -388,6 +392,8 @@ const QuestionsPresenter = ({
   // quiser pular direto para uma dúvida específica em vez de navegar uma a
   // uma pelas setas.
   const [listaAberta, setListaAberta] = useState(false);
+  // Dúvida com exclusão pendente de confirmação, escolhida na lista lateral.
+  const [duvidaParaExcluir, setDuvidaParaExcluir] = useState(null);
 
   // No celular os controles não cabem numa linha só. Em vez de deixá-los
   // quebrar em três linhas — que comem a altura da dúvida, o que a tela existe
@@ -481,11 +487,23 @@ const QuestionsPresenter = ({
     [total, visiveis]
   );
 
+  const confirmarExclusao = useCallback(async () => {
+    if (!duvidaParaExcluir) return;
+    await onDeleteQuestion(duvidaParaExcluir);
+    setDuvidaParaExcluir(null);
+  }, [duvidaParaExcluir, onDeleteQuestion]);
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       // As setas navegam entre dúvidas, mas não enquanto o professor está
       // dentro do seletor de vídeo escolhendo uma opção.
       const emCampo = ["INPUT", "TEXTAREA"].includes(event.target?.tagName);
+      // Com o modal de exclusão aberto, Escape cancela SÓ o modal — sem isto,
+      // o mesmo Escape fecharia o modal E a apresentação inteira de uma vez.
+      if (duvidaParaExcluir) {
+        if (event.key === "Escape") setDuvidaParaExcluir(null);
+        return;
+      }
       if (event.key === "Escape") onClose();
       else if (emCampo) return;
       else if (event.key === "ArrowLeft") irPara(index - 1);
@@ -496,7 +514,7 @@ const QuestionsPresenter = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [index, irPara, onClose, ajustarEscala]);
+  }, [index, irPara, onClose, ajustarEscala, duvidaParaExcluir]);
 
   // Trava a rolagem do fundo enquanto a apresentação está aberta, como o Quiz Gigi.
   useEffect(() => {
@@ -609,49 +627,80 @@ const QuestionsPresenter = ({
               visiveis.map((duvida, i) => (
                 <Box
                   key={duvida.id}
-                  component="button"
-                  type="button"
-                  onClick={() => irPara(i)}
-                  aria-current={i === index ? "true" : undefined}
                   sx={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    border: "none",
-                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "stretch",
+                    gap: 0.25,
                     borderRadius: 1.5,
-                    p: 1,
                     mb: 0.5,
                     backgroundColor: i === index ? "rgba(255,255,255,0.22)" : "transparent",
-                    color: "#fff",
-                    fontFamily: "inherit",
-                    "&:hover": { backgroundColor: "rgba(255,255,255,0.15)" },
                   }}
                 >
-                  <Typography
+                  {/* Item da lista: sem aninhar o botão de excluir dentro deste
+                      <button>, senão vira button-dentro-de-button. */}
+                  <Box
+                    component="button"
+                    type="button"
+                    onClick={() => irPara(i)}
+                    aria-current={i === index ? "true" : undefined}
                     sx={{
-                      fontSize: "0.85rem",
-                      overflow: "hidden",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
+                      flex: 1,
+                      minWidth: 0,
+                      display: "block",
+                      textAlign: "left",
+                      border: "none",
+                      background: "none",
+                      cursor: "pointer",
+                      borderRadius: 1.5,
+                      p: 1,
+                      color: "#fff",
+                      fontFamily: "inherit",
+                      "&:hover": {
+                        backgroundColor: i === index ? "transparent" : "rgba(255,255,255,0.15)",
+                      },
                     }}
                   >
-                    {duvida.text}
-                  </Typography>
-                  {duvida.discussed && (
-                    <Chip
-                      label="Discutida"
-                      size="small"
+                    <Typography
                       sx={{
-                        mt: 0.5,
-                        height: 18,
-                        fontSize: "0.65rem",
-                        color: "#fff",
-                        backgroundColor: "rgba(255,255,255,0.25)",
+                        fontSize: "0.85rem",
+                        overflow: "hidden",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
                       }}
-                    />
-                  )}
+                    >
+                      {duvida.text}
+                    </Typography>
+                    {duvida.discussed && (
+                      <Chip
+                        label="Discutida"
+                        size="small"
+                        sx={{
+                          mt: 0.5,
+                          height: 18,
+                          fontSize: "0.65rem",
+                          color: "#fff",
+                          backgroundColor: "rgba(255,255,255,0.25)",
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  <Tooltip title="Excluir dúvida">
+                    <IconButton
+                      size="small"
+                      onClick={() => setDuvidaParaExcluir(duvida)}
+                      aria-label="Excluir dúvida"
+                      sx={{
+                        alignSelf: "center",
+                        mr: 0.5,
+                        color: "rgba(255,255,255,0.7)",
+                        "&:hover": { color: "#ff8a80", backgroundColor: "rgba(255,255,255,0.1)" },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
                 </Box>
               ))
             )}
@@ -1043,6 +1092,45 @@ const QuestionsPresenter = ({
           )}
         </Box>
       )}
+
+      {/* Confirmação de exclusão: MODAL do MUI (nasce fora desta tela, então
+          precisa do mesmo z-index elevado do seletor de vídeo acima) para não
+          apagar uma dúvida com um clique errado na lista lateral. */}
+      <Modal
+        open={!!duvidaParaExcluir}
+        onClose={() => setDuvidaParaExcluir(null)}
+        sx={{ zIndex: 1500 }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90%", sm: 420 },
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: { xs: 3, sm: 4 },
+            textAlign: "center",
+          }}
+        >
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Excluir esta dúvida?
+          </Typography>
+          <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
+            {duvidaParaExcluir?.text}
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexDirection: { xs: "column", sm: "row" } }}>
+            <Button variant="contained" color="error" onClick={confirmarExclusao}>
+              Sim, excluir
+            </Button>
+            <Button variant="outlined" onClick={() => setDuvidaParaExcluir(null)}>
+              Cancelar
+            </Button>
+          </Box>
+        </Box>
+      </Modal>
     </Box>
   );
 };
@@ -1073,6 +1161,7 @@ QuestionsPresenter.propTypes = {
   alias: PropTypes.string,
   onClose: PropTypes.func.isRequired,
   onMarkDiscussed: PropTypes.func.isRequired,
+  onDeleteQuestion: PropTypes.func.isRequired,
 };
 
 QuestionsPresenter.defaultProps = {

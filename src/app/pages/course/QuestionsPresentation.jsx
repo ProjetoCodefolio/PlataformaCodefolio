@@ -10,6 +10,7 @@ import { getCourseIdByAlias } from "$api/services/courses/alias";
 import {
   observeCourseQuestions,
   setQuestionDiscussed,
+  deleteCourseQuestion,
   summarizeQuestionsByContent,
 } from "$api/services/courses/questions";
 import QuestionsPresenter from "$components/courses/questions/QuestionsPresenter";
@@ -161,6 +162,22 @@ const QuestionsPresentation = ({ alias }) => {
     [courseId]
   );
 
+  const handleDeleteQuestion = useCallback(
+    async (question) => {
+      if (!question?.id) return;
+      try {
+        // Idem: sem atualização local. O observador recebe a remoção e
+        // reemite a lista, e é ele quem recalcula em qual dúvida a tela fica.
+        await deleteCourseQuestion(courseId, question.id);
+        toast.success("Dúvida excluída.");
+      } catch (error) {
+        console.error("Erro ao excluir dúvida:", error);
+        toast.error("Não foi possível excluir a dúvida.");
+      }
+    },
+    [courseId]
+  );
+
   // Fechar volta para onde o professor estava (sala ou aba Dúvidas). Sem
   // histórico — caso de link colado direto no navegador — cai na sala do curso.
   const handleClose = useCallback(() => {
@@ -206,6 +223,7 @@ const QuestionsPresentation = ({ alias }) => {
       alias={alias}
       onClose={handleClose}
       onMarkDiscussed={handleMarkDiscussed}
+      onDeleteQuestion={handleDeleteQuestion}
     />
   );
 };
