@@ -17,6 +17,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import TextIncreaseIcon from "@mui/icons-material/TextIncrease";
+import TextDecreaseIcon from "@mui/icons-material/TextDecrease";
 import logo from "$assets/img/codefolio.png";
 import { filterCourseQuestions } from "$api/services/courses/questions";
 
@@ -49,15 +51,43 @@ import { filterCourseQuestions } from "$api/services/courses/questions";
  */
 
 /**
- * Tamanho da dúvida em função do comprimento do texto: uma pergunta curta ganha
- * a tela inteira (é o que vai ser lido de longe), uma longa encolhe para caber
- * sem virar um bloco ilegível.
+ * Tamanho AUTOMÁTICO da dúvida em função do comprimento do texto: uma pergunta
+ * curta ganha a tela inteira (é o que vai ser lido de longe), uma longa encolhe
+ * para caber sem virar um bloco ilegível.
  */
 const tamanhoDaDuvida = (texto = "") => {
   const tamanho = texto.length;
   if (tamanho <= 120) return "clamp(1.9rem, 5vw, 3.6rem)";
   if (tamanho <= 300) return "clamp(1.5rem, 3.6vw, 2.6rem)";
   return "clamp(1.1rem, 2.4vw, 1.9rem)";
+};
+
+// Ajuste manual da fonte, POR CIMA do tamanho automático: o automático acerta a
+// proporção entre dúvidas, mas não sabe o tamanho da sala nem a distância do
+// projetor. Por isso o botão multiplica o valor calculado (em vez de fixar um
+// tamanho) — assim uma dúvida longa continua menor que uma curta em qualquer
+// ajuste, e nenhuma delas estoura a área de leitura.
+const ESCALA_MINIMA = 0.6;
+const ESCALA_MAXIMA = 2.4;
+const PASSO_DA_ESCALA = 0.2;
+const CHAVE_DA_ESCALA = "codefolio:duvidas:escalaDaFonte";
+
+const arredondarEscala = (valor) => Math.round(valor * 100) / 100;
+
+/**
+ * A escala escolhida fica no localStorage: o professor a ajusta uma vez para a
+ * sala dele e ela sobrevive ao recarregar a página e à aula seguinte — ninguém
+ * quer reconfigurar a projeção toda vez que abre a tela.
+ */
+const lerEscalaSalva = () => {
+  try {
+    const salva = Number(window.localStorage.getItem(CHAVE_DA_ESCALA));
+    if (!Number.isFinite(salva) || salva <= 0) return 1;
+    return arredondarEscala(Math.min(ESCALA_MAXIMA, Math.max(ESCALA_MINIMA, salva)));
+  } catch {
+    // Navegador com armazenamento bloqueado: segue no tamanho automático.
+    return 1;
+  }
 };
 
 const QuestionsPresenter = ({
@@ -79,6 +109,7 @@ const QuestionsPresenter = ({
   );
   const [includeDiscussed, setIncludeDiscussed] = useState(false);
   const [index, setIndex] = useState(0);
+  const [fontScale, setFontScale] = useState(lerEscalaSalva);
 
   const visiveis = useMemo(
     () =>
@@ -122,6 +153,20 @@ const QuestionsPresenter = ({
     aplicar();
   }, []);
 
+  const ajustarEscala = useCallback((delta) => {
+    setFontScale((atual) => {
+      const proxima = arredondarEscala(
+        Math.min(ESCALA_MAXIMA, Math.max(ESCALA_MINIMA, atual + delta))
+      );
+      try {
+        window.localStorage.setItem(CHAVE_DA_ESCALA, String(proxima));
+      } catch {
+        // Sem armazenamento o ajuste continua valendo nesta sessão.
+      }
+      return proxima;
+    });
+  }, []);
+
   const irPara = useCallback(
     (proximo) => {
       if (proximo < 0 || proximo > total - 1) return;
@@ -140,10 +185,13 @@ const QuestionsPresenter = ({
       else if (emCampo) return;
       else if (event.key === "ArrowLeft") irPara(index - 1);
       else if (event.key === "ArrowRight") irPara(index + 1);
+      // "+" e "-" mudam o tamanho sem tirar a mão do teclado no meio da aula.
+      else if (event.key === "+" || event.key === "=") ajustarEscala(PASSO_DA_ESCALA);
+      else if (event.key === "-" || event.key === "_") ajustarEscala(-PASSO_DA_ESCALA);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [index, irPara, onClose]);
+  }, [index, irPara, onClose, ajustarEscala]);
 
   // Trava a rolagem do fundo enquanto a apresentação está aberta, como o Quiz Gigi.
   useEffect(() => {
@@ -290,6 +338,64 @@ const QuestionsPresenter = ({
             },
           }}
         />
+
+        {/* Tamanho da fonte da dúvida. Fica junto dos outros controles, e não
+            escondido num menu: em aula o professor descobre que o fundo da sala
+            não está lendo e precisa corrigir na hora. O percentual no meio é
+            botão — clicar volta ao tamanho automático. */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 0.5,
+            backgroundColor: "rgba(255,255,255,0.15)",
+            borderRadius: 2,
+            px: 0.5,
+          }}
+        >
+          <Tooltip title="Diminuir a fonte da dúvida (tecla -)">
+            <span>
+              <IconButton
+                onClick={() => ajustarEscala(-PASSO_DA_ESCALA)}
+                disabled={fontScale <= ESCALA_MINIMA}
+                aria-label="Diminuir a fonte da dúvida"
+                size="small"
+                sx={{ color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+              >
+                <TextDecreaseIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <Tooltip title="Voltar ao tamanho automático">
+            <Button
+              onClick={() => ajustarEscala(1 - fontScale)}
+              aria-label="Voltar ao tamanho automático da fonte"
+              sx={{
+                minWidth: 52,
+                color: "#fff",
+                fontSize: "clamp(0.7rem, 1.1vw, 0.85rem)",
+                textTransform: "none",
+              }}
+            >
+              {Math.round(fontScale * 100)}%
+            </Button>
+          </Tooltip>
+
+          <Tooltip title="Aumentar a fonte da dúvida (tecla +)">
+            <span>
+              <IconButton
+                onClick={() => ajustarEscala(PASSO_DA_ESCALA)}
+                disabled={fontScale >= ESCALA_MAXIMA}
+                aria-label="Aumentar a fonte da dúvida"
+                size="small"
+                sx={{ color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+              >
+                <TextIncreaseIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* Meio: a dúvida em cartaz. É a única faixa que cresce, então ela centra
@@ -347,7 +453,10 @@ const QuestionsPresenter = ({
                   component="p"
                   sx={{
                     fontWeight: 700,
-                    fontSize: tamanhoDaDuvida(atual?.text),
+                    // O ajuste manual MULTIPLICA o tamanho automático — o
+                    // `calc()` sobre o `clamp()` mantém a resposta ao tamanho da
+                    // tela em qualquer escala.
+                    fontSize: `calc(${tamanhoDaDuvida(atual?.text)} * ${fontScale})`,
                     lineHeight: 1.35,
                     textShadow: "0px 2px 6px rgba(0,0,0,0.25)",
                     wordBreak: "break-word",
