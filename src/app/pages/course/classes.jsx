@@ -60,7 +60,10 @@ import {
   checkStudentCourseEnrollment,
 } from "$api/services/courses/courses";
 import PinAccessModal from "$components/modals/PinAccessModal";
-import { updateCourseProgress } from "$api/services/courses/students";
+import {
+  updateCourseProgress,
+  enrollStudentInCourse,
+} from "$api/services/courses/students";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { fetchAdvancedSettings } from "$api/services/courses/advancedSettings";
@@ -994,13 +997,51 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   // Link externo (/cursos/{apelido}/questions ou /classes/questions): abre o
   // modal assim que a sala estiver liberada e com o conteúdo carregado, para
   // que o seletor já venha preenchido.
+  //
+  // E MATRICULA o aluno no curso: quem chega por este link não passou pelo
+  // catálogo, e o professor divulga o endereço esperando que responder a ele já
+  // coloque o aluno na turma (ele aparece na lista de alunos, no relatório de
+  // presença e com o curso em "Meus cursos"). O portão de acesso continua sendo
+  // o mesmo de sempre — em curso fechado, a matrícula só acontece depois do PIN,
+  // porque `accessGranted` é pré-requisito deste efeito.
+  //
+  // A matrícula só é gravada se ainda não existir: `enrollStudentInCourse`
+  // sobrescreve o registro com progresso 0, o que zeraria o progresso de um
+  // aluno que já vinha assistindo ao curso.
   useEffect(() => {
     if (!openQuestions || questionsLinkHandledRef.current) return;
     if (!accessGranted || loadingVideos || videos.length === 0) return;
 
     questionsLinkHandledRef.current = true;
     setShowQuestionModal(true);
-  }, [openQuestions, accessGranted, loadingVideos, videos.length]);
+
+    const matricular = async () => {
+      if (!userDetails?.userId || !courseId) return;
+      try {
+        const jaMatriculado = await checkStudentCourseEnrollment(
+          userDetails.userId,
+          courseId
+        );
+        if (jaMatriculado) return;
+        await enrollStudentInCourse(userDetails.userId, courseId, {
+          title: courseTitle,
+        });
+      } catch (error) {
+        // A matrícula é acessório do link: se falhar, o aluno ainda registra a
+        // dúvida (e o vínculo acaba sendo criado pelo progresso do curso).
+        console.error("Erro ao matricular o aluno pelo link de dúvidas:", error);
+      }
+    };
+    matricular();
+  }, [
+    openQuestions,
+    accessGranted,
+    loadingVideos,
+    videos.length,
+    userDetails?.userId,
+    courseId,
+    courseTitle,
+  ]);
 
   // Apresentação das dúvidas (professor/admin): leva para a tela única de
   // apresentação, a mesma que o botão "Apresentar" da aba Dúvidas abre. O

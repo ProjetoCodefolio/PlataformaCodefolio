@@ -23,8 +23,11 @@ import {
   FormControlLabel,
   Switch,
   Modal,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
@@ -68,7 +71,7 @@ const formatarData = (iso) => {
  * A tabela é OBSERVADA em tempo real: a dúvida que um aluno registra agora
  * aparece aqui sozinha, sem recarregar a aba.
  */
-const CourseQuestionsTab = ({ courseId }) => {
+const CourseQuestionsTab = ({ courseId, alias }) => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +156,33 @@ const CourseQuestionsTab = ({ courseId }) => {
     );
   };
 
+  // Link que o professor divulga para a turma. Abre a sala com o modal de dúvida
+  // já aberto e MATRICULA o aluno automaticamente — quem recebe o endereço não
+  // precisa procurar o curso no catálogo antes de escrever.
+  //
+  // Prefere o apelido quando existe (é o endereço curto, ditável em voz alta) e
+  // cai no `?courseId=` quando o curso não tem apelido. O filtro de vídeo entra
+  // no link: divulgar "a dúvida da aula de hoje" já com o conteúdo selecionado
+  // poupa o aluno de escolher na lista.
+  const studentLink = useMemo(() => {
+    if (!courseId) return "";
+    const origem = typeof window !== "undefined" ? window.location.origin : "";
+    if (alias) {
+      return `${origem}/cursos/${alias}/questions${contentId ? `?videoId=${contentId}` : ""}`;
+    }
+    return `${origem}/classes/questions?courseId=${courseId}${
+      contentId ? `&videoId=${contentId}` : ""
+    }`;
+  }, [courseId, alias, contentId]);
+
+  const handleCopyLink = () => {
+    if (!studentLink) return;
+    navigator.clipboard
+      ?.writeText(studentLink)
+      .then(() => toast.success("Link copiado para a área de transferência!"))
+      .catch(() => toast.error("Não foi possível copiar o link"));
+  };
+
   const presentedQuestions = useMemo(
     () => filtered.filter((question) => !question.discussed),
     [filtered]
@@ -191,6 +221,47 @@ const CourseQuestionsTab = ({ courseId }) => {
         registram pelo botão de dúvida no player; o nome aparece só aqui — na
         apresentação em aula as dúvidas são anônimas.
       </Typography>
+
+      {/* Link direto para os alunos: o professor cola no chat, no slide ou no
+          quadro. Fica no topo da aba porque é o que ele procura ANTES da aula —
+          a tabela só interessa depois que as dúvidas chegam. */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          label="Link direto para o aluno registrar uma dúvida"
+          value={studentLink}
+          fullWidth
+          size="small"
+          InputProps={{
+            readOnly: true,
+            endAdornment: (
+              <InputAdornment position="end">
+                <Tooltip title="Copiar link">
+                  <span>
+                    <IconButton
+                      onClick={handleCopyLink}
+                      edge="end"
+                      size="small"
+                      disabled={!studentLink}
+                      aria-label="Copiar o link de dúvidas"
+                    >
+                      <ContentCopyIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              </InputAdornment>
+            ),
+          }}
+          onFocus={(e) => e.target.select()}
+        />
+        <Typography variant="caption" sx={{ color: "#666" }}>
+          {alias
+            ? "Abre a sala com o formulário de dúvida aberto e matricula o aluno automaticamente."
+            : "Abre a sala com o formulário de dúvida aberto e matricula o aluno automaticamente. Defina um apelido para o curso na aba Configurações e o endereço fica mais curto."}
+          {contentId
+            ? " O vídeo selecionado no filtro acima já vem escolhido no formulário."
+            : ""}
+        </Typography>
+      </Box>
 
       <Box
         sx={{
@@ -429,6 +500,12 @@ const CourseQuestionsTab = ({ courseId }) => {
 
 CourseQuestionsTab.propTypes = {
   courseId: PropTypes.string,
+  /** Apelido do curso, quando houver: deixa o link divulgado mais curto. */
+  alias: PropTypes.string,
+};
+
+CourseQuestionsTab.defaultProps = {
+  alias: "",
 };
 
 export default CourseQuestionsTab;

@@ -651,7 +651,7 @@ const CourseForm = () => {
               )}
               {selectedTab === 5 && <CourseAssignmentsTab />}
               {selectedTab === 6 && !isCurrentUserTeacher && (
-                <CourseQuestionsTab courseId={courseId} />
+                <CourseQuestionsTab courseId={courseId} alias={courseAlias} />
               )}
             </>
           )}
