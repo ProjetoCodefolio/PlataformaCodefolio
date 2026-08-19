@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -34,6 +34,11 @@ import { filterCourseQuestions } from "$api/services/courses/questions";
  * O recorte é escolhido aqui dentro (seletor de vídeo + chave das já discutidas),
  * e não por quem abriu a tela: em aula o professor muda de assunto sem sair da
  * projeção. Quem abre só define o ponto de partida (`initialContentId`).
+ *
+ * A lista chega AO VIVO: dúvidas entram enquanto a tela está aberta. Por isso a
+ * dúvida em cartaz é ancorada pelo ID, e não pela posição — como a ordem é da
+ * mais recente para a mais antiga, uma dúvida nova empurra todas as outras uma
+ * casa, e ancorar pela posição trocaria o texto projetado no meio da explicação.
  *
  * LAYOUT em três zonas verticais, sem posicionamento absoluto com medidas
  * fixas — a tela vai de um celular a um projetor:
@@ -86,19 +91,44 @@ const QuestionsPresenter = ({
 
   const total = visiveis.length;
 
-  // A lista muda de tamanho ao trocar o filtro ou ao marcar uma dúvida como
-  // discutida. Sem reencaixar o índice, a tela ficaria vazia com dúvidas ainda
-  // por discutir.
+  // Id da dúvida em cartaz: é a âncora que sobrevive à reordenação da lista ao
+  // vivo. Fica num ref (e não em estado) porque quem manda na tela continua
+  // sendo o índice — o ref só diz "era esta aqui" quando a lista se mexe.
+  const idEmCartazRef = useRef(null);
+
+  // Reencaixa o índice sempre que a lista muda: por dúvida nova chegando, por
+  // troca de filtro ou por uma dúvida ter sido marcada como discutida.
+  //  - a dúvida em cartaz ainda está na lista → segue nela, na posição nova;
+  //  - saiu da lista (discutida, excluída ou fora do filtro) → fica na MESMA
+  //    posição, que agora é a dúvida seguinte, e não numa tela vazia.
   useEffect(() => {
-    setIndex((atual) => (total === 0 ? 0 : Math.min(atual, total - 1)));
-  }, [total]);
+    setIndex((atual) => {
+      const ancora = idEmCartazRef.current;
+      const posicao = ancora
+        ? visiveis.findIndex((duvida) => duvida?.id === ancora)
+        : -1;
+      const proximo =
+        posicao >= 0 ? posicao : total === 0 ? 0 : Math.min(atual, total - 1);
+      idEmCartazRef.current = visiveis[proximo]?.id || null;
+      return proximo;
+    });
+  }, [visiveis, total]);
+
+  // Trocar o recorte recomeça do início: ali o professor mudou de assunto, e
+  // manter a âncora o levaria de volta a uma dúvida do assunto anterior.
+  const trocarRecorte = useCallback((aplicar) => {
+    idEmCartazRef.current = null;
+    setIndex(0);
+    aplicar();
+  }, []);
 
   const irPara = useCallback(
     (proximo) => {
       if (proximo < 0 || proximo > total - 1) return;
+      idEmCartazRef.current = visiveis[proximo]?.id || null;
       setIndex(proximo);
     },
-    [total]
+    [total, visiveis]
   );
 
   useEffect(() => {
@@ -210,10 +240,7 @@ const QuestionsPresenter = ({
         <FormControl size="small" sx={{ minWidth: { xs: 200, sm: 300, md: 380 } }}>
           <Select
             value={contentId}
-            onChange={(e) => {
-              setContentId(e.target.value);
-              setIndex(0);
-            }}
+            onChange={(e) => trocarRecorte(() => setContentId(e.target.value))}
             displayEmpty
             inputProps={{ "aria-label": "Filtrar dúvidas por vídeo" }}
             // A tela cheia vive em z-index 1399 e o menu do MUI nasce em 1300:
@@ -245,10 +272,7 @@ const QuestionsPresenter = ({
           control={
             <Switch
               checked={includeDiscussed}
-              onChange={(e) => {
-                setIncludeDiscussed(e.target.checked);
-                setIndex(0);
-              }}
+              onChange={(e) => trocarRecorte(() => setIncludeDiscussed(e.target.checked))}
               sx={{
                 "& .MuiSwitch-switchBase.Mui-checked": { color: "#fff" },
                 "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {

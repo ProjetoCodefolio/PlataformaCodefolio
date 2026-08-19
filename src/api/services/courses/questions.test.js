@@ -9,6 +9,7 @@ const {
   validateQuestionText,
   filterCourseQuestions,
   summarizeQuestionsByContent,
+  normalizeCourseQuestions,
   MAX_QUESTION_LENGTH,
 } = await import("./questions.js");
 
@@ -116,5 +117,57 @@ describe("summarizeQuestionsByContent", () => {
 
   it("ignora itens sem conteúdo associado", () => {
     expect(summarizeQuestionsByContent([{ id: "x", text: "?" }])).toEqual([]);
+  });
+});
+
+// A normalização é o formato que TODAS as telas recebem, venha da busca pontual
+// ou do observador em tempo real. Se ela divergir entre os dois caminhos, uma
+// tela ao vivo passa a se comportar diferente da mesma tela recarregada.
+describe("normalizeCourseQuestions", () => {
+  it("devolve lista vazia para nó inexistente ou inválido", () => {
+    expect(normalizeCourseQuestions(null)).toEqual([]);
+    expect(normalizeCourseQuestions(undefined)).toEqual([]);
+    expect(normalizeCourseQuestions("nada")).toEqual([]);
+  });
+
+  it("transforma o nó em lista com o id da chave e ordena da mais recente", () => {
+    const lista = normalizeCourseQuestions({
+      antiga: {
+        contentId: "aula1",
+        contentTitle: "Aula 1",
+        text: "Primeira",
+        userId: "u1",
+        userName: "Maria",
+        createdAt: "2026-08-18T10:00:00.000Z",
+        discussed: false,
+      },
+      nova: {
+        contentId: "aula1",
+        contentTitle: "Aula 1",
+        text: "Segunda",
+        userId: "u2",
+        userName: "João",
+        createdAt: "2026-08-18T11:00:00.000Z",
+        discussed: true,
+      },
+    });
+
+    expect(lista.map((d) => d.text)).toEqual(["Segunda", "Primeira"]);
+    expect(lista[0].id).toBe("nova");
+    expect(lista[0].discussed).toBe(true);
+  });
+
+  it("preenche os campos que faltam e descarta entradas quebradas", () => {
+    const lista = normalizeCourseQuestions({
+      q1: { text: "Sem título de conteúdo" },
+      q2: null,
+      q3: "lixo",
+    });
+
+    expect(lista).toHaveLength(1);
+    expect(lista[0].contentTitle).toBe("Conteúdo sem título");
+    expect(lista[0].userName).toBe("Aluno");
+    expect(lista[0].discussed).toBe(false);
+    expect(lista[0].discussedAt).toBeNull();
   });
 });

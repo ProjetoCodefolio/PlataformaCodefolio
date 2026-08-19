@@ -16,7 +16,7 @@
 // não é possível esconder a autoria no nível do banco sem mudar essa regra
 // global, que está fora do escopo desta funcionalidade.
 
-import { ref, get, push, set, update, remove } from "firebase/database";
+import { ref, get, onValue, push, set, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
 
 /** Limite de caracteres do texto da dúvida. */
@@ -83,6 +83,35 @@ export const addCourseQuestion = async (courseId, data, user) => {
 };
 
 /**
+ * Converte o nó cru do Firebase na lista de dúvidas usada pelas telas, da mais
+ * recente para a mais antiga. Fica separada da leitura porque as duas formas de
+ * ler o nó — a busca pontual e o observador em tempo real — precisam entregar
+ * exatamente o mesmo formato: uma tela que troca `get` por `onValue` não pode
+ * mudar de comportamento por causa disso.
+ * @param {Object|null} raw - valor do nó `courseQuestions/{courseId}`
+ * @returns {Array}
+ */
+export const normalizeCourseQuestions = (raw) => {
+  if (!raw || typeof raw !== "object") return [];
+
+  return Object.entries(raw)
+    .filter(([, item]) => item && typeof item === "object")
+    .map(([id, item]) => ({
+      id,
+      contentId: item.contentId || "",
+      contentTitle: item.contentTitle || "Conteúdo sem título",
+      text: item.text || "",
+      userId: item.userId || "",
+      userName: item.userName || "Aluno",
+      userPhotoURL: item.userPhotoURL || "",
+      createdAt: item.createdAt || "",
+      discussed: !!item.discussed,
+      discussedAt: item.discussedAt || null,
+    }))
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+};
+
+/**
  * Busca todas as dúvidas de um curso, da mais recente para a mais antiga.
  * @param {string} courseId
  * @returns {Promise<Array>}
@@ -92,30 +121,41 @@ export const fetchCourseQuestions = async (courseId) => {
 
   try {
     const snapshot = await get(ref(database, `courseQuestions/${courseId}`));
-    if (!snapshot.exists()) return [];
-
-    const raw = snapshot.val();
-    if (!raw || typeof raw !== "object") return [];
-
-    return Object.entries(raw)
-      .filter(([, item]) => item && typeof item === "object")
-      .map(([id, item]) => ({
-        id,
-        contentId: item.contentId || "",
-        contentTitle: item.contentTitle || "Conteúdo sem título",
-        text: item.text || "",
-        userId: item.userId || "",
-        userName: item.userName || "Aluno",
-        userPhotoURL: item.userPhotoURL || "",
-        createdAt: item.createdAt || "",
-        discussed: !!item.discussed,
-        discussedAt: item.discussedAt || null,
-      }))
-      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    return normalizeCourseQuestions(snapshot.val());
   } catch (error) {
     console.error("Erro ao buscar dúvidas do curso:", error);
     return [];
   }
+};
+
+/**
+ * Observa as dúvidas do curso EM TEMPO REAL (`onValue`).
+ *
+ * É o que faz a aula funcionar ao vivo: o aluno registra a dúvida no celular e
+ * ela entra na projeção do professor sozinha, sem ninguém recarregar a página.
+ * Por isso as telas do professor (apresentação e aba "Dúvidas") observam em vez
+ * de buscar uma vez — `fetchCourseQuestions` continua para leituras pontuais.
+ *
+ * O callback é chamado JÁ na primeira leitura, com o estado atual do nó, então
+ * quem observa não precisa buscar antes de assinar (seriam duas leituras e um
+ * piscar de lista). Um curso sem nenhuma dúvida devolve `[]`, não erro.
+ *
+ * @param {string} courseId
+ * @param {(questions: Array) => void} onChange - recebe a lista completa a cada mudança
+ * @param {(error: Error) => void} [onError] - falha na assinatura (ex.: permissão)
+ * @returns {() => void} função que encerra a observação (chamar no cleanup do efeito)
+ */
+export const observeCourseQuestions = (courseId, onChange, onError) => {
+  if (!courseId || typeof onChange !== "function") return () => {};
+
+  return onValue(
+    ref(database, `courseQuestions/${courseId}`),
+    (snapshot) => onChange(normalizeCourseQuestions(snapshot.val())),
+    (error) => {
+      console.error("Erro ao observar as dúvidas do curso:", error);
+      if (typeof onError === "function") onError(error);
+    }
+  );
 };
 
 /**
@@ -128,6 +168,29 @@ export const fetchUserCourseQuestions = async (courseId, userId) => {
   if (!courseId || !userId) return [];
   const all = await fetchCourseQuestions(courseId);
   return all.filter((question) => question.userId === userId);
+};
+
+/**
+ * Observa em tempo real as dúvidas de UM aluno no curso.
+ *
+ * Serve à lista "minhas dúvidas" dentro do modal: com o observador, uma dúvida
+ * recém-enviada aparece na lista sem recarregá-la à mão, e uma que o professor
+ * excluiu some da tela do aluno que está com o modal aberto.
+ *
+ * @param {string} courseId
+ * @param {string} userId
+ * @param {(questions: Array) => void} onChange
+ * @param {(error: Error) => void} [onError]
+ * @returns {() => void} função que encerra a observação
+ */
+export const observeUserCourseQuestions = (courseId, userId, onChange, onError) => {
+  if (!courseId || !userId || typeof onChange !== "function") return () => {};
+
+  return observeCourseQuestions(
+    courseId,
+    (questions) => onChange(questions.filter((question) => question.userId === userId)),
+    onError
+  );
 };
 
 /**

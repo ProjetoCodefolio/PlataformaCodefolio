@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -26,7 +26,7 @@ import { toast } from "react-toastify";
 import {
   addCourseQuestion,
   deleteCourseQuestion,
-  fetchUserCourseQuestions,
+  observeUserCourseQuestions,
   MAX_QUESTION_LENGTH,
 } from "$api/services/courses/questions";
 import { notifyNewCourseQuestion } from "$api/services/notifications";
@@ -65,6 +65,10 @@ const formatarData = (iso) => {
  * Abaixo do formulário há uma seção recolhível com as próprias dúvidas do aluno,
  * de onde ele pode excluir as que ainda não foram discutidas — é o único lugar
  * onde ele as reencontra. Nasce fechada: quem abre o modal vem escrever, não ler.
+ *
+ * Essa lista é OBSERVADA enquanto o modal está aberto: a dúvida recém-enviada
+ * entra sozinha, e a que o professor marcou como discutida durante a aula muda
+ * de estado na tela do aluno na hora.
  */
 const QuestionFormModal = ({
   open,
@@ -97,24 +101,27 @@ const QuestionFormModal = ({
     }
   }, [open, defaultContentId]);
 
-  const loadMyQuestions = useCallback(async () => {
+  // A observação vive junto com o modal: assina ao abrir e é encerrada ao
+  // fechar, para não deixar uma escuta ativa enquanto o aluno assiste à aula.
+  useEffect(() => {
     if (!open || !courseId || !userId) {
       setMyQuestions([]);
-      return;
+      return undefined;
     }
-    try {
-      setLoadingMine(true);
-      setMyQuestions(await fetchUserCourseQuestions(courseId, userId));
-    } catch (error) {
-      console.error("Erro ao carregar suas dúvidas:", error);
-    } finally {
-      setLoadingMine(false);
-    }
-  }, [open, courseId, userId]);
 
-  useEffect(() => {
-    loadMyQuestions();
-  }, [loadMyQuestions]);
+    setLoadingMine(true);
+    const encerrar = observeUserCourseQuestions(
+      courseId,
+      userId,
+      (lista) => {
+        setMyQuestions(lista);
+        setLoadingMine(false);
+      },
+      () => setLoadingMine(false)
+    );
+
+    return encerrar;
+  }, [open, courseId, userId]);
 
   const handleSubmit = async () => {
     if (!userId) {
@@ -146,7 +153,6 @@ const QuestionFormModal = ({
 
       toast.success("Dúvida registrada! O professor vai vê-la sem seu nome na aula.");
       setText("");
-      await loadMyQuestions();
       if (typeof onSubmitted === "function") onSubmitted(criada);
     } catch (error) {
       console.error("Erro ao registrar dúvida:", error);
@@ -160,7 +166,6 @@ const QuestionFormModal = ({
     try {
       await deleteCourseQuestion(courseId, question.id);
       toast.success("Dúvida excluída.");
-      await loadMyQuestions();
     } catch (error) {
       console.error("Erro ao excluir dúvida:", error);
       toast.error("Não foi possível excluir a dúvida");

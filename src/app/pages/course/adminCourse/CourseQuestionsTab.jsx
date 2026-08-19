@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,7 +33,7 @@ import SearchField from "../../../components/common/SearchField";
 import SortableHeader from "../../../components/common/SortableHeader";
 import { sortRows, getNextSort } from "../../../utils/tableSort";
 import {
-  fetchCourseQuestions,
+  observeCourseQuestions,
   filterCourseQuestions,
   summarizeQuestionsByContent,
   setQuestionDiscussed,
@@ -64,6 +64,9 @@ const formatarData = (iso) => {
  * recorte do filtro. O botão "Apresentar" leva o filtro de VÍDEO para a tela de
  * apresentação — a busca por aluno fica de fora porque lá as dúvidas são
  * anônimas, e projetar "as dúvidas da Maria" contradiria isso.
+ *
+ * A tabela é OBSERVADA em tempo real: a dúvida que um aluno registra agora
+ * aparece aqui sozinha, sem recarregar a aba.
  */
 const CourseQuestionsTab = ({ courseId }) => {
   const navigate = useNavigate();
@@ -75,27 +78,32 @@ const CourseQuestionsTab = ({ courseId }) => {
   const [sort, setSort] = useState({ sortField: "createdAt", sortOrder: "desc" });
   const [questionToDelete, setQuestionToDelete] = useState(null);
 
-  const loadQuestions = useCallback(async () => {
+  // Observa o nó das dúvidas: a lista se mantém sozinha enquanto a aba está
+  // aberta. Por isso nenhuma ação daqui (marcar/excluir) mexe no estado local —
+  // quem reemite a lista é o observador, que é a única fonte de verdade.
+  useEffect(() => {
     if (!courseId) {
       setQuestions([]);
       setLoading(false);
-      return;
+      return undefined;
     }
-    try {
-      setLoading(true);
-      setQuestions(await fetchCourseQuestions(courseId));
-    } catch (error) {
-      console.error("Erro ao carregar dúvidas:", error);
-      toast.error("Erro ao carregar as dúvidas do curso");
-      setQuestions([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [courseId]);
 
-  useEffect(() => {
-    loadQuestions();
-  }, [loadQuestions]);
+    setLoading(true);
+    const encerrar = observeCourseQuestions(
+      courseId,
+      (lista) => {
+        setQuestions(lista);
+        setLoading(false);
+      },
+      () => {
+        toast.error("Erro ao carregar as dúvidas do curso");
+        setQuestions([]);
+        setLoading(false);
+      }
+    );
+
+    return encerrar;
+  }, [courseId]);
 
   const contentOptions = useMemo(
     () => summarizeQuestionsByContent(questions),
@@ -116,17 +124,6 @@ const CourseQuestionsTab = ({ courseId }) => {
   const handleToggleDiscussed = async (question) => {
     try {
       await setQuestionDiscussed(courseId, question.id, !question.discussed);
-      setQuestions((atuais) =>
-        atuais.map((item) =>
-          item.id === question.id
-            ? {
-                ...item,
-                discussed: !question.discussed,
-                discussedAt: !question.discussed ? new Date().toISOString() : null,
-              }
-            : item
-        )
-      );
     } catch (error) {
       console.error("Erro ao atualizar a dúvida:", error);
       toast.error("Não foi possível atualizar a dúvida");
@@ -137,9 +134,6 @@ const CourseQuestionsTab = ({ courseId }) => {
     if (!questionToDelete) return;
     try {
       await deleteCourseQuestion(courseId, questionToDelete.id);
-      setQuestions((atuais) =>
-        atuais.filter((item) => item.id !== questionToDelete.id)
-      );
       toast.success("Dúvida excluída.");
     } catch (error) {
       console.error("Erro ao excluir dúvida:", error);

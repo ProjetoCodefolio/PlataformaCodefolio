@@ -8,7 +8,7 @@ import { canManageCourse } from "$api/utils/permissions";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { getCourseIdByAlias } from "$api/services/courses/alias";
 import {
-  fetchCourseQuestions,
+  observeCourseQuestions,
   setQuestionDiscussed,
   summarizeQuestionsByContent,
 } from "$api/services/courses/questions";
@@ -29,6 +29,12 @@ import QuestionsPresenter from "$components/courses/questions/QuestionsPresenter
  * seletor dentro da apresentação.
  *
  * Só o dono do curso e admins entram: a tela lista dúvidas de todos os alunos.
+ *
+ * AO VIVO: a lista é OBSERVADA (`onValue`), não buscada uma vez. É o ponto da
+ * tela — uma dúvida registrada pelo aluno durante a aula entra na projeção
+ * sozinha, sem o professor recarregar a página no meio da explicação. Por isso
+ * a permissão é resolvida num efeito e a assinatura em outro: a assinatura só
+ * começa depois da liberação, e é encerrada ao sair da tela.
  */
 const QuestionsPresentation = ({ alias }) => {
   const navigate = useNavigate();
@@ -40,6 +46,8 @@ const QuestionsPresentation = ({ alias }) => {
   const [courseTitle, setCourseTitle] = useState("");
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Só vira true depois da checagem de permissão: é o que destrava a assinatura.
+  const [accessGranted, setAccessGranted] = useState(false);
 
   const initialContentId = params.get("videoId") || "";
 
@@ -70,12 +78,15 @@ const QuestionsPresentation = ({ alias }) => {
     };
   }, [alias, navigate]);
 
+  // Permissão e dados do curso. Roda ANTES da assinatura: quem não administra o
+  // curso não chega a abrir uma escuta das dúvidas da turma.
   useEffect(() => {
     if (!courseId || !userDetails) return;
 
     let cancelado = false;
-    const carregar = async () => {
+    const verificar = async () => {
       setLoading(true);
+      setAccessGranted(false);
       try {
         const curso = await fetchCourseDetails(courseId);
         if (cancelado) return;
@@ -95,20 +106,39 @@ const QuestionsPresentation = ({ alias }) => {
         }
 
         setCourseTitle(curso.title || "Dúvidas da turma");
-        setQuestions(await fetchCourseQuestions(courseId));
+        setAccessGranted(true);
       } catch (error) {
-        console.error("Erro ao carregar as dúvidas do curso:", error);
+        console.error("Erro ao carregar o curso:", error);
         toast.error("Não foi possível carregar as dúvidas do curso.");
-      } finally {
-        if (!cancelado) setLoading(false);
+        setLoading(false);
       }
     };
-    carregar();
+    verificar();
 
     return () => {
       cancelado = true;
     };
   }, [courseId, userDetails, navigate]);
+
+  // Assinatura ao vivo das dúvidas. O `onValue` já dispara na primeira leitura,
+  // então é ele quem tira a tela do "Carregando" — não há um `fetch` antes.
+  useEffect(() => {
+    if (!courseId || !accessGranted) return;
+
+    const encerrar = observeCourseQuestions(
+      courseId,
+      (lista) => {
+        setQuestions(lista);
+        setLoading(false);
+      },
+      () => {
+        toast.error("A atualização ao vivo das dúvidas foi interrompida.");
+        setLoading(false);
+      }
+    );
+
+    return encerrar;
+  }, [courseId, accessGranted]);
 
   const contentOptions = useMemo(
     () => summarizeQuestionsByContent(questions),
@@ -119,14 +149,10 @@ const QuestionsPresentation = ({ alias }) => {
     async (question) => {
       if (!question?.id) return;
       try {
+        // Sem atualização local: o observador recebe a gravação e reemite a
+        // lista. Mexer no estado aqui criaria uma segunda fonte de verdade que
+        // brigaria com o que vem do banco.
         await setQuestionDiscussed(courseId, question.id, true);
-        setQuestions((atuais) =>
-          atuais.map((item) =>
-            item.id === question.id
-              ? { ...item, discussed: true, discussedAt: new Date().toISOString() }
-              : item
-          )
-        );
       } catch (error) {
         console.error("Erro ao marcar dúvida como discutida:", error);
         toast.error("Não foi possível marcar a dúvida como discutida.");

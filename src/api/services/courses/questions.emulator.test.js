@@ -12,7 +12,9 @@ import { ref, set, get } from "firebase/database";
  *  - excluir o curso leva as dúvidas junto — sem isso o nó fica órfão, como já
  *    aconteceu com `courseAliases`;
  *  - marcar como discutida NÃO apaga a dúvida: ela sai da apresentação mas
- *    continua registrada na aba.
+ *    continua registrada na aba;
+ *  - o observador entrega a dúvida nova SEM ninguém reler o nó — é o que faz a
+ *    apresentação em aula funcionar ao vivo, e só um banco de verdade prova.
  *
  * Precisa do emulador de pé (`npm run firebase-emulate`). Sem ele, os testes são
  * reportados como pulados, não aprovados. Porta configurável via RTDB_EMULATOR_PORT.
@@ -61,6 +63,7 @@ const {
   fetchUserCourseQuestions,
   setQuestionDiscussed,
   deleteCourseQuestion,
+  observeCourseQuestions,
 } = await import("./questions");
 const { database } = await import("../../config/firebase");
 
@@ -177,6 +180,78 @@ describe.runIf(emuladorNoAr)("dúvidas do curso (courseQuestions)", () => {
 
     const duvidas = await fetchCourseQuestions(courseId);
     expect(duvidas.map((d) => d.text)).toEqual(["Segunda"]);
+  });
+
+  it("entrega ao vivo a dúvida registrada depois da assinatura", async () => {
+    const recebidas = [];
+    // Cada emissão do observador é guardada: o teste espera pela emissão que
+    // contém a dúvida nova, sem supor quantas vieram antes.
+    const esperarPor = (texto) =>
+      new Promise((resolve, reject) => {
+        const prazo = setTimeout(
+          () => reject(new Error(`O observador não entregou "${texto}"`)),
+          5000
+        );
+        const conferir = () => {
+          const emissao = recebidas.find((lista) =>
+            lista.some((duvida) => duvida.text === texto)
+          );
+          if (emissao) {
+            clearTimeout(prazo);
+            resolve(emissao);
+            return;
+          }
+          setTimeout(conferir, 25);
+        };
+        conferir();
+      });
+
+    const encerrar = observeCourseQuestions(courseId, (lista) => recebidas.push(lista));
+
+    // Curso sem nenhuma dúvida: a primeira emissão é lista vazia, não erro.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(recebidas[0]).toEqual([]);
+
+    await addCourseQuestion(
+      courseId,
+      { contentId: "aula1", contentTitle: "Aula 1", text: "Chegou durante a aula" },
+      ALUNO
+    );
+
+    const comADuvida = await esperarPor("Chegou durante a aula");
+    expect(comADuvida).toHaveLength(1);
+    expect(comADuvida[0].userName).toBe("Maria Silva");
+    expect(comADuvida[0].discussed).toBe(false);
+
+    // Encerrada a assinatura, o que acontecer no banco não chega mais à tela.
+    encerrar();
+    const emissoesAteAqui = recebidas.length;
+    await addCourseQuestion(
+      courseId,
+      { contentId: "aula1", contentTitle: "Aula 1", text: "Depois de fechar a tela" },
+      ALUNO
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(recebidas).toHaveLength(emissoesAteAqui);
+  });
+
+  it("entrega ao vivo a mudança de situação da dúvida", async () => {
+    const criada = await addCourseQuestion(
+      courseId,
+      { contentId: "aula1", contentTitle: "Aula 1", text: "Como funciona?" },
+      ALUNO
+    );
+
+    const recebidas = [];
+    const encerrar = observeCourseQuestions(courseId, (lista) => recebidas.push(lista));
+
+    await setQuestionDiscussed(courseId, criada.id, true);
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    encerrar();
+
+    const ultima = recebidas[recebidas.length - 1];
+    expect(ultima[0].discussed).toBe(true);
   });
 
   it("recusa dúvida sem texto ou sem conteúdo escolhido", async () => {
