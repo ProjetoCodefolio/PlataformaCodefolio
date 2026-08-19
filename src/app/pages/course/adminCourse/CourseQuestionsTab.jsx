@@ -25,6 +25,10 @@ import {
   Modal,
   TextField,
   InputAdornment,
+  Card,
+  CardContent,
+  Divider,
+  Stack,
 } from "@mui/material";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -59,6 +63,47 @@ const formatarData = (iso) => {
 };
 
 /**
+ * Os dois botões de ação de uma dúvida. Fica fora do componente da aba porque a
+ * tabela (desktop) e os cartões (celular) mostram exatamente as mesmas ações —
+ * duplicá-los deixaria os dois caminhos livres para divergir.
+ */
+const AcoesDaDuvida = ({ question, onToggle, onDelete }) => (
+  <>
+    <Tooltip title={question.discussed ? "Marcar como pendente" : "Marcar como discutida"}>
+      <IconButton
+        onClick={() => onToggle(question)}
+        sx={{ color: question.discussed ? "#2e7d32" : "#999" }}
+        aria-label="Alternar situação da dúvida"
+      >
+        {question.discussed ? (
+          <CheckCircleIcon fontSize="small" />
+        ) : (
+          <RadioButtonUncheckedIcon fontSize="small" />
+        )}
+      </IconButton>
+    </Tooltip>
+    <Tooltip title="Excluir dúvida">
+      <IconButton
+        onClick={() => onDelete(question)}
+        sx={{ color: "#d32f2f" }}
+        aria-label="Excluir dúvida"
+      >
+        <DeleteIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  </>
+);
+
+AcoesDaDuvida.propTypes = {
+  question: PropTypes.shape({
+    id: PropTypes.string,
+    discussed: PropTypes.bool,
+  }).isRequired,
+  onToggle: PropTypes.func.isRequired,
+  onDelete: PropTypes.func.isRequired,
+};
+
+/**
  * Aba "Dúvidas": onde o professor vê QUEM registrou cada dúvida e em qual
  * conteúdo — a única tela em que a autoria aparece (na apresentação em aula as
  * dúvidas são sempre anônimas).
@@ -70,6 +115,12 @@ const formatarData = (iso) => {
  *
  * A tabela é OBSERVADA em tempo real: a dúvida que um aluno registra agora
  * aparece aqui sozinha, sem recarregar a aba.
+ *
+ * No celular a tabela dá lugar a CARTÕES (mesmo padrão da aba "Alunos"): as seis
+ * colunas somam 950px de largura mínima, e num telefone isso vira rolagem
+ * horizontal para ler cada dúvida e outra para alcançar os botões. No cartão a
+ * dúvida vem inteira, e a autoria — que é o motivo desta aba existir — fica
+ * visível sem arrastar nada.
  */
 const CourseQuestionsTab = ({ courseId, alias }) => {
   const navigate = useNavigate();
@@ -190,6 +241,12 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
 
   const pendentes = questions.filter((question) => !question.discussed).length;
 
+  // Mesma frase na tabela e nos cartões: as duas listas mostram o mesmo recorte.
+  const vazioTexto =
+    questions.length === 0
+      ? "Nenhuma dúvida registrada neste curso ainda."
+      : "Nenhuma dúvida corresponde aos filtros.";
+
   if (!courseId) {
     return (
       <Box sx={{ mt: 4, p: 3, backgroundColor: "#fff", borderRadius: "8px" }}>
@@ -282,7 +339,12 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
           >
             <MenuItem value="">Todos os vídeos</MenuItem>
             {contentOptions.map((option) => (
-              <MenuItem key={option.contentId} value={option.contentId}>
+              <MenuItem
+                key={option.contentId}
+                value={option.contentId}
+                // Título de vídeo longo estica o menu além da tela do celular.
+                sx={{ whiteSpace: "normal", maxWidth: "min(90vw, 420px)" }}
+              >
                 {option.contentTitle} ({option.total})
               </MenuItem>
             ))}
@@ -321,7 +383,12 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
               : "Projeta as dúvidas deste recorte, sem identificar os autores"
           }
         >
-          <span>
+          {/* O Tooltip precisa de um invólucro para funcionar com o botão
+              desativado; ele é quem carrega a largura no celular. */}
+          <Box
+            component="span"
+            sx={{ display: "block", flex: { xs: "1 1 100%", sm: "0 0 auto" } }}
+          >
             <Button
               variant="contained"
               startIcon={<SlideshowIcon />}
@@ -330,12 +397,13 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
               sx={{
                 backgroundColor: PURPLE,
                 fontWeight: "bold",
+                width: { xs: "100%", sm: "auto" },
                 "&:hover": { backgroundColor: "#7d37a7" },
               }}
             >
               Apresentar ({presentedQuestions.length})
             </Button>
-          </span>
+          </Box>
         </Tooltip>
       </Box>
 
@@ -344,123 +412,188 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
           <CircularProgress sx={{ color: PURPLE }} />
         </Box>
       ) : (
-        <TableContainer component={Paper} sx={{ borderRadius: "12px", maxHeight: "70vh" }}>
-          <Table stickyHeader size="small">
-            <TableHead>
-              <TableRow>
-                <SortableHeader
-                  label="Data"
-                  field="createdAt"
-                  sortField={sort.sortField}
-                  sortOrder={sort.sortOrder}
-                  onSort={handleSort}
-                  sx={{ minWidth: 140 }}
-                />
-                <SortableHeader
-                  label="Vídeo"
-                  field="contentTitle"
-                  sortField={sort.sortField}
-                  sortOrder={sort.sortOrder}
-                  onSort={handleSort}
-                  sx={{ minWidth: 160 }}
-                />
-                <SortableHeader
-                  label="Aluno"
-                  field="userName"
-                  sortField={sort.sortField}
-                  sortOrder={sort.sortOrder}
-                  onSort={handleSort}
-                  sx={{ minWidth: 160 }}
-                />
-                <TableCell sx={{ fontWeight: 700, minWidth: 260 }}>Dúvida</TableCell>
-                <SortableHeader
-                  label="Situação"
-                  field="discussed"
-                  align="center"
-                  sortField={sort.sortField}
-                  sortOrder={sort.sortOrder}
-                  onSort={handleSort}
-                  sx={{ minWidth: 120 }}
-                />
-                <TableCell align="center" sx={{ fontWeight: 700, minWidth: 110 }}>
-                  Ações
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filtered.map((question) => (
-                <TableRow key={question.id} hover>
-                  <TableCell>
-                    <Typography variant="caption" sx={{ color: "#333" }}>
-                      {formatarData(question.createdAt)}
+        <>
+          {/* Tabela: só do md para cima (as colunas somam 950px de largura mínima). */}
+          <TableContainer
+            component={Paper}
+            sx={{
+              borderRadius: "12px",
+              maxHeight: "70vh",
+              display: { xs: "none", md: "block" },
+            }}
+          >
+            <Table stickyHeader size="small">
+              <TableHead>
+                <TableRow>
+                  <SortableHeader
+                    label="Data"
+                    field="createdAt"
+                    sortField={sort.sortField}
+                    sortOrder={sort.sortOrder}
+                    onSort={handleSort}
+                    sx={{ minWidth: 140 }}
+                  />
+                  <SortableHeader
+                    label="Vídeo"
+                    field="contentTitle"
+                    sortField={sort.sortField}
+                    sortOrder={sort.sortOrder}
+                    onSort={handleSort}
+                    sx={{ minWidth: 160 }}
+                  />
+                  <SortableHeader
+                    label="Aluno"
+                    field="userName"
+                    sortField={sort.sortField}
+                    sortOrder={sort.sortOrder}
+                    onSort={handleSort}
+                    sx={{ minWidth: 160 }}
+                  />
+                  <TableCell sx={{ fontWeight: 700, minWidth: 260 }}>Dúvida</TableCell>
+                  <SortableHeader
+                    label="Situação"
+                    field="discussed"
+                    align="center"
+                    sortField={sort.sortField}
+                    sortOrder={sort.sortOrder}
+                    onSort={handleSort}
+                    sx={{ minWidth: 120 }}
+                  />
+                  <TableCell align="center" sx={{ fontWeight: 700, minWidth: 110 }}>
+                    Ações
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filtered.map((question) => (
+                  <TableRow key={question.id} hover>
+                    <TableCell>
+                      <Typography variant="caption" sx={{ color: "#333" }}>
+                        {formatarData(question.createdAt)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{question.contentTitle}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {question.userName}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                        {question.text}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={question.discussed ? "Discutida" : "Pendente"}
+                        size="small"
+                        color={question.discussed ? "success" : "default"}
+                        variant={question.discussed ? "filled" : "outlined"}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <AcoesDaDuvida
+                        question={question}
+                        onToggle={handleToggleDiscussed}
+                        onDelete={setQuestionToDelete}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: "#999" }}>
+                      {vazioTexto}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {/* Cartões: abaixo do md. A dúvida vem inteira e a autoria fica logo
+              acima dela — sem rolagem horizontal para ler ou para agir. */}
+          <Box sx={{ display: { xs: "block", md: "none" } }}>
+            {filtered.length === 0 ? (
+              <Paper sx={{ borderRadius: "12px", p: 3, textAlign: "center", color: "#999" }}>
+                {vazioTexto}
+              </Paper>
+            ) : (
+              filtered.map((question) => (
+                <Card
+                  key={question.id}
+                  sx={{ mb: 2, borderRadius: "12px", boxShadow: "0px 2px 8px rgba(0,0,0,0.1)" }}
+                >
+                  <CardContent sx={{ "&:last-child": { pb: 2 } }}>
+                    <Stack
+                      direction="row"
+                      alignItems="flex-start"
+                      justifyContent="space-between"
+                      spacing={1}
+                    >
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          variant="subtitle2"
+                          sx={{ fontWeight: 700, color: "#333", wordBreak: "break-word" }}
+                        >
+                          {question.userName}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#666" }}>
+                          {formatarData(question.createdAt)}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={question.discussed ? "Discutida" : "Pendente"}
+                        size="small"
+                        color={question.discussed ? "success" : "default"}
+                        variant={question.discussed ? "filled" : "outlined"}
+                        sx={{ flexShrink: 0 }}
+                      />
+                    </Stack>
+
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        mt: 1,
+                        color: PURPLE,
+                        fontWeight: 600,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {question.contentTitle}
                     </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{question.contentTitle}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {question.userName}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 0.5,
+                        color: "#333",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
                       {question.text}
                     </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip
-                      label={question.discussed ? "Discutida" : "Pendente"}
-                      size="small"
-                      color={question.discussed ? "success" : "default"}
-                      variant={question.discussed ? "filled" : "outlined"}
-                    />
-                  </TableCell>
-                  <TableCell align="center">
-                    <Tooltip
-                      title={
-                        question.discussed
-                          ? "Marcar como pendente"
-                          : "Marcar como discutida"
-                      }
-                    >
-                      <IconButton
-                        onClick={() => handleToggleDiscussed(question)}
-                        sx={{ color: question.discussed ? "#2e7d32" : "#999" }}
-                        aria-label="Alternar situação da dúvida"
-                      >
-                        {question.discussed ? (
-                          <CheckCircleIcon fontSize="small" />
-                        ) : (
-                          <RadioButtonUncheckedIcon fontSize="small" />
-                        )}
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Excluir dúvida">
-                      <IconButton
-                        onClick={() => setQuestionToDelete(question)}
-                        sx={{ color: "#d32f2f" }}
-                        aria-label="Excluir dúvida"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))}
 
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: "#999" }}>
-                    {questions.length === 0
-                      ? "Nenhuma dúvida registrada neste curso ainda."
-                      : "Nenhuma dúvida corresponde aos filtros."}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                    <Divider sx={{ my: 1.5 }} />
+
+                    <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                      <AcoesDaDuvida
+                        question={question}
+                        onToggle={handleToggleDiscussed}
+                        onDelete={setQuestionToDelete}
+                      />
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </Box>
+        </>
       )}
 
       <Modal open={!!questionToDelete} onClose={() => setQuestionToDelete(null)}>

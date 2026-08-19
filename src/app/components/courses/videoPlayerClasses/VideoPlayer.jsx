@@ -543,12 +543,19 @@ export const VideoPlayer = forwardRef(
               fontWeight: 600,
               color: "#555",
               fontSize: { xs: "1rem", sm: "1.25rem" },
+              // No celular o título disputa a linha com até cinco botões (entre
+              // eles os dois de dúvidas). Sem o corte com reticências, um título
+              // longo empurra os botões para fora da tela; é o título que cede.
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {video.title.split(" - ")[0]}
           </Typography>
 
-          <Box sx={{ display: "flex", ml: "auto" }}>
+          <Box sx={{ display: "flex", ml: "auto", flexShrink: 0 }}>
             {hasSlide && (
               <IconButton
                 onClick={handleOpenSlidesClick}

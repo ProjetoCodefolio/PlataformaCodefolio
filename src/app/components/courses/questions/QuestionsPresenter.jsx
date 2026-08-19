@@ -12,6 +12,7 @@ import {
   FormControl,
   FormControlLabel,
   Switch,
+  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
@@ -110,6 +111,12 @@ const QuestionsPresenter = ({
   const [includeDiscussed, setIncludeDiscussed] = useState(false);
   const [index, setIndex] = useState(0);
   const [fontScale, setFontScale] = useState(lerEscalaSalva);
+
+  // No celular os controles não cabem numa linha só. Em vez de deixá-los
+  // quebrar em três linhas — que comem a altura da dúvida, o que a tela existe
+  // para mostrar —, o seletor ocupa a primeira linha inteira e o rótulo da
+  // chave encurta, para a chave e os botões de fonte dividirem a segunda.
+  const noCelular = useMediaQuery("(max-width:599.95px)");
 
   const visiveis = useMemo(
     () =>
@@ -225,7 +232,15 @@ const QuestionsPresenter = ({
     <Box
       sx={{
         position: "fixed",
-        inset: 0,
+        top: 0,
+        left: 0,
+        right: 0,
+        // No celular a barra de endereço fica POR CIMA de um `100vh`: a linha de
+        // baixo (posição na lista e "Marcar como discutida") some atrás dela.
+        // `100dvh` mede a altura realmente visível; o `100vh` fica de reserva
+        // para navegador antigo que não conhece a unidade.
+        height: "100vh",
+        "@supports (height: 100dvh)": { height: "100dvh" },
         backgroundColor: "#700cac",
         backgroundImage: "linear-gradient(135deg, #700cac 0%, #9041c1 100%)",
         display: "flex",
@@ -285,7 +300,10 @@ const QuestionsPresenter = ({
           mt: { xs: 1, sm: 1.5 },
         }}
       >
-        <FormControl size="small" sx={{ minWidth: { xs: 200, sm: 300, md: 380 } }}>
+        <FormControl
+          size="small"
+          sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 300, md: 380 } }}
+        >
           <Select
             value={contentId}
             onChange={(e) => trocarRecorte(() => setContentId(e.target.value))}
@@ -309,7 +327,13 @@ const QuestionsPresenter = ({
           >
             <MenuItem value="">Todas as dúvidas ({totalGeral})</MenuItem>
             {contentOptions.map((option) => (
-              <MenuItem key={option.contentId} value={option.contentId}>
+              <MenuItem
+                key={option.contentId}
+                value={option.contentId}
+                // Sem a quebra de linha, um título de vídeo longo estica o menu
+                // além da largura do celular e o texto fica fora da tela.
+                sx={{ whiteSpace: "normal", maxWidth: "min(90vw, 420px)" }}
+              >
                 {option.contentTitle} ({option.total})
               </MenuItem>
             ))}
@@ -329,7 +353,11 @@ const QuestionsPresenter = ({
               }}
             />
           }
-          label={`Incluir já discutidas (+${totalDiscutidas})`}
+          label={
+            noCelular
+              ? `Já discutidas (+${totalDiscutidas})`
+              : `Incluir já discutidas (+${totalDiscutidas})`
+          }
           sx={{
             mr: 0,
             "& .MuiFormControlLabel-label": {
@@ -360,7 +388,13 @@ const QuestionsPresenter = ({
                 disabled={fontScale <= ESCALA_MINIMA}
                 aria-label="Diminuir a fonte da dúvida"
                 size="small"
-                sx={{ color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+                sx={{
+                  color: "#fff",
+                  // 44px de área de toque no celular: o padrão do `small` (30px)
+                  // é menor que a ponta do dedo e erra o alvo.
+                  p: { xs: 1.5, sm: 0.75 },
+                  "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" },
+                }}
               >
                 <TextDecreaseIcon />
               </IconButton>
@@ -389,7 +423,11 @@ const QuestionsPresenter = ({
                 disabled={fontScale >= ESCALA_MAXIMA}
                 aria-label="Aumentar a fonte da dúvida"
                 size="small"
-                sx={{ color: "#fff", "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" } }}
+                sx={{
+                  color: "#fff",
+                  p: { xs: 1.5, sm: 0.75 },
+                  "&.Mui-disabled": { color: "rgba(255,255,255,0.35)" },
+                }}
               >
                 <TextIncreaseIcon />
               </IconButton>

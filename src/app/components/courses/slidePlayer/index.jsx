@@ -142,12 +142,18 @@ const SlidePlayer = ({
             fontWeight: 600,
             color: "#555",
             fontSize: { xs: "1rem", sm: "1.25rem" },
+            // Mesmo cabeçalho do player de vídeo: no celular o título cede
+            // espaço com reticências para os botões não saírem da tela.
+            minWidth: 0,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
           {courseTitle ? `${courseTitle} - Slides` : slideData.title}
         </Typography>
 
-        <Box sx={{ display: "flex", ml: "auto" }}>
+        <Box sx={{ display: "flex", ml: "auto", flexShrink: 0 }}>
           {onAskQuestion && (
             <IconButton
               onClick={onAskQuestion}

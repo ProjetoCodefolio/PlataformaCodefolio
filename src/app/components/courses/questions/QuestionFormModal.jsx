@@ -183,7 +183,11 @@ const QuestionFormModal = ({
           left: "50%",
           transform: "translate(-50%, -50%)",
           width: { xs: "92%", sm: "560px" },
+          // No celular o `vh` conta a área coberta pela barra de endereço, e o
+          // rodapé do modal (os botões) fica fora da tela. O `dvh` mede o que
+          // está de fato visível; o `vh` fica de reserva para navegador antigo.
           maxHeight: "88vh",
+          "@supports (height: 100dvh)": { maxHeight: { xs: "92dvh", sm: "88dvh" } },
           overflowY: "auto",
           bgcolor: "background.paper",
           borderRadius: 2,
@@ -229,9 +233,18 @@ const QuestionFormModal = ({
               value={contentId}
               onChange={(e) => setContentId(e.target.value)}
               disabled={contentItems.length === 0}
+              // Já fechado, o campo mostra o título escolhido: sem o corte com
+              // reticências ele empurra a largura do modal no celular.
+              sx={{ "& .MuiSelect-select": { textOverflow: "ellipsis" } }}
             >
               {contentItems.map((item) => (
-                <MenuItem key={item.id} value={item.id}>
+                <MenuItem
+                  key={item.id}
+                  value={item.id}
+                  // Sem a quebra, um título de vídeo longo estica o menu para
+                  // além da largura do celular e o texto sai da tela.
+                  sx={{ whiteSpace: "normal", maxWidth: "min(90vw, 520px)" }}
+                >
                   {item.title}
                 </MenuItem>
               ))}
@@ -348,7 +361,14 @@ const QuestionFormModal = ({
                               <Chip label="Discutida" size="small" color="success" variant="outlined" />
                             )}
                           </Box>
-                          <Typography variant="body2" sx={{ color: "#333", whiteSpace: "pre-wrap" }}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: "#333",
+                              whiteSpace: "pre-wrap",
+                              wordBreak: "break-word",
+                            }}
+                          >
                             {question.text}
                           </Typography>
                         </Box>
