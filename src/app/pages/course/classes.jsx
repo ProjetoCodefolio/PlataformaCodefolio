@@ -988,6 +988,10 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   );
 
   const handleAskQuestion = () => {
+    if (!userDetails?.userId) {
+      setShowLogInModal(true);
+      return;
+    }
     if (videoPlayerRef.current && typeof videoPlayerRef.current.pause === "function") {
       videoPlayerRef.current.pause();
     }
@@ -997,6 +1001,14 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   // Link externo (/cursos/{apelido}/questions ou /classes/questions): abre o
   // modal assim que a sala estiver liberada e com o conteúdo carregado, para
   // que o seletor já venha preenchido.
+  //
+  // Deslogado, quem chega por este link não consegue nem enviar a dúvida
+  // (o formulário exige autoria) nem ser matriculado — então o passo aqui é
+  // pedir login, não abrir o formulário. O `ref` só é marcado como tratado
+  // DEPOIS do login: sem `userDetails.userId` o efeito volta a rodar sozinho
+  // a cada nova checagem de autenticação, e assim que o aluno loga (o login é
+  // por popup, sem sair da página) ele cai direto no formulário — sem precisar
+  // clicar no link de novo.
   //
   // E MATRICULA o aluno no curso: quem chega por este link não passou pelo
   // catálogo, e o professor divulga o endereço esperando que responder a ele já
@@ -1011,6 +1023,11 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   useEffect(() => {
     if (!openQuestions || questionsLinkHandledRef.current) return;
     if (!accessGranted || loadingVideos || videos.length === 0) return;
+
+    if (!userDetails?.userId) {
+      setShowLogInModal(true);
+      return;
+    }
 
     questionsLinkHandledRef.current = true;
     setShowQuestionModal(true);
