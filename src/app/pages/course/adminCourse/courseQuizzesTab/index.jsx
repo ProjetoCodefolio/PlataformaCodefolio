@@ -9,12 +9,14 @@ import React, {
 } from "react";
 import { Box, Typography, Tabs, Tab, Button } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import DownloadIcon from "@mui/icons-material/Download";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
 import QuizSettingsModal from "./QuizSettingsModal";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
+import ImportQuizModal from "$components/courses/import/ImportQuizModal";
 import { ConfirmationModal, SuccessModal } from "./Modals";
 import { generateUUID } from "../../../../utils/courseUtils";
 import PdfQuizGenerator from "./PdfQuizGenerator";
@@ -56,6 +58,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [slidesState, setSlides] = useState(slides || []);
 
   const [quizzes, setQuizzes] = useState([]);
+  const [showImportQuizModal, setShowImportQuizModal] = useState(false);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
 
   // Novos estados para gerenciar slides e quizzes de slides
@@ -848,23 +851,40 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     navigate(`/quiz-grades-overview?courseId=${courseId}`);
   };
 
-  // Botão de visão geral de notas
+  // Botões extras do cabeçalho do formulário de criação.
   const gradesOverviewButton = (
-    <Button
-      variant="outlined"
-      startIcon={<TrendingUpIcon />}
-      onClick={handleViewQuizGradesOverview}
-      sx={{
-        borderColor: "#9041c1",
-        color: "#9041c1",
-        "&:hover": {
-          borderColor: "#7a35a3",
-          backgroundColor: "#f5f0fa",
-        },
-      }}
-    >
-      Visão Geral de Notas
-    </Button>
+    <>
+      <Button
+        variant="outlined"
+        startIcon={<TrendingUpIcon />}
+        onClick={handleViewQuizGradesOverview}
+        sx={{
+          borderColor: "#9041c1",
+          color: "#9041c1",
+          "&:hover": {
+            borderColor: "#7a35a3",
+            backgroundColor: "#f5f0fa",
+          },
+        }}
+      >
+        Visão Geral de Notas
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<DownloadIcon />}
+        onClick={() => setShowImportQuizModal(true)}
+        sx={{
+          borderColor: "#9041c1",
+          color: "#9041c1",
+          "&:hover": {
+            borderColor: "#7a35a3",
+            backgroundColor: "#f5f0fa",
+          },
+        }}
+      >
+        Importar de outro curso
+      </Button>
+    </>
   );
 
   // Editor de questões renderizado DENTRO do card do quiz expandido (a lista o
@@ -1065,6 +1085,27 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               settingsQuiz?.videoId
         }
         onSaved={handleQuizSettingsSaved}
+      />
+
+      <ImportQuizModal
+        open={showImportQuizModal}
+        onClose={() => setShowImportQuizModal(false)}
+        courseId={courseId}
+        targets={
+          activeTab === 0
+            ? videosState
+            : // O quiz de slide é chaveado com o prefixo `slide_`; os alvos
+              // precisam chegar ao modal já na forma da chave, que é o que o
+              // serviço grava e o que a lista de ocupados compara.
+              slidesState.map((slide) => ({
+                id: `slide_${slide.id}`,
+                title: slide.title,
+              }))
+        }
+        existingQuizIds={(activeTab === 0 ? quizzes : slideQuizzes).map(
+          (quiz) => quiz.videoId
+        )}
+        onImported={loadQuizzes}
       />
 
       <SuccessModal
