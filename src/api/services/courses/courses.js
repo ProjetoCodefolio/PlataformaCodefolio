@@ -286,6 +286,7 @@ export const deleteCourse = async (courseId) => {
     updates[`courseContent/${courseId}`] = null;
     updates[`courseQuizzes/${courseId}`] = null;
     updates[`courseQuestions/${courseId}`] = null;
+    updates[`courseVideoComments/${courseId}`] = null;
     updates[`courseSlides/${courseId}`] = null;
     updates[`courseMaterials/${courseId}`] = null;
     updates[`courseAssessments/${courseId}`] = null;
