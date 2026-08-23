@@ -1,4 +1,8 @@
 import React from "react";
+import "@fontsource-variable/inter";
+import { ThemeProvider } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
+import theme from "./theme";
 import {
   BrowserRouter as Router,
   Route,
@@ -41,7 +45,8 @@ import AssignmentSubmissionsDashboard from "./app/pages/course/adminCourse/Assig
 
 function App() {
   return (
-    <>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
       <ToastContainer />
       <AuthProvider>
         <Router>
@@ -327,7 +332,7 @@ function App() {
           </Routes>
         </Router>
       </AuthProvider>
-    </>
+    </ThemeProvider>
   );
 }
 
