@@ -34,6 +34,7 @@ import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
 import { prepareSlideUrl, checkSlideHasQuiz } from "$api/services/courses/slides";
 import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
+import VideoComments from "$components/courses/videoComments/VideoComments";
 
 export const styles = `
   .youtube-player .ytp-chrome-bottom,
@@ -852,6 +853,12 @@ export const VideoPlayer = forwardRef(
             Responder Quiz
           </Button>
         )}
+
+        <VideoComments
+          courseId={video?.courseId || courseId}
+          contentId={video?.id}
+          courseOwnerUid={courseOwnerUid}
+        />
 
         <ReportModal
           open={reportModalOpen}
