@@ -1638,6 +1638,31 @@ const StudentAnswersDetail = ({ student }) => (
                     Esta questão não afeta a nota final e será avaliada pelo professor.
                   </Typography>
                 </Box>
+              ) : detail.graded === false ? (
+                // Pergunta de opinião: só a escolha do aluno, sem certo nem
+                // errado. O verde/vermelho aqui daria a entender que havia uma
+                // resposta esperada.
+                <Box sx={{ mt: 1 }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 1,
+                      backgroundColor: "rgba(144, 65, 193, 0.06)",
+                      border: "1px solid rgba(144, 65, 193, 0.35)",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ color: "#4a148c", fontWeight: 500 }}>
+                      Resposta do aluno:{" "}
+                      {detail.userAnswerText || "(Nenhuma resposta fornecida)"}
+                    </Typography>
+                  </Box>
+                  <Typography
+                    variant="caption"
+                    sx={{ display: "block", mt: 1, color: "#666", fontStyle: "italic" }}
+                  >
+                    Pergunta sem resposta certa — não afeta a nota.
+                  </Typography>
+                </Box>
               ) : (
                 // Renderização para múltipla escolha
                 <Box

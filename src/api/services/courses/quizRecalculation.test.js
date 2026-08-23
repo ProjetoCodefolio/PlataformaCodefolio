@@ -290,6 +290,90 @@ describe("recomputeQuizResult", () => {
   });
 });
 
+describe("recomputeQuizResult com pergunta sem resposta certa", () => {
+  // Pergunta de opinião (escala Likert): tem alternativas, mas nenhuma é a
+  // certa. Ela não pode entrar no denominador da nota nem aparecer como erro.
+  const opiniao = (over = {}) => ({
+    id: "q2",
+    question: "O ritmo das aulas foi adequado",
+    questionType: "multiple-choice",
+    options: ["Discordo", "Neutro", "Concordo"],
+    graded: false,
+    scale: "likert-5",
+    ...over,
+  });
+
+  const respostaOpiniao = (over = {}) => ({
+    question: "O ritmo das aulas foi adequado",
+    questionType: "multiple-choice",
+    userAnswer: 2,
+    options: ["Discordo", "Neutro", "Concordo"],
+    ...over,
+  });
+
+  it("não entra no total nem derruba a nota de quem acertou tudo", () => {
+    const recalculo = recomputeQuizResult(
+      result({ detailedAnswers: { q1: savedAnswer(), q2: respostaOpiniao() } }),
+      [question(), opiniao()],
+      60
+    );
+
+    expect(recalculo.updates.totalQuestions).toBe(1);
+    expect(recalculo.updates.correctAnswers).toBe(1);
+    expect(recalculo.updates.scorePercentage).toBe(100);
+    expect(recalculo.updates.isPassed).toBe(true);
+  });
+
+  it("guarda a escolha do aluno, sem gabarito, para a distribuição", () => {
+    const recalculo = recomputeQuizResult(
+      result({ detailedAnswers: { q1: savedAnswer(), q2: respostaOpiniao() } }),
+      [question(), opiniao()],
+      60
+    );
+
+    const entrada = recalculo.updates.detailedAnswers.q2;
+    expect(entrada.graded).toBe(false);
+    expect(entrada.userAnswer).toBe(2);
+    expect(entrada.userAnswerText).toBe("Concordo");
+    expect(entrada.correctOption).toBeUndefined();
+    expect(entrada.correctOptionText).toBeUndefined();
+    expect(entrada.isCorrect).toBe(false);
+  });
+
+  it("questionário só de opinião fica com 100% e aprovado", () => {
+    // É o que impede um questionário de opinião de travar progresso e presença:
+    // sem questão valendo nota, responder já é concluir.
+    const recalculo = recomputeQuizResult(
+      result({
+        correctAnswers: 0,
+        totalQuestions: 0,
+        detailedAnswers: { q2: respostaOpiniao() },
+      }),
+      [opiniao()],
+      60
+    );
+
+    expect(recalculo.updates.totalQuestions).toBe(0);
+    expect(recalculo.updates.scorePercentage).toBe(100);
+    expect(recalculo.updates.isPassed).toBe(true);
+  });
+
+  it("desligar o gabarito de uma questão recalcula a nota de quem tinha errado", () => {
+    // O professor percebe que a pergunta induzia a resposta e desliga o
+    // gabarito: quem "errou" deixa de ser penalizado por ela.
+    const errou = savedAnswer({ userAnswer: 0, userAnswerText: "Londres", isCorrect: false });
+    const recalculo = recomputeQuizResult(
+      result({ correctAnswers: 0, scorePercentage: 0, isPassed: false, detailedAnswers: { q1: errou } }),
+      [question({ graded: false })],
+      60
+    );
+
+    expect(recalculo.updates.totalQuestions).toBe(0);
+    expect(recalculo.updates.scorePercentage).toBe(100);
+    expect(recalculo.updates.detailedAnswers.q1.graded).toBe(false);
+  });
+});
+
 describe("summarizeRecalculation", () => {
   it("consolida promoções, aprovações mantidas e pendências de conferência", () => {
     const summary = summarizeRecalculation([

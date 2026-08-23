@@ -33,6 +33,7 @@ import {
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
 } from "$api/services/courses/quizzes";
+import { normalizeGradedFlag } from "$api/services/courses/quizGrading";
 import { notifyNewQuiz } from "$api/services/notifications";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
@@ -45,6 +46,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [newQuizQuestion, setNewQuizQuestion] = useState("");
   const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
+  // "Esta pergunta tem resposta certa": desligado, a questão não vale nota e
+  // não pede gabarito (é o que permite a escala Likert sem induzir resposta).
+  const [newQuizGraded, setNewQuizGraded] = useState(true);
+  const [newQuizScale, setNewQuizScale] = useState("");
 
   // Imagem opcional da questão (URL + dimensões em px)
   const [newQuizImageUrl, setNewQuizImageUrl] = useState("");
@@ -368,9 +373,16 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     if (question.questionType === 'open-ended') {
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
     } else {
       setNewQuizOptions([...question.options]);
-      setNewQuizCorrectOption(question.correctOption);
+      // Questão sem resposta certa não tem gabarito gravado; o 0 aqui é só o
+      // estado inicial do seletor, que fica escondido enquanto o switch estiver
+      // desligado.
+      setNewQuizCorrectOption(question.correctOption ?? 0);
+      setNewQuizGraded(normalizeGradedFlag(question.graded));
+      setNewQuizScale(question.scale || "");
     }
   };
 
@@ -671,6 +683,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
         question: newQuizQuestion,
         options: newQuizOptions,
         correctOption: newQuizCorrectOption,
+        graded: newQuizGraded,
+        scale: newQuizScale,
       };
 
       // Atualizar a questão no quiz
@@ -742,6 +756,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       } else {
         questionData.options = newQuizOptions.map((opt) => opt.trim());
         questionData.correctOption = newQuizCorrectOption;
+        questionData.graded = newQuizGraded;
+        questionData.scale = newQuizScale;
       }
 
       // Atualizar a questão no quiz
@@ -767,6 +783,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
       setNewQuestionType('multiple-choice');
       setNewQuizImageUrl("");
       setNewQuizImageWidth("");
@@ -810,6 +828,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       } else {
         questionData.options = newQuizOptions.map((opt) => opt.trim());
         questionData.correctOption = newQuizCorrectOption;
+        questionData.graded = newQuizGraded;
+        questionData.scale = newQuizScale;
       }
 
       // Adicionar a questão ao quiz
@@ -834,6 +854,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
       setNewQuestionType('multiple-choice');
       setNewQuizImageUrl("");
       setNewQuizImageWidth("");
@@ -908,6 +930,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
           newQuizOptions={newQuizOptions}
           setNewQuizOptions={setNewQuizOptions}
           newQuizCorrectOption={newQuizCorrectOption}
+          newQuizGraded={newQuizGraded}
+          setNewQuizGraded={setNewQuizGraded}
+          newQuizScale={newQuizScale}
+          setNewQuizScale={setNewQuizScale}
           setNewQuizCorrectOption={setNewQuizCorrectOption}
           newQuestionType={newQuestionType}
           setNewQuestionType={setNewQuestionType}

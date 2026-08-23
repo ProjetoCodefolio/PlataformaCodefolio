@@ -8,6 +8,7 @@ import {
   recomputeQuizResult,
   summarizeRecalculation,
 } from "./quizRecalculation";
+import { gradedQuestions, normalizeGradedFlag } from "./quizGrading";
 
 export const normalizeDiagnosticFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
@@ -151,6 +152,33 @@ export const getQuizWindowMessage = (quiz, now = new Date()) => {
  * @param {Object} source - Dados da questão (de onde vêm os campos de imagem)
  * @returns {Object} - O próprio target, já com os campos ajustados
  */
+/**
+ * Aplica os campos de "esta questão tem resposta certa" numa questão de múltipla
+ * escolha. `graded` só é gravado quando é `false`: a ausência já significa "vale
+ * nota", e escrever `true` em toda questão inflaria o nó sem informação nova.
+ * @param {Object} target - questão sendo montada (alterada no lugar)
+ * @param {Object} source - dados vindos do formulário
+ */
+export const applyQuestionGradingFields = (target, source = {}) => {
+  const valeNota = normalizeGradedFlag(source.graded);
+
+  if (valeNota) {
+    delete target.graded;
+    target.correctOption = source.correctOption;
+  } else {
+    target.graded = false;
+    // Sem gabarito: manter um `correctOption` de uma edição anterior faria a
+    // questão voltar a "ter resposta certa" se a flag fosse perdida.
+    delete target.correctOption;
+  }
+
+  if (source.scale) {
+    target.scale = source.scale;
+  } else {
+    delete target.scale;
+  }
+};
+
 export const applyQuestionImageFields = (target, source = {}) => {
   const url =
     typeof source.imageUrl === "string" ? source.imageUrl.trim() : "";
@@ -598,7 +626,7 @@ export const addQuestionToQuiz = async (courseId, quiz, questionData) => {
       // Questão aberta não precisa de campos extras
     } else {
       newQuestion.options = questionData.options;
-      newQuestion.correctOption = questionData.correctOption;
+      applyQuestionGradingFields(newQuestion, questionData);
     }
 
     // Imagem opcional da questão (URL + dimensões em px)
@@ -672,9 +700,11 @@ export const updateQuizQuestion = async (courseId, quiz, questionData) => {
           // Remover campos de múltipla escolha se existirem
           delete updatedQuestion.options;
           delete updatedQuestion.correctOption;
+          delete updatedQuestion.graded;
+          delete updatedQuestion.scale;
         } else {
           updatedQuestion.options = questionData.options;
-          updatedQuestion.correctOption = questionData.correctOption;
+          applyQuestionGradingFields(updatedQuestion, questionData);
         }
 
         // Imagem opcional da questão (URL + dimensões em px)
@@ -1119,7 +1149,11 @@ export const validateQuizAnswers = async (
       };
     }
 
-    const questions = quizData.questions;
+    // Só as questões que VALEM NOTA entram na conta: dissertativa é corrigida à
+    // mão e questão sem resposta certa (escala Likert) não tem gabarito. Antes
+    // daqui passar pelo seam, as dissertativas contavam no total e derrubavam a
+    // nota de quem tinha acertado tudo o que dava para acertar.
+    const questions = gradedQuestions(quizData.questions);
     const totalPoints = questions.length;
     let earnedPoints = 0;
 
@@ -1135,9 +1169,11 @@ export const validateQuizAnswers = async (
       }
     }
 
-    // Calcular porcentagem de acertos
+    // Sem questão valendo nota (questionário de opinião), responder já é
+    // concluir: 100%, como o recálculo também trata. Assim o quiz não trava
+    // progresso do curso nem presença.
     const scorePercentage =
-      totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
+      totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 100;
 
     // Garantir que minPercentage seja um número
     const requiredPercentage = Number(quizData.minPercentage || minPercentage);
@@ -1281,9 +1317,30 @@ export const saveQuizResults = async (
     // Usar answersDetails se fornecido, caso contrário criar detailedAnswers
     let detailedAnswers = {};
     
+    // Pergunta sem resposta certa: grava a escolha, e SÓ. Um `correctOption`
+    // aqui viraria `Number(undefined)` = NaN, valor que o RTDB recusa — a
+    // gravação inteira falharia e o aluno perderia a submissão.
+    const escolhaSemGabarito = (question, options, userOption) => ({
+      question,
+      questionType: 'multiple-choice',
+      graded: false,
+      userAnswer: Number(userOption),
+      userAnswerText: options?.[userOption] ?? "Não respondida",
+      options: options || [],
+    });
+
     if (answersDetails && Array.isArray(answersDetails)) {
       // Converter array de answersDetails para objeto indexado por questionId
       answersDetails.forEach((detail) => {
+        if (detail.questionType !== 'open-ended' && detail.graded === false) {
+          detailedAnswers[detail.questionId] = escolhaSemGabarito(
+            detail.question,
+            detail.options,
+            detail.userOption
+          );
+          return;
+        }
+
         detailedAnswers[detail.questionId] = {
           question: detail.question,
           questionType: detail.questionType || 'multiple-choice',
@@ -1307,6 +1364,12 @@ export const saveQuizResults = async (
       // Fallback: criar detailedAnswers apenas com questões de múltipla escolha
       questions.forEach((q) => {
         const userAnswer = userAnswers[q.id];
+
+        if (!normalizeGradedFlag(q.graded)) {
+          detailedAnswers[q.id] = escolhaSemGabarito(q.question, q.options, userAnswer);
+          return;
+        }
+
         const isCorrect = Number(userAnswer) === Number(q.correctOption);
 
         detailedAnswers[q.id] = {

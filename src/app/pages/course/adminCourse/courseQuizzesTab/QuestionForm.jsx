@@ -7,14 +7,22 @@ import {
   IconButton,
   Typography,
   FormControl,
+  FormControlLabel,
   InputLabel,
   Select,
   MenuItem,
+  Switch,
+  Tooltip,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import DeleteIcon from "@mui/icons-material/Delete";
+import LinearScaleIcon from "@mui/icons-material/LinearScale";
+import {
+  LIKERT_5_OPTIONS,
+  LIKERT_5_SCALE,
+} from "$api/services/courses/quizGrading";
 
 const QuestionForm = ({
   editQuiz,
@@ -24,6 +32,10 @@ const QuestionForm = ({
   setNewQuizOptions,
   newQuizCorrectOption,
   setNewQuizCorrectOption,
+  newQuizGraded,
+  setNewQuizGraded,
+  newQuizScale,
+  setNewQuizScale,
   newQuestionType,
   setNewQuestionType,
   newQuizImageUrl,
@@ -50,6 +62,24 @@ const QuestionForm = ({
   if (!editQuiz) return null;
 
   const isOpenEnded = newQuestionType === 'open-ended';
+  const valeNota = newQuizGraded !== false;
+
+  // Atalho da escala de concordância: preenche as cinco alternativas e já
+  // desliga o gabarito, que é o ponto — numa pergunta de opinião, marcar uma
+  // alternativa como certa induz a resposta.
+  const aplicarEscalaLikert = () => {
+    setNewQuizOptions([...LIKERT_5_OPTIONS]);
+    setNewQuizScale(LIKERT_5_SCALE);
+    setNewQuizGraded(false);
+    setNewQuizCorrectOption(0);
+  };
+
+  const alternarValeNota = (marcado) => {
+    setNewQuizGraded(marcado);
+    // Voltar a valer nota descaracteriza a escala: o rótulo some, mas o texto
+    // das alternativas fica, para o professor aproveitar o que já digitou.
+    if (marcado) setNewQuizScale("");
+  };
 
   return (
     <Box
@@ -150,33 +180,95 @@ const QuestionForm = ({
 
         {!isOpenEnded && (
           <Grid item xs={12}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-              Opções (marque a correta)
-            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                gap: 1,
+                mb: 1,
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                {valeNota ? "Opções (marque a correta)" : "Opções (sem resposta certa)"}
+              </Typography>
+
+              <Tooltip title="Preenche as cinco alternativas de concordância e desliga o gabarito">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<LinearScaleIcon />}
+                  onClick={aplicarEscalaLikert}
+                  sx={{
+                    textTransform: "none",
+                    color: "#9041c1",
+                    borderColor: "#9041c1",
+                    "&:hover": {
+                      borderColor: "#7d37a7",
+                      backgroundColor: "rgba(144, 65, 193, 0.04)",
+                    },
+                  }}
+                >
+                  Escala Likert
+                </Button>
+              </Tooltip>
+
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={valeNota}
+                    onChange={(e) => alternarValeNota(e.target.checked)}
+                    sx={{
+                      "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                        backgroundColor: "#9041c1",
+                      },
+                    }}
+                  />
+                }
+                label={
+                  <Typography variant="body2">Tem resposta certa</Typography>
+                }
+              />
+            </Box>
+
+            {!valeNota && (
+              <Typography
+                variant="caption"
+                sx={{ display: "block", mb: 1, color: "#666" }}
+              >
+                Esta pergunta não vale nota
+                {newQuizScale === LIKERT_5_SCALE ? " (escala Likert de 5 pontos)" : ""}.
+                O aluno não vê acerto nem erro, e as respostas aparecem na
+                distribuição do questionário.
+              </Typography>
+            )}
 
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {newQuizOptions.map((option, index) => {
                 const isCorrect = newQuizCorrectOption === index;
                 return (
                   <Box key={index} sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <IconButton
-                      onClick={() => setNewQuizCorrectOption(index)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          setNewQuizCorrectOption(index);
-                        }
-                      }}
-                      size="small"
-                      sx={{ color: isCorrect ? "#2e7d32" : "#9e9e9e" }}
-                      title={isCorrect ? "Correta" : "Marcar como correta"}
-                    >
-                      {isCorrect ? (
-                        <CheckCircleIcon fontSize="small" />
-                      ) : (
-                        <RadioButtonUncheckedIcon fontSize="small" />
-                      )}
-                    </IconButton>
+                    {valeNota && (
+                      <IconButton
+                        onClick={() => setNewQuizCorrectOption(index)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            setNewQuizCorrectOption(index);
+                          }
+                        }}
+                        size="small"
+                        sx={{ color: isCorrect ? "#2e7d32" : "#9e9e9e" }}
+                        title={isCorrect ? "Correta" : "Marcar como correta"}
+                      >
+                        {isCorrect ? (
+                          <CheckCircleIcon fontSize="small" />
+                        ) : (
+                          <RadioButtonUncheckedIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    )}
 
                     <TextField
                       label={`Opção ${index + 1}`}

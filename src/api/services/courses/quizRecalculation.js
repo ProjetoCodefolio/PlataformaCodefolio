@@ -1,4 +1,5 @@
 import { hasQuizSubmissionEvidence } from "./progressAudit";
+import { gradedQuestions, isGradedQuestion } from "./quizGrading";
 
 /**
  * Recálculo das notas de quiz já gravadas, para depois que o professor corrige
@@ -272,6 +273,16 @@ export const recomputeAnswerEntry = (savedAnswer, question) => {
     isCorrect,
   };
 
+  // Questão sem resposta certa (escala Likert e afins): a escolha do aluno fica
+  // gravada — é dela que sai a distribuição de respostas —, mas não há gabarito
+  // a exibir nem acerto a contar.
+  if (!isGradedQuestion(question)) {
+    entry.graded = false;
+    entry.isCorrect = false;
+    delete entry.correctOption;
+    delete entry.correctOptionText;
+  }
+
   if (resolved.matchedBy !== "snapshot" && resolved.matchedBy !== "missing") {
     entry.recalcMatchedBy = resolved.matchedBy;
   } else if (savedAnswer?.recalcMatchedBy) {
@@ -382,9 +393,9 @@ export const recomputeQuizResult = (result, questions, minPercentage, opts = {})
   }
   stats.orphans = orphanKeys.length;
 
-  const multipleChoice = currentQuestions.filter(isMultipleChoice);
-  const totalQuestions = multipleChoice.length;
-  const correctAnswers = multipleChoice.filter((q) => nextAnswers[q.id]?.isCorrect).length;
+  const avaliadas = gradedQuestions(currentQuestions);
+  const totalQuestions = avaliadas.length;
+  const correctAnswers = avaliadas.filter((q) => nextAnswers[q.id]?.isCorrect).length;
   const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 100;
 
   const min = Number(minPercentage) || 0;
