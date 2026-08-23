@@ -51,6 +51,7 @@ import { canAssignGrades } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { MarkdownView } from "$components/common/MarkdownEditor";
 import { sortRows, getNextSort } from "$utils/tableSort";
+import { answerVerdict } from "$api/services/courses/quizGrading";
 
 const StudentDashboard = () => {
   const location = useLocation();
@@ -1638,7 +1639,7 @@ const StudentAnswersDetail = ({ student }) => (
                     Esta questão não afeta a nota final e será avaliada pelo professor.
                   </Typography>
                 </Box>
-              ) : detail.graded === false ? (
+              ) : answerVerdict(detail) === "ungraded" ? (
                 // Pergunta de opinião: só a escolha do aluno, sem certo nem
                 // errado. O verde/vermelho aqui daria a entender que havia uma
                 // resposta esperada.

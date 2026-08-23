@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   LIKERT_5_OPTIONS,
   LIKERT_5_SCALE,
+  answerVerdict,
+  hasVerdict,
   gradedQuestions,
   isGradedQuestion,
   isLikertQuestion,
@@ -107,5 +109,48 @@ describe("isOpinionQuiz", () => {
 
   it("um quiz só de dissertativas também não tem nota automática", () => {
     expect(isOpinionQuiz({ questions: [dissertativa()] })).toBe(true);
+  });
+});
+
+describe("LIKERT_5_OPTIONS", () => {
+  it("é a escala de concordância em cinco pontos, do discordo ao concordo", () => {
+    expect(LIKERT_5_OPTIONS).toEqual([
+      "Discordo Totalmente",
+      "Discordo Parcialmente",
+      "Neutro",
+      "Concordo Parcialmente",
+      "Concordo Totalmente",
+    ]);
+  });
+});
+
+describe("answerVerdict", () => {
+  const resposta = (over = {}) => ({
+    questionType: "multiple-choice",
+    userAnswer: 1,
+    isCorrect: true,
+    ...over,
+  });
+
+  it("distingue acerto de erro numa questão avaliada", () => {
+    expect(answerVerdict(resposta())).toBe("correct");
+    expect(answerVerdict(resposta({ isCorrect: false }))).toBe("incorrect");
+  });
+
+  it("pergunta sem resposta certa não tem veredito", () => {
+    // A regressão: o selo do cabeçalho dizia "Incorreto" logo acima do aviso de
+    // que a pergunta não tem resposta certa.
+    expect(answerVerdict(resposta({ graded: false, isCorrect: false }))).toBe("ungraded");
+    expect(hasVerdict(resposta({ graded: false, isCorrect: false }))).toBe(false);
+  });
+
+  it("dissertativa é caso próprio, e não erro", () => {
+    expect(answerVerdict({ questionType: "open-ended", answer: "texto" })).toBe("open-ended");
+    expect(hasVerdict({ questionType: "open-ended" })).toBe(false);
+  });
+
+  it("resposta avaliada tem veredito", () => {
+    expect(hasVerdict(resposta())).toBe(true);
+    expect(hasVerdict(resposta({ isCorrect: false }))).toBe(true);
   });
 });

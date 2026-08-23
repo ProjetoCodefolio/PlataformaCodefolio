@@ -15,11 +15,11 @@
 
 /** Alternativas pré-carregadas da escala Likert de 5 pontos (concordância). */
 export const LIKERT_5_OPTIONS = [
-  "Discordo fortemente",
-  "Discordo",
+  "Discordo Totalmente",
+  "Discordo Parcialmente",
   "Neutro",
-  "Concordo",
-  "Concordo fortemente",
+  "Concordo Parcialmente",
+  "Concordo Totalmente",
 ];
 
 /** Marcador gravado na questão para a interface reconhecer a escala. */
@@ -76,4 +76,32 @@ export const isOpinionQuiz = (quizOrQuestions) => {
   const lista = Array.isArray(questions) ? questions : [];
   if (lista.length === 0) return false;
   return gradedQuestions(lista).length === 0;
+};
+
+/**
+ * Veredito de uma resposta já submetida, para a tela de resultado.
+ *
+ * Existe para que "o que a tela pinta de verde ou vermelho" tenha um lugar só.
+ * Espalhado, faltou um ponto — o selo do cabeçalho da questão continuava
+ * dizendo "Incorreto" numa pergunta sem resposta certa, contradizendo o aviso
+ * logo abaixo e sugerindo ao aluno que havia uma resposta esperada.
+ *
+ * Note que a entrada olhada aqui é a RESPOSTA gravada (que carrega `graded`), e
+ * não a questão: o resultado antigo precisa continuar legível mesmo depois de o
+ * professor mexer no quiz.
+ *
+ * @param {Object} answer - entrada de `detailedAnswers` ou de `answersDetails`
+ * @returns {"open-ended"|"ungraded"|"correct"|"incorrect"}
+ */
+export const answerVerdict = (answer) => {
+  if (!answer || typeof answer !== "object") return "incorrect";
+  if (answer.questionType === "open-ended") return "open-ended";
+  if (answer.graded === false) return "ungraded";
+  return answer.isCorrect ? "correct" : "incorrect";
+};
+
+/** Indica se a resposta comporta veredito de certo/errado. */
+export const hasVerdict = (answer) => {
+  const veredito = answerVerdict(answer);
+  return veredito === "correct" || veredito === "incorrect";
 };

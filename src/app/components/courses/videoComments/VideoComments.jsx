@@ -4,6 +4,11 @@ import {
   Box,
   Button,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
   TextField,
   Typography,
@@ -88,6 +93,10 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
   const [respondendoA, setRespondendoA] = useState(null);
   const [textoResposta, setTextoResposta] = useState("");
   const [enviando, setEnviando] = useState(false);
+  // Respostas ficam recolhidas: quem lê a thread pode querer só a lista de
+  // comentários, sem as conversas penduradas em cada um.
+  const [respostasAbertas, setRespostasAbertas] = useState({});
+  const [aConfirmarExclusao, setAConfirmarExclusao] = useState(null);
 
   useEffect(() => {
     if (!courseId || !contentId) return undefined;
@@ -102,6 +111,7 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
   useEffect(() => {
     setRespondendoA(null);
     setTextoResposta("");
+    setRespostasAbertas({});
   }, [contentId]);
 
   const total = countComments(threads);
@@ -123,7 +133,11 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
     }
   };
 
-  const apagar = async (comentario) => {
+  const confirmarExclusao = async () => {
+    const comentario = aConfirmarExclusao;
+    setAConfirmarExclusao(null);
+    if (!comentario) return;
+
     try {
       await deleteVideoComment(courseId, contentId, comentario);
       toast.success("Comentário removido");
@@ -132,6 +146,12 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
       toast.error("Erro ao remover o comentário");
     }
   };
+
+  const alternarRespostas = (comentarioId) =>
+    setRespostasAbertas((anterior) => ({
+      ...anterior,
+      [comentarioId]: !anterior[comentarioId],
+    }));
 
   const renderComentario = (comentario, ehResposta = false) => (
     <Box
@@ -188,7 +208,7 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
           {canDeleteComment(comentario, userDetails, { courseId, courseOwnerUid }) && (
             <IconButton
               size="small"
-              onClick={() => apagar(comentario)}
+              onClick={() => setAConfirmarExclusao(comentario)}
               sx={{ color: "#b0b0b0", "&:hover": { color: "#d32f2f" } }}
               title={
                 comentario.replies?.length
@@ -213,13 +233,49 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
                 publicar(textoResposta, comentario.id, () => {
                   setTextoResposta("");
                   setRespondendoA(null);
+                  // Abre as respostas da thread: quem acabou de responder
+                  // precisa ver a própria mensagem aparecer.
+                  setRespostasAbertas((anterior) => ({
+                    ...anterior,
+                    [comentario.id]: true,
+                  }));
                 })
               }
             />
           </Box>
         )}
 
-        {(comentario.replies || []).map((resposta) => renderComentario(resposta, true))}
+        {!ehResposta && (comentario.replies || []).length > 0 && (
+          <>
+            <Button
+              size="small"
+              startIcon={
+                respostasAbertas[comentario.id] ? (
+                  <ExpandLessIcon sx={{ fontSize: "18px !important" }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ fontSize: "18px !important" }} />
+                )
+              }
+              onClick={() => alternarRespostas(comentario.id)}
+              sx={{
+                textTransform: "none",
+                color: "#9041c1",
+                fontSize: "0.75rem",
+                minWidth: 0,
+                mt: 0.25,
+              }}
+            >
+              {respostasAbertas[comentario.id] ? "Ocultar" : "Ver"}{" "}
+              {comentario.replies.length === 1
+                ? "1 resposta"
+                : `${comentario.replies.length} respostas`}
+            </Button>
+
+            <Collapse in={Boolean(respostasAbertas[comentario.id])} timeout="auto" unmountOnExit>
+              {comentario.replies.map((resposta) => renderComentario(resposta, true))}
+            </Collapse>
+          </>
+        )}
       </Box>
     </Box>
   );
@@ -290,6 +346,46 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
           </Box>
         </Box>
       </Collapse>
+
+      <Dialog
+        open={Boolean(aConfirmarExclusao)}
+        onClose={() => setAConfirmarExclusao(null)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#333" }}>
+          Remover comentário
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "#555" }}>
+            {aConfirmarExclusao?.replies?.length
+              ? `Isso remove o comentário de ${aConfirmarExclusao.userName} e as ${
+                  aConfirmarExclusao.replies.length === 1
+                    ? "1 resposta"
+                    : `${aConfirmarExclusao.replies.length} respostas`
+                } que ele recebeu. Não dá para desfazer.`
+              : `Isso remove o comentário de ${
+                  aConfirmarExclusao?.userName || ""
+                }. Não dá para desfazer.`}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setAConfirmarExclusao(null)}
+            sx={{ color: "#666", textTransform: "none" }}
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={confirmarExclusao}
+            sx={{ textTransform: "none", fontWeight: "bold", borderRadius: "8px" }}
+          >
+            Remover
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

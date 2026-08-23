@@ -25,7 +25,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import QuestionImage from "$components/common/QuestionImage";
 import { MarkdownView } from "$components/common/MarkdownEditor";
-import { isGradedQuestion, isOpinionQuiz } from "$api/services/courses/quizGrading";
+import {
+  answerVerdict,
+  isGradedQuestion,
+  isOpinionQuiz,
+} from "$api/services/courses/quizGrading";
 
 const Quiz = ({
   quizId,
@@ -554,7 +558,12 @@ const Quiz = ({
                       borderRadius: 2,
                       bgcolor: "#f9f9f9",
                       border: `1px solid ${
-                        isOpenEndedQuestion ? "#9041c1" : (answer.isCorrect ? "#4caf50" : "#f44336")
+                        {
+                          "open-ended": "#9041c1",
+                          ungraded: "#9041c1",
+                          correct: "#4caf50",
+                          incorrect: "#f44336",
+                        }[answerVerdict(answer)]
                       }`,
                     }}
                   >
@@ -604,6 +613,25 @@ const Quiz = ({
                           }}
                         >
                           Questão Aberta
+                        </Box>
+                      ) : answerVerdict(answer) === "ungraded" ? (
+                        /* Sem gabarito não há veredito: o selo "Incorreto" aqui
+                           contradiz o aviso logo abaixo e faz o aluno achar que
+                           havia uma resposta esperada. */
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 5,
+                            bgcolor: "rgba(144, 65, 193, 0.1)",
+                            color: "#9041c1",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          Respondida
                         </Box>
                       ) : (
                         <Box
@@ -680,7 +708,7 @@ const Quiz = ({
                           Esta questão não afeta sua nota final e será avaliada pelo professor.
                         </Typography>
                       </Box>
-                    ) : answer.graded === false ? (
+                    ) : answerVerdict(answer) === "ungraded" ? (
                       /* Pergunta de opinião: nem certo nem errado. Pintar de
                          verde ou vermelho aqui é exatamente o que faria o aluno
                          achar que existe uma resposta esperada. */
