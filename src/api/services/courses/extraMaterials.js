@@ -182,3 +182,82 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
     throw error;
   }
 };
+
+/**
+ * Importa materiais de OUTRO curso para este.
+ *
+ * A cópia é literal (nome e URL), com chave nova e `courseId` do destino: o
+ * material do curso de origem continua intocado, e os dois passam a existir de
+ * forma independente — editar um não mexe no outro.
+ *
+ * @param {string} sourceCourseId - curso de origem
+ * @param {string} targetCourseId - curso de destino
+ * @param {Array<string>} materialIds - ids dos materiais a importar
+ * @returns {Promise<Array>} - materiais criados no destino (com id novo)
+ */
+export const importMaterialsFromCourse = async (
+  sourceCourseId,
+  targetCourseId,
+  materialIds
+) => {
+  try {
+    if (!sourceCourseId || !targetCourseId) {
+      throw new Error("Curso de origem e de destino são necessários");
+    }
+    if (sourceCourseId === targetCourseId) {
+      throw new Error("O curso de origem não pode ser o próprio curso");
+    }
+    if (!Array.isArray(materialIds) || materialIds.length === 0) {
+      throw new Error("Selecione ao menos um material para importar");
+    }
+
+    const sourceSnapshot = await get(ref(database, `courseMaterials/${sourceCourseId}`));
+    const sourceMaterials = sourceSnapshot.val() || {};
+
+    const targetRef = ref(database, `courseMaterials/${targetCourseId}`);
+    const importados = [];
+
+    for (const materialId of materialIds) {
+      const material = sourceMaterials[materialId];
+      if (!material) continue;
+
+      const novo = {
+        courseId: targetCourseId,
+        name: (material.name || "Material sem nome").trim(),
+        url: (material.url || "").trim(),
+      };
+      if (!novo.url) continue;
+
+      const novoRef = push(targetRef);
+      await set(novoRef, novo);
+      importados.push({ ...novo, id: novoRef.key });
+    }
+
+    if (importados.length === 0) {
+      throw new Error("Nenhum material válido foi encontrado para importar");
+    }
+
+    return importados;
+  } catch (error) {
+    console.error("Erro ao importar materiais:", error);
+    throw error;
+  }
+};
+
+/**
+ * Marca quais materiais da origem já existem no destino, comparando pela URL —
+ * é o que distingue "o mesmo material" de "outro material com nome parecido".
+ * @param {Array} sourceMaterials - materiais da origem (fetchCourseMaterials)
+ * @param {Array} targetMaterials - materiais do destino
+ * @returns {Array} - origem, com `alreadyImported` em cada item
+ */
+export const markAlreadyImportedMaterials = (sourceMaterials, targetMaterials) => {
+  const urlsNoDestino = new Set(
+    (targetMaterials || []).map((m) => (m?.url || "").trim().toLowerCase()).filter(Boolean)
+  );
+
+  return (sourceMaterials || []).map((material) => ({
+    ...material,
+    alreadyImported: urlsNoDestino.has((material?.url || "").trim().toLowerCase()),
+  }));
+};
