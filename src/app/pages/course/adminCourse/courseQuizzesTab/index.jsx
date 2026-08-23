@@ -17,6 +17,7 @@ import QuizSettingsModal from "./QuizSettingsModal";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import ImportQuizModal from "$components/courses/import/ImportQuizModal";
+import OpinionResultsModal from "./OpinionResultsModal";
 import { ConfirmationModal, SuccessModal } from "./Modals";
 import { generateUUID } from "../../../../utils/courseUtils";
 import PdfQuizGenerator from "./PdfQuizGenerator";
@@ -64,6 +65,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
 
   const [quizzes, setQuizzes] = useState([]);
   const [showImportQuizModal, setShowImportQuizModal] = useState(false);
+  const [opinionQuiz, setOpinionQuiz] = useState(null);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
 
   // Novos estados para gerenciar slides e quizzes de slides
@@ -1026,6 +1028,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             entityItems={videosState}
             courseId={courseId}
             onAutoSaveQuestion={handleAutoSaveQuestion}
+            onViewOpinionResults={setOpinionQuiz}
             editQuiz={editQuiz}
             onToggleQuestionEditor={handleToggleQuestionEditor}
             renderQuestionEditor={renderQuestionEditor}
@@ -1087,6 +1090,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 entityItems={slidesState || []}
                 courseId={courseId}
                 onAutoSaveQuestion={handleAutoSaveQuestion}
+                onViewOpinionResults={setOpinionQuiz}
                 editQuiz={editQuiz}
                 onToggleQuestionEditor={handleToggleQuestionEditor}
                 renderQuestionEditor={renderQuestionEditor}
@@ -1111,6 +1115,18 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               settingsQuiz?.videoId
         }
         onSaved={handleQuizSettingsSaved}
+      />
+
+      <OpinionResultsModal
+        open={Boolean(opinionQuiz)}
+        onClose={() => setOpinionQuiz(null)}
+        courseId={courseId}
+        quizId={opinionQuiz?.videoId}
+        quizTitle={
+          opinionQuiz?.isSlideQuiz
+            ? slidesState.find((s) => s.id === opinionQuiz?.slideId)?.title || ""
+            : videosState.find((v) => v.id === opinionQuiz?.videoId)?.title || ""
+        }
       />
 
       <ImportQuizModal

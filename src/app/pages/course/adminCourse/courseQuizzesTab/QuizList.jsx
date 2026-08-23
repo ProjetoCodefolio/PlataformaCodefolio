@@ -17,7 +17,9 @@ import PersonIcon from "@mui/icons-material/Person";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import BarChartIcon from "@mui/icons-material/BarChart";
 import QuestionList from "./QuestionList";
+import { isGradedQuestion } from "$api/services/courses/quizGrading";
 import { useNavigate } from "react-router-dom";
 import {
   getQuizWindowState,
@@ -64,6 +66,7 @@ const QuizList = ({
   entityItems,
   courseId,
   onAutoSaveQuestion,
+  onViewOpinionResults,
   // Quiz cujas QUESTÕES estão em edição, e o alternador desse modo. O editor em
   // si vem de fora (renderQuestionEditor) para que todo o estado do formulário
   // de questões continue num lugar só.
@@ -189,6 +192,20 @@ const QuizList = ({
                 >
                   <PersonIcon fontSize="small" />
                 </IconButton>
+                {/* As perguntas sem resposta certa não têm nota, então nenhuma
+                    das telas de acompanhamento mostra o que a turma respondeu:
+                    a distribuição é a única saída desses dados. */}
+                {onViewOpinionResults &&
+                  (quiz.questions || []).some((q) => !isGradedQuestion(q) && q.questionType !== "open-ended") && (
+                    <IconButton
+                      onClick={() => onViewOpinionResults(quiz)}
+                      sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
+                      size="small"
+                      title="Ver distribuição das respostas de opinião"
+                    >
+                      <BarChartIcon fontSize="small" />
+                    </IconButton>
+                  )}
                 <IconButton
                   onClick={() => handleRemoveQuiz(quiz)}
                   sx={{ color: "#d32f2f", p: { xs: 0.5, sm: 1 } }}
