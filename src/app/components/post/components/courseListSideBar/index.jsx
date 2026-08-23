@@ -12,6 +12,7 @@ import { database } from "$api/config/firebase";
 import { useNavigate } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
 import { fetchCourses } from "$api/services/courses/courses";
+import CourseDescription from "$components/courses/CourseDescription";
 
 const CourseListSidebar = ({ onSelectCourse }) => {
   const [courses, setCourses] = useState([]);
@@ -141,17 +142,12 @@ const CourseListSidebar = ({ onSelectCourse }) => {
                     />
                   )}
                 </Box>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    textAlign: "left",
-                    width: "100%",
-                    fontSize: "1rem",
-                    color: "#b3b3b3",
-                  }}
-                >
-                  {course.description || "Descrição do curso"}
-                </Typography>
+                <CourseDescription
+                  course={course}
+                  actionLabel="Acessar"
+                  onAction={() => handleContinueCourse(course)}
+                  sx={{ fontSize: "1rem", color: "#b3b3b3" }}
+                />
                 <Button
                   variant="contained"
                   sx={{
