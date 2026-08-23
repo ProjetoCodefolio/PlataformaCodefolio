@@ -1,19 +1,68 @@
 import { ref, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
 
+/**
+ * As curtidas do feed vivem em mapas indexados pelo uid de quem curtiu:
+ *
+ *   post/{postId}/likes/{uid}    = { nome, data }
+ *   post/{postId}/dislikes/{uid} = { nome, data }
+ *
+ * É esse formato que as regras do banco conseguem proteger por dono — cada um
+ * escreve só na própria folha —, e é o que dispensa reescrever a lista inteira
+ * a cada clique (o que perdia curtidas quando duas pessoas clicavam juntas).
+ *
+ * Até a migração dos posts antigos rodar, o banco ainda pode devolver o formato
+ * anterior (uma lista de { uidUsuario, ... }); por isso toda LEITURA passa por
+ * `normalizeInteractions`, que entende os dois.
+ */
+export const normalizeInteractions = (raw) => {
+    if (!raw || typeof raw !== "object") return {};
+
+    return Object.entries(raw).reduce((mapa, [chave, valor]) => {
+        if (!valor || typeof valor !== "object") return mapa;
+        // No formato novo a chave já é o uid; no antigo ele vem no registro.
+        mapa[valor.uidUsuario || chave] = valor;
+        return mapa;
+    }, {});
+};
+
+export const countInteractions = (raw) => Object.keys(normalizeInteractions(raw)).length;
+
 // Check if user has liked or disliked a post
 export const checkUserLikeStatus = (post, userId) => {
     if (!post || !userId) {
         return { liked: false, disliked: false };
     }
 
-    const userLiked = post.likes && Array.isArray(post.likes) &&
-        post.likes.some(like => like.uidUsuario === userId);
+    return {
+        liked: Boolean(normalizeInteractions(post.likes)[userId]),
+        disliked: Boolean(normalizeInteractions(post.dislikes)[userId]),
+    };
+};
 
-    const userDisliked = post.dislikes && Array.isArray(post.dislikes) &&
-        post.dislikes.some(dislike => dislike.uidUsuario === userId);
+const registroDe = (currentUser) => ({
+    nome: currentUser.displayName || currentUser.email || "Usuário",
+    data: new Date().toLocaleDateString(),
+});
 
-    return { liked: userLiked, disliked: userDisliked };
+/**
+ * Marca ou desmarca a interação do usuário, sempre removendo a oposta.
+ *
+ * O update é multi-caminho a partir da raiz do post: o banco avalia cada folha
+ * com a regra do seu dono (`auth.uid === $uid`) e aplica as duas de uma vez, sem
+ * janela em que a pessoa aparece curtindo e descurtindo ao mesmo tempo.
+ */
+const alternarInteracao = async (postId, currentUser, campo) => {
+    const oposto = campo === "likes" ? "dislikes" : "likes";
+    const snapshot = await get(ref(database, `post/${postId}/${campo}/${currentUser.uid}`));
+    const jaMarcado = snapshot.exists();
+
+    await update(ref(database, `post/${postId}`), {
+        [`${campo}/${currentUser.uid}`]: jaMarcado ? null : registroDe(currentUser),
+        [`${oposto}/${currentUser.uid}`]: null,
+    });
+
+    return !jaMarcado;
 };
 
 // Toggle like on a post (add or remove like)
@@ -23,52 +72,8 @@ export const togglePostLike = async (postId, currentUser) => {
             return { success: false, error: "User must be logged in" };
         }
 
-        const postRef = ref(database, `post/${postId}`);
-        const snapshot = await get(postRef);
-        if (!snapshot.exists()) {
-            return { success: false, error: "Post not found" };
-        }
-
-        const postData = snapshot.val();
-        let updatedLikes = [];
-        let updatedDislikes = postData.dislikes || [];
-
-        // Check if user already liked post
-        const userLikeIndex = postData.likes ?
-            postData.likes.findIndex(like => like.uidUsuario === currentUser.uid) : -1;
-
-        // Check if user already disliked post (to remove dislike when liking)
-        const userDislikeIndex = postData.dislikes ?
-            postData.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid) : -1;
-
-        // Toggle like
-        if (userLikeIndex !== -1) {
-            // Remove like if it exists
-            updatedLikes = postData.likes.filter((_, index) => index !== userLikeIndex);
-        } else {
-            // Add like if it doesn't exist
-            updatedLikes = [...(postData.likes || []), {
-                uidUsuario: currentUser.uid,
-                nome: currentUser.displayName,
-                data: new Date().toLocaleDateString()
-            }];
-
-            // Remove dislike if it exists
-            if (userDislikeIndex !== -1) {
-                updatedDislikes = postData.dislikes.filter((_, index) => index !== userDislikeIndex);
-            }
-        }
-
-        // Update database
-        await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
-
-        return {
-            success: true,
-            liked: userLikeIndex === -1, // true if like was added, false if removed
-            disliked: false,
-            likes: updatedLikes,
-            dislikes: updatedDislikes
-        };
+        const liked = await alternarInteracao(postId, currentUser, "likes");
+        return { success: true, liked, disliked: false };
     } catch (error) {
         console.error("Error updating post like:", error);
         return { success: false, error: error.message };
@@ -82,52 +87,8 @@ export const togglePostDislike = async (postId, currentUser) => {
             return { success: false, error: "User must be logged in" };
         }
 
-        const postRef = ref(database, `post/${postId}`);
-        const snapshot = await get(postRef);
-        if (!snapshot.exists()) {
-            return { success: false, error: "Post not found" };
-        }
-
-        const postData = snapshot.val();
-        let updatedDislikes = [];
-        let updatedLikes = postData.likes || [];
-
-        // Check if user already disliked post
-        const userDislikeIndex = postData.dislikes ?
-            postData.dislikes.findIndex(dislike => dislike.uidUsuario === currentUser.uid) : -1;
-
-        // Check if user already liked post (to remove like when disliking)
-        const userLikeIndex = postData.likes ?
-            postData.likes.findIndex(like => like.uidUsuario === currentUser.uid) : -1;
-
-        // Toggle dislike
-        if (userDislikeIndex !== -1) {
-            // Remove dislike if it exists
-            updatedDislikes = postData.dislikes.filter((_, index) => index !== userDislikeIndex);
-        } else {
-            // Add dislike if it doesn't exist
-            updatedDislikes = [...(postData.dislikes || []), {
-                uidUsuario: currentUser.uid,
-                nome: currentUser.displayName,
-                data: new Date().toLocaleDateString()
-            }];
-
-            // Remove like if it exists
-            if (userLikeIndex !== -1) {
-                updatedLikes = postData.likes.filter((_, index) => index !== userLikeIndex);
-            }
-        }
-
-        // Update database
-        await update(postRef, { likes: updatedLikes, dislikes: updatedDislikes });
-
-        return {
-            success: true,
-            disliked: userDislikeIndex === -1, // true if dislike was added, false if removed
-            liked: false,
-            likes: updatedLikes,
-            dislikes: updatedDislikes
-        };
+        const disliked = await alternarInteracao(postId, currentUser, "dislikes");
+        return { success: true, disliked, liked: false };
     } catch (error) {
         console.error("Error updating post dislike:", error);
         return { success: false, error: error.message };

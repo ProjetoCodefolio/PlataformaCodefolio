@@ -211,7 +211,25 @@
     "post": {
       "$postId": {
         ".read": true,
-        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        "likes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['data'])"
+          }
+        },
+        "dislikes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['data'])"
+          }
+        },
+        "comentarios": {
+          "$comentarioId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uidUsuario').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uidUsuario').val() === auth.uid) || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+            ".validate": "newData.child('comentario').isString() && newData.child('comentario').val().length > 0 && newData.child('comentario').val().length <= 1000"
+          }
+        }
       }
     },
 

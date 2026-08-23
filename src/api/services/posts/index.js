@@ -404,11 +404,11 @@
 // };
 
 import { createPost, editPost, fetchAllPosts } from './postCrud';
-import { checkUserLikeStatus, togglePostLike, togglePostDislike } from './postInteractions';
-import { getPostComments, postComment } from './comments';
+import { checkUserLikeStatus, togglePostLike, togglePostDislike, normalizeInteractions, countInteractions } from './postInteractions';
+import { getPostComments, postComment, deleteComment, normalizeComments } from './comments';
 import { fetchTags, filterPostsByTags } from './tags';
 import { generateEmbedURL, getLikesYouTubeCount } from './youtube';
-import { listenToPostsAndGetDisabledTags, listenToTags, listenToPostLikesAndComments, listenToPostCount } from './listeners';
+import { listenToPostsAndGetDisabledTags, listenToTags, listenToPostInteractions, listenToPostCount } from './listeners';
 
 export {
     // Post CRUD operations
@@ -420,10 +420,14 @@ export {
     checkUserLikeStatus,
     togglePostLike,
     togglePostDislike,
+    normalizeInteractions,
+    countInteractions,
     
     // Comments
     getPostComments,
     postComment,
+    deleteComment,
+    normalizeComments,
     
     // Tags
     fetchTags,
@@ -436,6 +440,6 @@ export {
     // Listeners
     listenToPostsAndGetDisabledTags,
     listenToTags,
-    listenToPostLikesAndComments,
+    listenToPostInteractions,
     listenToPostCount
 };

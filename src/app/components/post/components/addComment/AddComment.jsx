@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { IconButton } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send'; // Ícone de envio
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp';
@@ -6,30 +6,19 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { useAuth } from "$context/AuthContext";
 import MyAlert from '../alert/Alert';
 import { abrirAlert } from '../../../../utils/postUtils';
-import { postComment, getPostComments } from "$api/services/posts/comments";
+import { postComment } from "$api/services/posts/comments";
 import '../../post.css';
 
-export default function AddComment({ postId, comments, setComments }) {
+// A lista de comentários vem pronta do listener único do post (em `Post`), já
+// em ordem cronológica; aqui ela é exibida da mais recente para a mais antiga.
+export default function AddComment({ postId, comments = [] }) {
   const { currentUser } = useAuth();
   const [comentario, setComentario] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertSeverity, setAlertSeverity] = useState('success');
-  const quantidadeComentarios = comments[postId] ? comments[postId].length : 0;
-
-
-  useEffect(() => {
-    const unsubscribe = getPostComments(postId, (comments) => {
-      setComments(prevComments => ({
-        ...prevComments,
-        [postId]: comments
-      }));
-    });
-
-    // Cleanup listener on unmount
-    return () => unsubscribe();
-  }, [postId, setComments]);
+  const quantidadeComentarios = comments.length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -56,7 +45,7 @@ export default function AddComment({ postId, comments, setComments }) {
       return;
     }
 
-    const success = await postComment(postId, comentario, currentUser);
+    const success = await postComment(postId, comentario.trim(), currentUser);
 
     if (success) {
       abrirAlert(
@@ -66,6 +55,8 @@ export default function AddComment({ postId, comments, setComments }) {
         "Comentário postado com sucesso!",
         "success"
       );
+      setComentario('');
+      setShowComments(true);
     } else {
       abrirAlert(
         setAlertMessage,
@@ -75,7 +66,6 @@ export default function AddComment({ postId, comments, setComments }) {
         "error"
       );
     }
-    setComentario('');
   };
 
   return (
@@ -91,6 +81,7 @@ export default function AddComment({ postId, comments, setComments }) {
             placeholder="Adicione um comentário..."
             value={comentario}
             onChange={(e) => setComentario(e.target.value)}
+            maxLength={1000}
             className="comentarios-input"
             style={{
               flex: 1,
@@ -177,22 +168,22 @@ export default function AddComment({ postId, comments, setComments }) {
         </button>
       </div>
 
-      {showComments && comments[postId] && comments[postId].length > 0 ? (
+      {showComments && quantidadeComentarios > 0 ? (
         <ul className="comentarios-commentList" style={{
           listStyle: 'none',
           padding: '8px 0',
           margin: 0
         }}>
-          {comments[postId].map((comentario, index) => (
-            <li key={index} className="comentarios-commentItem" style={{
+          {[...comments].reverse().map((item) => (
+            <li key={item.id} className="comentarios-commentItem" style={{
               display: 'flex',
               gap: '12px',
               padding: '8px 0',
               borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
             }}>
               <img
-                src={comentario.foto}
-                alt={comentario.nome}
+                src={item.foto}
+                alt={item.nome}
                 className="comentarios-authorPhoto"
                 style={{
                   width: '32px',
@@ -211,17 +202,17 @@ export default function AddComment({ postId, comments, setComments }) {
                   display: 'block',
                   marginBottom: '4px'
                 }}>
-                  {comentario.nome}
+                  {item.nome}
                 </span>
                 <span className="comentarios-content" style={{
                   fontSize: '0.9rem',
                   color: '#666'
                 }}>
-                  {comentario.comentario}
+                  {item.comentario}
                 </span>
               </div>
             </li>
-          )).reverse()}
+          ))}
         </ul>
       ) : (
         showComments &&

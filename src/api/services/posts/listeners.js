@@ -1,5 +1,7 @@
 import { ref, onValue } from "firebase/database";
 import { database } from "../../config/firebase";
+import { normalizeInteractions } from "./postInteractions";
+import { normalizeComments } from "./comments";
 
 // Listen for post changes and get disabled tags
 export const listenToPostsAndGetDisabledTags = (tags, callback) => {
@@ -51,35 +53,33 @@ export const listenToTags = (callback) => {
     });
 };
 
-// Listen to post likes and comments
-export const listenToPostLikesAndComments = (postId, callback) => {
+/**
+ * Escuta, num único listener, tudo o que muda quando alguém interage com o post:
+ * curtidas, descurtidas e comentários. É a fonte única do card do feed — antes
+ * havia três `onValue` sobre o mesmo nó (contagem, lista de comentários e o
+ * estado dos botões), e o card ficava com dados de épocas diferentes.
+ */
+export const listenToPostInteractions = (postId, callback) => {
     if (!postId) return () => { };
 
+    const vazio = { likes: {}, dislikes: {}, comments: [] };
     const postRef = ref(database, `post/${postId}`);
 
     return onValue(postRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) {
-            callback({
-                likes: 0,
-                comments: []
-            });
+            callback(vazio);
             return;
         }
 
-        const likesCount = data.likes ? data.likes.length : 0;
-        const comments = data.comentarios || [];
-
         callback({
-            likes: likesCount,
-            comments: comments
+            likes: normalizeInteractions(data.likes),
+            dislikes: normalizeInteractions(data.dislikes),
+            comments: normalizeComments(data.comentarios),
         });
     }, (error) => {
-        console.error("Error listening to post likes and comments:", error);
-        callback({
-            likes: 0,
-            comments: []
-        });
+        console.error("Error listening to post interactions:", error);
+        callback(vazio);
     });
 };
 
