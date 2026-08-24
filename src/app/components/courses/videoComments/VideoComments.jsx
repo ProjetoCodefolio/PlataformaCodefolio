@@ -289,6 +289,9 @@ export default function VideoComments({ courseId, contentId, courseOwnerUid }) {
       sx={{
         width: "100%",
         maxWidth: { xs: "100%", sm: "780px" },
+        // Sem CssBaseline global o padrão é content-box: o padding e a borda
+        // somariam à largura de 100% e o bloco vazaria da tela no celular.
+        boxSizing: "border-box",
         ml: { xs: 0, sm: 2 },
         mt: 2,
         p: { xs: 1.5, sm: 2 },
