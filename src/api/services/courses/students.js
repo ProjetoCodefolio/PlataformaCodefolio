@@ -12,6 +12,44 @@ export const isContentCompleted = (item) =>
   !!item && !!item.watched && (!item.quizId || !!item.quizPassed);
 
 /**
+ * Grava progresso e status de um aluno respeitando o encerramento manual.
+ *
+ * Numa disciplina encerrada o professor já disse que a turma acabou. Se o
+ * cálculo de progresso pudesse escrever `status` livremente, o primeiro vídeo
+ * que o aluno abrisse depois disso o devolveria para "in_progress" e desfaria o
+ * encerramento sem ninguém perceber. O progresso continua sendo gravado — é
+ * informação real —, mas o status fica onde o professor deixou.
+ *
+ * @param {string} userId
+ * @param {string} courseId
+ * @param {number} progress - progresso recém-calculado
+ * @param {string} status - status recém-calculado
+ * @returns {Promise<{progress: number, status: string}>}
+ */
+const persistProgress = async (userId, courseId, progress, status) => {
+  const caminho = `studentCourses/${userId}/${courseId}`;
+  const atual = (await get(ref(database, caminho))).val() || {};
+
+  if (atual.closedByTeacher) {
+    await update(ref(database, caminho), {
+      progress,
+      // Guarda o status que o aluno teria, para que reabrir a disciplina o
+      // devolva ao lugar certo em vez de a um retrato velho.
+      statusBeforeClosure: status,
+      lastUpdated: new Date().toISOString(),
+    });
+    return { progress, status: "completed" };
+  }
+
+  await update(ref(database, caminho), {
+    progress,
+    status,
+    lastUpdated: new Date().toISOString(),
+  });
+  return { progress, status };
+};
+
+/**
  * Atualiza o progresso de um curso para um estudante a partir da lista de
  * conteúdo JÁ carregada com o estado do aluno (watched/quizPassed). É a fonte
  * única de verdade do progresso:
@@ -45,13 +83,7 @@ export const updateCourseProgress = async (userId, courseId, videos = []) => {
     const newProgress = total > 0 ? (completed / total) * 100 : 0;
     const status = newProgress >= 100 ? "completed" : "in_progress";
 
-    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
-      progress: newProgress,
-      status,
-      lastUpdated: new Date().toISOString(),
-    });
-
-    return { progress: newProgress, status };
+    return await persistProgress(userId, courseId, newProgress, status);
   } catch (error) {
     console.error("Erro ao atualizar progresso do curso:", error);
     throw error;
@@ -97,13 +129,7 @@ export const recalcCourseProgressFromWatched = async (
 
     const status = newProgress === 100 ? "completed" : "in_progress";
 
-    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
-      progress: newProgress,
-      status,
-      lastUpdated: new Date().toISOString(),
-    });
-
-    return { progress: newProgress, status };
+    return await persistProgress(userId, courseId, newProgress, status);
   } catch (error) {
     console.error("Erro ao recalcular progresso do curso:", error);
     throw error;
