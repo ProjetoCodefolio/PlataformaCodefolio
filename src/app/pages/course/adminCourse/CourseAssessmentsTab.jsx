@@ -29,6 +29,7 @@ import { toast } from "react-toastify";
 import { canManageAssessments } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
+import { useScrollToForm } from "$utils/useScrollToForm";
 
 export default function CourseAssessmentsTab() {
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function CourseAssessmentsTab() {
   const [success, setSuccess] = useState(null);
   const [assessments, setAssessments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [formRef, scrollToForm] = useScrollToForm();
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
 
@@ -136,6 +138,7 @@ export default function CourseAssessmentsTab() {
     setAssessmentDescription(assessment.description || "");
     setCurrentAssessmentId(assessment.id);
     setIsEditing(true);
+    scrollToForm();
   };
 
   const handleDeleteAssessment = async (id) => {
@@ -242,6 +245,7 @@ export default function CourseAssessmentsTab() {
       )}
 
       <Paper
+        ref={formRef}
         elevation={0}
         sx={{
           p: 3,

@@ -18,6 +18,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
 import * as extraMaterialsService from "$api/services/courses/extraMaterials";
 import ImportMaterialsModal from "$components/courses/import/ImportMaterialsModal";
+import { useScrollToForm } from "$utils/useScrollToForm";
 
 const CourseMaterialsTab = forwardRef((props, ref) => {
     const [materials, setMaterials] = useState([]);
@@ -29,6 +30,8 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     const [showImportModal, setShowImportModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [materialToDelete, setMaterialToDelete] = useState(null);
+
+    const [formRef, scrollToForm] = useScrollToForm();
 
     const location = useLocation();
     const params = new URLSearchParams(location.search);
@@ -79,6 +82,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             setMaterialName(material.name);
             setMaterialUrl(material.url);
             setEditingMaterialId(id);
+            scrollToForm();
         }
     };
 
@@ -159,7 +163,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
 
     return (
         <Box>
-            <Grid container spacing={2}>
+            <Grid container spacing={2} ref={formRef}>
                 <Grid item xs={12} sm={8}>
                     <TextField
                         label="Nome do Material"
