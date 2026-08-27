@@ -189,6 +189,40 @@ describe.runIf(emuladorNoAr)("regras do papel de professor de um curso", () => {
     });
   });
 
+  describe("encerramento da disciplina", () => {
+    it("o professor encerra a turma, mesmo sem poder editar o cadastro", async () => {
+      const resposta = await escreve(
+        `courses/${CURSO}/closedAt`,
+        COPROFESSOR,
+        "2026-08-27T12:00:00.000Z"
+      );
+      expect(resposta.status).toBe(200);
+    });
+
+    it("o professor de outra turma não encerra esta", async () => {
+      const resposta = await escreve(
+        `courses/${CURSO}/closedAt`,
+        PROF_DE_OUTRO,
+        "2026-08-27T12:00:00.000Z"
+      );
+      expect(resposta.status).not.toBe(200);
+    });
+
+    it("o aluno não encerra a turma", async () => {
+      const resposta = await escreve(
+        `courses/${CURSO}/closedAt`,
+        ALUNO,
+        "2026-08-27T12:00:00.000Z"
+      );
+      expect(resposta.status).not.toBe(200);
+    });
+
+    it("abrir closedAt não abriu o resto do cadastro junto", async () => {
+      const resposta = await escreve(`courses/${CURSO}/title`, COPROFESSOR, "Renomeado");
+      expect(resposta.status).not.toBe(200);
+    });
+  });
+
   describe("o que continua fora do papel", () => {
     it("o professor não mexe no cadastro do curso — apelido, PIN e arquivar são do dono", async () => {
       const curso = { title: "Renomeado pelo professor", userId: DONO };
