@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -67,6 +67,7 @@ import {
   deleteCourseSlide,
 } from "$api/services/courses/slides";
 import { useAuth } from "$context/AuthContext";
+import { useScrollToForm } from "$utils/useScrollToForm";
 
 const PURPLE = "#9041c1";
 
@@ -247,7 +248,7 @@ const CourseContentTab = ({ courseId }) => {
 
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  const formRef = useRef(null);
+  const [formRef, scrollToForm] = useScrollToForm();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -408,9 +409,7 @@ const CourseContentTab = ({ courseId }) => {
     setEditingId(item.id);
     setEditingSource(item.source);
     setUrlError("");
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
+    scrollToForm();
   };
 
   const confirmDelete = async () => {
