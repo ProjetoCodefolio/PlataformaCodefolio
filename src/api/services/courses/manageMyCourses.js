@@ -87,13 +87,30 @@ export const setTeacherCourseArchived = async (courseId, archived) => {
 };
 
 /**
- * Verifica se o usuário tem permissão para gerenciar cursos
- * @param {string} userId - ID do usuário atual
+ * Verifica se o usuário tem alguma turma para gerenciar — própria ou como
+ * co-professor.
+ *
+ * Os dois termos desta verificação estavam quebrados e se anulavam:
+ * `loadTeacherCourses(...).lenght` (com o erro de digitação) rodava sobre uma
+ * Promise, então o lado esquerdo era sempre `undefined > 0`; e o lado direito
+ * comparava `coursesTeacher` com `undefined`, quando o AuthContext preenche o
+ * campo ausente com `null` — ou seja, dava `true` para qualquer um logado. Na
+ * prática a tela abria para todo mundo.
+ *
+ * @param {Object} userDetails - userDetails do contexto de auth
  * @returns {Promise<boolean>} - Se o usuário tem permissão
  */
 export const canManageCourses = async (userDetails) => {
-  const canManage = await loadTeacherCourses(userDetails.userId).lenght > 0 || userDetails.coursesTeacher !== undefined  
-  return canManage;
+  if (!userDetails?.userId) return false;
+
+  if (userDetails.role === "admin" || userDetails.role === "teacher") return true;
+
+  // Co-professor de pelo menos uma turma.
+  if (Object.keys(userDetails.coursesTeacher || {}).length > 0) return true;
+
+  // Último caso: não tem papel nenhum, mas criou cursos em algum momento.
+  const proprios = await loadTeacherCourses(userDetails.userId);
+  return (proprios || []).length > 0;
 };
 
 export const canCreateCourses = (userDetails) => {
