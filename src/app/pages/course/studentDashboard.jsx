@@ -86,7 +86,7 @@ const StudentDashboard = () => {
 
   // Só o dono do curso (ou admin) recalcula — é o que as regras do banco
   // permitem escrever em quizResults de outro usuário.
-  const canRecalculate = canAssignGrades(userDetails, courseData?.userId);
+  const canRecalculate = canAssignGrades(userDetails, courseData?.userId, courseData?.courseId);
 
   // Definir o fundo da página
   useEffect(() => {

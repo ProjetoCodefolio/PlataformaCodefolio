@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { toast } from "react-toastify";
 import { useAuth } from "$context/AuthContext";
-import { canManageCourse } from "$api/utils/permissions";
+import { canRunCourse } from "$api/utils/permissions";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { getCourseIdByAlias } from "$api/services/courses/alias";
 import {
@@ -98,9 +98,9 @@ const QuestionsPresentation = ({ alias }) => {
           return;
         }
 
-        // A tela mostra as dúvidas da turma inteira: quem não administra o
-        // curso não entra, nem por link direto.
-        if (!canManageCourse(userDetails, curso.userId)) {
+        // A tela mostra as dúvidas da turma inteira: quem não toca a turma
+        // não entra, nem por link direto. O co-professor toca.
+        if (!canRunCourse(userDetails, curso.userId, courseId)) {
           toast.error("Apenas o professor do curso pode abrir esta tela.");
           navigate(`/classes?courseId=${courseId}`);
           return;

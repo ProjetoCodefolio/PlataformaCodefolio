@@ -13,7 +13,7 @@ import { prepareSlideUrl } from "$api/services/courses/slides";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import ReportModal from "$components/common/reportModal";
 import { useAuth } from "$context/AuthContext";
-import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
+import { canRunCourse, canViewQuizResults } from "$api/utils/permissions";
 
 const SlidePlayer = ({
   slideData,
@@ -172,7 +172,7 @@ const SlidePlayer = ({
             </IconButton>
           )}
 
-          {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid) && (
+          {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid, courseId) && (
             <IconButton
               onClick={onOpenQuestions}
               sx={{
@@ -190,7 +190,7 @@ const SlidePlayer = ({
             </IconButton>
           )}
 
-          {canViewQuizResults(userDetails, courseOwnerUid) && hasQuiz && (
+          {canViewQuizResults(userDetails, courseOwnerUid, courseId) && hasQuiz && (
             <>
               <IconButton
                 onClick={handleViewStudents}
@@ -228,7 +228,7 @@ const SlidePlayer = ({
             </>
           )}
 
-          {canEditCourse(userDetails, courseOwnerUid) && (
+          {canRunCourse(userDetails, courseOwnerUid, courseId) && (
             <IconButton
               onClick={handleEditCourse}
               sx={{

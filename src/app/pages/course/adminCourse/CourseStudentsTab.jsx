@@ -273,7 +273,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             if (!currentUser || !courseId || !courseDetails?.userId) return;
 
             // Verificar se é admin ou owner (pode gerenciar)
-            const canManage = canManageStudents(userDetails, courseDetails.userId);
+            const canManage = canManageStudents(userDetails, courseDetails.userId, courseId);
             // Se não pode gerenciar, é apenas professor
             setIsCurrentUserTeacher(!canManage);
         } catch (error) {

@@ -33,7 +33,7 @@ import { isVideoLocked } from "$api/utils/videoUtils";
 import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
 import { prepareSlideUrl, checkSlideHasQuiz } from "$api/services/courses/slides";
-import { canEditCourse, canViewQuizResults } from "$api/utils/permissions";
+import { canRunCourse, canViewQuizResults } from "$api/utils/permissions";
 import VideoComments from "$components/courses/videoComments/VideoComments";
 
 export const styles = `
@@ -414,18 +414,6 @@ export const VideoPlayer = forwardRef(
       navigate(`/adm-cursos?courseId=${courseId}`);
     };
 
-    const canEditCourse = () => {
-      if (!userDetails) return false;
-
-      // Verifica se é admin
-      if (userDetails.role === "admin") return true;
-
-      // Verifica se é o dono do curso
-      if (userDetails.userId === courseOwnerUid) return true;
-
-      return false;
-    };
-
     if (!video || !video.url) {
       return (
         <Box
@@ -593,7 +581,7 @@ export const VideoPlayer = forwardRef(
               </IconButton>
             )}
 
-            {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid) && (
+            {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid, courseId) && (
               <IconButton
                 onClick={onOpenQuestions}
                 sx={{
@@ -611,7 +599,7 @@ export const VideoPlayer = forwardRef(
               </IconButton>
             )}
 
-            {canViewQuizResults(userDetails, courseOwnerUid) && video.quizId && (
+            {canViewQuizResults(userDetails, courseOwnerUid, courseId) && video.quizId && (
               <>
                 <IconButton
                   onClick={handleViewStudents}
@@ -649,7 +637,7 @@ export const VideoPlayer = forwardRef(
               </>
             )}
 
-            {canEditCourse(userDetails, courseOwnerUid) && (
+            {canRunCourse(userDetails, courseOwnerUid, courseId) && (
               <IconButton
                 onClick={handleEditCourse}
                 sx={{

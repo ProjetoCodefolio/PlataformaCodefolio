@@ -104,7 +104,7 @@ export default function CourseGrades() {
 
   // Só o dono do curso (ou admin) pode lançar nota — é o que as regras do banco
   // permitem escrever em courseAssessments.
-  const canEditGrades = canAssignGrades(userDetails, courseDetails?.userId);
+  const canEditGrades = canAssignGrades(userDetails, courseDetails?.userId, courseId);
 
   // Atualizar contagem de filtros
   useEffect(() => {

@@ -205,7 +205,7 @@ export default function CourseAssessmentsTab() {
       if (!currentUser || !courseDetails.userId) return;
 
       // Usar função de permissão que inclui admin
-      const canManage = canManageAssessments(userDetails, courseDetails.userId);
+      const canManage = canManageAssessments(userDetails, courseDetails.userId, courseId);
       setIsCourseOwner(canManage);
     } catch (error) {
       console.error("Erro ao verificar papel do usuário:", error);

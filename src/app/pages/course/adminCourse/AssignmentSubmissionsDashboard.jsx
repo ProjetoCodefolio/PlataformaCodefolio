@@ -207,7 +207,7 @@ export default function AssignmentSubmissionsDashboard() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const canGrade = canAssignGrades(userDetails, courseOwnerId);
+  const canGrade = canAssignGrades(userDetails, courseOwnerId, courseId);
   const isGroup = assignment?.mode === "group";
   const studentsById = Object.fromEntries(
     students.map((s) => [s.userId, s.name || s.email || s.userId])
