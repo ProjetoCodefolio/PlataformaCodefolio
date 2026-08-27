@@ -27,13 +27,12 @@ export default function PostCards({
     setIsEditModalOpen,
     editingPost,
     Delete,
-    comments,
-    setComments,
-    updateLikes,
+    interactions,
     userRole,
     currentUser,
     onPostEdited
 }) {
+    const { likes = {}, dislikes = {}, comments = [] } = interactions || {};
     const [isPostEdited, setIsPostEdited] = useState(false);
     const [showAddComment, setShowAddComment] = useState(false);
     const [playerInstance, setPlayerInstance] = useState(null);
@@ -189,7 +188,7 @@ export default function PostCards({
                         padding: '0 8px'
                     }}
                 >
-                    <Informacoes post={post} comments={comments} setComments={setComments} />
+                    <Informacoes post={post} likesCount={Object.keys(likes).length} commentsCount={comments.length} />
                     <Divider
                         sx={{
                             margin: '4px 0',
@@ -206,13 +205,13 @@ export default function PostCards({
                         margin: '4px auto',
                     }}
                 >
-                    <Likes post={post} onLikeUpdate={updateLikes} />
+                    <Likes post={post} likes={likes} dislikes={dislikes} />
                     <ShowComments onShowComments={() => setShowAddComment(!showAddComment)} />
                     <MyShare post={post} />
                 </S.LineWrapper>
 
                 {showAddComment && (
-                    <AddComment postId={post.id} comments={comments} setComments={setComments} />
+                    <AddComment postId={post.id} comments={comments} />
                 )}
 
                 {(userRole === 'admin' || currentUser?.uid === post?.uidUser) && (

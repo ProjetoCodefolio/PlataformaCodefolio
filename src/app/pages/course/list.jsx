@@ -18,6 +18,7 @@ import { useAuth } from "$context/AuthContext";
 import LockIcon from "@mui/icons-material/Lock";
 import { filterCoursesBySearchTerm } from "$api/services/courses/courses";
 import { fetchCategorizedCourses } from "$api/services/courses/list";
+import CourseDescription from "$components/courses/CourseDescription";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0); // Tab 0 = Em Andamento agora
@@ -154,21 +155,15 @@ const MyCourses = () => {
                     />
                   )}
                 </Box>
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
+                <CourseDescription
+                  course={course}
+                  actionLabel={actionButtonLabel}
+                  onAction={() => onClickAction(course)}
                   sx={{
-                    mb: 1,
                     fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
+                    color: "text.secondary",
                   }}
-                >
-                  {course.description || "Descrição do curso"}
-                </Typography>
+                />
                 <Typography
                   variant="body2"
                   color="textSecondary"

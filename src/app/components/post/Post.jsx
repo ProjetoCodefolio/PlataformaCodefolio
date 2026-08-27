@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, get, remove, onValue } from 'firebase/database';
 import { database } from '$api/config/firebase';
-import { getPostComments } from '$api/services/posts/';
+import { listenToPostInteractions } from '$api/services/posts/';
 import Topbar from '../topbar/Topbar';
 import { MyCards } from './components/myCard';
 import MyAlert from './components/alert/Alert';
@@ -19,7 +19,9 @@ import './post.css';
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
-  const [comments, setComments] = useState({});
+  // Curtidas, descurtidas e comentários de cada post visível, mantidos por um
+  // único listener por post — fonte única do que o card mostra.
+  const [interactions, setInteractions] = useState({});
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [userRole, setUserRole] = useState('');
@@ -117,31 +119,17 @@ export default function Post({ member }) {
 
   useEffect(() => {
     if (!posts || posts.length === 0) return;
-    
-    const unsubscribes = [];
-    
-    posts.forEach(post => {
-      const unsubscribe = getPostComments(post.id, (postComments) => {
-        setComments(prevComments => ({
-          ...prevComments,
-          [post.id]: postComments
-        }));
-      });
-      unsubscribes.push(unsubscribe);
-    });
-    
+
+    const unsubscribes = posts.map((post) =>
+      listenToPostInteractions(post.id, (dados) => {
+        setInteractions((anterior) => ({ ...anterior, [post.id]: dados }));
+      })
+    );
+
     return () => {
       unsubscribes.forEach(unsubscribe => unsubscribe());
     };
   }, [posts]);
-
-  const updateLikes = (postId, updatedLikes) => {
-    setPosts((prevPosts) =>
-      prevPosts.map((post) =>
-        post.id === postId ? { ...post, likes: updatedLikes } : post
-      )
-    );
-  };
 
   const goToNextPage = () => {
     setCurrentPage((prevPage) => prevPage + 1);
@@ -194,9 +182,7 @@ export default function Post({ member }) {
                     setIsEditModalOpen={setIsEditModalOpen}
                     editingPost={editingPost}
                     Delete={handleDeleteClick(post.id)}
-                    comments={comments}
-                    setComments={setComments}
-                    updateLikes={updateLikes}
+                    interactions={interactions[post.id]}
                     userRole={userRole}
                     currentUser={currentUser}
                     onPostEdited={() => setIsPostEdited(true)}

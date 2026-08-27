@@ -25,6 +25,11 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import QuestionImage from "$components/common/QuestionImage";
 import { MarkdownView } from "$components/common/MarkdownEditor";
+import {
+  answerVerdict,
+  isGradedQuestion,
+  isOpinionQuiz,
+} from "$api/services/courses/quizGrading";
 
 const Quiz = ({
   quizId,
@@ -231,6 +236,19 @@ const Quiz = ({
             answer: answer,
             isCorrect: null, // Não aplicável para questões abertas
           });
+        } else if (!isGradedQuestion(question)) {
+          // Pergunta de opinião: a escolha é registrada (é dela que sai a
+          // distribuição de respostas), mas não há gabarito nem acerto.
+          answersDetails.push({
+            questionId: question.id,
+            question: question.question,
+            questionType: 'multiple-choice',
+            graded: false,
+            scale: question.scale || null,
+            options: question.options,
+            userOption: Number(finalMultipleChoiceAnswers[question.id] ?? -1),
+            isCorrect: null,
+          });
         } else {
           // Processar resposta de múltipla escolha (afeta a nota)
           totalMultipleChoice++;
@@ -277,6 +295,9 @@ const Quiz = ({
 
       // Salvar resultados (apenas das questões de múltipla escolha)
       // Filtrar apenas as questões e respostas de múltipla escolha
+      // Inclui as perguntas de opinião de propósito: elas não entram na nota
+      // (`totalPoints` já as ignora), mas a escolha do aluno precisa ficar
+      // gravada em `detailedAnswers` para alimentar a distribuição de respostas.
       const multipleChoiceQuestions = questions.filter(q => q.questionType !== 'open-ended');
       const filteredMultipleChoiceAnswers = {};
       multipleChoiceQuestions.forEach(q => {
@@ -489,8 +510,9 @@ const Quiz = ({
               fontSize: { xs: "1rem", sm: "1.25rem" },
             }}
           >
-            Pontuação: {result.earnedPoints}/{result.totalPoints} (
-            {result.scorePercentage.toFixed(2)}%)
+            {result.totalPoints > 0
+              ? `Pontuação: ${result.earnedPoints}/${result.totalPoints} (${result.scorePercentage.toFixed(2)}%)`
+              : "Suas respostas foram registradas"}
           </Typography>
           <Typography
             variant="h5"
@@ -507,7 +529,9 @@ const Quiz = ({
               fontSize: { xs: "1.25rem", sm: "1.75rem" },
             }}
           >
-            {quizMinPercentage === 0
+            {result.totalPoints === 0
+              ? "Obrigado por responder!"
+              : quizMinPercentage === 0
               ? "Quiz Finalizado!"
               : result.isPassed
               ? "Parabéns, você passou!"
@@ -534,7 +558,12 @@ const Quiz = ({
                       borderRadius: 2,
                       bgcolor: "#f9f9f9",
                       border: `1px solid ${
-                        isOpenEndedQuestion ? "#9041c1" : (answer.isCorrect ? "#4caf50" : "#f44336")
+                        {
+                          "open-ended": "#9041c1",
+                          ungraded: "#9041c1",
+                          correct: "#4caf50",
+                          incorrect: "#f44336",
+                        }[answerVerdict(answer)]
                       }`,
                     }}
                   >
@@ -584,6 +613,25 @@ const Quiz = ({
                           }}
                         >
                           Questão Aberta
+                        </Box>
+                      ) : answerVerdict(answer) === "ungraded" ? (
+                        /* Sem gabarito não há veredito: o selo "Incorreto" aqui
+                           contradiz o aviso logo abaixo e faz o aluno achar que
+                           havia uma resposta esperada. */
+                        <Box
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 5,
+                            bgcolor: "rgba(144, 65, 193, 0.1)",
+                            color: "#9041c1",
+                            fontWeight: 600,
+                            fontSize: "0.875rem",
+                          }}
+                        >
+                          Respondida
                         </Box>
                       ) : (
                         <Box
@@ -658,6 +706,42 @@ const Quiz = ({
                           }}
                         >
                           Esta questão não afeta sua nota final e será avaliada pelo professor.
+                        </Typography>
+                      </Box>
+                    ) : answerVerdict(answer) === "ungraded" ? (
+                      /* Pergunta de opinião: nem certo nem errado. Pintar de
+                         verde ou vermelho aqui é exatamente o que faria o aluno
+                         achar que existe uma resposta esperada. */
+                      <Box sx={{ pl: 2 }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            p: 1.5,
+                            my: 0.5,
+                            borderRadius: 1,
+                            bgcolor: "rgba(144, 65, 193, 0.06)",
+                            border: "1px solid #d1b3e8",
+                          }}
+                        >
+                          <Typography variant="body1" sx={{ fontWeight: 500, color: "#4a148c" }}>
+                            {Number(answer.userOption) >= 0
+                              ? answer.options?.[Number(answer.userOption)] ||
+                                "Resposta não encontrada"
+                              : "Não respondida"}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{ ml: "auto", color: "#6a1b9a", fontWeight: 600 }}
+                          >
+                            Sua resposta
+                          </Typography>
+                        </Box>
+                        <Typography
+                          variant="caption"
+                          sx={{ display: "block", mt: 1, color: "#666", fontStyle: "italic" }}
+                        >
+                          Esta pergunta não tem resposta certa e não afeta sua nota.
                         </Typography>
                       </Box>
                     ) : (

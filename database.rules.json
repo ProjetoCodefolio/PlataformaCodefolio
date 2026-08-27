@@ -122,6 +122,18 @@
       }
     },
     
+    "courseVideoComments": {
+      "$courseId": {
+        ".read": true,
+        "$contentId": {
+          "$commentId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && data.child('userId').val() === auth.uid) || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
+            ".validate": "newData.hasChildren(['text', 'userId', 'userName', 'createdAt']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 1000 && (!data.exists() || newData.child('userId').val() === data.child('userId').val())"
+          }
+        }
+      }
+    },
+
     "courseQuestions": {
       "$courseId": {
         ".read": true,
@@ -211,7 +223,25 @@
     "post": {
       "$postId": {
         ".read": true,
-        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        "likes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['data'])"
+          }
+        },
+        "dislikes": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['data'])"
+          }
+        },
+        "comentarios": {
+          "$comentarioId": {
+            ".write": "auth != null && ((!data.exists() && newData.child('uidUsuario').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('uidUsuario').val() === auth.uid) || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+            ".validate": "newData.child('comentario').isString() && newData.child('comentario').val().length > 0 && newData.child('comentario').val().length <= 1000"
+          }
+        }
       }
     },
 

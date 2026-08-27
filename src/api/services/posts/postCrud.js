@@ -1,4 +1,4 @@
-import { ref, push, set, onValue, get, update } from "firebase/database";
+import { ref, push, child, set, onValue, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
 import { fetchYouTubeComments, getYouTubeID } from "../../utils/postUtils";
 
@@ -21,14 +21,20 @@ export const createPost = async (postData, currentUser) => {
             userAvatar: currentUser.photoURL || "default-avatar-url",
         };
 
-        // Add YouTube comments if any
-        if (commentsYouTube.length > 0) {
-            newPostData.comentarios = commentsYouTube;
-        }
-
         // Save to database
         const postsRef = ref(database, "post");
         const newPostRef = push(postsRef);
+
+        // Add YouTube comments if any. Vão como mapa de chaves `push`, o mesmo
+        // formato dos comentários da plataforma — chave gerada localmente, sem
+        // ida ao banco, o que preserva a ordem em que vieram do YouTube.
+        if (commentsYouTube.length > 0) {
+            newPostData.comentarios = commentsYouTube.reduce((mapa, comentario) => {
+                mapa[push(child(newPostRef, "comentarios")).key] = comentario;
+                return mapa;
+            }, {});
+        }
+
         await set(newPostRef, newPostData);
 
         return { success: true, postId: newPostRef.key };

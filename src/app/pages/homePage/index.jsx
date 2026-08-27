@@ -6,25 +6,15 @@ import SectionFive from "./sectionFive";
 import SectionSix from "./sectionSix";
 import SectionSeven from "./sectionSeven";
 import * as S from "./styles";
-import { createGlobalStyle } from "styled-components";
 import SectionFour from "./sectionFour";
 
-const GlobalStyle = createGlobalStyle`
-  html {
-    scroll-behavior: smooth;
-  }
-  body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    overflow-x: hidden; /* Adiciona esta linha para evitar overflow horizontal */
-  }
-`;
+// scroll-behavior, margin/padding zerados e overflow-x agora vêm do CssBaseline
+// e do tema global (src/theme.js). Este bloco definia `body { font-family: Arial }`,
+// que vazava para o app inteiro depois de uma visita a /about.
 
 const HomePage = () => {
   return (
     <>
-      <GlobalStyle />
       <Header />
       <S.Wrapper>
         <SectionOne />

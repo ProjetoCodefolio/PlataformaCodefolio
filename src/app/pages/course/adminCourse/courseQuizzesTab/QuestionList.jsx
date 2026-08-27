@@ -5,6 +5,7 @@ import {
   Chip,
   Collapse,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   List,
@@ -12,6 +13,7 @@ import {
   ListItemText,
   MenuItem,
   Select,
+  Switch,
   TextField,
   Typography,
 } from "@mui/material";
@@ -20,6 +22,11 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import {
+  LIKERT_5_SCALE,
+  isGradedQuestion,
+  normalizeGradedFlag,
+} from "$api/services/courses/quizGrading";
 import {
   DndContext,
   closestCenter,
@@ -108,6 +115,11 @@ const QuestionList = ({
         : ["", ""],
       correctOption:
         Number.isInteger(question.correctOption) ? question.correctOption : 0,
+      // Precisam viajar no rascunho: o auto-save reescreve a questão inteira, e
+      // uma questão sem resposta certa voltaria a valer nota se estes campos não
+      // fossem junto.
+      graded: normalizeGradedFlag(question.graded),
+      scale: question.scale || "",
       imageUrl: question.imageUrl || "",
       imageWidth: question.imageWidth || "",
       imageHeight: question.imageHeight || "",
@@ -119,6 +131,8 @@ const QuestionList = ({
     if (draft.questionType === "open-ended") return true;
     if (!Array.isArray(draft.options) || draft.options.length < 2) return false;
     if (draft.options.some((o) => !String(o || "").trim())) return false;
+
+    if (draft.graded === false) return true;
 
     const idx = Number(draft.correctOption);
     return Number.isInteger(idx) && idx >= 0 && idx < draft.options.length;
@@ -156,6 +170,8 @@ const QuestionList = ({
             : {
                 options: nextDraft.options,
                 correctOption: Number(nextDraft.correctOption),
+                graded: nextDraft.graded,
+                scale: nextDraft.scale,
               }),
         });
       } catch (e) {
@@ -319,6 +335,23 @@ const QuestionList = ({
                               }}
                             >
                               <strong>Alternativas:</strong>
+                              {!isGradedQuestion(question) && (
+                                <Chip
+                                  size="small"
+                                  label={
+                                    question.scale === LIKERT_5_SCALE
+                                      ? "Escala Likert"
+                                      : "Sem resposta certa"
+                                  }
+                                  sx={{
+                                    ml: 1,
+                                    height: 18,
+                                    fontSize: "0.7rem",
+                                    backgroundColor: "#ede7f6",
+                                    color: "#5e35b1",
+                                  }}
+                                />
+                              )}
                             </Typography>
                             {(question.options || []).map((opt, i) => (
                               <Box
@@ -329,10 +362,12 @@ const QuestionList = ({
                                 <span
                                   style={{
                                     fontWeight:
+                                      isGradedQuestion(question) &&
                                       i === question.correctOption
                                         ? "bold"
                                         : "normal",
                                     color:
+                                      isGradedQuestion(question) &&
                                       i === question.correctOption
                                         ? "green"
                                         : "inherit",
@@ -480,34 +515,64 @@ const QuestionList = ({
 
                   {!isOpenEnded && (
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        Opções (marque a correta)
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 600, flexGrow: 1 }}>
+                          {draft.graded === false
+                            ? "Opções (sem resposta certa)"
+                            : "Opções (marque a correta)"}
+                        </Typography>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              size="small"
+                              checked={draft.graded !== false}
+                              onChange={(e) =>
+                                updateDraft(question.id, {
+                                  graded: e.target.checked,
+                                  // Voltar a valer nota descaracteriza a escala.
+                                  ...(e.target.checked ? { scale: "" } : {}),
+                                })
+                              }
+                              sx={{
+                                "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                                "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                                  backgroundColor: "#9041c1",
+                                },
+                              }}
+                            />
+                          }
+                          label={<Typography variant="body2">Tem resposta certa</Typography>}
+                        />
+                      </Box>
 
                       {(draft.options || []).map((opt, optIndex) => {
-                        const isCorrect = Number(draft.correctOption) === optIndex;
+                        const isCorrect =
+                          draft.graded !== false &&
+                          Number(draft.correctOption) === optIndex;
 
                         return (
                           <Box
                             key={`${question.id}-opt-${optIndex}`}
                             sx={{ display: "flex", alignItems: "center", gap: 1 }}
                           >
-                            <IconButton
-                              onClick={() =>
-                                updateDraft(question.id, { correctOption: optIndex })
-                              }
-                              size="small"
-                              sx={{
-                                color: isCorrect ? "#2e7d32" : "#9e9e9e",
-                              }}
-                              title={isCorrect ? "Correta" : "Marcar como correta"}
-                            >
-                              {isCorrect ? (
-                                <CheckCircleIcon fontSize="small" />
-                              ) : (
-                                <RadioButtonUncheckedIcon fontSize="small" />
-                              )}
-                            </IconButton>
+                            {draft.graded !== false && (
+                              <IconButton
+                                onClick={() =>
+                                  updateDraft(question.id, { correctOption: optIndex })
+                                }
+                                size="small"
+                                sx={{
+                                  color: isCorrect ? "#2e7d32" : "#9e9e9e",
+                                }}
+                                title={isCorrect ? "Correta" : "Marcar como correta"}
+                              >
+                                {isCorrect ? (
+                                  <CheckCircleIcon fontSize="small" />
+                                ) : (
+                                  <RadioButtonUncheckedIcon fontSize="small" />
+                                )}
+                              </IconButton>
+                            )}
 
                             <TextField
                               label={`Opção ${optIndex + 1}`}

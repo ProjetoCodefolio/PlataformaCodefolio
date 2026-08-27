@@ -17,6 +17,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
 import * as extraMaterialsService from "$api/services/courses/extraMaterials";
+import ImportMaterialsModal from "$components/courses/import/ImportMaterialsModal";
 
 const CourseMaterialsTab = forwardRef((props, ref) => {
     const [materials, setMaterials] = useState([]);
@@ -25,6 +26,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingMaterialId, setEditingMaterialId] = useState(null);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [materialToDelete, setMaterialToDelete] = useState(null);
 
@@ -225,9 +227,35 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                 </Grid>
             </Grid>
 
-            <Typography variant="h6" sx={{ mt: 4, mb: 2, fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-                Materiais Adicionados
-            </Typography>
+            <Box
+                sx={{
+                    mt: 4,
+                    mb: 2,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1,
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                }}
+            >
+                <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333", fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+                    Materiais Adicionados
+                </Typography>
+                <Button
+                    variant="outlined"
+                    onClick={() => setShowImportModal(true)}
+                    sx={{
+                        textTransform: "none",
+                        fontWeight: "bold",
+                        color: "#9041c1",
+                        borderColor: "#9041c1",
+                        '&:hover': { borderColor: "#7d37a7", backgroundColor: "rgba(144, 65, 193, 0.04)" },
+                        fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    }}
+                >
+                    Importar de outro curso
+                </Button>
+            </Box>
 
             <List sx={{ mt: 4 }}>
                 {materials.map((material) => (
@@ -299,6 +327,14 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                     </Typography>
                 )}
             </List>
+
+            <ImportMaterialsModal
+                open={showImportModal}
+                onClose={() => setShowImportModal(false)}
+                courseId={courseId}
+                existingMaterials={materials}
+                onImported={loadCourseMaterials}
+            />
 
             {/* Modal de sucesso ao adicionar */}
             <Modal

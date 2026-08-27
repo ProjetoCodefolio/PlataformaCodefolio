@@ -2,6 +2,7 @@ import { database } from "../../config/firebase";
 import { ref, get } from "firebase/database";
 import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizzes";
 import { fetchFlippedClassroomVideos } from "./submissions";
+import { gradedQuestions, isOpinionQuiz } from "./quizGrading";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -175,15 +176,14 @@ const fetchCustomQuizResult = async (userId, courseId, quizId) => {
  * @returns {Promise<Object>} - Nota calculada e detalhes
  */
 const calculateQuizGrade = async (quiz, userId, courseId) => {
-  // Filtrar apenas questões de múltipla escolha para o cálculo da nota
-  const multipleChoiceQuestions = quiz.questions.filter(
-    q => q.questionType !== 'open-ended'
-  );
-  const openEndedQuestions = quiz.questions.filter(
+  // Só as questões que VALEM NOTA entram no cálculo: dissertativa é corrigida à
+  // mão e questão sem resposta certa (escala Likert) não tem gabarito.
+  const gradedList = gradedQuestions(quiz.questions);
+  const openEndedQuestions = (quiz.questions || []).filter(
     q => q.questionType === 'open-ended'
   );
-  
-  const totalQuestions = multipleChoiceQuestions.length; // Apenas múltipla escolha
+
+  const totalQuestions = gradedList.length;
   const totalOpenEnded = openEndedQuestions.length;
   
   // Buscar resultados de todos os tipos de quiz
@@ -214,8 +214,15 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
   // Total de questões corretas (soma de todos os tipos)
   const totalCorrect = regularCorrect + liveCorrect + customCorrect;
   
-  // Considera que tem tentativa se fez qualquer um dos tipos
-  const hasAttempt = regularCorrect > 0 || liveCorrect > 0 || customCorrect > 0;
+  // Considera que tem tentativa se fez qualquer um dos tipos. A contagem de
+  // tentativas entra no OU porque acerto não é evidência de participação: quem
+  // respondeu e errou tudo — e quem respondeu um questionário de opinião, que
+  // não tem acerto nenhum — também respondeu.
+  const hasAttempt =
+    regularCorrect > 0 ||
+    liveCorrect > 0 ||
+    customCorrect > 0 ||
+    Number(regularResult?.attemptCount) > 0;
 
   // Para verificar se passou, usa apenas a nota base (quiz regular)
   const passedRegular = basePercentage >= quiz.minPercentage;
@@ -232,7 +239,11 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
     attemptCount: Number(regularResult?.attemptCount) || 0,
     attemptLimit: quiz.attemptLimit,
     isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
-    totalQuestions, // Apenas questões de múltipla escolha
+    // Questionário de opinião: nenhuma questão vale nota. Fica fora da média
+    // pelo mesmo motivo do diagnóstico — só que aqui não há sequer nota a
+    // registrar, e incluí-lo puxaria a média da turma para zero.
+    isOpinion: isOpinionQuiz(quiz),
+    totalQuestions, // Apenas questões que valem nota
     totalOpenEnded, // Número de questões abertas (apenas informativo)
     totalCorrect,
     basePercentage: Math.round(basePercentage * 10) / 10,
@@ -350,9 +361,12 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
           quizzes.map((quiz) => calculateQuizGrade(quiz, userId, courseId))
         );
 
-        // Separar quizzes diagnósticos dos avaliativos
+        // Separar quizzes diagnósticos e de opinião dos avaliativos
         const diagnosticQuizzes = quizGrades.filter((q) => q.isDiagnostic);
-        const evaluativeQuizzes = quizGrades.filter((q) => !q.isDiagnostic);
+        const opinionQuizzes = quizGrades.filter((q) => q.isOpinion);
+        const evaluativeQuizzes = quizGrades.filter(
+          (q) => !q.isDiagnostic && !q.isOpinion
+        );
 
         // Calcular média apenas dos quizzes avaliativos
         const totalEvaluative = evaluativeQuizzes.length;
@@ -370,6 +384,7 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
           photoURL: userData.photoURL || "",
           quizGrades,
           diagnosticQuizzes,
+          opinionQuizzes,
           evaluativeQuizzes,
           averageGrade: Math.round(averageGrade * 100) / 100,
           attemptedQuizzes,
@@ -387,8 +402,11 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
     const summary = {
       totalStudents: studentsGrades.length,
       totalQuizzes: quizzes.length,
-      totalEvaluativeQuizzes: quizzes.filter((q) => !q.isDiagnostic).length,
+      totalEvaluativeQuizzes: quizzes.filter(
+        (q) => !q.isDiagnostic && !isOpinionQuiz(q)
+      ).length,
       totalDiagnosticQuizzes: quizzes.filter((q) => q.isDiagnostic).length,
+      totalOpinionQuizzes: quizzes.filter((q) => isOpinionQuiz(q)).length,
       averageClassGrade: studentsGrades.length > 0
         ? Math.round((studentsGrades.reduce((sum, s) => sum + s.averageGrade, 0) / studentsGrades.length) * 100) / 100
         : 0,

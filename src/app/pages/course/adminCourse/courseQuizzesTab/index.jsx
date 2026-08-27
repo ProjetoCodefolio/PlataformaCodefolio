@@ -9,12 +9,15 @@ import React, {
 } from "react";
 import { Box, Typography, Tabs, Tab, Button } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import DownloadIcon from "@mui/icons-material/Download";
 import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
 import QuizSettingsModal from "./QuizSettingsModal";
 import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
+import ImportQuizModal from "$components/courses/import/ImportQuizModal";
+import OpinionResultsModal from "./OpinionResultsModal";
 import { ConfirmationModal, SuccessModal } from "./Modals";
 import { generateUUID } from "../../../../utils/courseUtils";
 import PdfQuizGenerator from "./PdfQuizGenerator";
@@ -31,6 +34,7 @@ import {
   saveAllCourseQuizzes,
   normalizeDiagnosticFlag,
 } from "$api/services/courses/quizzes";
+import { normalizeGradedFlag } from "$api/services/courses/quizGrading";
 import { notifyNewQuiz } from "$api/services/notifications";
 import { fetchCourseSlides } from "$api/services/courses/slides";
 import { fetchCourseContentItems } from "$api/services/courses/content";
@@ -43,6 +47,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [newQuizQuestion, setNewQuizQuestion] = useState("");
   const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
   const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
+  // "Esta pergunta tem resposta certa": desligado, a questão não vale nota e
+  // não pede gabarito (é o que permite a escala Likert sem induzir resposta).
+  const [newQuizGraded, setNewQuizGraded] = useState(true);
+  const [newQuizScale, setNewQuizScale] = useState("");
 
   // Imagem opcional da questão (URL + dimensões em px)
   const [newQuizImageUrl, setNewQuizImageUrl] = useState("");
@@ -56,6 +64,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   const [slidesState, setSlides] = useState(slides || []);
 
   const [quizzes, setQuizzes] = useState([]);
+  const [showImportQuizModal, setShowImportQuizModal] = useState(false);
+  const [opinionQuiz, setOpinionQuiz] = useState(null);
   const [expandedQuiz, setExpandedQuiz] = useState(null);
 
   // Novos estados para gerenciar slides e quizzes de slides
@@ -365,9 +375,16 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     if (question.questionType === 'open-ended') {
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
     } else {
       setNewQuizOptions([...question.options]);
-      setNewQuizCorrectOption(question.correctOption);
+      // Questão sem resposta certa não tem gabarito gravado; o 0 aqui é só o
+      // estado inicial do seletor, que fica escondido enquanto o switch estiver
+      // desligado.
+      setNewQuizCorrectOption(question.correctOption ?? 0);
+      setNewQuizGraded(normalizeGradedFlag(question.graded));
+      setNewQuizScale(question.scale || "");
     }
   };
 
@@ -668,6 +685,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
         question: newQuizQuestion,
         options: newQuizOptions,
         correctOption: newQuizCorrectOption,
+        graded: newQuizGraded,
+        scale: newQuizScale,
       };
 
       // Atualizar a questão no quiz
@@ -739,6 +758,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       } else {
         questionData.options = newQuizOptions.map((opt) => opt.trim());
         questionData.correctOption = newQuizCorrectOption;
+        questionData.graded = newQuizGraded;
+        questionData.scale = newQuizScale;
       }
 
       // Atualizar a questão no quiz
@@ -764,6 +785,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
       setNewQuestionType('multiple-choice');
       setNewQuizImageUrl("");
       setNewQuizImageWidth("");
@@ -807,6 +830,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       } else {
         questionData.options = newQuizOptions.map((opt) => opt.trim());
         questionData.correctOption = newQuizCorrectOption;
+        questionData.graded = newQuizGraded;
+        questionData.scale = newQuizScale;
       }
 
       // Adicionar a questão ao quiz
@@ -831,6 +856,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       setNewQuizQuestion("");
       setNewQuizOptions(["", ""]);
       setNewQuizCorrectOption(0);
+      setNewQuizGraded(true);
+      setNewQuizScale("");
       setNewQuestionType('multiple-choice');
       setNewQuizImageUrl("");
       setNewQuizImageWidth("");
@@ -848,23 +875,40 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     navigate(`/quiz-grades-overview?courseId=${courseId}`);
   };
 
-  // Botão de visão geral de notas
+  // Botões extras do cabeçalho do formulário de criação.
   const gradesOverviewButton = (
-    <Button
-      variant="outlined"
-      startIcon={<TrendingUpIcon />}
-      onClick={handleViewQuizGradesOverview}
-      sx={{
-        borderColor: "#9041c1",
-        color: "#9041c1",
-        "&:hover": {
-          borderColor: "#7a35a3",
-          backgroundColor: "#f5f0fa",
-        },
-      }}
-    >
-      Visão Geral de Notas
-    </Button>
+    <>
+      <Button
+        variant="outlined"
+        startIcon={<TrendingUpIcon />}
+        onClick={handleViewQuizGradesOverview}
+        sx={{
+          borderColor: "#9041c1",
+          color: "#9041c1",
+          "&:hover": {
+            borderColor: "#7a35a3",
+            backgroundColor: "#f5f0fa",
+          },
+        }}
+      >
+        Visão Geral de Notas
+      </Button>
+      <Button
+        variant="outlined"
+        startIcon={<DownloadIcon />}
+        onClick={() => setShowImportQuizModal(true)}
+        sx={{
+          borderColor: "#9041c1",
+          color: "#9041c1",
+          "&:hover": {
+            borderColor: "#7a35a3",
+            backgroundColor: "#f5f0fa",
+          },
+        }}
+      >
+        Importar de outro curso
+      </Button>
+    </>
   );
 
   // Editor de questões renderizado DENTRO do card do quiz expandido (a lista o
@@ -888,6 +932,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
           newQuizOptions={newQuizOptions}
           setNewQuizOptions={setNewQuizOptions}
           newQuizCorrectOption={newQuizCorrectOption}
+          newQuizGraded={newQuizGraded}
+          setNewQuizGraded={setNewQuizGraded}
+          newQuizScale={newQuizScale}
+          setNewQuizScale={setNewQuizScale}
           setNewQuizCorrectOption={setNewQuizCorrectOption}
           newQuestionType={newQuestionType}
           setNewQuestionType={setNewQuestionType}
@@ -980,6 +1028,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             entityItems={videosState}
             courseId={courseId}
             onAutoSaveQuestion={handleAutoSaveQuestion}
+            onViewOpinionResults={setOpinionQuiz}
             editQuiz={editQuiz}
             onToggleQuestionEditor={handleToggleQuestionEditor}
             renderQuestionEditor={renderQuestionEditor}
@@ -1041,6 +1090,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 entityItems={slidesState || []}
                 courseId={courseId}
                 onAutoSaveQuestion={handleAutoSaveQuestion}
+                onViewOpinionResults={setOpinionQuiz}
                 editQuiz={editQuiz}
                 onToggleQuestionEditor={handleToggleQuestionEditor}
                 renderQuestionEditor={renderQuestionEditor}
@@ -1065,6 +1115,39 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               settingsQuiz?.videoId
         }
         onSaved={handleQuizSettingsSaved}
+      />
+
+      <OpinionResultsModal
+        open={Boolean(opinionQuiz)}
+        onClose={() => setOpinionQuiz(null)}
+        courseId={courseId}
+        quizId={opinionQuiz?.videoId}
+        quizTitle={
+          opinionQuiz?.isSlideQuiz
+            ? slidesState.find((s) => s.id === opinionQuiz?.slideId)?.title || ""
+            : videosState.find((v) => v.id === opinionQuiz?.videoId)?.title || ""
+        }
+      />
+
+      <ImportQuizModal
+        open={showImportQuizModal}
+        onClose={() => setShowImportQuizModal(false)}
+        courseId={courseId}
+        targets={
+          activeTab === 0
+            ? videosState
+            : // O quiz de slide é chaveado com o prefixo `slide_`; os alvos
+              // precisam chegar ao modal já na forma da chave, que é o que o
+              // serviço grava e o que a lista de ocupados compara.
+              slidesState.map((slide) => ({
+                id: `slide_${slide.id}`,
+                title: slide.title,
+              }))
+        }
+        existingQuizIds={(activeTab === 0 ? quizzes : slideQuizzes).map(
+          (quiz) => quiz.videoId
+        )}
+        onImported={loadQuizzes}
       />
 
       <SuccessModal
