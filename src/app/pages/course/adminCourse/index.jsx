@@ -143,14 +143,6 @@ const CourseForm = () => {
     }
   };
 
-  // A aba "Dúvidas" não existe para o co-professor. Um link direto para ela
-  // (…&tab=6) deixaria a barra sem nenhuma aba selecionada, então volta ao começo.
-  useEffect(() => {
-    if (isCurrentUserTeacher && selectedTab === 6) {
-      setSelectedTab(0);
-    }
-  }, [isCurrentUserTeacher, selectedTab]);
-
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
   };
@@ -320,12 +312,30 @@ const CourseForm = () => {
             {courseId ? "Gerenciar Curso" : "Criar Novo Curso"}
           </Typography>
 
+          {isCurrentUserTeacher && (
+            <Typography
+              sx={{
+                mb: 3,
+                p: 1.5,
+                borderRadius: "8px",
+                backgroundColor: "#F5F0FA",
+                color: "#5B5566",
+                fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+              }}
+            >
+              Você é professor desta turma. O conteúdo, os quizzes, os alunos e as
+              notas são seus; o cadastro do curso — título, apelido, PIN e
+              arquivamento — continua com quem criou o curso.
+            </Typography>
+          )}
+
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12}>
               <TextField
                 label="Título do Curso"
                 fullWidth
                 required
+                disabled={isCurrentUserTeacher}
                 value={courseTitle}
                 onChange={(e) => setCourseTitle(e.target.value)}
                 variant="outlined"
@@ -352,6 +362,7 @@ const CourseForm = () => {
                 label="Descrição do Curso"
                 fullWidth
                 required
+                disabled={isCurrentUserTeacher}
                 value={courseDescription}
                 onChange={(e) => setCourseDescription(e.target.value)}
                 variant="outlined"
@@ -379,6 +390,7 @@ const CourseForm = () => {
               <TextField
                 label="Apelido do Curso"
                 fullWidth
+                disabled={isCurrentUserTeacher}
                 value={courseAlias}
                 onChange={(e) => setCourseAlias(e.target.value.replace(/\s/g, ''))}
                 variant="outlined"
@@ -413,6 +425,7 @@ const CourseForm = () => {
                 control={
                   <Switch
                     checked={pinRequired}
+                    disabled={isCurrentUserTeacher}
                     onChange={(e) => {
                       const isChecked = e.target.checked;
                       setPinRequired(isChecked);
@@ -458,7 +471,7 @@ const CourseForm = () => {
                   variant="outlined"
                   type={showPin ? "text" : "password"}
                   value={coursePin}
-                  disabled={!pinRequired}
+                  disabled={!pinRequired || isCurrentUserTeacher}
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
                   InputProps={{
@@ -588,7 +601,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
-                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
+                  <Tab label="Dúvidas" />
                 </Tabs>
               </Box>
 
@@ -618,7 +631,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
-                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
+                  <Tab label="Dúvidas" />
                 </Tabs>
               </Box>
 
@@ -650,7 +663,7 @@ const CourseForm = () => {
                 </Typography>
               )}
               {selectedTab === 5 && <CourseAssignmentsTab />}
-              {selectedTab === 6 && !isCurrentUserTeacher && (
+              {selectedTab === 6 && (
                 <CourseQuestionsTab courseId={courseId} alias={courseAlias} />
               )}
             </>
