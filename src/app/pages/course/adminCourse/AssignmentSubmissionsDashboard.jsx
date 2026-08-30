@@ -51,7 +51,11 @@ import {
 } from "$api/services/courses/assignmentGroups";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
-import { assignGrade, getAssessmentGrades } from "$api/services/courses/assessments";
+import {
+  assignGrade,
+  assignFeedback,
+  getAssessmentGrades,
+} from "$api/services/courses/assessments";
 import { notifyGrade } from "$api/services/notifications";
 import { canAssignGrades } from "$api/utils/permissions";
 import { RichTextView } from "$components/common/RichTextEditor";
@@ -195,6 +199,8 @@ export default function AssignmentSubmissionsDashboard() {
   const [submissionsByKey, setSubmissionsByKey] = useState({});
   const [groups, setGroups] = useState([]);
   const [gradesByStudent, setGradesByStudent] = useState({});
+  const [feedbackByStudent, setFeedbackByStudent] = useState({});
+  const [savingFeedbackKey, setSavingFeedbackKey] = useState(null);
   const [loading, setLoading] = useState(true);
   const [courseOwnerId, setCourseOwnerId] = useState(null);
   const [viewing, setViewing] = useState(null);
@@ -241,10 +247,13 @@ export default function AssignmentSubmissionsDashboard() {
       if (a?.linkedAssessmentId) {
         const grades = await getAssessmentGrades(courseId, a.linkedAssessmentId);
         const gmap = {};
+        const fmap = {};
         (grades || []).forEach((g) => {
           gmap[g.studentId] = g.grade;
+          if (g.feedback) fmap[g.studentId] = g.feedback;
         });
         setGradesByStudent(gmap);
+        setFeedbackByStudent(fmap);
       }
     } catch (err) {
       console.error(err);
@@ -301,6 +310,54 @@ export default function AssignmentSubmissionsDashboard() {
       toast.error("Erro ao lançar a nota.");
     } finally {
       setSavingKey(null);
+    }
+  };
+
+  /**
+   * Grava o feedback escrito do professor para todos os integrantes de um grupo.
+   *
+   * O texto é o mesmo para o grupo inteiro e vai num único update, pela mesma
+   * razão da nota: metade do grupo com retorno e metade sem seria pior do que
+   * nenhum. Não notifica ninguém — o feedback acompanha uma nota que já foi
+   * anunciada, e um segundo aviso pelo mesmo trabalho vira ruído.
+   */
+  const persistFeedback = async (savingKeyId, studentIds, texto) => {
+    if (!assignment?.linkedAssessmentId) {
+      toast.warn("Este trabalho não vale nota. Defina um peso (%) no enunciado para poder avaliar.");
+      return;
+    }
+
+    setSavingFeedbackKey(savingKeyId);
+    try {
+      await assignFeedback(
+        courseId,
+        assignment.linkedAssessmentId,
+        studentIds,
+        texto
+      );
+
+      const limpo = String(texto ?? "").trim();
+      setFeedbackByStudent((prev) => {
+        const next = { ...prev };
+        studentIds.forEach((sid) => {
+          if (limpo) next[sid] = limpo;
+          else delete next[sid];
+        });
+        return next;
+      });
+
+      toast.success(
+        limpo
+          ? studentIds.length === 1
+            ? "Feedback salvo."
+            : `Feedback salvo para ${studentIds.length} integrantes.`
+          : "Feedback removido."
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar o feedback.");
+    } finally {
+      setSavingFeedbackKey(null);
     }
   };
 
@@ -450,7 +507,10 @@ export default function AssignmentSubmissionsDashboard() {
                   photoById={photoById}
                   students={students}
                   gradesByStudent={gradesByStudent}
+                  feedbackByStudent={feedbackByStudent}
                   onSaveGrade={persistGrade}
+                  onSaveFeedback={persistFeedback}
+                  savingFeedbackKey={savingFeedbackKey}
                   onView={setViewing}
                   onMove={handleMove}
                   onRemove={handleRemoveFromGroup}
@@ -727,6 +787,57 @@ export default function AssignmentSubmissionsDashboard() {
 }
 
 /**
+ * Campo de feedback escrito, com salvamento ao sair do campo.
+ *
+ * Diferente da nota, não valida nada: é texto livre. O que ele faz de
+ * específico é só gravar quando o texto MUDOU — sair do campo sem escrever
+ * nada não deve custar uma escrita no banco para cada integrante do grupo.
+ */
+function FeedbackInput({ storedFeedback, disabled, saving, onCommit }) {
+  const [val, setVal] = useState(storedFeedback ?? "");
+
+  useEffect(() => {
+    setVal(storedFeedback ?? "");
+  }, [storedFeedback]);
+
+  const commit = () => {
+    if (val.trim() === String(storedFeedback ?? "").trim()) return;
+    onCommit(val);
+  };
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, width: "100%" }}>
+      <TextField
+        size="small"
+        multiline
+        minRows={2}
+        fullWidth
+        placeholder="O que o grupo fez bem e o que precisa melhorar…"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        disabled={disabled}
+        sx={{
+          "& .MuiOutlinedInput-root.Mui-focused fieldset": { borderColor: "#9041c1" },
+        }}
+      />
+      {saving ? (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <CircularProgress size={12} sx={{ color: "#9041c1" }} />
+          <Typography variant="caption" sx={{ color: "#9041c1" }}>
+            Salvando…
+          </Typography>
+        </Box>
+      ) : (
+        <Typography variant="caption" sx={{ color: "#9e9e9e" }}>
+          Salvo ao sair do campo. Cada integrante vê este texto junto da nota.
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+/**
  * Bloco de entregas por grupo. A nota pode ser lançada de duas formas:
  *  - "Nota do grupo": aplica o mesmo valor a todos os integrantes de uma vez;
  *  - "Notas por integrante": permite ajustar individualmente cada aluno, pois
@@ -741,7 +852,10 @@ function GroupSubmissions({
   photoById,
   students,
   gradesByStudent,
+  feedbackByStudent,
   onSaveGrade,
+  onSaveFeedback,
+  savingFeedbackKey,
   onView,
   onMove,
   onRemove,
@@ -870,6 +984,10 @@ function GroupSubmissions({
         const key = `group_${g.groupId}`;
         const sub = submissionsByKey[key];
         const memberIds = Object.keys(g.members || {});
+        // O texto é o mesmo para o grupo inteiro; basta o do primeiro integrante
+        // que já tenha recebido.
+        const feedbackDoGrupo =
+          memberIds.map((id) => feedbackByStudent?.[id]).find(Boolean) || "";
         return (
           <Paper key={g.groupId} variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
@@ -928,6 +1046,22 @@ function GroupSubmissions({
                 />
               </Box>
             </Stack>
+
+            {memberIds.length > 0 && (
+              <Box sx={{ mt: 2, pt: 1.5, borderTop: "1px dashed #e0d3f0" }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: "#7d37a7" }}>
+                  Feedback para o grupo
+                </Typography>
+                <Box sx={{ mt: 1 }}>
+                  <FeedbackInput
+                    storedFeedback={feedbackDoGrupo}
+                    disabled={!canGrade || !linkedAssessmentId}
+                    saving={savingFeedbackKey === key}
+                    onCommit={(texto) => onSaveFeedback(key, memberIds, texto)}
+                  />
+                </Box>
+              </Box>
+            )}
 
             {/* Notas individuais por integrante */}
             {memberIds.length > 0 && (

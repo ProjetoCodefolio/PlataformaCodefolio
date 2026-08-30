@@ -282,17 +282,21 @@ export default function MyAssessmentsPage() {
         assessments.map(async (assess) => {
           const assessId = assess.id || assess.assessmentId;
           let userGrade = null;
+          let userFeedback = null;
           try {
             const grades = await assessmentService.getAssessmentGrades(
               courseId,
               assessId
             );
             const g = (grades || []).find((gg) => gg.studentId === userId);
-            if (g) userGrade = g.grade;
+            if (g) {
+              userGrade = g.grade;
+              userFeedback = g.feedback || null;
+            }
           } catch (e) {
             console.error("Erro ao buscar notas para assessment", assessId, e);
           }
-          return { ...assess, userGrade };
+          return { ...assess, userGrade, userFeedback };
         })
       );
 
@@ -840,6 +844,34 @@ export default function MyAssessmentsPage() {
                                                 }}
                                               >
                                                 {a.description}
+                                              </Typography>
+                                            </Box>
+                                          )}
+                                          {a.userFeedback && (
+                                            <Box
+                                              sx={{
+                                                mt: 1,
+                                                p: 1.5,
+                                                borderRadius: 1.5,
+                                                bgcolor: "#F5F0FA",
+                                                borderLeft: "3px solid #9041c1",
+                                              }}
+                                            >
+                                              <Typography
+                                                variant="caption"
+                                                sx={{ fontWeight: 700, color: "#7d37a7" }}
+                                              >
+                                                Feedback do professor
+                                              </Typography>
+                                              <Typography
+                                                variant="body2"
+                                                sx={{
+                                                  mt: 0.5,
+                                                  color: "#5B5566",
+                                                  whiteSpace: "pre-wrap",
+                                                }}
+                                              >
+                                                {a.userFeedback}
                                               </Typography>
                                             </Box>
                                           )}
