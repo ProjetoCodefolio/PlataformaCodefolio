@@ -337,81 +337,57 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
     if (!courseId) {
       throw new Error("ID do curso é necessário");
     }
-    
-    const studentCoursesRef = ref(database, `studentCourses`);
-    const snapshot = await get(studentCoursesRef);
-    
-    if (!snapshot.exists()) {
+
+    const [studentCoursesSnapshot, usersSnapshot] = await Promise.all([
+      get(ref(database, "studentCourses")),
+      get(ref(database, "users")),
+    ]);
+
+    if (!studentCoursesSnapshot.exists()) {
       return [];
     }
-    
-    const studentsData = snapshot.val();
+
+    const studentsData = studentCoursesSnapshot.val();
+    const usersData = usersSnapshot.val() || {};
     const studentsList = [];
-    
-    // Para cada usuário, verificar se está matriculado no curso
-    const studentPromises = Object.entries(studentsData).map(async ([userId, courses]) => {
-      if (courses[courseId]) {
-        // Buscar dados do usuário
-        const userData = await fetchStudentData(userId);
-        
-        if (userData) {
-          // Derivar o nome de exibição a partir dos dados disponíveis
-          let displayName = "Usuário Desconhecido";
-          if (userData.displayName) {
-            displayName = userData.displayName;
-          } else if (userData.firstName) {
-            displayName = `${userData.firstName} ${userData.lastName || ""}`;
-          } else if (userData.name) {
-            displayName = userData.name;
-          } else if (userData.email) {
-            displayName = userData.email.split("@")[0];
-          }
-          
-          // Verificar se o usuário é professor deste curso específico
-          const isTeacher = userData.coursesTeacher && 
-            userData.coursesTeacher[courseId] === true;
-          
-          // Combinar os dados do curso com os dados do usuário
-          return {
-            id: userId,
-            userId: userId,
-            name: displayName.trim() || "Usuário " + userId.substring(0, 6),
-            ...courses[courseId],  // Dados específicos do curso
-            ...userData,          // Dados do perfil do usuário (nome, email, etc)
-            role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
-          };
-        }
+
+    Object.entries(studentsData).forEach(([userId, courses]) => {
+      if (!courses[courseId]) return;
+
+      const userData = usersData[userId];
+      if (!userData) return;
+
+      // Derivar o nome de exibição a partir dos dados disponíveis
+      let displayName = "Usuário Desconhecido";
+      if (userData.displayName) {
+        displayName = userData.displayName;
+      } else if (userData.firstName) {
+        displayName = `${userData.firstName} ${userData.lastName || ""}`;
+      } else if (userData.name) {
+        displayName = userData.name;
+      } else if (userData.email) {
+        displayName = userData.email.split("@")[0];
       }
-      return null;
+
+      // Verificar se o usuário é professor deste curso específico
+      const isTeacher = userData.coursesTeacher &&
+        userData.coursesTeacher[courseId] === true;
+
+      // Combinar os dados do curso com os dados do usuário
+      studentsList.push({
+        id: userId,
+        userId: userId,
+        name: displayName.trim() || "Usuário " + userId.substring(0, 6),
+        ...courses[courseId],  // Dados específicos do curso
+        ...userData,          // Dados do perfil do usuário (nome, email, etc)
+        role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
+      });
     });
-    
-    // Esperar todas as promessas serem resolvidas
-    const studentsArray = await Promise.all(studentPromises);
-    
-    // Filtrar possíveis nulls (onde fetchStudentData falhou)
-    return studentsArray.filter(student => student !== null);
+
+    return studentsList;
   } catch (error) {
     console.error("Erro ao buscar estudantes do curso:", error);
     throw error;
-  }
-};
-
-/**
- * Busca dados de um estudante específico
- */
-export const fetchStudentData = async (userId) => {
-  try {
-    const studentsRef = ref(database, `users/${userId}`);
-    const snapshot = await get(studentsRef);
-
-    if (snapshot.exists()) {
-      return snapshot.val();
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error("Erro ao buscar dados do estudante:", error);
-    return null;
   }
 };
 
