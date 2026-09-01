@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { ref, set, get } from "firebase/database";
 
 /**
@@ -242,6 +242,31 @@ describe.runIf(emuladorNoAr)("fluxo vídeo→quiz→progresso (emulador)", () =>
         { id: "v1", watched: true, quizId: `${C}/v1`, quizPassed: true },
         { id: "v2", watched: true, quizId: `${C}/v2`, quizPassed: true },
       ];
+      const r = await updateCourseProgress(U, C, videos);
+      expect(r.progress).toBe(100);
+      expect(r.status).toBe("completed");
+    });
+  });
+
+  describe("disciplina em andamento não conclui sozinha por progresso", () => {
+    afterEach(async () => {
+      await set(ref(database, `courses/${C}`), null);
+    });
+
+    it("100% numa disciplina sem encerramento fica in_progress", async () => {
+      await set(ref(database, `courses/${C}`), { type: "disciplina" });
+      const videos = [{ id: "v1", watched: true }];
+      const r = await updateCourseProgress(U, C, videos);
+      expect(r.progress).toBe(100);
+      expect(r.status).toBe("in_progress");
+    });
+
+    it("100% numa disciplina já encerrada (closedAt) permanece completed", async () => {
+      await set(ref(database, `courses/${C}`), {
+        type: "disciplina",
+        closedAt: "2026-08-01T00:00:00.000Z",
+      });
+      const videos = [{ id: "v1", watched: true }];
       const r = await updateCourseProgress(U, C, videos);
       expect(r.progress).toBe(100);
       expect(r.status).toBe("completed");

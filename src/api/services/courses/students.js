@@ -1,5 +1,6 @@
 import { database } from '../../config/firebase';
 import { ref, get, set, update, remove } from 'firebase/database';
+import { isDiscipline, isCourseClosed } from './courseType';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -20,6 +21,12 @@ export const isContentCompleted = (item) =>
  * encerramento sem ninguém perceber. O progresso continua sendo gravado — é
  * informação real —, mas o status fica onde o professor deixou.
  *
+ * Numa disciplina que ainda não foi encerrada, 100% de progresso sozinho
+ * também não conclui: só o encerramento manual do professor (`closeDiscipline`)
+ * leva a turma inteira a "completed" de uma vez. Sem essa trava, o próprio
+ * aluno levaria o curso a "concluído" assistindo tudo, o que é exatamente o
+ * comportamento que a disciplina existe para não ter.
+ *
  * @param {string} userId
  * @param {string} courseId
  * @param {number} progress - progresso recém-calculado
@@ -28,7 +35,12 @@ export const isContentCompleted = (item) =>
  */
 const persistProgress = async (userId, courseId, progress, status) => {
   const caminho = `studentCourses/${userId}/${courseId}`;
-  const atual = (await get(ref(database, caminho))).val() || {};
+  const [studentSnapshot, courseSnapshot] = await Promise.all([
+    get(ref(database, caminho)),
+    get(ref(database, `courses/${courseId}`)),
+  ]);
+  const atual = studentSnapshot.val() || {};
+  const course = courseSnapshot.val() || {};
 
   if (atual.closedByTeacher) {
     await update(ref(database, caminho), {
@@ -41,12 +53,17 @@ const persistProgress = async (userId, courseId, progress, status) => {
     return { progress, status: "completed" };
   }
 
+  const finalStatus =
+    status === "completed" && isDiscipline(course) && !isCourseClosed(course)
+      ? "in_progress"
+      : status;
+
   await update(ref(database, caminho), {
     progress,
-    status,
+    status: finalStatus,
     lastUpdated: new Date().toISOString(),
   });
-  return { progress, status };
+  return { progress, status: finalStatus };
 };
 
 /**
