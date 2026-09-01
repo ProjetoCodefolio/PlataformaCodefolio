@@ -55,6 +55,7 @@ import {
   recoverUnsavedProgress,
 } from "$api/services/courses/classes";
 import { getCourseIdByAlias } from "$api/services/courses/alias";
+import { canRunCourse } from "$api/utils/permissions";
 import {
   fetchCourseDetails,
   checkStudentCourseEnrollment,
@@ -258,10 +259,8 @@ const Classes = ({ alias = null, openQuestions = false }) => {
           return;
         }
 
-        // Dono do curso ou admin nunca precisam do PIN.
-        const isOwner = course?.userId && course.userId === userDetails?.userId;
-        const isAdmin = userDetails?.role === "admin";
-        if (isOwner || isAdmin) {
+        // Dono, admin ou professor da turma nunca precisam do PIN.
+        if (canRunCourse(userDetails, course?.userId, courseId)) {
           grant();
           return;
         }
@@ -332,12 +331,15 @@ const Classes = ({ alias = null, openQuestions = false }) => {
           currentVideoId
         );
 
-        // Curso arquivado só pode ser acessado pelo owner (ou por um admin).
-        // Qualquer outra pessoa (inclusive via link/alias direto ou aluno já
-        // matriculado) é bloqueada.
-        const isOwner = courseData.courseOwnerUid === userDetails?.userId;
-        const isAdmin = userDetails?.role === "admin";
-        if (courseData?.courseData?.archived && !isOwner && !isAdmin) {
+        // Curso arquivado só pode ser acessado pelo owner, admin ou professor
+        // da turma. Qualquer outra pessoa (inclusive via link/alias direto ou
+        // aluno já matriculado) é bloqueada.
+        const canAccessArchived = canRunCourse(
+          userDetails,
+          courseData.courseOwnerUid,
+          courseId
+        );
+        if (courseData?.courseData?.archived && !canAccessArchived) {
           toast.error("Este curso está arquivado e não está disponível.");
           navigate("/cursos");
           return;
