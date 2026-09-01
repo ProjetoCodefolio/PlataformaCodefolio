@@ -208,7 +208,7 @@ export default function GroupPicker({
               <Box sx={{ mt: 1.5 }}>
                 {memberIds.length === 0 ? (
                   <Typography variant="caption" color="text.secondary">
-                    Nenhum integrante ainda — seja o primeiro!
+                    Nenhum integrante ainda. Seja o primeiro!
                   </Typography>
                 ) : (
                   <Stack spacing={0.75}>

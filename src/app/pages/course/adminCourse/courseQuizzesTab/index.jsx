@@ -1044,7 +1044,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2 }}>
               <Typography variant="body1" color="text.secondary">
                 Nenhum slide no formato legado. Para slides novos, crie o quiz
-                na aba "Quizzes de Conteúdo" — eles aparecem no seletor de
+                na aba "Quizzes de Conteúdo". Eles aparecem no seletor de
                 conteúdo.
               </Typography>
             </Box>

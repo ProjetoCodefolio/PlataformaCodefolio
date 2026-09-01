@@ -383,8 +383,8 @@ const CourseForm = () => {
               }}
             >
               Você é professor desta turma. O conteúdo, os quizzes, os alunos e as
-              notas são seus; o cadastro do curso — título, apelido, PIN e
-              arquivamento — continua com quem criou o curso.
+              notas são seus; o cadastro do curso (título, apelido, PIN e
+              arquivamento) continua com quem criou o curso.
             </Typography>
           )}
 
@@ -666,7 +666,7 @@ const CourseForm = () => {
                     >
                       {closedAt
                         ? `Encerrada em ${new Date(closedAt).toLocaleDateString("pt-BR")}. Os alunos matriculados estão em "Concluídos".`
-                        : "Marca o semestre como terminado: todos os matriculados vão para \"Concluídos\", tenham assistido tudo ou não. Não tira a turma do catálogo — para isso, arquive."}
+                        : "Marca o semestre como terminado: todos os matriculados vão para \"Concluídos\", tenham assistido tudo ou não. Não tira a turma do catálogo. Para isso, arquive."}
                     </Typography>
                   </Box>
                   <Button

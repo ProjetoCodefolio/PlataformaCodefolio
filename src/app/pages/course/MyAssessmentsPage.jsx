@@ -476,7 +476,7 @@ export default function MyAssessmentsPage() {
                                 Aluno
                               </Typography>
                               <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                                {userName || "—"}
+                                {userName || "-"}
                               </Typography>
                             </Box>
                           </Box>
@@ -672,7 +672,7 @@ export default function MyAssessmentsPage() {
                                 fontSize: { xs: "0.875rem", sm: "1rem" },
                               }}
                             >
-                              {userName || "—"}
+                              {userName || "-"}
                             </Typography>
                           </Box>
                         </Box>

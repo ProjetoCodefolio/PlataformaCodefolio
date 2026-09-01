@@ -1634,7 +1634,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                 : `Você tem ${pendingQuizStart?.attemptLimit} tentativas neste quiz e já usou ${pendingQuizStart?.attemptsUsed}.`}
               <Box sx={{ mt: 1.5 }}>
                 A tentativa só é contada quando você <strong>envia</strong> as
-                respostas — sair antes disso não consome nada.
+                respostas. Sair antes disso não consome nada.
               </Box>
             </DialogContentText>
           </DialogContent>

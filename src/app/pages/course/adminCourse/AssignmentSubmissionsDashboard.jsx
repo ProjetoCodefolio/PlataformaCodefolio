@@ -63,7 +63,7 @@ import { RichTextView } from "$components/common/RichTextEditor";
 const fmtDate = (iso) =>
   iso
     ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
-    : "—";
+    : "-";
 
 const initials = (name = "") =>
   name
@@ -646,7 +646,7 @@ export default function AssignmentSubmissionsDashboard() {
                                 </Box>
                               </TableCell>
                               <TableCell>{statusChip(sub)}</TableCell>
-                              <TableCell>{sub ? fmtDate(sub.submittedAt) : "—"}</TableCell>
+                              <TableCell>{sub ? fmtDate(sub.submittedAt) : "-"}</TableCell>
                               <TableCell>
                                 <GradeInput
                                   storedGrade={gradesByStudent[s.userId]}
@@ -708,7 +708,7 @@ export default function AssignmentSubmissionsDashboard() {
 
       {/* Dialog de visualização de entrega */}
       <Dialog open={!!viewing} onClose={() => setViewing(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>Entrega {viewing?.who ? `— ${viewing.who}` : ""}</DialogTitle>
+        <DialogTitle>Entrega{viewing?.who ? ` de ${viewing.who}` : ""}</DialogTitle>
         <DialogContent dividers>
           {viewing?.content?.text && (
             <Box sx={{ mb: 2 }}>

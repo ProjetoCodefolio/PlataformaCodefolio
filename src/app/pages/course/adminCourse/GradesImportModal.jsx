@@ -34,7 +34,7 @@ import { MAXIMUM_GRADE } from "$api/constants/gradeConstants";
 
 const fmt = (grade) =>
   grade === null || grade === undefined
-    ? "—"
+    ? "-"
     : Number(grade).toLocaleString("pt-BR", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -224,7 +224,7 @@ export default function GradesImportModal({
     <Stack spacing={2}>
       <Typography variant="body2" color="text.secondary">
         Confira o que será alterado em <strong>{fileName}</strong>. Você ainda
-        pode ajustar qualquer nota abaixo — ou esvaziar o campo para deixar
+        pode ajustar qualquer nota abaixo, ou esvaziar o campo para deixar
         aquela nota como está.
       </Typography>
 
@@ -245,7 +245,7 @@ export default function GradesImportModal({
           </AlertTitle>
           As notas já lançadas serão mantidas:{" "}
           {plan.keptEmpty
-            .map((row) => `${row.name} — ${row.assessmentName} (${fmt(row.oldGrade)})`)
+            .map((row) => `${row.name} • ${row.assessmentName} (${fmt(row.oldGrade)})`)
             .join("; ")}
         </Alert>
       )}

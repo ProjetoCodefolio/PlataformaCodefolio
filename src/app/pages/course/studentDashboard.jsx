@@ -152,7 +152,7 @@ const StudentDashboard = () => {
 
     if (result.report.updated === 0) {
       setRecalcState("idle");
-      toast.info("As notas já estão atualizadas — nada a recalcular.");
+      toast.info("As notas já estão atualizadas, nada a recalcular.");
       return;
     }
 
@@ -1657,7 +1657,7 @@ const StudentAnswersDetail = ({ student }) => (
                     variant="caption"
                     sx={{ display: "block", mt: 1, color: "#666", fontStyle: "italic" }}
                   >
-                    Pergunta sem resposta certa — não afeta a nota.
+                    Pergunta sem resposta certa, não afeta a nota.
                   </Typography>
                 </Box>
               ) : (

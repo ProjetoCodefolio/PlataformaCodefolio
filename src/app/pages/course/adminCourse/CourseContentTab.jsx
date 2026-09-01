@@ -651,7 +651,7 @@ const CourseContentTab = ({ courseId }) => {
         Arraste pela alça para definir a ordem exibida ao aluno. A ordem é salva
         automaticamente ao soltar. Itens com o selo "Anterior" vêm do formato
         antigo e continuam editáveis por aqui. Itens com o selo "Entrega" são
-        vídeos enviados pelos alunos nos trabalhos — esses só podem ser reordenados.
+        vídeos enviados pelos alunos nos trabalhos. Esses só podem ser reordenados.
       </Typography>
 
       {loading ? (

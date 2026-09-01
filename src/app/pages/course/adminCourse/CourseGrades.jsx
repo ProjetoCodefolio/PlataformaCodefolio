@@ -415,7 +415,7 @@ export default function CourseGrades() {
         }}
         error={isInvalid}
         disabled={Boolean(savingCells[key])}
-        placeholder="—"
+        placeholder="-"
         inputProps={{
           inputMode: "decimal",
           "aria-label": `Nota de ${student.name}`,
@@ -908,7 +908,7 @@ export default function CourseGrades() {
                                 variant="body2"
                                 color="text.secondary"
                               >
-                                —
+                                -
                               </Typography>
                             )}
                           </TableCell>
@@ -1056,7 +1056,7 @@ export default function CourseGrades() {
                                   variant="body2"
                                   color="text.secondary"
                                 >
-                                  —
+                                  -
                                 </Typography>
                               )}
                             </Box>

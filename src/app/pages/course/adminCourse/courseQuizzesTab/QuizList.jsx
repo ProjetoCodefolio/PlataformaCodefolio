@@ -280,7 +280,7 @@ const QuizList = ({
                       variant="caption"
                       sx={{ color: "#999", fontWeight: 400, ml: 1 }}
                     >
-                      — arraste pela alça para reordenar
+                      · arraste pela alça para reordenar
                     </Typography>
                   )}
                 </Typography>
