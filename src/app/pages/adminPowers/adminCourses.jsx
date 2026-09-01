@@ -44,8 +44,8 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "$context/AuthContext";
 import { fetchCourses, deleteCourse, setCourseArchived } from "$api/services/courses/courses";
-import { fetchUserById } from "$api/services/users";
-import { fetchCourseStudents } from "$api/services/courses/students";
+import { fetchAllUsers } from "$api/services/users";
+import { fetchCourseStudentCounts } from "$api/services/courses/students";
 
 const AdminCourses = () => {
   const navigate = useNavigate();
@@ -63,65 +63,65 @@ const AdminCourses = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Load all courses when component mounts
+  // Carrega os cursos em 2 levas: a lista em si primeiro (rápida, uma única
+  // leitura), depois autor+nº de alunos (2 leituras em lote, não 2 por curso).
+  // Buscar dono/matriculados curso a curso derrubava a tela inteira toda vez
+  // que a base crescia — cada `fetchCourseStudents` baixava a árvore inteira
+  // de studentCourses, uma vez por curso.
   useEffect(() => {
+    let cancelado = false;
+
     const loadCourses = async () => {
       try {
         setLoading(true);
         const allCourses = await fetchCourses();
+        if (cancelado) return;
 
-        // Add extra derived data for display and filtering
-        const processedCoursesPromises = allCourses.map(async course => {
-          // Fetch owner details for each course
-          let ownerName = "Autor desconhecido";
-          let ownerPhotoURL = "";
-          
-          if (course.userId) {
-            try {
-              const ownerData = await fetchUserById(course.userId);
-              if (ownerData) {
-                ownerName = ownerData.displayName;
-                ownerPhotoURL = ownerData.photoURL;
-              }
-            } catch (error) {
-              console.error(`Error fetching owner details for course ${course.courseId}:`, error);
-            }
-          }
-          
-          // Fetch actual student count for this course
-          let studentCount = 0;
-          try {
-            if (course.courseId) {
-              const enrolledStudents = await fetchCourseStudents(course.courseId);
-              studentCount = enrolledStudents ? enrolledStudents.length : 0;
-            }
-          } catch (error) {
-            console.error(`Error fetching students for course ${course.courseId}:`, error);
-          }
-          
+        const baseCourses = allCourses.map((course) => ({
+          ...course,
+          ownerName: null,
+          ownerPhotoURL: "",
+          studentCount: null,
+          status: getStatus(course),
+          progress: course.progress || 0,
+          createdAt: course.createdAt || new Date().toISOString(),
+        }));
+
+        setCourses(baseCourses);
+        setFilteredCourses(baseCourses);
+        setLoading(false);
+
+        const [users, studentCounts] = await Promise.all([
+          fetchAllUsers(),
+          fetchCourseStudentCounts(),
+        ]);
+        if (cancelado) return;
+
+        const ownerById = new Map(users.map((u) => [u.id, u]));
+        const enrichedCourses = baseCourses.map((course) => {
+          const owner = course.userId ? ownerById.get(course.userId) : null;
           return {
             ...course,
-            ownerName,
-            ownerPhotoURL,
-            studentCount,
-            status: getStatus(course),
-            progress: course.progress || 0,
-            createdAt: course.createdAt || new Date().toISOString()
+            ownerName: owner?.displayName || "Autor desconhecido",
+            ownerPhotoURL: owner?.photoURL || "",
+            studentCount: studentCounts[course.courseId] || 0,
           };
         });
-        
-        const processedCourses = await Promise.all(processedCoursesPromises);
-        setCourses(processedCourses);
-        setFilteredCourses(processedCourses);
+
+        setCourses(enrichedCourses);
+        setFilteredCourses(enrichedCourses);
       } catch (err) {
         console.error("Error fetching courses:", err);
         setError("Não foi possível carregar os cursos. Por favor, tente novamente.");
-      } finally {
         setLoading(false);
       }
     };
 
     loadCourses();
+
+    return () => {
+      cancelado = true;
+    };
   }, []);
 
   // Get status label based on course data
@@ -521,21 +521,29 @@ const AdminCourses = () => {
                           </Typography>
                         </TableCell>
                         <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Avatar 
-                              src={course.ownerPhotoURL} 
-                              alt={course.ownerName}
-                              sx={{ width: 30, height: 30, mr: 1 }}
-                            >
-                              {course.ownerName?.charAt(0)}
-                            </Avatar>
-                            <Typography variant="body2">
-                              {course.ownerName || "Autor desconhecido"}
-                            </Typography>
-                          </Box>
+                          {course.ownerName === null ? (
+                            <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                          ) : (
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar
+                                src={course.ownerPhotoURL}
+                                alt={course.ownerName}
+                                sx={{ width: 30, height: 30, mr: 1 }}
+                              >
+                                {course.ownerName?.charAt(0)}
+                              </Avatar>
+                              <Typography variant="body2">
+                                {course.ownerName}
+                              </Typography>
+                            </Box>
+                          )}
                         </TableCell>
                         <TableCell>
-                          {course.studentCount || 0}
+                          {course.studentCount === null ? (
+                            <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                          ) : (
+                            course.studentCount
+                          )}
                         </TableCell>
                         <TableCell>
                           {course.createdAt ? new Date(course.createdAt).toLocaleDateString('pt-BR') : '-'}

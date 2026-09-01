@@ -53,7 +53,7 @@ const {
   hasUserReachedQuizAttemptLimit,
   restoreQuizAttempt,
 } = await import("./quizzes");
-const { updateCourseProgress } = await import("./students");
+const { updateCourseProgress, fetchCourseStudentCounts } = await import("./students");
 const { saveCourseContentOrder, fetchCourseContent } = await import("./contentOrder");
 const { database } = await import("../../config/firebase");
 
@@ -245,6 +245,25 @@ describe.runIf(emuladorNoAr)("fluxo vídeo→quiz→progresso (emulador)", () =>
       const r = await updateCourseProgress(U, C, videos);
       expect(r.progress).toBe(100);
       expect(r.status).toBe("completed");
+    });
+  });
+
+  describe("fetchCourseStudentCounts: 1 leitura de studentCourses conta todos os cursos", () => {
+    const OUTRO_ALUNO = "aluno_fluxo_e2e_2";
+    const OUTRO_CURSO = "curso_fluxo_e2e_2";
+
+    afterEach(async () => {
+      await set(ref(database, `studentCourses/${OUTRO_ALUNO}`), null);
+    });
+
+    it("conta matriculados por curso a partir da árvore inteira", async () => {
+      await set(ref(database, `studentCourses/${U}/${C}`), { progress: 50 });
+      await set(ref(database, `studentCourses/${OUTRO_ALUNO}/${C}`), { progress: 10 });
+      await set(ref(database, `studentCourses/${OUTRO_ALUNO}/${OUTRO_CURSO}`), { progress: 0 });
+
+      const counts = await fetchCourseStudentCounts();
+      expect(counts[C]).toBe(2);
+      expect(counts[OUTRO_CURSO]).toBe(1);
     });
   });
 

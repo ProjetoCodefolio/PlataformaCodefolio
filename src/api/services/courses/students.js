@@ -294,52 +294,41 @@ export const fetchStudentCourses = async (userId) => {
 };
 
 /**
- * Busca todos os estudantes matriculados em um curso
+ * Conta os matriculados de TODOS os cursos numa única leitura de `studentCourses`.
+ *
+ * Existe para telas que precisam só do número (ex: admin listando cursos): pedir
+ * a contagem curso a curso via `fetchCourseStudents` baixaria a árvore inteira de
+ * `studentCourses` (e o perfil de cada matriculado) uma vez por curso — o mesmo
+ * download repetido N vezes para N cursos.
+ *
+ * @returns {Promise<Object>} mapa `{ [courseId]: quantidade }`
  */
-export const fetchCourseStudents = async (courseId) => {
+export const fetchCourseStudentCounts = async () => {
   try {
-    const studentCoursesRef = ref(database, `studentCourses`);
-    const snapshot = await get(studentCoursesRef);
-    
-    if (!snapshot.exists()) {
-      return [];
-    }
-    
-    const studentsData = snapshot.val();
-    const studentsList = [];
-    
-    // Para cada usuário, verificar se está matriculado no curso
-    const userPromises = Object.entries(studentsData).map(async ([userId, courses]) => {
-      if (courses[courseId]) {
-        // Buscar dados do usuário
-        const userData = await fetchStudentData(userId);
-        
-        if (userData) {
-          studentsList.push({
-            userId,
-            name: userData.name || "Usuário " + userId.substring(0, 6),
-            email: userData.email || "Email não disponível",
-            photoURL: userData.photoURL || "",
-            progress: courses[courseId].progress || 0,
-            status: courses[courseId].status || "in_progress",
-            enrolledAt: courses[courseId].enrolledAt || "",
-            lastAccessed: courses[courseId].lastAccessed || "",
-            role: userData.role || "student"
-          });
-        }
-      }
+    const snapshot = await get(ref(database, "studentCourses"));
+    if (!snapshot.exists()) return {};
+
+    const counts = {};
+    Object.values(snapshot.val()).forEach((matriculasDoAluno) => {
+      Object.keys(matriculasDoAluno || {}).forEach((courseId) => {
+        counts[courseId] = (counts[courseId] || 0) + 1;
+      });
     });
-    
-    await Promise.all(userPromises);
-    return studentsList;
+    return counts;
   } catch (error) {
-    console.error("Erro ao buscar estudantes do curso:", error);
-    throw error;
+    console.error("Erro ao contar matriculados por curso:", error);
+    return {};
   }
 };
 
 /**
- * Busca todos os estudantes matriculados em um curso, com detalhes enriquecidos
+ * Busca todos os estudantes matriculados em um curso, com detalhes enriquecidos.
+ *
+ * Lê `studentCourses` e `users` uma vez cada (2 leituras no total, em paralelo)
+ * e cruza em memória — não um `get(users/{userId})` por matriculado. Antes disso
+ * era N+1: com M alunos no curso, M leituras individuais de rede só para pegar
+ * nome/e-mail/foto de cada um.
+ *
  * @param {string} courseId - ID do curso
  * @returns {Promise<Array>} - Lista de estudantes com dados completos
  */
