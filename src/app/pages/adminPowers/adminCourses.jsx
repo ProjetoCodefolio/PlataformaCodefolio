@@ -567,9 +567,9 @@ const AdminCourses = () => {
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Gerenciar curso">
-                              <IconButton 
-                                size="small" 
-                                color="secondary"
+                              <IconButton
+                                size="small"
+                                color="primary"
                                 onClick={() => handleEditCourse(course.courseId)}
                               >
                                 <Edit fontSize="small" />

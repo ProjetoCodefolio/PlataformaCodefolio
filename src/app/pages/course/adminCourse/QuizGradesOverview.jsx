@@ -56,6 +56,7 @@ import {
   exportQuizGradesToCSV,
 } from "../../../../api/services/courses/quizAggregation";
 import { restoreQuizAttempt } from "../../../../api/services/courses/quizzes";
+import { MINIMUM_PASSING_GRADE, GRADE_COLORS } from "$api/constants/gradeConstants";
 
 export default function QuizGradesOverview() {
   const navigate = useNavigate();
@@ -599,10 +600,8 @@ export default function QuizGradesOverview() {
                         <Chip
                           label={fmt(student.averageGrade)}
                           color={
-                            student.averageGrade >= 7
+                            student.averageGrade >= MINIMUM_PASSING_GRADE
                               ? "success"
-                              : student.averageGrade >= 5
-                              ? "warning"
                               : "error"
                           }
                           sx={{ fontWeight: "bold" }}
@@ -723,10 +722,8 @@ export default function QuizGradesOverview() {
                       <Chip
                         label={fmt(student.averageGrade)}
                         color={
-                          student.averageGrade >= 7
+                          student.averageGrade >= MINIMUM_PASSING_GRADE
                             ? "success"
-                            : student.averageGrade >= 5
-                            ? "warning"
                             : "error"
                         }
                         sx={{ fontWeight: "bold" }}
@@ -972,10 +969,10 @@ export default function QuizGradesOverview() {
                           mb: 2,
                           border: "1px solid #e0e0e0",
                           borderLeft: quiz.passed
-                            ? "4px solid #4caf50"
+                            ? `4px solid ${GRADE_COLORS.APPROVED}`
                             : quiz.hasAttempt
-                            ? "4px solid #ff9800"
-                            : "4px solid #ccc",
+                            ? `4px solid ${GRADE_COLORS.FAILED}`
+                            : `4px solid ${GRADE_COLORS.PENDING}`,
                         }}
                       >
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
@@ -1015,7 +1012,7 @@ export default function QuizGradesOverview() {
                           <Box sx={{ textAlign: "right" }}>
                             <Chip
                               label={`Nota: ${quiz.grade.toFixed(2)}`}
-                              color={quiz.passed ? "success" : quiz.hasAttempt ? "warning" : "default"}
+                              color={quiz.passed ? "success" : quiz.hasAttempt ? "error" : "default"}
                               sx={{ fontWeight: "bold" }}
                             />
                           </Box>
@@ -1088,7 +1085,7 @@ export default function QuizGradesOverview() {
                                   borderRadius: 4,
                                   bgcolor: "#e0e0e0",
                                   "& .MuiLinearProgress-bar": {
-                                    bgcolor: quiz.passedBase ? "#4caf50" : "#ff9800",
+                                    bgcolor: quiz.passedBase ? GRADE_COLORS.APPROVED : GRADE_COLORS.FAILED,
                                   },
                                 }}
                               />

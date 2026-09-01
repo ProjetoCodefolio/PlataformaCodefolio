@@ -28,6 +28,7 @@ import * as assessmentService from "$api/services/courses/assessments";
 import { fetchAssignmentsByCourse } from "$api/services/courses/assignments";
 import { database } from "$api/config/firebase";
 import { ref, get } from "firebase/database";
+import { MINIMUM_PASSING_GRADE, GRADE_COLORS } from "$api/constants/gradeConstants";
 
 export default function MyAssessmentsPage() {
   const { userDetails } = useAuth();
@@ -808,20 +809,26 @@ export default function MyAssessmentsPage() {
                                                     : "Sem nota"
                                                 }
                                                 color={
-                                                  a?.userGrade != null
+                                                  a?.userGrade == null
+                                                    ? "default"
+                                                    : a.userGrade >= MINIMUM_PASSING_GRADE
                                                     ? "success"
-                                                    : "default"
+                                                    : "error"
                                                 }
                                                 size="small"
                                                 sx={{
                                                   backgroundColor:
-                                                    a?.userGrade != null
+                                                    a?.userGrade == null
+                                                      ? undefined
+                                                      : a.userGrade >= MINIMUM_PASSING_GRADE
                                                       ? "#e6f4ea"
-                                                      : undefined,
+                                                      : "#fdecea",
                                                   color:
-                                                    a?.userGrade != null
-                                                      ? "#2e7d32"
-                                                      : undefined,
+                                                    a?.userGrade == null
+                                                      ? undefined
+                                                      : a.userGrade >= MINIMUM_PASSING_GRADE
+                                                      ? GRADE_COLORS.APPROVED
+                                                      : GRADE_COLORS.FAILED,
                                                   fontWeight: 800,
                                                   fontSize: { xs: "0.75rem", sm: "0.813rem" },
                                                 }}

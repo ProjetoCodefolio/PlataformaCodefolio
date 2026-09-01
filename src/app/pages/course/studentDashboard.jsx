@@ -1283,11 +1283,7 @@ const StudentDashboard = () => {
                                       height: "100%",
                                       width: `${successRate}%`,
                                       backgroundColor:
-                                        successRate >= 80
-                                          ? "#2e7d32"
-                                          : successRate >= 50
-                                          ? "#ff9800"
-                                          : "#c62828",
+                                        successRate > 50 ? "#2e7d32" : "#c62828",
                                     }}
                                   />
                                 </Box>
@@ -1359,7 +1355,7 @@ const StudentDashboard = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{successRate}%</Typography>
                                   <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: '#f0f0f0', overflow: 'hidden' }}>
-                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate >= 80 ? '#2e7d32' : successRate >= 50 ? '#ff9800' : '#c62828' }} />
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate > 50 ? '#2e7d32' : '#c62828' }} />
                                   </Box>
                                 </Box>
                               </Grid>
