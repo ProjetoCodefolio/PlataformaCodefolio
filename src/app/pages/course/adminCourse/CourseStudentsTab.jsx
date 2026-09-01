@@ -30,7 +30,8 @@ import {
     MenuItem,
     Stack,
     Chip,
-    Tooltip
+    Tooltip,
+    TablePagination
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SortIcon from "@mui/icons-material/Sort";
@@ -45,10 +46,12 @@ import {
     checkUserCourseRole
 } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
+import { isDiscipline } from "$api/services/courses/courseType";
 import { useAuth } from "$context/AuthContext";
 import { canManageStudents } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
+import { GRADE_COLORS } from "$api/constants/gradeConstants";
 
 // Função para formatar nomes com capitalização adequada
 const capitalizeWords = (name) => {
@@ -73,6 +76,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     const [showDeleteAlert, setShowDeleteAlert] = useState(false);
     const [studentToDelete, setStudentToDelete] = useState(null);
     const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
     const { currentUser, userDetails } = useAuth();
 
     const location = useLocation();
@@ -88,6 +93,18 @@ const CourseStudentsTab = forwardRef((props, ref) => {
         if (searchTerm.trim() !== "") count++;
         setActiveFilters(count);
     }, [progressFilter, roleFilter, searchTerm]);
+
+    // Muda de página 0 sempre que o recorte da lista muda, senão a página
+    // atual pode ficar apontando para além do fim da lista filtrada.
+    useEffect(() => {
+        setPage(0);
+    }, [searchTerm, progressFilter, roleFilter, sortField, sortOrder]);
+
+    const handleChangePage = (event, newPage) => setPage(newPage);
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     // Função para ordenar e filtrar estudantes
     const getSortedStudents = () => {
@@ -111,9 +128,9 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                 const studentProgress = parseInt(student.progress || 0);
 
                 if (progressFilter === "completed") {
-                    return studentProgress === 100 || student.status === "completed";
+                    return isStudentConcluded(student, courseDetails);
                 } else if (progressFilter === "high") {
-                    return studentProgress >= 75 && studentProgress < 100 && student.status !== "completed";
+                    return studentProgress >= 75 && studentProgress < 100 && !isStudentConcluded(student, courseDetails);
                 } else if (progressFilter === "medium") {
                     return studentProgress >= 25 && studentProgress < 75;
                 } else if (progressFilter === "low") {
@@ -165,8 +182,6 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     // Função para carregar estudantes usando a API
     const loadCourseStudents = async () => {
         try {
-            setLoading(true);
-
             // Usar a função da API para buscar estudantes
             const studentsData = await fetchCourseStudentsEnriched(courseId);
             setStudents(studentsData);
@@ -175,15 +190,11 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             console.error("Erro ao buscar estudantes:", error);
             toast.error("Não foi possível carregar os estudantes do curso");
             setStudents([]);
-        } finally {
-            setLoading(false);
         }
     };
 
     const loadCourseDetails = async (courseId) => {
         try {
-            setLoading(true);
-
             const studentsData = await fetchCourseDetails(courseId);
             setCourseDetails(studentsData);
 
@@ -191,16 +202,26 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             console.error("Erro ao buscar o curso:", error);
             toast.error("Não foi possível carregar os dados do curso");
             setCourseDetails([]);
-        } finally {
-            setLoading(false);
         }
     }
 
+    // As duas buscas rodam juntas e só soltam o loading quando AMBAS terminam.
+    // Cada uma mexendo no próprio setLoading(false) é uma corrida: a mais rápida
+    // (curso) libera a tela antes da mais lenta (estudantes enriquecidos)
+    // terminar, e nesse intervalo a lista aparece vazia — "Nenhum estudante
+    // matriculado" pisca antes da resposta real chegar.
     useEffect(() => {
-        if (courseId) {
-            loadCourseDetails(courseId)
-            loadCourseStudents();
-        }
+        if (!courseId) return;
+
+        let cancelado = false;
+        setLoading(true);
+        Promise.all([loadCourseDetails(courseId), loadCourseStudents()]).finally(() => {
+            if (!cancelado) setLoading(false);
+        });
+
+        return () => {
+            cancelado = true;
+        };
     }, [courseId]);
 
     // Função para alterar role do estudante usando a API
@@ -430,13 +451,23 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                 </Box>
             ) : (
                 <Box>
+                    {/* Ordenar/filtrar 1x por render; a tabela desktop, os cards
+                        mobile e a paginação abaixo usam o mesmo recorte. */}
+                    {(() => {
+                        const sortedStudents = getSortedStudents();
+                        const pageStudents = sortedStudents.slice(
+                            page * rowsPerPage,
+                            page * rowsPerPage + rowsPerPage
+                        );
+                        return (
+                    <>
                     {/* Estatística de contagem de estudantes */}
                     <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                        Exibindo {getSortedStudents().length} de {students.length} estudantes
+                        Exibindo {sortedStudents.length} de {students.length} estudantes
                     </Typography>
 
                     {students.length > 0 ? (
-                        getSortedStudents().length > 0 ? (
+                        sortedStudents.length > 0 ? (
                             <>
                                 {/* Tabela para desktop */}
                                 <TableContainer component={Paper} sx={{ boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)', display: { xs: 'none', md: 'block' } }}>
@@ -451,7 +482,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {getSortedStudents().map((student) => (
+                                            {pageStudents.map((student) => (
                                                 <TableRow key={student.id} hover>
                                                     <TableCell component="th" scope="row">
                                                         <Stack direction="row" alignItems="center" spacing={2}>
@@ -515,8 +546,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     <TableCell>
                                                         <Box
                                                             sx={{
-                                                                backgroundColor: student.status === "completed" ? "#e8f5e9" : "#f5f5f5",
-                                                                color: student.status === "completed" ? "#2e7d32" : "#666",
+                                                                backgroundColor: isStudentConcluded(student, courseDetails) ? "#e6f4ea" : "#fdecea",
+                                                                color: isStudentConcluded(student, courseDetails) ? GRADE_COLORS.APPROVED : GRADE_COLORS.FAILED,
                                                                 borderRadius: 1,
                                                                 px: 1,
                                                                 py: 0.5,
@@ -524,7 +555,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                                 fontWeight: "bold",
                                                             }}
                                                         >
-                                                            {student.status === "completed" ? "Concluído" : "Em Progresso"}
+                                                            {isStudentConcluded(student, courseDetails) ? "Concluído" : "Em Progresso"}
                                                         </Box>
                                                     </TableCell>
                                                     <TableCell>
@@ -589,7 +620,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
                                 {/* Cards para mobile */}
                                 <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                                    {getSortedStudents().map((student) => (
+                                    {pageStudents.map((student) => (
                                         <Card key={student.id} sx={{ mb: 2, boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.1)' }}>
                                             <CardContent>
                                                 <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
@@ -665,8 +696,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     </Typography>
                                                     <Box
                                                         sx={{
-                                                            backgroundColor: student.status === "completed" ? "#e8f5e9" : "#f5f5f5",
-                                                            color: student.status === "completed" ? "#2e7d32" : "#666",
+                                                            backgroundColor: isStudentConcluded(student, courseDetails) ? "#e6f4ea" : "#fdecea",
+                                                            color: isStudentConcluded(student, courseDetails) ? GRADE_COLORS.APPROVED : GRADE_COLORS.FAILED,
                                                             borderRadius: 1,
                                                             px: 1,
                                                             py: 0.5,
@@ -675,7 +706,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                             fontSize: '0.75rem'
                                                         }}
                                                     >
-                                                        {student.status === "completed" ? "Concluído" : "Em Progresso"}
+                                                        {isStudentConcluded(student, courseDetails) ? "Concluído" : "Em Progresso"}
                                                     </Box>
                                                 </Box>
 
@@ -732,6 +763,18 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                         </Card>
                                     ))}
                                 </Box>
+
+                                <TablePagination
+                                    rowsPerPageOptions={[10, 25, 50, 100]}
+                                    component="div"
+                                    count={sortedStudents.length}
+                                    rowsPerPage={rowsPerPage}
+                                    page={page}
+                                    onPageChange={handleChangePage}
+                                    onRowsPerPageChange={handleChangeRowsPerPage}
+                                    labelRowsPerPage="Estudantes por página:"
+                                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+                                />
                             </>
                         ) : (
                             <Box
@@ -760,6 +803,9 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                             Nenhum estudante matriculado neste curso.
                         </Typography>
                     )}
+                    </>
+                        );
+                    })()}
                 </Box>
             )}
             <MyConfirm
@@ -773,13 +819,21 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     );
 });
 
-// Função auxiliar para determinar cor da barra de progresso
-const getProgressColor = (progress) => {
-    if (progress >= 100) return '#4caf50'; // Verde para concluído
-    if (progress >= 75) return '#8bc34a';  // Verde-claro para avançado
-    if (progress >= 25) return '#ff9800';  // Laranja para intermediário
-    return '#f44336';                      // Vermelho para iniciante
-};
+// Cor da barra de progresso: binária, sem nível intermediário. Verde só ao
+// concluir (100%); qualquer coisa abaixo disso é vermelho.
+const getProgressColor = (progress) =>
+    progress >= 100 ? GRADE_COLORS.APPROVED : GRADE_COLORS.FAILED;
+
+// "Concluído" depende do tipo do curso: um CURSO conclui sozinho ao bater
+// 100% (aceita o status gravado OU o progresso, pois um cai levemente atrás
+// do outro em dado antigo/recálculo em massa — sem isso o filtro "Concluído"
+// já pega o aluno mas o chip ainda mostra "Em Progresso"). Uma DISCIPLINA só
+// conclui pelo encerramento manual do professor: 100% sozinho não vale, por
+// isso aqui olha só o status gravado.
+const isStudentConcluded = (student, courseDetails) =>
+    isDiscipline(courseDetails)
+        ? student.status === "completed"
+        : student.status === "completed" || Number(student.progress || 0) === 100;
 
 CourseStudentsTab.displayName = "CourseStudentsTab";
 
