@@ -1,7 +1,8 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import "@fontsource-variable/inter";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
+import { Box, CircularProgress } from "@mui/material";
 import theme from "./theme";
 import {
   BrowserRouter as Router,
@@ -12,36 +13,52 @@ import {
   useParams,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./app/context/AuthContext";
-import Login from "./app/pages/Login";
-import Dashboard from "./app/pages/dashboard";
-import ProfileHeader from "./app/pages/profile";
-// import MembersPage from "./app/pages/members";
-import Portifolios from "./app/pages/portifolios";
-import Projetos from "./app/pages/projetos";
-import HomePage from "./app/pages/homePage";
-import Cursos from "./app/pages/course/adminCourse";
-import GradeAssignmentPage from "./app/pages/course/adminCourse/GradeAssignment";
-import CourseGrades from "./app/pages/course/adminCourse/CourseGrades";
-import ListCursos from "./app/pages/course/list";
-import Classes from "./app/pages/course/classes";
-import QuestionsPresentation from "./app/pages/course/QuestionsPresentation";
-import StudentDashboard from "./app/pages/course/studentDashboard";
-import ManageMyCourses from "./app/pages/course/ManageMyCourses";
-import AdminPanel from "$pages/adminPowers/adminPanel";
-import AdminUsers from "$pages/adminPowers/adminUsers";
-import AdminCourses from "$pages/adminPowers/adminCourses";
-import AdminReports from "$pages/adminPowers/adminReports";
-import AdminLlmModels from "$pages/adminPowers/AdminLlmModels";
-import NotFound from "$pages/NotFound";
-import ReportImage from "$pages/reportImage/ReportImage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
-import MyAssessmentsPage from "./app/pages/course/MyAssessmentsPage";
-import TeacherAssessmentsPage from "./app/pages/course/TeacherAssessmentsPage";
-import QuizGradesOverview from "./app/pages/course/adminCourse/QuizGradesOverview";
-import CoursePresence from "./app/pages/course/adminCourse/CoursePresence";
-import AssignmentSubmissionsDashboard from "./app/pages/course/adminCourse/AssignmentSubmissionsDashboard";
+
+// Cada página vira o próprio chunk (code splitting por rota) em vez de tudo
+// entrar num único módulo de entrada — antes, abrir qualquer rota dependia do
+// grafo de import de TODAS as ~30 páginas (inclusive coisas pesadas como o
+// visualizador de PDF do ReportImage) terminar de carregar/compilar primeiro,
+// o que no dev server (módulos não empacotados) deixava a tela em branco por
+// tempo variável sem nenhum feedback visual.
+const Login = lazy(() => import("./app/pages/Login"));
+const Dashboard = lazy(() => import("./app/pages/dashboard"));
+const ProfileHeader = lazy(() => import("./app/pages/profile"));
+const Portifolios = lazy(() => import("./app/pages/portifolios"));
+const Projetos = lazy(() => import("./app/pages/projetos"));
+const HomePage = lazy(() => import("./app/pages/homePage"));
+const Cursos = lazy(() => import("./app/pages/course/adminCourse"));
+const GradeAssignmentPage = lazy(() => import("./app/pages/course/adminCourse/GradeAssignment"));
+const CourseGrades = lazy(() => import("./app/pages/course/adminCourse/CourseGrades"));
+const ListCursos = lazy(() => import("./app/pages/course/list"));
+const Classes = lazy(() => import("./app/pages/course/classes"));
+const QuestionsPresentation = lazy(() => import("./app/pages/course/QuestionsPresentation"));
+const StudentDashboard = lazy(() => import("./app/pages/course/studentDashboard"));
+const ManageMyCourses = lazy(() => import("./app/pages/course/ManageMyCourses"));
+const AdminPanel = lazy(() => import("$pages/adminPowers/adminPanel"));
+const AdminUsers = lazy(() => import("$pages/adminPowers/adminUsers"));
+const AdminCourses = lazy(() => import("$pages/adminPowers/adminCourses"));
+const AdminReports = lazy(() => import("$pages/adminPowers/adminReports"));
+const AdminLlmModels = lazy(() => import("$pages/adminPowers/AdminLlmModels"));
+const NotFound = lazy(() => import("$pages/NotFound"));
+const ReportImage = lazy(() => import("$pages/reportImage/ReportImage"));
+const MyAssessmentsPage = lazy(() => import("./app/pages/course/MyAssessmentsPage"));
+const TeacherAssessmentsPage = lazy(() => import("./app/pages/course/TeacherAssessmentsPage"));
+const QuizGradesOverview = lazy(() => import("./app/pages/course/adminCourse/QuizGradesOverview"));
+const CoursePresence = lazy(() => import("./app/pages/course/adminCourse/CoursePresence"));
+const AssignmentSubmissionsDashboard = lazy(() =>
+  import("./app/pages/course/adminCourse/AssignmentSubmissionsDashboard")
+);
+
+function PageLoader() {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+      <CircularProgress sx={{ color: "#9041c1" }} />
+    </Box>
+  );
+}
 
 function App() {
   return (
@@ -50,6 +67,7 @@ function App() {
       <ToastContainer />
       <AuthProvider>
         <Router>
+          <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/login" element={<Login />} />
@@ -330,6 +348,7 @@ function App() {
             <Route path="/404" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </Router>
       </AuthProvider>
     </ThemeProvider>
