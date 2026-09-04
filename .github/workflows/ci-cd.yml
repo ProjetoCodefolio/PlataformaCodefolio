@@ -36,6 +36,11 @@ jobs:
       - name: Build
         run: npm run build
 
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
       - name: Testes (com emulador do Firebase)
         run: npx firebase emulators:exec --project plataformacodefolio "npm run test -- --run"
 
