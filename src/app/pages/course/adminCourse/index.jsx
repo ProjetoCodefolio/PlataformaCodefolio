@@ -20,6 +20,7 @@ import {
   Switch,
   InputAdornment,
   Tooltip,
+  MenuItem,
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import Visibility from "@mui/icons-material/Visibility";
@@ -41,6 +42,13 @@ import IconButton from "@mui/material/IconButton";
 import SettingsIcon from "@mui/icons-material/Settings";
 import { checkUserCourseRole } from "$api/services/courses/students";
 import { ALIAS_PERMITIDO } from "$api/services/courses/alias";
+import {
+  COURSE_TYPES,
+  isDiscipline,
+  isCourseClosed,
+  closeDiscipline,
+  reopenDiscipline,
+} from "$api/services/courses/courseType";
 
 const CourseForm = () => {
   const navigate = useNavigate();
@@ -78,6 +86,10 @@ const CourseForm = () => {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
   const [archived, setArchived] = useState(false);
+  const [courseType, setCourseType] = useState(COURSE_TYPES.CURSO);
+  // Data de encerramento da disciplina. `null` é o que significa "em andamento".
+  const [closedAt, setClosedAt] = useState(null);
+  const [encerrando, setEncerrando] = useState(false);
 
   useEffect(() => {
     const loadCourse = async () => {
@@ -92,6 +104,10 @@ const CourseForm = () => {
             setCourseAlias(courseData.alias || "");
             setPinRequired(!!courseData.pinEnabled);
             setArchived(!!courseData.archived);
+            setCourseType(
+              isDiscipline(courseData) ? COURSE_TYPES.DISCIPLINA : COURSE_TYPES.CURSO
+            );
+            setClosedAt(courseData.closedAt || null);
 
             if (courseData.pinEnabled) {
               setCoursePin(courseData.pinKnown ? courseData.pin : "");
@@ -143,13 +159,47 @@ const CourseForm = () => {
     }
   };
 
-  // A aba "Dúvidas" não existe para o co-professor. Um link direto para ela
-  // (…&tab=6) deixaria a barra sem nenhuma aba selecionada, então volta ao começo.
-  useEffect(() => {
-    if (isCurrentUserTeacher && selectedTab === 6) {
-      setSelectedTab(0);
+  // Encerrar é diferente de arquivar: arquivar tira do catálogo, encerrar leva
+  // a turma inteira para "Concluídos". Por isso a confirmação diz o número de
+  // alunos afetados.
+  const handleEncerrar = async () => {
+    setEncerrando(true);
+    try {
+      const { closedAt: quando, students } = await closeDiscipline(
+        courseId,
+        userDetails.userId
+      );
+      setClosedAt(quando);
+      toast.success(
+        students === 1
+          ? "Disciplina encerrada. 1 aluno foi para Concluídos."
+          : `Disciplina encerrada. ${students} alunos foram para Concluídos.`
+      );
+    } catch (error) {
+      console.error("Erro ao encerrar a disciplina:", error);
+      toast.error("Não foi possível encerrar a disciplina.");
+    } finally {
+      setEncerrando(false);
     }
-  }, [isCurrentUserTeacher, selectedTab]);
+  };
+
+  const handleReabrir = async () => {
+    setEncerrando(true);
+    try {
+      const { students } = await reopenDiscipline(courseId);
+      setClosedAt(null);
+      toast.success(
+        students === 1
+          ? "Disciplina reaberta. 1 aluno voltou ao status anterior."
+          : `Disciplina reaberta. ${students} alunos voltaram ao status anterior.`
+      );
+    } catch (error) {
+      console.error("Erro ao reabrir a disciplina:", error);
+      toast.error("Não foi possível reabrir a disciplina.");
+    } finally {
+      setEncerrando(false);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setSelectedTab(newValue);
@@ -187,6 +237,7 @@ const CourseForm = () => {
         userId: userDetails.userId,
         pinEnabled: pinRequired,
         archived: archived,
+        type: courseType,
       };
 
       // Campo em branco com PIN ligado = manter o PIN que já existe. Antes o
@@ -320,12 +371,30 @@ const CourseForm = () => {
             {courseId ? "Gerenciar Curso" : "Criar Novo Curso"}
           </Typography>
 
+          {isCurrentUserTeacher && (
+            <Typography
+              sx={{
+                mb: 3,
+                p: 1.5,
+                borderRadius: "8px",
+                backgroundColor: "#F5F0FA",
+                color: "#5B5566",
+                fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+              }}
+            >
+              Você é professor desta turma. O conteúdo, os quizzes, os alunos e as
+              notas são seus; o cadastro do curso (título, apelido, PIN e
+              arquivamento) continua com quem criou o curso.
+            </Typography>
+          )}
+
           <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12}>
               <TextField
                 label="Título do Curso"
                 fullWidth
                 required
+                disabled={isCurrentUserTeacher}
                 value={courseTitle}
                 onChange={(e) => setCourseTitle(e.target.value)}
                 variant="outlined"
@@ -352,6 +421,7 @@ const CourseForm = () => {
                 label="Descrição do Curso"
                 fullWidth
                 required
+                disabled={isCurrentUserTeacher}
                 value={courseDescription}
                 onChange={(e) => setCourseDescription(e.target.value)}
                 variant="outlined"
@@ -375,10 +445,46 @@ const CourseForm = () => {
               />
             </Grid>
 
+            <Grid item xs={12} sm={6}>
+              <TextField
+                select
+                label="Tipo"
+                fullWidth
+                disabled={isCurrentUserTeacher}
+                value={courseType}
+                onChange={(e) => setCourseType(e.target.value)}
+                variant="outlined"
+                helperText={
+                  courseType === COURSE_TYPES.DISCIPLINA
+                    ? "A turma termina quando você encerrar a disciplina."
+                    : "Cada aluno conclui no próprio ritmo, ao completar o conteúdo."
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    "& fieldset": { borderColor: "#666" },
+                    "&:hover fieldset": { borderColor: "#9041c1" },
+                    "&.Mui-focused fieldset": { borderColor: "#9041c1" },
+                  },
+                  "& .MuiInputLabel-root": {
+                    color: "#666",
+                    "&.Mui-focused": { color: "#9041c1" },
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  },
+                  "& .MuiInputBase-input": {
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }
+                }}
+              >
+                <MenuItem value={COURSE_TYPES.CURSO}>Curso</MenuItem>
+                <MenuItem value={COURSE_TYPES.DISCIPLINA}>Disciplina</MenuItem>
+              </TextField>
+            </Grid>
+
             <Grid item xs={12}>
               <TextField
                 label="Apelido do Curso"
                 fullWidth
+                disabled={isCurrentUserTeacher}
                 value={courseAlias}
                 onChange={(e) => setCourseAlias(e.target.value.replace(/\s/g, ''))}
                 variant="outlined"
@@ -413,6 +519,7 @@ const CourseForm = () => {
                 control={
                   <Switch
                     checked={pinRequired}
+                    disabled={isCurrentUserTeacher}
                     onChange={(e) => {
                       const isChecked = e.target.checked;
                       setPinRequired(isChecked);
@@ -458,7 +565,7 @@ const CourseForm = () => {
                   variant="outlined"
                   type={showPin ? "text" : "password"}
                   value={coursePin}
-                  disabled={!pinRequired}
+                  disabled={!pinRequired || isCurrentUserTeacher}
                   inputProps={{ maxLength: 7 }}
                   onChange={(e) => setCoursePin(e.target.value)}
                   InputProps={{
@@ -532,6 +639,58 @@ const CourseForm = () => {
               </Grid>
             )}
 
+            {courseId && courseType === COURSE_TYPES.DISCIPLINA && (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: "8px",
+                    border: "1px solid",
+                    borderColor: closedAt ? "#9041c1" : "#E7E4EC",
+                    backgroundColor: closedAt ? "#F5F0FA" : "transparent",
+                    display: "flex",
+                    flexDirection: { xs: "column", sm: "row" },
+                    alignItems: { xs: "stretch", sm: "center" },
+                    justifyContent: "space-between",
+                    gap: 1.5,
+                  }}
+                >
+                  <Box>
+                    <Typography
+                      sx={{ fontWeight: 600, color: "#333", fontSize: { xs: "0.875rem", sm: "1rem" } }}
+                    >
+                      {closedAt ? "Disciplina encerrada" : "Encerrar a disciplina"}
+                    </Typography>
+                    <Typography
+                      sx={{ color: "#666", fontSize: { xs: "0.8125rem", sm: "0.875rem" } }}
+                    >
+                      {closedAt
+                        ? `Encerrada em ${new Date(closedAt).toLocaleDateString("pt-BR")}. Os alunos matriculados estão em "Concluídos".`
+                        : "Marca o semestre como terminado: todos os matriculados vão para \"Concluídos\", tenham assistido tudo ou não. Não tira a turma do catálogo. Para isso, arquive."}
+                    </Typography>
+                  </Box>
+                  <Button
+                    variant={closedAt ? "outlined" : "contained"}
+                    onClick={closedAt ? handleReabrir : handleEncerrar}
+                    disabled={encerrando}
+                    sx={{
+                      flexShrink: 0,
+                      ...(closedAt
+                        ? { color: "#9041c1", borderColor: "#9041c1", "&:hover": { borderColor: "#7d37a7" } }
+                        : { backgroundColor: "#9041c1", "&:hover": { backgroundColor: "#7d37a7" } }),
+                      fontSize: { xs: "0.8125rem", sm: "0.875rem" },
+                    }}
+                  >
+                    {encerrando
+                      ? "Aguarde..."
+                      : closedAt
+                      ? "Reabrir disciplina"
+                      : "Encerrar disciplina"}
+                  </Button>
+                </Box>
+              </Grid>
+            )}
+
             {courseId && !isCurrentUserTeacher && (
               <Grid item xs={12}>
                 <FormControlLabel
@@ -588,7 +747,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
-                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
+                  <Tab label="Dúvidas" />
                 </Tabs>
               </Box>
 
@@ -618,7 +777,7 @@ const CourseForm = () => {
                   <Tab label="Alunos" />
                   <Tab label="Avaliações" />
                   <Tab label="Trabalhos" />
-                  {!isCurrentUserTeacher && <Tab label="Dúvidas" />}
+                  <Tab label="Dúvidas" />
                 </Tabs>
               </Box>
 
@@ -650,7 +809,7 @@ const CourseForm = () => {
                 </Typography>
               )}
               {selectedTab === 5 && <CourseAssignmentsTab />}
-              {selectedTab === 6 && !isCurrentUserTeacher && (
+              {selectedTab === 6 && (
                 <CourseQuestionsTab courseId={courseId} alias={courseAlias} />
               )}
             </>

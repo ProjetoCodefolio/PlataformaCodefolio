@@ -86,7 +86,7 @@ const StudentDashboard = () => {
 
   // Só o dono do curso (ou admin) recalcula — é o que as regras do banco
   // permitem escrever em quizResults de outro usuário.
-  const canRecalculate = canAssignGrades(userDetails, courseData?.userId);
+  const canRecalculate = canAssignGrades(userDetails, courseData?.userId, courseData?.courseId);
 
   // Definir o fundo da página
   useEffect(() => {
@@ -152,7 +152,7 @@ const StudentDashboard = () => {
 
     if (result.report.updated === 0) {
       setRecalcState("idle");
-      toast.info("As notas já estão atualizadas — nada a recalcular.");
+      toast.info("As notas já estão atualizadas, nada a recalcular.");
       return;
     }
 
@@ -1283,11 +1283,7 @@ const StudentDashboard = () => {
                                       height: "100%",
                                       width: `${successRate}%`,
                                       backgroundColor:
-                                        successRate >= 80
-                                          ? "#2e7d32"
-                                          : successRate >= 50
-                                          ? "#ff9800"
-                                          : "#c62828",
+                                        successRate > 50 ? "#2e7d32" : "#c62828",
                                     }}
                                   />
                                 </Box>
@@ -1359,7 +1355,7 @@ const StudentDashboard = () => {
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>{successRate}%</Typography>
                                   <Box sx={{ flex: 1, height: 6, borderRadius: 3, bgcolor: '#f0f0f0', overflow: 'hidden' }}>
-                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate >= 80 ? '#2e7d32' : successRate >= 50 ? '#ff9800' : '#c62828' }} />
+                                    <Box sx={{ height: '100%', width: `${successRate}%`, bgcolor: successRate > 50 ? '#2e7d32' : '#c62828' }} />
                                   </Box>
                                 </Box>
                               </Grid>
@@ -1661,7 +1657,7 @@ const StudentAnswersDetail = ({ student }) => (
                     variant="caption"
                     sx={{ display: "block", mt: 1, color: "#666", fontStyle: "italic" }}
                   >
-                    Pergunta sem resposta certa — não afeta a nota.
+                    Pergunta sem resposta certa, não afeta a nota.
                   </Typography>
                 </Box>
               ) : (

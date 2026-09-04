@@ -262,7 +262,7 @@ export const notifyNewCourseQuestion = async (courseId, question, courseTitle = 
       type: "new_question",
       courseId,
       title: "Nova dúvida de aluno",
-      message: `${courseTitle ? courseTitle + " — " : ""}${
+      message: `${courseTitle ? courseTitle + " • " : ""}${
         question.contentTitle || "Conteúdo"
       }: ${resumo}`,
       link: `/adm-cursos?courseId=${courseId}&tab=6`,

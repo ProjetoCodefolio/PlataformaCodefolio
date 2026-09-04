@@ -1,5 +1,6 @@
 import { database } from '../../config/firebase';
 import { ref, get, set, update, remove } from 'firebase/database';
+import { isDiscipline, isCourseClosed } from './courseType';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -10,6 +11,60 @@ import { ref, get, set, update, remove } from 'firebase/database';
  */
 export const isContentCompleted = (item) =>
   !!item && !!item.watched && (!item.quizId || !!item.quizPassed);
+
+/**
+ * Grava progresso e status de um aluno respeitando o encerramento manual.
+ *
+ * Numa disciplina encerrada o professor já disse que a turma acabou. Se o
+ * cálculo de progresso pudesse escrever `status` livremente, o primeiro vídeo
+ * que o aluno abrisse depois disso o devolveria para "in_progress" e desfaria o
+ * encerramento sem ninguém perceber. O progresso continua sendo gravado — é
+ * informação real —, mas o status fica onde o professor deixou.
+ *
+ * Numa disciplina que ainda não foi encerrada, 100% de progresso sozinho
+ * também não conclui: só o encerramento manual do professor (`closeDiscipline`)
+ * leva a turma inteira a "completed" de uma vez. Sem essa trava, o próprio
+ * aluno levaria o curso a "concluído" assistindo tudo, o que é exatamente o
+ * comportamento que a disciplina existe para não ter.
+ *
+ * @param {string} userId
+ * @param {string} courseId
+ * @param {number} progress - progresso recém-calculado
+ * @param {string} status - status recém-calculado
+ * @returns {Promise<{progress: number, status: string}>}
+ */
+const persistProgress = async (userId, courseId, progress, status) => {
+  const caminho = `studentCourses/${userId}/${courseId}`;
+  const [studentSnapshot, courseSnapshot] = await Promise.all([
+    get(ref(database, caminho)),
+    get(ref(database, `courses/${courseId}`)),
+  ]);
+  const atual = studentSnapshot.val() || {};
+  const course = courseSnapshot.val() || {};
+
+  if (atual.closedByTeacher) {
+    await update(ref(database, caminho), {
+      progress,
+      // Guarda o status que o aluno teria, para que reabrir a disciplina o
+      // devolva ao lugar certo em vez de a um retrato velho.
+      statusBeforeClosure: status,
+      lastUpdated: new Date().toISOString(),
+    });
+    return { progress, status: "completed" };
+  }
+
+  const finalStatus =
+    status === "completed" && isDiscipline(course) && !isCourseClosed(course)
+      ? "in_progress"
+      : status;
+
+  await update(ref(database, caminho), {
+    progress,
+    status: finalStatus,
+    lastUpdated: new Date().toISOString(),
+  });
+  return { progress, status: finalStatus };
+};
 
 /**
  * Atualiza o progresso de um curso para um estudante a partir da lista de
@@ -45,13 +100,7 @@ export const updateCourseProgress = async (userId, courseId, videos = []) => {
     const newProgress = total > 0 ? (completed / total) * 100 : 0;
     const status = newProgress >= 100 ? "completed" : "in_progress";
 
-    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
-      progress: newProgress,
-      status,
-      lastUpdated: new Date().toISOString(),
-    });
-
-    return { progress: newProgress, status };
+    return await persistProgress(userId, courseId, newProgress, status);
   } catch (error) {
     console.error("Erro ao atualizar progresso do curso:", error);
     throw error;
@@ -97,13 +146,7 @@ export const recalcCourseProgressFromWatched = async (
 
     const status = newProgress === 100 ? "completed" : "in_progress";
 
-    await update(ref(database, `studentCourses/${userId}/${courseId}`), {
-      progress: newProgress,
-      status,
-      lastUpdated: new Date().toISOString(),
-    });
-
-    return { progress: newProgress, status };
+    return await persistProgress(userId, courseId, newProgress, status);
   } catch (error) {
     console.error("Erro ao recalcular progresso do curso:", error);
     throw error;
@@ -251,52 +294,41 @@ export const fetchStudentCourses = async (userId) => {
 };
 
 /**
- * Busca todos os estudantes matriculados em um curso
+ * Conta os matriculados de TODOS os cursos numa única leitura de `studentCourses`.
+ *
+ * Existe para telas que precisam só do número (ex: admin listando cursos): pedir
+ * a contagem curso a curso via `fetchCourseStudents` baixaria a árvore inteira de
+ * `studentCourses` (e o perfil de cada matriculado) uma vez por curso — o mesmo
+ * download repetido N vezes para N cursos.
+ *
+ * @returns {Promise<Object>} mapa `{ [courseId]: quantidade }`
  */
-export const fetchCourseStudents = async (courseId) => {
+export const fetchCourseStudentCounts = async () => {
   try {
-    const studentCoursesRef = ref(database, `studentCourses`);
-    const snapshot = await get(studentCoursesRef);
-    
-    if (!snapshot.exists()) {
-      return [];
-    }
-    
-    const studentsData = snapshot.val();
-    const studentsList = [];
-    
-    // Para cada usuário, verificar se está matriculado no curso
-    const userPromises = Object.entries(studentsData).map(async ([userId, courses]) => {
-      if (courses[courseId]) {
-        // Buscar dados do usuário
-        const userData = await fetchStudentData(userId);
-        
-        if (userData) {
-          studentsList.push({
-            userId,
-            name: userData.name || "Usuário " + userId.substring(0, 6),
-            email: userData.email || "Email não disponível",
-            photoURL: userData.photoURL || "",
-            progress: courses[courseId].progress || 0,
-            status: courses[courseId].status || "in_progress",
-            enrolledAt: courses[courseId].enrolledAt || "",
-            lastAccessed: courses[courseId].lastAccessed || "",
-            role: userData.role || "student"
-          });
-        }
-      }
+    const snapshot = await get(ref(database, "studentCourses"));
+    if (!snapshot.exists()) return {};
+
+    const counts = {};
+    Object.values(snapshot.val()).forEach((matriculasDoAluno) => {
+      Object.keys(matriculasDoAluno || {}).forEach((courseId) => {
+        counts[courseId] = (counts[courseId] || 0) + 1;
+      });
     });
-    
-    await Promise.all(userPromises);
-    return studentsList;
+    return counts;
   } catch (error) {
-    console.error("Erro ao buscar estudantes do curso:", error);
-    throw error;
+    console.error("Erro ao contar matriculados por curso:", error);
+    return {};
   }
 };
 
 /**
- * Busca todos os estudantes matriculados em um curso, com detalhes enriquecidos
+ * Busca todos os estudantes matriculados em um curso, com detalhes enriquecidos.
+ *
+ * Lê `studentCourses` e `users` uma vez cada (2 leituras no total, em paralelo)
+ * e cruza em memória — não um `get(users/{userId})` por matriculado. Antes disso
+ * era N+1: com M alunos no curso, M leituras individuais de rede só para pegar
+ * nome/e-mail/foto de cada um.
+ *
  * @param {string} courseId - ID do curso
  * @returns {Promise<Array>} - Lista de estudantes com dados completos
  */
@@ -305,81 +337,57 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
     if (!courseId) {
       throw new Error("ID do curso é necessário");
     }
-    
-    const studentCoursesRef = ref(database, `studentCourses`);
-    const snapshot = await get(studentCoursesRef);
-    
-    if (!snapshot.exists()) {
+
+    const [studentCoursesSnapshot, usersSnapshot] = await Promise.all([
+      get(ref(database, "studentCourses")),
+      get(ref(database, "users")),
+    ]);
+
+    if (!studentCoursesSnapshot.exists()) {
       return [];
     }
-    
-    const studentsData = snapshot.val();
+
+    const studentsData = studentCoursesSnapshot.val();
+    const usersData = usersSnapshot.val() || {};
     const studentsList = [];
-    
-    // Para cada usuário, verificar se está matriculado no curso
-    const studentPromises = Object.entries(studentsData).map(async ([userId, courses]) => {
-      if (courses[courseId]) {
-        // Buscar dados do usuário
-        const userData = await fetchStudentData(userId);
-        
-        if (userData) {
-          // Derivar o nome de exibição a partir dos dados disponíveis
-          let displayName = "Usuário Desconhecido";
-          if (userData.displayName) {
-            displayName = userData.displayName;
-          } else if (userData.firstName) {
-            displayName = `${userData.firstName} ${userData.lastName || ""}`;
-          } else if (userData.name) {
-            displayName = userData.name;
-          } else if (userData.email) {
-            displayName = userData.email.split("@")[0];
-          }
-          
-          // Verificar se o usuário é professor deste curso específico
-          const isTeacher = userData.coursesTeacher && 
-            userData.coursesTeacher[courseId] === true;
-          
-          // Combinar os dados do curso com os dados do usuário
-          return {
-            id: userId,
-            userId: userId,
-            name: displayName.trim() || "Usuário " + userId.substring(0, 6),
-            ...courses[courseId],  // Dados específicos do curso
-            ...userData,          // Dados do perfil do usuário (nome, email, etc)
-            role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
-          };
-        }
+
+    Object.entries(studentsData).forEach(([userId, courses]) => {
+      if (!courses[courseId]) return;
+
+      const userData = usersData[userId];
+      if (!userData) return;
+
+      // Derivar o nome de exibição a partir dos dados disponíveis
+      let displayName = "Usuário Desconhecido";
+      if (userData.displayName) {
+        displayName = userData.displayName;
+      } else if (userData.firstName) {
+        displayName = `${userData.firstName} ${userData.lastName || ""}`;
+      } else if (userData.name) {
+        displayName = userData.name;
+      } else if (userData.email) {
+        displayName = userData.email.split("@")[0];
       }
-      return null;
+
+      // Verificar se o usuário é professor deste curso específico
+      const isTeacher = userData.coursesTeacher &&
+        userData.coursesTeacher[courseId] === true;
+
+      // Combinar os dados do curso com os dados do usuário
+      studentsList.push({
+        id: userId,
+        userId: userId,
+        name: displayName.trim() || "Usuário " + userId.substring(0, 6),
+        ...courses[courseId],  // Dados específicos do curso
+        ...userData,          // Dados do perfil do usuário (nome, email, etc)
+        role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
+      });
     });
-    
-    // Esperar todas as promessas serem resolvidas
-    const studentsArray = await Promise.all(studentPromises);
-    
-    // Filtrar possíveis nulls (onde fetchStudentData falhou)
-    return studentsArray.filter(student => student !== null);
+
+    return studentsList;
   } catch (error) {
     console.error("Erro ao buscar estudantes do curso:", error);
     throw error;
-  }
-};
-
-/**
- * Busca dados de um estudante específico
- */
-export const fetchStudentData = async (userId) => {
-  try {
-    const studentsRef = ref(database, `users/${userId}`);
-    const snapshot = await get(studentsRef);
-
-    if (snapshot.exists()) {
-      return snapshot.val();
-    } else {
-      return null;
-    }
-  } catch (error) {
-    console.error("Erro ao buscar dados do estudante:", error);
-    return null;
   }
 };
 

@@ -51,9 +51,9 @@ import {
 const PURPLE = "#9041c1";
 
 const formatarData = (iso) => {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const data = new Date(iso);
-  if (Number.isNaN(data.getTime())) return "—";
+  if (Number.isNaN(data.getTime())) return "-";
   return data.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -267,7 +267,7 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
       </Typography>
       <Typography variant="body2" sx={{ mb: 3, color: "#666" }}>
         {questions.length} no total · {pendentes} ainda por discutir. Os alunos
-        registram pelo botão de dúvida no player; o nome aparece só aqui — na
+        registram pelo botão de dúvida no player; o nome aparece só aqui. Na
         apresentação em aula as dúvidas são anônimas.
       </Typography>
 

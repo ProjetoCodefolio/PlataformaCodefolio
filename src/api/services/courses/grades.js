@@ -32,7 +32,10 @@ export const fetchStudentGrades = async (courseId, studentId) => {
           assessmentName: assessment.name,
           percentage: assessment.percentage,
           grade: assessment.grades[studentId].grade,
-          assignedAt: assessment.grades[studentId].assignedAt
+          assignedAt: assessment.grades[studentId].assignedAt,
+          // Montado campo a campo: sem esta linha o feedback do professor
+          // simplesmente não chegaria a quem consumisse esta função.
+          feedback: assessment.grades[studentId].feedback || null
         };
       }
     });

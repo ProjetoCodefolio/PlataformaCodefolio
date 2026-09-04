@@ -181,7 +181,7 @@ const QuizSettingsModal = ({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
         Editar Quiz
-        {contentTitle ? ` — ${contentTitle}` : ""}
+        {contentTitle ? `: ${contentTitle}` : ""}
       </DialogTitle>
       <DialogContent dividers>
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, pt: 1 }}>

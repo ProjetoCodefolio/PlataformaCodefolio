@@ -97,7 +97,13 @@ export const deleteAssessment = async (courseId, assessmentId) => {
 };
 
 /**
- * Assign a grade to a student for an assessment
+ * Assign a grade to a student for an assessment.
+ *
+ * Grava por CAMPO, não substituindo o registro inteiro. A nota e o feedback do
+ * professor são vizinhos em `grades/{studentId}`, e escritos em momentos
+ * diferentes: um `set()` aqui apagaria o texto do feedback toda vez que a nota
+ * fosse corrigida, sem nenhum aviso.
+ *
  * @param {string} courseId - The ID of the course
  * @param {string} assessmentId - The assessment ID
  * @param {string} studentId - The student ID
@@ -113,13 +119,55 @@ export const assignGrade = async (courseId, assessmentId, studentId, grade) => {
       `courseAssessments/${courseId}/${assessmentId}/grades/${studentId}`
     );
     
-    await set(gradeRef, {
+    await update(gradeRef, {
       grade,
       assignedAt: new Date().toISOString()
     });
   } catch (error) {
     console.error("Error assigning grade:", error);
     throw new Error("Falha ao atribuir nota");
+  }
+};
+
+/**
+ * Grava o feedback escrito do professor para um ou mais alunos de uma avaliação.
+ *
+ * Recebe uma LISTA de alunos porque o caso que motivou a função é o trabalho em
+ * grupo: o texto é o mesmo para todo o grupo e precisa chegar inteiro a todos —
+ * um update por integrante deixaria metade do grupo sem o retorno se uma das
+ * escritas falhasse no meio.
+ *
+ * Texto vazio APAGA o feedback: é como o professor desfaz um comentário.
+ *
+ * @param {string} courseId
+ * @param {string} assessmentId
+ * @param {Array<string>} studentIds
+ * @param {string} feedback - texto; vazio remove
+ */
+export const assignFeedback = async (courseId, assessmentId, studentIds, feedback) => {
+  if (!courseId || !assessmentId) {
+    throw new Error("IDs do curso e da avaliação são obrigatórios");
+  }
+  const alunos = (studentIds || []).filter(Boolean);
+  if (alunos.length === 0) {
+    throw new Error("Informe ao menos um estudante");
+  }
+
+  const texto = String(feedback ?? "").trim();
+  const agora = new Date().toISOString();
+  const updates = {};
+
+  alunos.forEach((studentId) => {
+    const base = `courseAssessments/${courseId}/${assessmentId}/grades/${studentId}`;
+    updates[`${base}/feedback`] = texto || null;
+    updates[`${base}/feedbackAt`] = texto ? agora : null;
+  });
+
+  try {
+    await update(ref(database), updates);
+  } catch (error) {
+    console.error("Error assigning feedback:", error);
+    throw new Error("Falha ao salvar o feedback");
   }
 };
 
@@ -144,10 +192,11 @@ export const assignGradesBatch = async (courseId, changes) => {
     if (!assessmentId || !userId) {
       throw new Error("IDs da avaliação e do estudante são obrigatórios");
     }
-    updates[`courseAssessments/${courseId}/${assessmentId}/grades/${userId}`] = {
-      grade: newGrade,
-      assignedAt,
-    };
+    // Caminhos de FOLHA, não o registro inteiro: importar uma planilha de notas
+    // não pode apagar o feedback que o professor já tinha escrito.
+    const base = `courseAssessments/${courseId}/${assessmentId}/grades/${userId}`;
+    updates[`${base}/grade`] = newGrade;
+    updates[`${base}/assignedAt`] = assignedAt;
   });
 
   try {

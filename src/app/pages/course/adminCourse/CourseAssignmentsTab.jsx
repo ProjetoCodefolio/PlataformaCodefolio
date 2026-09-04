@@ -53,7 +53,7 @@ export default function CourseAssignmentsTab() {
   const [sortField, setSortField] = useState("title");
   const [sortOrder, setSortOrder] = useState("asc");
 
-  const canManage = canManageAssessments(userDetails, courseOwnerId);
+  const canManage = canManageAssessments(userDetails, courseOwnerId, courseId);
 
   const handleSort = (field) => {
     const next = getNextSort({ sortField, sortOrder }, field);

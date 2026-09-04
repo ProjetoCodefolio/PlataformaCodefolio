@@ -1,7 +1,6 @@
 import React, {
   useState,
   useEffect,
-  useRef,
   useImperativeHandle,
   forwardRef,
 } from "react";
@@ -26,6 +25,7 @@ import {
   deleteCourseSlide,
   saveAllCourseSlides,
 } from "$api/services/courses/slides";
+import { useScrollToForm } from "$utils/useScrollToForm";
 
 const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   // Estados
@@ -39,7 +39,7 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastAction, setLastAction] = useState("");
-  const slidesTabRef = useRef(null);
+  const [slidesTabRef, scrollToForm] = useScrollToForm();
 
   // Carregar slides ao inicializar
   const loadSlides = async () => {
@@ -91,9 +91,7 @@ const CourseSlidesTab = forwardRef(({ courseId }, ref) => {
     setSlideUrl(slide.url);
     setSlideDescription(slide.description || "");
 
-    setTimeout(() => {
-      slidesTabRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
+    scrollToForm();
   };
 
   const handleEditSlideSubmit = async () => {

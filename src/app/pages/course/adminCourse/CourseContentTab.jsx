@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -67,6 +67,8 @@ import {
   deleteCourseSlide,
 } from "$api/services/courses/slides";
 import { useAuth } from "$context/AuthContext";
+import { useScrollToForm } from "$utils/useScrollToForm";
+import ImportContentModal from "$components/courses/import/ImportContentModal";
 
 const PURPLE = "#9041c1";
 
@@ -246,8 +248,9 @@ const CourseContentTab = ({ courseId }) => {
   const [submitting, setSubmitting] = useState(false);
 
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [showImportModal, setShowImportModal] = useState(false);
 
-  const formRef = useRef(null);
+  const [formRef, scrollToForm] = useScrollToForm();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -408,9 +411,7 @@ const CourseContentTab = ({ courseId }) => {
     setEditingId(item.id);
     setEditingSource(item.source);
     setUrlError("");
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 100);
+    scrollToForm();
   };
 
   const confirmDelete = async () => {
@@ -624,17 +625,33 @@ const CourseContentTab = ({ courseId }) => {
         )}
       </Box>
 
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mt: 5, mb: 1 }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
-          Ordem do Conteúdo
-        </Typography>
-        {saving && <CircularProgress size={20} sx={{ color: PURPLE }} />}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2, mt: 5, mb: 1, flexWrap: "wrap" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
+            Ordem do Conteúdo
+          </Typography>
+          {saving && <CircularProgress size={20} sx={{ color: PURPLE }} />}
+        </Box>
+        <Button
+          variant="outlined"
+          onClick={() => setShowImportModal(true)}
+          sx={{
+            textTransform: "none",
+            fontWeight: "bold",
+            color: PURPLE,
+            borderColor: PURPLE,
+            "&:hover": { borderColor: "#7d37a7", backgroundColor: "rgba(144, 65, 193, 0.04)" },
+            fontSize: { xs: "0.8rem", sm: "0.875rem" },
+          }}
+        >
+          Importar de outro curso
+        </Button>
       </Box>
       <Typography variant="body2" sx={{ mb: 2, color: "#666", fontSize: { xs: "0.8rem", sm: "0.9rem" } }}>
         Arraste pela alça para definir a ordem exibida ao aluno. A ordem é salva
         automaticamente ao soltar. Itens com o selo "Anterior" vêm do formato
         antigo e continuam editáveis por aqui. Itens com o selo "Entrega" são
-        vídeos enviados pelos alunos nos trabalhos — esses só podem ser reordenados.
+        vídeos enviados pelos alunos nos trabalhos. Esses só podem ser reordenados.
       </Typography>
 
       {loading ? (
@@ -643,7 +660,8 @@ const CourseContentTab = ({ courseId }) => {
         </Box>
       ) : items.length === 0 ? (
         <Typography sx={{ color: "#999", textAlign: "center", py: 4 }}>
-          Nenhum conteúdo cadastrado ainda. Use o formulário acima para adicionar.
+          Nenhum conteúdo cadastrado ainda. Use o formulário acima para adicionar,
+          ou importe de outro curso.
         </Typography>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -662,6 +680,14 @@ const CourseContentTab = ({ courseId }) => {
           </SortableContext>
         </DndContext>
       )}
+
+      <ImportContentModal
+        open={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        courseId={courseId}
+        existingContent={items}
+        onImported={loadContent}
+      />
 
       <Modal open={!!itemToDelete} onClose={() => setItemToDelete(null)}>
         <Box

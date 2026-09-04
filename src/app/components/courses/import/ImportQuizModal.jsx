@@ -159,7 +159,7 @@ export default function ImportQuizModal({
               >
                 {quizzes.map((quiz) => (
                   <MenuItem key={quiz.quizId} value={quiz.quizId}>
-                    {quiz.title} — {quiz.questionCount}{" "}
+                    {quiz.title} · {quiz.questionCount}{" "}
                     {quiz.questionCount === 1 ? "questão" : "questões"}
                     {quiz.isDiagnostic ? " · diagnóstico" : ""}
                   </MenuItem>
@@ -217,7 +217,7 @@ export default function ImportQuizModal({
           )}
 
           <Alert severity="info" sx={{ mt: 0.5 }}>
-            As respostas dos alunos do curso de origem não vêm junto — o
+            As respostas dos alunos do curso de origem não vêm junto. O
             questionário chega zerado.
           </Alert>
         </Box>

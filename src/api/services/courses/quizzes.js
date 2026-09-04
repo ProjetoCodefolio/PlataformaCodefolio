@@ -1540,7 +1540,7 @@ export const recalculateQuizResults = async (
     if (questions.length === 0) {
       return {
         success: false,
-        error: "O quiz está sem questões — recalcular zeraria a nota de todos.",
+        error: "O quiz está sem questões: recalcular zeraria a nota de todos.",
       };
     }
 

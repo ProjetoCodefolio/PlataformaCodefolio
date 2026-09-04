@@ -5,9 +5,9 @@
 
     "courseAssessments": {
       "$courseId": {
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$assessmentId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
           ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || data.child('userId').val() === auth.uid)"
         }
       }
@@ -75,9 +75,9 @@
     "courseMaterials": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$materialId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -85,9 +85,9 @@
     "courseQuizzes": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -95,9 +95,9 @@
     "courseSlides": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$slideId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -105,9 +105,9 @@
     "courseVideos": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$videoId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -115,9 +115,9 @@
     "courseContent": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$contentId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -137,9 +137,9 @@
     "courseQuestions": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$questionId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || (!data.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('userId').val() === auth.uid && data.child('discussed').val() !== true))"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists() || (!data.exists() && newData.child('userId').val() === auth.uid) || (data.exists() && !newData.exists() && data.child('userId').val() === auth.uid && data.child('discussed').val() !== true))"
         }
       }
     },
@@ -154,29 +154,36 @@
     "courses": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (data.exists() && data.child('userId').val() === auth.uid) || (!data.exists() && root.child('users').child(auth.uid).child('role').val() === 'teacher'))"
+        ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (data.exists() && data.child('userId').val() === auth.uid) || (!data.exists() && root.child('users').child(auth.uid).child('role').val() === 'teacher'))",
+
+        "closedAt": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
+        },
+        "closedBy": {
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
+        }
       }
     },
 
     "courseAdvancedSettings": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
       }
     },
 
     "courseAttendanceSettings": {
       "$courseId": {
         ".read": true,
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
       }
     },
 
     "customQuizResults": {
       "$courseId": {
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
           "$userId": {
             ".write": "auth != null && auth.uid === $userId",
             ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
@@ -187,9 +194,9 @@
 
     "liveQuizResults": {
       "$courseId": {
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
           "$userId": {
             ".write": "auth != null && auth.uid === $userId",
             ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid"
@@ -200,12 +207,12 @@
 
     "openEndedAnswers": {
       "$courseId": {
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
           "$questionId": {
             "$userId": {
-              ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid)",
+              ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
               ".read": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid)"
             }
           }
@@ -247,9 +254,9 @@
 
     "quizGigi": {
       "$courseId": {
-        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
+        ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
-          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
         }
       }
     },
@@ -278,7 +285,7 @@
     "studentCourses": {
       "$userId": {
         "$courseId":{
-          ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
           ".read": true
         }
       }

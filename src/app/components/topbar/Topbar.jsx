@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import "./topbar.css";
 import Box from "@mui/material/Box";
 import {
@@ -27,29 +27,16 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "$context/AuthContext";
 import logo from "$assets/img/codefolio.png";
 import { handleGoogleSignIn, handleSignOut } from "$api/services/auth";
-import { fetchTeacherCourses } from "$api/services/courses/courses";
 import NotificationBell from "./NotificationBell";
 
 export default function Topbar({ onSearch, hideSearch = false }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuAnchorEl, setMobileMenuAnchorEl] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [teacherCourses, setTeacherCourses] = useState(null);
   const open = Boolean(anchorEl);
   const mobileMenuOpen = Boolean(mobileMenuAnchorEl);
   const navigate = useNavigate();
   const { userDetails, refreshUserDetails } = useAuth();
-
-  useEffect(() => {
-    const loadTeacherCourses = async () => {
-      if (userDetails?.userId) {
-        const courses = await fetchTeacherCourses(userDetails.userId);
-        setTeacherCourses(courses);
-      }
-    };
-
-    loadTeacherCourses();
-  }, [userDetails]);
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -115,11 +102,12 @@ export default function Topbar({ onSearch, hideSearch = false }) {
     onSearch(event.target.value); // já está correto!
   };
 
-  // Verificar se o usuário pode gerenciar cursos
+  // Verificar se o usuário pode gerenciar cursos: papel geral, ou co-professor
+  // de pelo menos uma turma.
   const canManageCourses =
     userDetails?.role === "admin" ||
     userDetails?.role === "teacher" ||
-    teacherCourses !== null;
+    Object.keys(userDetails?.coursesTeacher || {}).length > 0;
   const isAdmin = userDetails?.role === "admin";
 
   return (

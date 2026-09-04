@@ -93,6 +93,48 @@ export const copyQuestionsWithNewIds = (questions) =>
     .map((question) => ({ ...question, id: uuidv4() }));
 
 /**
+ * Monta o quiz que será gravado no destino a partir do registro de origem.
+ *
+ * Separado da gravação porque a importação de CONTEÚDO precisa das mesmas
+ * decisões — ids novos nas questões, janela de disponibilidade descartada — mas
+ * grava tudo num único update junto com o conteúdo recém-criado.
+ *
+ * @param {Object} params
+ * @param {Object} params.origem - registro do quiz na origem
+ * @param {string} params.targetCourseId
+ * @param {string} params.targetContentId
+ * @param {boolean} [params.copySettings]
+ * @returns {Object} quiz pronto para gravar
+ * @throws se o quiz de origem não tiver questões
+ */
+export const buildImportedQuiz = ({
+  origem,
+  targetCourseId,
+  targetContentId,
+  copySettings = true,
+}) => {
+  const questions = copyQuestionsWithNewIds(origem?.questions);
+  if (questions.length === 0) {
+    throw new Error("O questionário de origem não tem questões");
+  }
+
+  return {
+    videoId: targetContentId,
+    courseId: targetCourseId,
+    questions,
+    minPercentage: copySettings ? Number(origem.minPercentage) || 0 : 0,
+    isDiagnostic: copySettings ? normalizeDiagnosticFlag(origem.isDiagnostic) : false,
+    // A janela de disponibilidade nunca vem junto: data de outro semestre
+    // chegaria com o quiz já fechado. O destino nasce sempre aberto.
+    ...persistableQuizSettings(
+      copySettings
+        ? { allowRetry: origem.allowRetry, maxAttempts: origem.maxAttempts }
+        : {}
+    ),
+  };
+};
+
+/**
  * Importa um questionário de outro curso, prendendo-o a um conteúdo deste.
  *
  * @param {Object} params
@@ -127,32 +169,18 @@ export const importQuizFromCourse = async ({
     throw new Error("O questionário de origem não existe mais");
   }
 
-  const origem = origemSnap.val();
-  const questions = copyQuestionsWithNewIds(origem.questions);
-  if (questions.length === 0) {
-    throw new Error("O questionário de origem não tem questões");
-  }
-
   const destinoRef = ref(database, `courseQuizzes/${targetCourseId}/${targetContentId}`);
   const destinoSnap = await get(destinoRef);
   if (destinoSnap.exists()) {
     throw new Error("Este conteúdo já tem um questionário. Exclua-o antes de importar.");
   }
 
-  const novoQuiz = {
-    videoId: targetContentId,
-    courseId: targetCourseId,
-    questions,
-    minPercentage: copySettings ? Number(origem.minPercentage) || 0 : 0,
-    isDiagnostic: copySettings ? normalizeDiagnosticFlag(origem.isDiagnostic) : false,
-    // A janela de disponibilidade nunca vem junto: data de outro semestre
-    // chegaria com o quiz já fechado. O destino nasce sempre aberto.
-    ...persistableQuizSettings(
-      copySettings
-        ? { allowRetry: origem.allowRetry, maxAttempts: origem.maxAttempts }
-        : {}
-    ),
-  };
+  const novoQuiz = buildImportedQuiz({
+    origem: origemSnap.val(),
+    targetCourseId,
+    targetContentId,
+    copySettings,
+  });
 
   await set(destinoRef, novoQuiz);
   return novoQuiz;

@@ -100,7 +100,7 @@ export default function GradeAssignmentPage() {
   const { currentUser, userDetails } = useAuth();
   
   // Verificar se o usuário é dono do curso ou admin
-  const isCourseOwner = canAssignGrades(userDetails, courseDetails?.userId);
+  const isCourseOwner = canAssignGrades(userDetails, courseDetails?.userId, courseId);
 
   // Carregar dados necessários ao iniciar
   useEffect(() => {

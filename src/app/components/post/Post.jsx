@@ -45,12 +45,13 @@ export default function Post({ member }) {
   useEffect(() => {
     if (currentUser) {
       const userRef = ref(database, `users/${currentUser.uid}`);
-      onValue(userRef, (snapshot) => {
+      const unsub = onValue(userRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
           setUserRole(data.role);
         }
       });
+      return unsub;
     }
   }, [currentUser]);
 
