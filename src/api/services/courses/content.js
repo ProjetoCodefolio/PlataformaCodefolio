@@ -213,6 +213,8 @@ export const loadCourseContentForStudent = async (courseId, deps = {}) => {
       // progresso salvo (se o aluno estiver logado).
       let watched = isSlide;
       let progress = isSlide ? 100 : 0;
+      // Ponto onde o aluno parou, para o player retomar em vez de reiniciar.
+      let watchedTime = 0;
       // Marca quando a leitura do progresso deste item falhou, para que o
       // cálculo agregado saiba que `watched:false` aqui pode ser falso-negativo.
       let progressError = false;
@@ -221,6 +223,7 @@ export const loadCourseContentForStudent = async (courseId, deps = {}) => {
           const userProgress = await fetchVideoProgress(userId, courseId, item.id);
           watched = userProgress?.watched || false;
           progress = userProgress?.percentageWatched || 0;
+          watchedTime = userProgress?.watchedTime || 0;
           if (userProgress?.readError) progressError = true;
         } catch (error) {
           console.error(`Erro ao buscar progresso do conteúdo ${item.id}:`, error);
@@ -240,6 +243,7 @@ export const loadCourseContentForStudent = async (courseId, deps = {}) => {
         isContentItem: true, // marca itens da nova collection
         watched,
         progress,
+        watchedTime,
         progressError,
         // Trava (requiresPrevious) pertence ao CONTEÚDO, seja vídeo ou slide.
         requiresPrevious: !!item.requiresPrevious,
