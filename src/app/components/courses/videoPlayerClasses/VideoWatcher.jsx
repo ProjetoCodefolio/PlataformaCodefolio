@@ -14,6 +14,7 @@ import {
   processPlayerState,
 } from "$api/services/courses/videoProgress";
 import { formatTime, isVideoLocked, isNearEnd } from "$api/utils/videoUtils";
+import { getYouTubeID } from "../../../utils/postUtils";
 
 export function VideoWatcher({
   player,
@@ -67,6 +68,23 @@ export function VideoWatcher({
 
   // Obter o estado específico do vídeo atual
   const videoState = videoStates.current[videoId];
+
+  // O player do YouTube é recriado (pela `key` em VideoPlayer) quando o
+  // conteúdo troca, mas `player` só é atualizado quando o `onReady` da NOVA
+  // instância dispara — assíncrono. Nesse intervalo, este componente roda com
+  // o player ANTIGO e o `videoId` NOVO; se a instância antiga ainda disparar
+  // um evento de conclusão (ex.: estava perto do fim quando o aluno navegou),
+  // a conclusão seria atribuída ao vídeo errado. `getVideoData` confirma que a
+  // instância que gerou o evento é realmente a do `videoId` atual antes de agir.
+  const expectedYouTubeId = getYouTubeID(currentVideo?.url);
+  const isEventFromCurrentVideo = () => {
+    if (!expectedYouTubeId) return true;
+    try {
+      return player?.getVideoData?.()?.video_id === expectedYouTubeId;
+    } catch (error) {
+      return false;
+    }
+  };
 
   // Limpar intervalo quando o componente é desmontado ou o vídeo muda
   useEffect(() => {
@@ -203,6 +221,8 @@ export function VideoWatcher({
     // Adicionar event listeners para o player
     try {
       const playerStateChangeHandler = (event) => {
+        if (!isEventFromCurrentVideo()) return;
+
         // Estado -1: unstarted, 0: ended, 1: playing, 2: paused, 3: buffering, 5: video cued
         const playerState = event.data;
 
@@ -257,6 +277,7 @@ export function VideoWatcher({
 
     const monitorProgress = () => {
       if (!isComponentMounted || !player || !videoId) return;
+      if (!isEventFromCurrentVideo()) return;
 
       try {
         const playerState = player.getPlayerState?.() || -1;
