@@ -254,6 +254,15 @@ export const VideoPlayer = forwardRef(
       };
     }, [video?.id, video?.courseId, userDetails?.userId]);
 
+    // Sem isso, um vídeo que falhou e esgotou as tentativas deixava
+    // `playerLoadAttempt` em 3 para sempre: ao navegar para o PRÓXIMO vídeo
+    // (que carrega normalmente), o fallback de erro continuava aparecendo no
+    // lugar do player, porque a condição olha só o número de tentativas.
+    useEffect(() => {
+      setPlayerError(false);
+      setPlayerLoadAttempt(0);
+    }, [video?.id]);
+
     useEffect(() => {
       const styleSheet = document.createElement("style");
       styleSheet.textContent = styles;
@@ -695,34 +704,74 @@ export const VideoPlayer = forwardRef(
                 overflow: "hidden",
               }}
             >
-              <YouTube
-                videoId={getYouTubeID(video.url)}
-                opts={{
-                  width: "100%",
-                  height: "100%",
-                  playerVars: {
-                    autoplay: 0,
-                    modestbranding: 1,
-                    rel: 0,
-                    fs: 1,
-                    iv_load_policy: 3,
-                  },
-                }}
-                onReady={onReady}
-                onError={(e) => {
-                  setPlayerError(true);
-                }}
-                key={`player-${video.id}-${playerLoadAttempt}`}
-                className="youtube-player"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  backgroundColor: "#F5F5FA",
-                }}
-              />
+              {playerError && playerLoadAttempt >= 3 ? (
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 1.5,
+                    textAlign: "center",
+                    p: 2,
+                  }}
+                >
+                  <Typography variant="body2" sx={{ color: "#666" }}>
+                    Não foi possível carregar o vídeo aqui.
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    component="a"
+                    href={video.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      color: "#9041c1",
+                      borderColor: "#9041c1",
+                      "&:hover": {
+                        borderColor: "#7a35a3",
+                        backgroundColor: "rgba(144, 65, 193, 0.08)",
+                      },
+                    }}
+                  >
+                    Assistir no YouTube
+                  </Button>
+                </Box>
+              ) : (
+                <YouTube
+                  videoId={getYouTubeID(video.url)}
+                  opts={{
+                    width: "100%",
+                    height: "100%",
+                    playerVars: {
+                      autoplay: 0,
+                      modestbranding: 1,
+                      rel: 0,
+                      fs: 1,
+                      iv_load_policy: 3,
+                    },
+                  }}
+                  onReady={onReady}
+                  onError={() => {
+                    setPlayerError(true);
+                  }}
+                  key={`player-${video.id}-${playerLoadAttempt}`}
+                  className="youtube-player"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    height: "100%",
+                    backgroundColor: "#F5F5FA",
+                  }}
+                />
+              )}
             </Box>
           ) : (
             <Box
