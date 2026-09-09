@@ -43,7 +43,9 @@ import {
   getQuizWindowMessage,
   isQuizAfterClose,
   isQuizLocked,
+  formatQuizDate,
 } from "$api/services/courses/quizzes";
+import { formatTimeRemaining } from "$api/services/courses/assignments";
 import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {
   loadCourseData,
@@ -901,6 +903,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
       setPendingQuizStart({
         attemptLimit,
         attemptsUsed: userAttempts[quizKey]?.attemptCount || 0,
+        closeDate: quizSettings[quizKey]?.closeDate || null,
         start,
       });
       return;
@@ -1636,6 +1639,12 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                 A tentativa só é contada quando você <strong>envia</strong> as
                 respostas. Sair antes disso não consome nada.
               </Box>
+              {pendingQuizStart?.closeDate && (
+                <Box sx={{ mt: 1.5, color: "#9041c1", fontWeight: 500 }}>
+                  Encerra {formatTimeRemaining(pendingQuizStart.closeDate)} ·{" "}
+                  {formatQuizDate(pendingQuizStart.closeDate)}
+                </Box>
+              )}
             </DialogContentText>
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>

@@ -28,7 +28,9 @@ import {
   isQuizLocked,
   getQuizWindowState,
   getQuizWindowMessage,
+  formatQuizDate,
 } from "$api/services/courses/quizzes";
+import { formatTimeRemaining } from "$api/services/courses/assignments";
 
 const VideoList = ({
   videos,
@@ -239,17 +241,38 @@ const VideoList = ({
                     </Typography>
                   )}
                   {video.quizId && !locked && !isCurrent && !isSlide && (
-                    <Typography
-                      variant="body2"
-                      color="textSecondary"
-                      sx={{ display: { xs: "none", sm: "block" } }}
-                    >
-                      {video.quizPassed
-                        ? "Quiz concluído ✅"
-                        : quizLocked
-                        ? "Quiz bloqueado 🔒"
-                        : "Quiz pendente"}
-                    </Typography>
+                    <>
+                      <Typography
+                        variant="body2"
+                        color="textSecondary"
+                        sx={{ display: { xs: "none", sm: "block" } }}
+                      >
+                        {video.quizPassed
+                          ? "Quiz concluído ✅"
+                          : quizLocked
+                          ? "Quiz bloqueado 🔒"
+                          : "Quiz pendente"}
+                      </Typography>
+                      {/* Prazo só interessa a quem ainda não passou: uma vez
+                          concluído ou bloqueado, a data de fechamento deixa de
+                          ser acionável. */}
+                      {!video.quizPassed &&
+                        !quizLocked &&
+                        quizWindowState === "open" &&
+                        quizConfig?.closeDate && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#9041c1",
+                              fontWeight: 500,
+                              display: { xs: "none", sm: "block" },
+                            }}
+                          >
+                            Encerra {formatTimeRemaining(quizConfig.closeDate)}{" "}
+                            · {formatQuizDate(quizConfig.closeDate)}
+                          </Typography>
+                        )}
+                    </>
                   )}
                 </Box>
                 {completed && (
