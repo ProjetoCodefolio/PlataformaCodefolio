@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import React, { useState, useEffect, useRef, forwardRef } from "react";
 import PropTypes from "prop-types";
 import {
   Box,
@@ -87,7 +81,6 @@ export const VideoPlayer = forwardRef(
     const videoRef = useRef(null);
     const hasNotifiedRef = useRef(video?.watched || false);
     const navigate = useNavigate();
-    const playerRef = useRef(null);
     const [showControls, setShowControls] = useState(true);
 
     const handleLogin = async () => {
@@ -331,26 +324,6 @@ export const VideoPlayer = forwardRef(
     };
 
     const isSlide = video.isSlide || video.type === "slide";
-
-    useImperativeHandle(ref, () => ({
-      pause: () => {
-        if (playerRef.current && !isSlide) {
-          playerRef.current.internalPlayer.pauseVideo();
-        }
-      },
-      getCurrentTime: () => {
-        if (playerRef.current && !isSlide) {
-          return playerRef.current.internalPlayer.getCurrentTime();
-        }
-        return 0;
-      },
-      getDuration: () => {
-        if (playerRef.current && !isSlide) {
-          return playerRef.current.internalPlayer.getDuration();
-        }
-        return 0;
-      },
-    }));
 
     const formatSlideUrl = (url) => {
       if (!url) return "";
