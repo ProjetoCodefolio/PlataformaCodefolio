@@ -69,6 +69,7 @@ import {
 import { useAuth } from "$context/AuthContext";
 import { useScrollToForm } from "$utils/useScrollToForm";
 import ImportContentModal from "$components/courses/import/ImportContentModal";
+import { notifyNewContent } from "$api/services/notifications";
 
 const PURPLE = "#9041c1";
 
@@ -384,8 +385,11 @@ const CourseContentTab = ({ courseId }) => {
         toast.success("Conteúdo atualizado com sucesso!");
       } else {
         // Itens novos são sempre criados na nova collection unificada.
-        await addCourseContent(courseId, form);
+        const created = await addCourseContent(courseId, form);
         toast.success("Conteúdo adicionado com sucesso!");
+        // Sem await de propósito: notifica os alunos matriculados em segundo
+        // plano (in-app) — notifyNewContent já engole os próprios erros.
+        notifyNewContent(courseId, created);
       }
       resetForm();
       await loadContent();

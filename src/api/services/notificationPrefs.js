@@ -6,19 +6,26 @@ import { ref, get, set } from "firebase/database";
  *
  * Estrutura:
  *   notificationPrefs/{userId}/{courseId}
- *     { newAssignment, newQuiz, newQuestion, grade, groupChanges, deadline, inAppEnabled }
+ *     { newAssignment, newQuiz, newContent, newQuestion, grade, groupChanges, inAppEnabled }
  *
  * Por padrão tudo é `true` (o usuário recebe tudo) e pode desativar por tipo.
+ *
+ * NÃO existe `deadline` (lembrete de prazo): sem backend/cron, nada dispara
+ * numa data futura — só em reação a uma ação de alguém logado. Um registro
+ * antigo com `deadline` salvo não quebra nada, só fica sem efeito algum (não
+ * há `acceptsInApp(prefs, "deadline")` em lugar nenhum do código).
  */
 
 export const DEFAULT_PREFS = {
   newAssignment: true,
   newQuiz: true,
+  // Vídeo/slide novo publicado no curso.
+  newContent: true,
   // Só tem efeito para o dono do curso: avisa quando um aluno registra dúvida.
   newQuestion: true,
   grade: true,
+  // Professor moveu ou removeu o aluno de um grupo de trabalho.
   groupChanges: true,
-  deadline: true,
   inAppEnabled: true,
 };
 
@@ -58,7 +65,7 @@ export const savePrefs = async (userId, courseId, prefs) => {
 /**
  * Verifica se um usuário aceita receber um tipo de notificação para o curso.
  * @param {Object} prefs - resultado de fetchPrefs
- * @param {string} type - 'newAssignment' | 'newQuiz' | 'newQuestion' | 'grade' | 'groupChanges' | 'deadline'
+ * @param {string} type - 'newAssignment' | 'newQuiz' | 'newContent' | 'newQuestion' | 'grade' | 'groupChanges'
  */
 export const acceptsInApp = (prefs, type) => {
   if (!prefs) return true;

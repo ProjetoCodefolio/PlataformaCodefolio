@@ -210,6 +210,78 @@ export const notifyNewQuiz = async (courseId, quiz, courseTitle = "") => {
 };
 
 /**
+ * Notifica todos os alunos matriculados sobre um novo vídeo/slide publicado,
+ * mesmo caminho de notifyNewAssignment/notifyNewQuiz. Era o tipo de aviso mais
+ * pedido pelos alunos — hoje só descobrem vídeo novo pelo canal do YouTube ou
+ * por alguém avisar no chat da turma.
+ *
+ * @param {string} courseId
+ * @param {Object} content - { id, title, category } (category: 'video'|'slide')
+ * @param {string} [courseTitle]
+ */
+export const notifyNewContent = async (courseId, content, courseTitle = "") => {
+  if (!courseId || !content?.id) return;
+  try {
+    const students = await fetchCourseStudentsEnriched(courseId);
+    const isSlide = content.category === "slide";
+
+    await Promise.all(
+      students
+        .filter((s) => s.role !== "teacher")
+        .map(async (student) => {
+          const prefs = await fetchPrefs(student.userId, courseId);
+          if (!acceptsInApp(prefs, "newContent")) return;
+          await createNotification(student.userId, {
+            type: "new_content",
+            courseId,
+            title: isSlide ? "Novo slide publicado" : "Novo vídeo publicado",
+            message: `${courseTitle ? courseTitle + ": " : ""}${
+              content.title || (isSlide ? "Slide" : "Vídeo")
+            }`,
+            link: `/classes?courseId=${courseId}`,
+          });
+        })
+    );
+    await sendNotificationEmail();
+  } catch (error) {
+    console.error("Erro ao notificar novo conteúdo:", error);
+  }
+};
+
+/**
+ * Avisa o aluno que o PROFESSOR mexeu na composição do grupo dele (moveu ou
+ * removeu de um grupo de trabalho). Não cobre entrar/sair pelo GroupPicker —
+ * aquelas são ações do próprio aluno, que já sabe que fez.
+ *
+ * @param {string} userId - aluno afetado
+ * @param {string} courseId
+ * @param {Object} assignment - { id, title }
+ * @param {'moved'|'removed'} action
+ */
+export const notifyGroupChanges = async (userId, courseId, assignment, action) => {
+  if (!userId || !courseId) return;
+  try {
+    const prefs = await fetchPrefs(userId, courseId);
+    if (!acceptsInApp(prefs, "groupChanges")) return;
+
+    const trabalho = assignment?.title || "um trabalho";
+    await createNotification(userId, {
+      type: "group_changes",
+      courseId,
+      assignmentId: assignment?.id || "",
+      title: "Mudança no seu grupo",
+      message:
+        action === "removed"
+          ? `Você foi removido do grupo em "${trabalho}".`
+          : `Você foi movido de grupo em "${trabalho}".`,
+      link: `/minhas-avaliacoes`,
+    });
+  } catch (error) {
+    console.error("Erro ao notificar mudança de grupo:", error);
+  }
+};
+
+/**
  * Notifica um aluno de que sua entrega foi avaliada.
  */
 export const notifyGrade = async (userId, courseId, assignment, grade) => {

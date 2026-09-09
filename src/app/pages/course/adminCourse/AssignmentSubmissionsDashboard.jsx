@@ -56,7 +56,7 @@ import {
   assignFeedback,
   getAssessmentGrades,
 } from "$api/services/courses/assessments";
-import { notifyGrade } from "$api/services/notifications";
+import { notifyGrade, notifyGroupChanges } from "$api/services/notifications";
 import { canAssignGrades } from "$api/utils/permissions";
 import { RichTextView } from "$components/common/RichTextEditor";
 
@@ -443,6 +443,7 @@ export default function AssignmentSubmissionsDashboard() {
       });
       toast.success("Aluno movido de grupo.");
       setGroups(await fetchGroups(courseId, assignmentId));
+      notifyGroupChanges(userId, courseId, assignment, "moved");
     } catch (err) {
       toast.error(err.message || "Erro ao mover aluno.");
     }
@@ -452,6 +453,7 @@ export default function AssignmentSubmissionsDashboard() {
     try {
       await removeMember(courseId, assignmentId, groupId, userId);
       setGroups(await fetchGroups(courseId, assignmentId));
+      notifyGroupChanges(userId, courseId, assignment, "removed");
     } catch (err) {
       toast.error(err.message || "Erro ao remover do grupo.");
     }
