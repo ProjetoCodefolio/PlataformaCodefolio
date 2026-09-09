@@ -36,6 +36,7 @@ const VideoList = ({
   videos,
   setCurrentVideo,
   onQuizStart,
+  onReviewQuiz,
   currentVideoId,
   userQuizAttempts = {},
   quizSettings = {}, // Config de tentativas por quiz (allowRetry/maxAttempts)
@@ -270,6 +271,29 @@ const VideoList = ({
                           >
                             Encerra {formatTimeRemaining(quizConfig.closeDate)}{" "}
                             · {formatQuizDate(quizConfig.closeDate)}
+                          </Typography>
+                        )}
+                      {onReviewQuiz &&
+                        userQuizAttempts[getQuizKey(video.quizId)]
+                          ?.attemptCount > 0 && (
+                          <Typography
+                            component="button"
+                            type="button"
+                            onClick={() => onReviewQuiz(video.quizId)}
+                            variant="caption"
+                            sx={{
+                              display: { xs: "none", sm: "block" },
+                              mt: 0.5,
+                              p: 0,
+                              border: "none",
+                              background: "none",
+                              color: "#666",
+                              textDecoration: "underline",
+                              cursor: "pointer",
+                              fontWeight: 500,
+                            }}
+                          >
+                            Ver minhas respostas
                           </Typography>
                         )}
                     </>

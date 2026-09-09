@@ -74,6 +74,7 @@ import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 import { loadFlippedClassroomForStudent } from "$api/services/courses/submissions";
 import AssignmentList from "$components/courses/assignments/AssignmentList";
 import QuestionFormModal from "$components/courses/questions/QuestionFormModal";
+import QuizAnswersReview from "$components/courses/quiz/QuizAnswersReview";
 
 const Classes = ({ alias = null, openQuestions = false }) => {
   const location = useLocation();
@@ -141,6 +142,10 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   // Quiz aguardando confirmação do aluno (só para quizzes com tentativas
   // limitadas): { attemptLimit, attemptsUsed, start }.
   const [pendingQuizStart, setPendingQuizStart] = useState(null);
+  // Quiz cuja última tentativa está sendo revisada (leitura pura, não
+  // consome tentativa nem passa pela porta de entrada canEnterQuiz):
+  // { quizId, quizKey }.
+  const [reviewingQuiz, setReviewingQuiz] = useState(null);
   const [slides, setSlides] = useState([]); // Novo estado para armazenar slides independentes
   // Adicionar uma verificação para determinar se o quiz é de vídeo ou slide
   const [quizSource, setQuizSource] = useState("video"); // Pode ser "video" ou "slide"
@@ -912,6 +917,16 @@ const Classes = ({ alias = null, openQuestions = false }) => {
     start();
   };
 
+  // Abre a revisão de uma tentativa já feita. Leitura pura: não passa por
+  // canEnterQuiz (não é uma nova entrada no quiz, é olhar o que já foi
+  // respondido) e não consome tentativa.
+  const handleReviewQuiz = (quizId) => {
+    if (!quizId) return;
+    const quizKey = quizId.includes("/") ? quizId.split("/")[1] : quizId;
+    const fullQuizId = quizId.includes("/") ? quizId : `${courseId}/${quizId}`;
+    setReviewingQuiz({ quizId: fullQuizId, quizKey });
+  };
+
   const handleQuizStart = (quizId, videoId) => {
     requestQuizStart(quizId, () => {
       setCurrentVideoId(videoId);
@@ -1582,6 +1597,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                     videos={contentItems}
                     setCurrentVideo={handleVideoSelect}
                     onQuizStart={handleQuizStart}
+                    onReviewQuiz={handleReviewQuiz}
                     currentVideoId={currentVideoId}
                     userQuizAttempts={userAttempts}
                     quizSettings={quizSettings}
@@ -1672,6 +1688,21 @@ const Classes = ({ alias = null, openQuestions = false }) => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <QuizAnswersReview
+          open={Boolean(reviewingQuiz)}
+          onClose={() => setReviewingQuiz(null)}
+          quizId={reviewingQuiz?.quizId}
+          detailedAnswers={userAttempts[reviewingQuiz?.quizKey]?.detailedAnswers}
+          canRetryQuiz={
+            !hasUserReachedQuizAttemptLimit(
+              userAttempts,
+              reviewingQuiz?.quizKey,
+              getQuizAttemptLimit(quizSettings[reviewingQuiz?.quizKey])
+            )
+          }
+          fullScreen={isMobileLayout}
+        />
 
         <QuestionFormModal
           open={showQuestionModal}
