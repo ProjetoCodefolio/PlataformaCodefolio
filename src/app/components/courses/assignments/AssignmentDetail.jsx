@@ -14,6 +14,10 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
+  IconButton,
+  Tooltip,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -21,6 +25,9 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
+import DownloadIcon from "@mui/icons-material/Download";
+import CloseIcon from "@mui/icons-material/Close";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import { toast } from "react-toastify";
@@ -40,6 +47,7 @@ import SubmissionForm from "./SubmissionForm";
 import GroupPicker from "./GroupPicker";
 import { RichTextView } from "$components/common/RichTextEditor";
 import { MarkdownView } from "$components/common/MarkdownEditor";
+import { htmlToMarkdown } from "$utils/markdown";
 
 const fmtDate = (iso) =>
   iso
@@ -170,6 +178,12 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
   const [loadingSub, setLoadingSub] = useState(false);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  // Leitura ampliada: o enunciado some espremido na coluna lateral de
+  // classes.jsx (~320-450px de largura). Reaproveitar o mesmo conteúdo num
+  // modal largo é bem mais barato que mudar aquele layout.
+  const [expandOpen, setExpandOpen] = useState(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const windowState = getWindowState(assignment);
   const scheduled = windowState === "scheduled";
@@ -210,6 +224,21 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
       dueDate: assignment.dueDate,
     });
     await loadSubmission();
+  };
+
+  // Sempre baixa .md: quando só existe o HTML legado, converte na hora — não
+  // faz sentido oferecer .md e entregar HTML cru para quem pediu.
+  const handleDownloadDescription = () => {
+    const markdown =
+      assignment.descriptionMarkdown || htmlToMarkdown(assignment.descriptionHtml || "");
+    if (!markdown.trim()) return;
+    const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `${assignment.title || "trabalho"}.md`);
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleWithdraw = async () => {
@@ -253,12 +282,27 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
         {/* Prazo em destaque com tempo restante */}
         <DeadlineBanner assignment={assignment} />
 
+        {(assignment.descriptionMarkdown || assignment.descriptionHtml) && (
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5, mt: 2.5 }}>
+            <Tooltip title="Abrir em tela cheia">
+              <IconButton size="small" onClick={() => setExpandOpen(true)} sx={{ color: "#9041c1" }}>
+                <OpenInFullIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Baixar enunciado (.md)">
+              <IconButton size="small" onClick={handleDownloadDescription} sx={{ color: "#9041c1" }}>
+                <DownloadIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+
         {/* Enunciado: markdown renderizado (ou HTML legado, para os antigos). */}
         {assignment.descriptionMarkdown ? (
-          <MarkdownView markdown={assignment.descriptionMarkdown} sx={{ mt: 2.5, fontSize: "1rem" }} />
+          <MarkdownView markdown={assignment.descriptionMarkdown} sx={{ mt: 1, fontSize: "1rem" }} />
         ) : (
           assignment.descriptionHtml && (
-            <RichTextView html={assignment.descriptionHtml} sx={{ mt: 2.5, fontSize: "1rem" }} />
+            <RichTextView html={assignment.descriptionHtml} sx={{ mt: 1, fontSize: "1rem" }} />
           )
         )}
 
@@ -382,6 +426,33 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
           </>
         )}
       </Paper>
+
+      <Dialog
+        open={expandOpen}
+        onClose={() => setExpandOpen(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", pr: 6 }}>
+          {assignment.title}
+          <IconButton
+            onClick={() => setExpandOpen(false)}
+            sx={{ position: "absolute", right: 8, top: 8, color: "#666" }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {assignment.descriptionMarkdown ? (
+            <MarkdownView markdown={assignment.descriptionMarkdown} sx={{ fontSize: "1rem" }} />
+          ) : (
+            assignment.descriptionHtml && (
+              <RichTextView html={assignment.descriptionHtml} sx={{ fontSize: "1rem" }} />
+            )
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirmWithdraw} onClose={() => !withdrawing && setConfirmWithdraw(false)}>
         <DialogTitle>Retirar entrega?</DialogTitle>
