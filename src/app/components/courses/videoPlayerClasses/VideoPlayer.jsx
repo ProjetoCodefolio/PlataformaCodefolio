@@ -13,7 +13,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
-import ReportIcon from "@mui/icons-material/Report";
+import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
 import EditIcon from "@mui/icons-material/Edit";
 import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -640,17 +640,17 @@ export const VideoPlayer = forwardRef(
             <IconButton
               onClick={() => setReportModalOpen(true)}
               sx={{
-                color: "#fff",
-                bgcolor: "#f44336",
+                color: "text.secondary",
+                bgcolor: "grey.200",
                 mr: 1,
                 p: 0.8,
                 "&:hover": {
-                  bgcolor: "#d32f2f",
+                  bgcolor: "grey.300",
                 },
               }}
               title="Reportar problema"
             >
-              <ReportIcon sx={{ fontSize: "18px" }} />
+              <OutlinedFlagIcon sx={{ fontSize: "18px" }} />
             </IconButton>
           </Box>
         </Box>

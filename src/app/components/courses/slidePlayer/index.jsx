@@ -4,7 +4,7 @@ import { Box, Typography, IconButton } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SchoolIcon from "@mui/icons-material/School";
 import PersonIcon from "@mui/icons-material/Person";
-import ReportIcon from "@mui/icons-material/Report";
+import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
 import EditIcon from "@mui/icons-material/Edit";
 import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
@@ -249,17 +249,17 @@ const SlidePlayer = ({
           <IconButton
             onClick={() => setReportModalOpen(true)}
             sx={{
-              color: "#fff",
-              bgcolor: "#f44336",
+              color: "text.secondary",
+              bgcolor: "grey.200",
               mr: 1,
               p: 0.8,
               "&:hover": {
-                bgcolor: "#d32f2f",
+                bgcolor: "grey.300",
               },
             }}
             title="Reportar problema"
           >
-            <ReportIcon sx={{ fontSize: "18px" }} />
+            <OutlinedFlagIcon sx={{ fontSize: "18px" }} />
           </IconButton>
         </Box>
       </Box>

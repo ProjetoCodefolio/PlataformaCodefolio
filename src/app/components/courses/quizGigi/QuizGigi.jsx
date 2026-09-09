@@ -21,7 +21,7 @@ import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import ReportIcon from "@mui/icons-material/Report";
+import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
 import { toast } from "react-toastify";
 import logo from "$assets/img/codefolio.png";
 import { database } from "$api/config/firebase";
@@ -384,15 +384,11 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
                 top: 20,
                 right: { xs: 135, sm: 145, md: 155 },
                 color: "#fff",
-                backgroundColor: "#f44336",
-                zIndex: 1600,
+                zIndex: 1500,
                 padding: { xs: "8px", sm: "10px", md: "12px" },
-                "&:hover": {
-                  backgroundColor: "#d32f2f",
-                },
               }}
             >
-              <ReportIcon fontSize="large" />
+              <OutlinedFlagIcon fontSize="large" />
             </IconButton>
           </Tooltip>
         )}
