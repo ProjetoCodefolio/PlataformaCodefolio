@@ -77,7 +77,11 @@ const descurte = (campo, dono, uid) =>
 
 const emuladorNoAr = await (async () => {
   try {
-    return (await fetch(`${BASE}/.json?ns=${NS}`)).ok;
+    // Qualquer resposta HTTP prova que o emulador respondeu — mesmo
+    // 401/403, já que a raiz nega leitura anônima por padrão. Só a exceção
+    // de rede no catch abaixo indica que ele não está de pé.
+    await fetch(`${BASE}/.json?ns=${NS}`);
+    return true;
   } catch {
     return false;
   }
