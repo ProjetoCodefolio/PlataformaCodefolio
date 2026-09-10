@@ -3,6 +3,7 @@ import { ref, push, set, get, update, query, orderByChild, onValue } from "fireb
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
 import { formatQuizDate } from "$api/services/courses/quizzes";
+import { sendNotificationEmailJS } from "$api/services/emailService";
 
 /**
  * Notificações in-app por usuário.
@@ -11,14 +12,17 @@ import { formatQuizDate } from "$api/services/courses/quizzes";
  *   notifications/{userId}/{notificationId}
  *     type, courseId, assignmentId, quizId, title, message, link, read, createdAt
  *
- * E-mail: mantido DESLIGADO por padrão. O envio de e-mail atual (reportes) usa
- * um template fixo do EmailJS e não serve para e-mailar alunos. Quando houver
- * um template dedicado, basta implementar o envio dentro do seam abaixo.
+ * E-mail: usa um template PRÓPRIO no EmailJS (ver VITE_NOTIFICATION_TEMPLATE_ID
+ * em emailService.js), diferente do de reporte de bug.
  */
 
-// Liga/desliga o envio de e-mail de notificação. Deixe false até existir um
-// template dedicado no EmailJS para enunciados.
-export const EMAIL_NOTIFICATIONS_ENABLED = false;
+// Liga/desliga o envio de e-mail de notificação. `import.meta.env.PROD` só é
+// true num `vite build` de verdade (app hospedado) — nunca em `npm run dev`,
+// mesmo com VITE_MODE=production no .env (que só controla o emulador do
+// banco). De propósito: sem essa separação, testar localmente contra o
+// Firebase real já dispararia e-mail de verdade para alunos matriculados de
+// verdade.
+export const EMAIL_NOTIFICATIONS_ENABLED = import.meta.env.PROD;
 
 /**
  * Cria uma notificação in-app para um usuário.
@@ -105,13 +109,36 @@ export const markAllAsRead = async (userId) => {
 };
 
 /**
- * Seam de envio de e-mail. Mantido como no-op enquanto
- * EMAIL_NOTIFICATIONS_ENABLED for false.
+ * Envia o e-mail de UMA notificação para UM destinatário. No-op fora de
+ * produção (EMAIL_NOTIFICATIONS_ENABLED) ou sem e-mail do destinatário —
+ * quem decide QUEM recebe (preferência por tipo) é o chamador.
  */
-const sendNotificationEmail = async () => {
-  if (!EMAIL_NOTIFICATIONS_ENABLED) return;
-  // TODO: quando houver template dedicado no EmailJS, enviar aqui com to_email
-  // dinâmico para cada aluno.
+const sendNotificationEmail = async ({ to, name, subject, message, link, courseTitle }) => {
+  if (!EMAIL_NOTIFICATIONS_ENABLED || !to) return;
+  try {
+    await sendNotificationEmailJS({ to, name, subject, message, link, courseTitle });
+  } catch (error) {
+    console.error("Erro ao enviar e-mail de notificação:", error);
+  }
+};
+
+/**
+ * Busca e-mail e nome de um único usuário — para as notificações de
+ * destinatário único (nota, mudança de grupo), que não passam por
+ * fetchCourseStudentsEnriched (esse já traz email/name prontos por aluno).
+ */
+const fetchUserEmailAndName = async (userId) => {
+  try {
+    const snapshot = await get(ref(database, `users/${userId}`));
+    const user = snapshot.val();
+    return {
+      email: user?.email || null,
+      name: user?.displayName || user?.firstName || user?.name || "",
+    };
+  } catch (error) {
+    console.error("Erro ao buscar e-mail do usuário:", error);
+    return { email: null, name: "" };
+  }
 };
 
 /**
@@ -127,6 +154,8 @@ export const notifyNewAssignment = async (courseId, assignment, courseTitle = ""
   if (!courseId || !assignment?.id) return;
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
+    const message = `${courseTitle ? courseTitle + ": " : ""}${assignment.title}`;
+
     await Promise.all(
       students
         .filter((s) => s.role !== "teacher")
@@ -138,12 +167,19 @@ export const notifyNewAssignment = async (courseId, assignment, courseTitle = ""
             courseId,
             assignmentId: assignment.id,
             title: "Novo enunciado publicado",
-            message: `${courseTitle ? courseTitle + ": " : ""}${assignment.title}`,
+            message,
             link: `/classes?courseId=${courseId}`,
+          });
+          await sendNotificationEmail({
+            to: student.email,
+            name: student.name,
+            subject: "Novo enunciado publicado",
+            message,
+            link: `/classes?courseId=${courseId}`,
+            courseTitle,
           });
         })
     );
-    await sendNotificationEmail();
   } catch (error) {
     console.error("Erro ao notificar novo enunciado:", error);
   }
@@ -201,9 +237,16 @@ export const notifyNewQuiz = async (courseId, quiz, courseTitle = "") => {
             message,
             link: `/classes?courseId=${courseId}`,
           });
+          await sendNotificationEmail({
+            to: student.email,
+            name: student.name,
+            subject: "Novo quiz publicado",
+            message,
+            link: `/classes?courseId=${courseId}`,
+            courseTitle,
+          });
         })
     );
-    await sendNotificationEmail();
   } catch (error) {
     console.error("Erro ao notificar novo quiz:", error);
   }
@@ -224,6 +267,10 @@ export const notifyNewContent = async (courseId, content, courseTitle = "") => {
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
     const isSlide = content.category === "slide";
+    const title = isSlide ? "Novo slide publicado" : "Novo vídeo publicado";
+    const message = `${courseTitle ? courseTitle + ": " : ""}${
+      content.title || (isSlide ? "Slide" : "Vídeo")
+    }`;
 
     await Promise.all(
       students
@@ -234,15 +281,20 @@ export const notifyNewContent = async (courseId, content, courseTitle = "") => {
           await createNotification(student.userId, {
             type: "new_content",
             courseId,
-            title: isSlide ? "Novo slide publicado" : "Novo vídeo publicado",
-            message: `${courseTitle ? courseTitle + ": " : ""}${
-              content.title || (isSlide ? "Slide" : "Vídeo")
-            }`,
+            title,
+            message,
             link: `/classes?courseId=${courseId}`,
+          });
+          await sendNotificationEmail({
+            to: student.email,
+            name: student.name,
+            subject: title,
+            message,
+            link: `/classes?courseId=${courseId}`,
+            courseTitle,
           });
         })
     );
-    await sendNotificationEmail();
   } catch (error) {
     console.error("Erro ao notificar novo conteúdo:", error);
   }
@@ -265,17 +317,24 @@ export const notifyGroupChanges = async (userId, courseId, assignment, action) =
     if (!acceptsInApp(prefs, "groupChanges")) return;
 
     const trabalho = assignment?.title || "um trabalho";
+    const title = "Mudança no seu grupo";
+    const message =
+      action === "removed"
+        ? `Você foi removido do grupo em "${trabalho}".`
+        : `Você foi movido de grupo em "${trabalho}".`;
+    const link = `/minhas-avaliacoes`;
+
     await createNotification(userId, {
       type: "group_changes",
       courseId,
       assignmentId: assignment?.id || "",
-      title: "Mudança no seu grupo",
-      message:
-        action === "removed"
-          ? `Você foi removido do grupo em "${trabalho}".`
-          : `Você foi movido de grupo em "${trabalho}".`,
-      link: `/minhas-avaliacoes`,
+      title,
+      message,
+      link,
     });
+
+    const { email, name } = await fetchUserEmailAndName(userId);
+    await sendNotificationEmail({ to: email, name, subject: title, message, link });
   } catch (error) {
     console.error("Erro ao notificar mudança de grupo:", error);
   }
@@ -289,14 +348,22 @@ export const notifyGrade = async (userId, courseId, assignment, grade) => {
   try {
     const prefs = await fetchPrefs(userId, courseId);
     if (!acceptsInApp(prefs, "grade")) return;
+
+    const title = "Nota lançada";
+    const message = `Você recebeu nota ${grade} em "${assignment?.title || "trabalho"}".`;
+    const link = `/minhas-avaliacoes`;
+
     await createNotification(userId, {
       type: "grade",
       courseId,
       assignmentId: assignment?.id || "",
-      title: "Nota lançada",
-      message: `Você recebeu nota ${grade} em "${assignment?.title || "trabalho"}".`,
-      link: `/minhas-avaliacoes`,
+      title,
+      message,
+      link,
     });
+
+    const { email, name } = await fetchUserEmailAndName(userId);
+    await sendNotificationEmail({ to: email, name, subject: title, message, link });
   } catch (error) {
     console.error("Erro ao notificar nota:", error);
   }
