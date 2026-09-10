@@ -1549,7 +1549,10 @@ const Classes = ({ alias = null, openQuestions = false }) => {
           <Box
             sx={{
               flex: { xs: 1, md: 2 },
-              height: { xs: "auto", md: "calc(100vh - 100px)" },
+              // "auto" no mobile deixava essa coluna crescer com a lista
+              // inteira de conteúdos, sem limite — a lista virava a página
+              // toda em vez de rolar dentro do próprio espaço.
+              height: { xs: "60vh", md: "calc(100vh - 100px)" },
               minWidth: { md: "320px" },
               width: "100%",
             }}
