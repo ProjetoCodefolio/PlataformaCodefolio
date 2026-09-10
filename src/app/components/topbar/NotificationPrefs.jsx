@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Dialog,
   DialogTitle,
@@ -130,7 +131,7 @@ export default function NotificationPrefs({ open, onClose, userId }) {
             <Divider sx={{ mb: 1 }} />
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                <CircularProgress size={22} sx={{ color: "#9041c1" }} />
+                <Loader size={22} />
               </Box>
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column" }}>

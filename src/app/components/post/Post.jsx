@@ -10,12 +10,13 @@ import Pagination from './components/pagination/Pagination';
 import CreatePostModal from './components/createPost/CreatePost';
 import { fetchPosts, abrirAlert } from '../../utils/postUtils';
 import { useAuth } from '$context/AuthContext';
-import { Box, Grid, CircularProgress } from '@mui/material';
+import { Box, Grid } from '@mui/material';
 import { FilterPost } from './components/filterPostCard';
 import PostCards from './components/postCard';
 import CourseListSideBar from './components/courseListSideBar';
 import * as S from './styles';
 import './post.css';
+import Loader from "$components/common/Loader";
 
 export default function Post({ member }) {
   const [posts, setPosts] = useState([]);
@@ -171,7 +172,7 @@ export default function Post({ member }) {
               {userRole === "admin" && <MyCards userPhoto={currentUser ? currentUser.photoURL : ""} setIsPostCreated={setIsPostCreated} />}
               {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
-                  <CircularProgress sx={{ color: 'black', width: '80px', height: '80px' }} />
+                  <Loader size={80} />
                 </Box>
               ) : (
                 posts.map((post) => (

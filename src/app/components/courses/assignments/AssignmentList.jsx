@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -6,7 +7,6 @@ import {
   CardActionArea,
   CardContent,
   Chip,
-  CircularProgress,
   Stack,
 } from "@mui/material";
 import AssignmentIcon from "@mui/icons-material/Assignment";
@@ -126,7 +126,7 @@ export default function AssignmentList({ courseId, userId }) {
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-        <CircularProgress sx={{ color: "#9041c1" }} />
+        <Loader />
       </Box>
     );
   }

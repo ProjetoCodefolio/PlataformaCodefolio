@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
   Button,
   Card,
   Chip,
-  CircularProgress,
   Alert,
   Stack,
   Avatar,
@@ -124,7 +124,7 @@ export default function GroupPicker({
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-        <CircularProgress size={24} sx={{ color: "#9041c1" }} />
+        <Loader size={24} />
       </Box>
     );
   }

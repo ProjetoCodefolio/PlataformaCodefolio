@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -12,7 +13,6 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  CircularProgress,
   Alert,
   Chip,
   Stack,
@@ -158,7 +158,7 @@ export default function CourseAssignmentsTab() {
       >
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
-            <CircularProgress sx={{ color: "#9041c1" }} />
+            <Loader />
           </Box>
         ) : assignments.length === 0 ? (
           <Alert severity="info">

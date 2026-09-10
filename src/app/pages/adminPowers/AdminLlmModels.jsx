@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -27,7 +28,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  CircularProgress,
   Alert,
 } from "@mui/material";
 import {
@@ -306,7 +306,7 @@ const AdminLlmModels = () => {
             pt: 8,
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
         </Box>
       </>
     );

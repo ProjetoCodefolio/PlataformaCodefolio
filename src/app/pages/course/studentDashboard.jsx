@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -12,7 +13,6 @@ import {
   TableRow,
   Button,
   IconButton,
-  CircularProgress,
   Card,
   CardContent,
   Grid,
@@ -258,7 +258,7 @@ const StudentDashboard = () => {
             backgroundColor: "#f9f9f9",
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
           <Typography variant="h6">Carregando dados do quiz...</Typography>
         </Box>
       </>
@@ -481,7 +481,7 @@ const StudentDashboard = () => {
                     variant="outlined"
                     startIcon={
                       recalcState === "previewing" ? (
-                        <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                        <Loader size={16} />
                       ) : (
                         <AutorenewIcon />
                       )

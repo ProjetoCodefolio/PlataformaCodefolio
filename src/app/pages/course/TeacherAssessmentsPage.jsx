@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -8,7 +9,6 @@ import {
   CardContent,
   CardActions,
   Button,
-  CircularProgress,
   Alert,
   Chip,
   IconButton,
@@ -240,7 +240,7 @@ const TeacherAssessmentsPage = () => {
             minHeight: "calc(100vh - 64px)",
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
         </Box>
       </Box>
     );

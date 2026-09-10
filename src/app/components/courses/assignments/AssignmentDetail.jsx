@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -385,7 +386,7 @@ export default function AssignmentDetail({ assignment, courseId, userId, onBack 
           </Alert>
         ) : loadingSub ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-            <CircularProgress size={22} sx={{ color: "#9041c1" }} />
+            <Loader size={22} />
           </Box>
         ) : (
           <>

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -165,7 +166,7 @@ function GradeInput({ storedGrade, disabled, saving, onCommit }) {
       />
       {saving ? (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <CircularProgress size={12} sx={{ color: "#9041c1" }} />
+          <Loader size={12} />
           <Typography variant="caption" sx={{ color: "#9041c1" }}>
             Salvando…
           </Typography>
@@ -471,7 +472,7 @@ export default function AssignmentSubmissionsDashboard() {
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-            <CircularProgress sx={{ color: "#9041c1" }} />
+            <Loader />
           </Box>
         ) : !assignment ? (
           <Alert severity="error">Enunciado não encontrado.</Alert>
@@ -825,7 +826,7 @@ function FeedbackInput({ storedFeedback, disabled, saving, onCommit }) {
       />
       {saving ? (
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-          <CircularProgress size={12} sx={{ color: "#9041c1" }} />
+          <Loader size={12} />
           <Typography variant="caption" sx={{ color: "#9041c1" }}>
             Salvando…
           </Typography>

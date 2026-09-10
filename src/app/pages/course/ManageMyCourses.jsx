@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -9,7 +10,6 @@ import {
   Button,
   Grid,
   Modal,
-  CircularProgress
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "$components/topbar/Topbar";
@@ -187,7 +187,7 @@ const ManageMyCourses = () => {
     if (loading) {
       return (
         <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-          <CircularProgress color="secondary" />
+          <Loader />
         </Box>
       );
     }

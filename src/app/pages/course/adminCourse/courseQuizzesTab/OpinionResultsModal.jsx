@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Alert,
   Box,
   Button,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -111,7 +111,7 @@ export default function OpinionResultsModal({
       <DialogContent dividers>
         {loading && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress sx={{ color: "#9041c1" }} />
+            <Loader />
           </Box>
         )}
 

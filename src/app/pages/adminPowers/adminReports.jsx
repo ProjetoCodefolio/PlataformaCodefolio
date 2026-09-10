@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -24,7 +25,6 @@ import {
   Avatar,
   Tooltip,
   Alert,
-  CircularProgress,
   Grid,
   Card,
   CardContent,
@@ -212,7 +212,7 @@ export default function AdminReports() {
             pt: 8,
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
         </Box>
       </>
     );

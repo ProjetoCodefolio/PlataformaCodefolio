@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Alert,
   Box,
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -194,7 +194,7 @@ export default function ImportContentModal({
 
         {loading && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-            <CircularProgress size={28} sx={{ color: ROXO }} />
+            <Loader size={28} />
           </Box>
         )}
 

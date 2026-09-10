@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -375,7 +376,7 @@ export default function MyAssessmentsPage() {
         {activeTab === 0 ? (
           loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress />
+              <Loader />
             </Box>
           ) : courses.length === 0 ? (
             <Typography>Você ainda não está matriculado em nenhum curso.</Typography>
@@ -418,7 +419,7 @@ export default function MyAssessmentsPage() {
 
               {assignmentsCountLoading ? (
                 <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, py: 8 }}>
-                  <CircularProgress />
+                  <Loader />
                   <Typography variant="body2" color="text.secondary">
                     Carregando trabalhos dos cursos...
                   </Typography>
@@ -531,7 +532,7 @@ export default function MyAssessmentsPage() {
           )
         ) : loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-            <CircularProgress />
+            <Loader />
           </Box>
         ) : (
           <>
@@ -582,7 +583,7 @@ export default function MyAssessmentsPage() {
                   py: 8,
                 }}
               >
-                <CircularProgress />
+                <Loader />
                 <Typography variant="body2" color="text.secondary">
                   Carregando avaliações dos cursos...
                 </Typography>
@@ -738,7 +739,7 @@ export default function MyAssessmentsPage() {
                                     py: 2,
                                   }}
                                 >
-                                  <CircularProgress size={20} />
+                                  <Loader size={20} />
                                 </Box>
                               ) : mapEntry.assessments &&
                                 mapEntry.assessments.length === 0 ? (

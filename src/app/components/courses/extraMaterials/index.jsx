@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
     Box,
     Typography,
@@ -6,7 +7,6 @@ import {
     Card,
     CardContent,
     CardActions,
-    CircularProgress,
 } from "@mui/material";
 import LinkIcon from "@mui/icons-material/Link";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -40,7 +40,7 @@ const MaterialExtra = ({ courseId }) => {
         <Box sx={{ p: { xs: 1, sm: 2 }, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
             {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", p: { xs: 2, sm: 5 } }}>
-                    <CircularProgress sx={{ color: "#9041c1" }} />
+                    <Loader />
                     <Typography variant="body1" sx={{ ml: 2, color: "#666" }}>
                         Carregando materiais...
                     </Typography>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -443,7 +444,7 @@ export default function CourseAssessmentsTab() {
 
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", my: 3 }}>
-            <CircularProgress sx={{ color: "#9041c1" }} />
+            <Loader />
           </Box>
         ) : assessments.length === 0 ? (
           <Alert severity="info">

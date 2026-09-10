@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Modal,
@@ -12,7 +13,6 @@ import {
   Button,
   IconButton,
   Divider,
-  CircularProgress,
   Chip,
   Tooltip,
   Collapse,
@@ -329,7 +329,7 @@ const QuestionFormModal = ({
                 <Box sx={{ pt: 1.5 }}>
                   {loadingMine ? (
                     <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                      <CircularProgress size={22} sx={{ color: PURPLE }} />
+                      <Loader size={22} />
                     </Box>
                   ) : myQuestions.length === 0 ? (
                     <Typography variant="body2" sx={{ color: "#999" }}>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -11,7 +12,6 @@ import {
   TableHead,
   TableRow,
   Button,
-  CircularProgress,
   Card,
   CardContent,
   Grid,
@@ -256,7 +256,7 @@ export default function QuizGradesOverview() {
             backgroundColor: "#f9f9f9",
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
         </Box>
       </>
     );

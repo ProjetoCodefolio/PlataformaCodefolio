@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SearchField from "$components/common/SearchField";
 import React, { useEffect, useState, forwardRef } from "react";
+import Loader from "$components/common/Loader";
 import {
     Box,
     Button,
@@ -12,7 +13,6 @@ import {
     Grid,
     Modal,
     Typography,
-    CircularProgress,
     Paper,
     Table,
     TableBody,
@@ -447,7 +447,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
 
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-                    <CircularProgress />
+                    <Loader />
                 </Box>
             ) : (
                 <Box>
@@ -608,7 +608,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                         </FormControl>
                                                         {updatingRole === student.userId && (
                                                             <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
-                                                                <CircularProgress size={20} sx={{ color: "#9041c1" }} />
+                                                                <Loader size={20} />
                                                             </Box>
                                                         )}
                                                     </TableCell>
@@ -755,7 +755,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
                                                     </FormControl>
                                                     {updatingRole === student.userId && (
                                                         <Box sx={{ display: "flex", justifyContent: "center", my: 0.5 }}>
-                                                            <CircularProgress size={20} sx={{ color: "#9041c1" }} />
+                                                            <Loader size={20} />
                                                         </Box>
                                                     )}
                                                 </Box>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Alert,
-  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -51,7 +51,7 @@ export default function CourseSourcePicker({
   }, [userDetails, excludeCourseId]);
 
   if (loading) {
-    return <CircularProgress size={24} sx={{ color: "#9041c1", my: 2 }} />;
+    return <Loader size={24} sx={{ my: 2 }} />;
   }
 
   if (error) {

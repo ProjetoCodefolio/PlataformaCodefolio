@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useTransition } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -805,7 +806,7 @@ export default function CourseGrades() {
         >
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-              <CircularProgress sx={{ color: "#9041c1" }} />
+              <Loader />
             </Box>
           ) : filteredAndSortedStudents.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 4 }}>
@@ -947,7 +948,7 @@ export default function CourseGrades() {
         <Box>
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-              <CircularProgress sx={{ color: "#9041c1" }} />
+              <Loader />
             </Box>
           ) : filteredAndSortedStudents.length === 0 ? (
             <Paper sx={{ p: 3, textAlign: 'center' }}>

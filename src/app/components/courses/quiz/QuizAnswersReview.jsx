@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Dialog,
   DialogTitle,
@@ -8,7 +9,6 @@ import {
   IconButton,
   Box,
   Typography,
-  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -95,7 +95,7 @@ const QuizAnswersReview = ({
       <DialogContent dividers sx={{ backgroundColor: "#F5F5FA" }}>
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-            <CircularProgress size={28} sx={{ color: "#9041c1" }} />
+            <Loader size={28} />
           </Box>
         ) : entries.length === 0 ? (
           <Typography sx={{ color: "#666", textAlign: "center", py: 2 }}>

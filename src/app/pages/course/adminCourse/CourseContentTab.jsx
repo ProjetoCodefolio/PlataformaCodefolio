@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -16,7 +17,6 @@ import {
   ListItemText,
   Chip,
   IconButton,
-  CircularProgress,
   Modal,
   Tooltip,
 } from "@mui/material";
@@ -634,7 +634,7 @@ const CourseContentTab = ({ courseId }) => {
           <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
             Ordem do Conteúdo
           </Typography>
-          {saving && <CircularProgress size={20} sx={{ color: PURPLE }} />}
+          {saving && <Loader size={20} />}
         </Box>
         <Button
           variant="outlined"
@@ -660,7 +660,7 @@ const CourseContentTab = ({ courseId }) => {
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-          <CircularProgress sx={{ color: PURPLE }} />
+          <Loader />
         </Box>
       ) : items.length === 0 ? (
         <Typography sx={{ color: "#999", textAlign: "center", py: 4 }}>

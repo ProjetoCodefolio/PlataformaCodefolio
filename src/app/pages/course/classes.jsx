@@ -4,12 +4,12 @@ import { VideoPlayer } from "$components/courses/videoPlayerClasses";
 import VideoList from "$components/courses/videoList";
 import MaterialExtra from "$components/courses/extraMaterials";
 import Quiz from "$components/courses/quiz";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Tabs,
   Tab,
   Typography,
-  CircularProgress,
   Divider,
   Button,
   Modal,
@@ -1339,7 +1339,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
           >
             {accessChecking ? (
               <>
-                <CircularProgress color="secondary" />
+                <Loader />
                 <Typography variant="body1">
                   Verificando acesso ao curso...
                 </Typography>
@@ -1479,7 +1479,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                   backgroundColor: "#F5F5FA",
                 }}
               >
-                <CircularProgress color="secondary" />
+                <Loader />
                 <Typography variant="body1" sx={{ ml: 2, color: "#888" }}>
                   Carregando vídeos...
                 </Typography>

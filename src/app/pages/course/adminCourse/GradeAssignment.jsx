@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -10,7 +11,6 @@ import {
   TableHead,
   TableRow,
   TextField,
-  CircularProgress,
   Alert,
   Stack,
   Avatar,
@@ -587,7 +587,7 @@ export default function GradeAssignmentPage() {
         >
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-              <CircularProgress sx={{ color: "#9041c1" }} />
+              <Loader />
             </Box>
           ) : (
             <>
@@ -846,7 +846,7 @@ export default function GradeAssignmentPage() {
                                   }}
                                 />
                                 {isSaving ? (
-                                  <CircularProgress size={20} />
+                                  <Loader size={20} />
                                 ) : isSaved ? (
                                   <CheckCircleIcon
                                     sx={{ color: "#4caf50", fontSize: 20 }}
@@ -1008,7 +1008,7 @@ export default function GradeAssignmentPage() {
                             }}
                           />
                           {isSaving ? (
-                            <CircularProgress size={20} />
+                            <Loader size={20} />
                           ) : isSaved ? (
                             <CheckCircleIcon
                               sx={{ color: "#4caf50", fontSize: 20 }}
