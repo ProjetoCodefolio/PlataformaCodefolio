@@ -12,6 +12,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PlayCircleIcon from "@mui/icons-material/PlayCircle";
@@ -45,6 +47,10 @@ const VideoList = ({
   advancedSettings, // Adicione advancedSettings aos props do componente
 }) => {
   const [pendingLimitUpdates, setPendingLimitUpdates] = useState({});
+  // Filtro local sobre a lista já carregada — sem busca no banco. "completed"
+  // aqui espelha a mesma definição usada no card (linha ~150): assistido (ou
+  // slide) e, havendo quiz, aprovado.
+  const [filter, setFilter] = useState("all");
 
   // Extrai a chave do quiz (id do conteúdo) a partir do video.quizId, que pode
   // vir como "courseId/videoId" ou apenas "videoId".
@@ -130,12 +136,59 @@ const VideoList = ({
     );
   };
 
+  const isContentCompleted = (video) =>
+    (video.isSlide ? true : video.watched) &&
+    (!video.quizId || video.quizPassed);
+
+  const filteredVideos = videos.filter((video) => {
+    if (filter === "unwatched") return !isContentCompleted(video);
+    if (filter === "quizPending")
+      return Boolean(video.quizId) && !video.quizPassed;
+    return true;
+  });
+
   return (
     <Box>
-      {videos.map((video, index) => {
-        // Pegar o vídeo anterior para verificações de bloqueio
-        const previousVideo = index > 0 ? videos[index - 1] : null;
-        
+      {videos.length > 0 && (
+        <ToggleButtonGroup
+          value={filter}
+          exclusive
+          size="small"
+          onChange={(_e, value) => value && setFilter(value)}
+          sx={{
+            mb: 2,
+            "& .MuiToggleButton-root": {
+              textTransform: "none",
+              fontSize: { xs: "0.75rem", sm: "0.8125rem" },
+              px: { xs: 1, sm: 1.5 },
+              color: "#666",
+              "&.Mui-selected": {
+                color: "#fff",
+                backgroundColor: "#9041c1",
+                "&:hover": { backgroundColor: "#7d37a7" },
+              },
+            },
+          }}
+        >
+          <ToggleButton value="all">Todos</ToggleButton>
+          <ToggleButton value="unwatched">Não assistidos</ToggleButton>
+          <ToggleButton value="quizPending">Quiz pendente</ToggleButton>
+        </ToggleButtonGroup>
+      )}
+
+      {filteredVideos.length === 0 && videos.length > 0 && (
+        <Typography variant="body2" sx={{ color: "#888", textAlign: "center", py: 3 }}>
+          Nada por aqui com esse filtro.
+        </Typography>
+      )}
+
+      {filteredVideos.map((video) => {
+        // O índice REAL no curso (não na lista filtrada) é o que importa para
+        // achar o vídeo anterior — isVideoLocked já faz o mesmo cálculo contra
+        // `videos` internamente; aqui é só para a mensagem do toast de bloqueio.
+        const actualIndex = videos.findIndex((v) => v.id === video.id);
+        const previousVideo = actualIndex > 0 ? videos[actualIndex - 1] : null;
+
         // Trava sequencial: vale para qualquer CONTEÚDO (vídeo ou slide) que
         // tenha requiresPrevious. Só é aplicada quando a config global
         // `requirePreviousCompletion` não está desligada.
@@ -146,10 +199,8 @@ const VideoList = ({
           locked = isVideoLocked(video, videos);
         }
         // Concluído = (assistido; slide conta como visto) E, havendo quiz,
-        // aprovado. Igual à definição do agregado (isContentCompleted).
-        const completed =
-          (video.isSlide ? true : video.watched) &&
-          (!video.quizId || video.quizPassed);
+        // aprovado. Igual à definição do agregado do curso.
+        const completed = isContentCompleted(video);
         const isCurrent = video.id === currentVideoId;
         // Quiz do slide fica disponível assim que o slide é acessível (não há
         // vídeo para "assistir"); o quiz do vídeo só libera após assistir.
