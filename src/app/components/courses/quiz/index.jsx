@@ -11,26 +11,20 @@ import {
   TextField,
 } from "@mui/material";
 import { fetchQuizQuestions } from "$api/services/courses/quizFetch";
-import {
-  validateQuizAnswers,
-  saveQuizResults,
-} from "$api/services/courses/quizSubmission";
+import { saveQuizResults } from "$api/services/courses/quizSubmission";
 import {
   normalizeAllowRetry,
   normalizeMaxAttempts,
 } from "$api/services/courses/quizWindow";
 import { useAuth } from "$context/AuthContext";
-import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { toast } from "react-toastify";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import QuestionImage from "$components/common/QuestionImage";
 import { MarkdownView } from "$components/common/MarkdownEditor";
 import {
   answerVerdict,
   isGradedQuestion,
-  isOpinionQuiz,
 } from "$api/services/courses/quizGrading";
 
 const Quiz = ({
@@ -44,8 +38,6 @@ const Quiz = ({
   userDetails,
   quizSource = "video",
   advancedSettings,
-  hasSlide,
-  onOpenSlide,
   attemptsUsed = 0,
 }) => {
   const [questions, setQuestions] = useState([]);
@@ -353,20 +345,6 @@ const Quiz = ({
     }
   };
 
-  const validateAnswers = (questions, userAnswers) => {
-    let earnedPoints = 0;
-    const totalPoints = questions.length;
-
-    questions.forEach((question) => {
-      const userAnswer = userAnswers[question.id];
-      if (userAnswer === question.correctOption) {
-        earnedPoints++;
-      }
-    });
-
-    return { earnedPoints, totalPoints };
-  };
-
   const handleRetry = () => {
     setQuizCompleted(false);
     setResult(null);
@@ -441,15 +419,6 @@ const Quiz = ({
     (quizMaxAttempts == null || totalAttempts < quizMaxAttempts);
   const shouldShowResults =
     advancedSettings?.quiz?.showResultAfterCompletion !== false;
-
-  const checkHasSlide = (videoId) => {
-    if (typeof hasSlide === "function") {
-      return hasSlide(videoId);
-    }
-    return false;
-  };
-
-  const videoHasSlide = checkHasSlide(currentVideoId);
 
   if (loading)
     return (
