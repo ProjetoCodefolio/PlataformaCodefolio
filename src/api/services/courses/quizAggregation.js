@@ -169,13 +169,18 @@ const fetchCustomQuizResult = async (userId, courseId, quizId) => {
 };
 
 /**
- * Calcula a nota de um quiz para um estudante
+ * Calcula a nota de um quiz para um estudante a partir dos resultados JÁ
+ * BUSCADOS de cada tipo (regular/live/custom). Função pura — sem I/O — para
+ * poder ser testada isoladamente sem depender do Firebase; `calculateQuizGrade`
+ * é só a camada de busca por cima dela.
  * @param {Object} quiz - Dados do quiz
- * @param {string} userId - ID do estudante
- * @param {string} courseId - ID do curso
- * @returns {Promise<Object>} - Nota calculada e detalhes
+ * @param {Object} results
+ * @param {Object|null} results.regularResult
+ * @param {Object} results.liveResult
+ * @param {Object} results.customResult
+ * @returns {Object} - Nota calculada e detalhes
  */
-const calculateQuizGrade = async (quiz, userId, courseId) => {
+export const computeQuizGradeFromResults = (quiz, { regularResult, liveResult, customResult }) => {
   // Só as questões que VALEM NOTA entram no cálculo: dissertativa é corrigida à
   // mão e questão sem resposta certa (escala Likert) não tem gabarito.
   const gradedList = gradedQuestions(quiz.questions);
@@ -185,13 +190,6 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
 
   const totalQuestions = gradedList.length;
   const totalOpenEnded = openEndedQuestions.length;
-  
-  // Buscar resultados de todos os tipos de quiz
-  const [regularResult, liveResult, customResult] = await Promise.all([
-    fetchRegularQuizResult(userId, courseId, quiz.id),
-    fetchLiveQuizResult(userId, courseId, quiz.id, totalQuestions),
-    fetchCustomQuizResult(userId, courseId, quiz.id),
-  ]);
 
   const regularCorrect = regularResult ? regularResult.correctAnswers || 0 : 0;
   const liveCorrect = liveResult.correctAnswers || 0;
@@ -263,6 +261,28 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
       liveWrong: liveResult.wrongAnswers || 0,
     },
   };
+};
+
+/**
+ * Calcula a nota de um quiz para um estudante: busca os resultados dos 3
+ * tipos de quiz (regular/live/custom) e delega o cálculo em si a
+ * `computeQuizGradeFromResults`.
+ * @param {Object} quiz - Dados do quiz
+ * @param {string} userId - ID do estudante
+ * @param {string} courseId - ID do curso
+ * @returns {Promise<Object>} - Nota calculada e detalhes
+ */
+const calculateQuizGrade = async (quiz, userId, courseId) => {
+  const totalQuestions = gradedQuestions(quiz.questions).length;
+
+  // Buscar resultados de todos os tipos de quiz
+  const [regularResult, liveResult, customResult] = await Promise.all([
+    fetchRegularQuizResult(userId, courseId, quiz.id),
+    fetchLiveQuizResult(userId, courseId, quiz.id, totalQuestions),
+    fetchCustomQuizResult(userId, courseId, quiz.id),
+  ]);
+
+  return computeQuizGradeFromResults(quiz, { regularResult, liveResult, customResult });
 };
 
 /**

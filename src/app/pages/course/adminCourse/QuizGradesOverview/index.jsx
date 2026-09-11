@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Loader from "$components/common/Loader";
 import {
@@ -30,33 +30,51 @@ import {
   DialogActions,
   Divider,
   LinearProgress,
-  Badge,
   Stack,
 } from "@mui/material";
 import { useTheme, useMediaQuery } from '@mui/material';
 import DownloadIcon from "@mui/icons-material/Download";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import QuizIcon from "@mui/icons-material/Quiz";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import PeopleIcon from "@mui/icons-material/People";
 import InfoIcon from "@mui/icons-material/Info";
 import CloseIcon from "@mui/icons-material/Close";
-import LiveTvIcon from "@mui/icons-material/LiveTv";
-import VideogameAssetIcon from "@mui/icons-material/VideogameAsset";
-import SchoolIcon from "@mui/icons-material/School";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { toast } from "react-toastify";
-import Topbar from "../../../components/topbar/Topbar";
-import BreadcrumbsComponent from "../../../components/common/BreadcrumbsComponent";
-import SortableHeader from "../../../components/common/SortableHeader";
+import Topbar from "$components/topbar/Topbar";
+import BreadcrumbsComponent from "$components/common/BreadcrumbsComponent";
+import SortableHeader from "$components/common/SortableHeader";
 import ReplayIcon from "@mui/icons-material/Replay";
-import {
-  fetchAggregatedQuizGrades,
-  exportQuizGradesToCSV,
-} from "../../../../api/services/courses/quizAggregation";
-import { restoreQuizAttempt } from "$api/services/courses/quizSubmission";
 import { MINIMUM_PASSING_GRADE, GRADE_COLORS } from "$api/constants/gradeConstants";
+
+import StudentIdentityCell from "../grades/StudentIdentityCell";
+import { formatGrade } from "../grades/formatGrade";
+import { useStudentSearchSort } from "../grades/hooks/useStudentSearchSort";
+import { useQuizGradesData } from "./hooks/useQuizGradesData";
+import { useRestoreAttempt } from "./hooks/useRestoreAttempt";
+import { useQuizGradesCsvExport } from "./hooks/useQuizGradesCsvExport";
+
+// Ordenação genérica por qualquer campo do estudante (nota/contadores/nome).
+// Não muta a lista recebida — diferente do array original de `data.students`.
+const sortStudentsByField = (list, sortField, sortOrder) => {
+  const copy = [...list];
+  copy.sort((a, b) => {
+    let aValue = a[sortField];
+    let bValue = b[sortField];
+
+    if (typeof aValue === "string") {
+      aValue = aValue.toLowerCase();
+      bValue = bValue.toLowerCase();
+    }
+
+    if (sortOrder === "asc") {
+      return aValue > bValue ? 1 : -1;
+    } else {
+      return aValue < bValue ? 1 : -1;
+    }
+  });
+  return copy;
+};
 
 export default function QuizGradesOverview() {
   const navigate = useNavigate();
@@ -65,144 +83,35 @@ export default function QuizGradesOverview() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
-  // Quiz cuja tentativa o professor pediu para devolver (aguardando confirmação).
-  const [attemptToRestore, setAttemptToRestore] = useState(null);
-  const [restoringAttempt, setRestoringAttempt] = useState(false);
 
-  // Carregar dados
-  useEffect(() => {
-    const loadData = async () => {
-      if (!courseId) {
-        toast.error("ID do curso não fornecido");
-        setLoading(false);
-        return;
-      }
+  const { loading, data, reload } = useQuizGradesData({ courseId });
+  const restoreAttempt = useRestoreAttempt({
+    courseId,
+    reload,
+    onRestored: setSelectedStudent,
+  });
+  const { handleExportCSV } = useQuizGradesCsvExport({ courseId, data });
 
-      try {
-        setLoading(true);
-        const result = await fetchAggregatedQuizGrades(courseId);
-        setData(result);
-      } catch (error) {
-        console.error("Erro ao carregar notas:", error);
-        toast.error("Erro ao carregar notas dos quizzes");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [courseId]);
-
-  // Devolve uma tentativa ao aluno e recarrega os dados, mantendo o modal do
-  // aluno aberto com os números atualizados.
-  const handleConfirmRestoreAttempt = async () => {
-    if (!attemptToRestore) return;
-    const { userId, quizId } = attemptToRestore;
-
-    try {
-      setRestoringAttempt(true);
-      const result = await restoreQuizAttempt(userId, courseId, quizId);
-
-      if (!result.success) {
-        toast.error(result.error || "Não foi possível devolver a tentativa.");
-        return;
-      }
-
-      toast.success("Tentativa devolvida ao aluno.");
-      const refreshed = await fetchAggregatedQuizGrades(courseId);
-      setData(refreshed);
-      setSelectedStudent(
-        refreshed?.students?.find((s) => s.userId === userId) || null
-      );
-    } catch (error) {
-      console.error("Erro ao devolver tentativa:", error);
-      toast.error("Erro ao devolver a tentativa.");
-    } finally {
-      setRestoringAttempt(false);
-      setAttemptToRestore(null);
-    }
-  };
-
-  // Filtrar e ordenar estudantes
-  const getFilteredAndSortedStudents = () => {
-    if (!data || !data.students) return [];
-
-    let filtered = data.students;
-
-    // Filtrar por busca
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (student) =>
-          student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          student.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Ordenar
-    filtered.sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
-
-      if (typeof aValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
-      }
-
-      if (sortOrder === "asc") {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  };
-
-  // Exportar CSV
-  const handleExportCSV = () => {
-    if (!data) return;
-
-    try {
-      const csv = exportQuizGradesToCSV(
-        data.students, 
-        data.quizzes, 
-        data.videoNames || {}, 
-        data.slideNames || {}
-      );
-      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute(
-        "download",
-        `notas_quizzes_${courseId}_${new Date().toISOString().split("T")[0]}.csv`
-      );
-      link.click();
-      toast.success("Arquivo CSV exportado com sucesso!");
-    } catch (error) {
-      console.error("Erro ao exportar CSV:", error);
-      toast.error("Erro ao exportar arquivo");
-    }
-  };
+  const {
+    searchTerm,
+    setSearchTerm,
+    sortField,
+    setSortField: setSortFieldRaw,
+    sortOrder,
+    setSortOrder: setSortOrderRaw,
+    handleSortClick,
+    filteredAndSorted: filteredStudents,
+  } = useStudentSearchSort(data?.students || [], {
+    initialSortField: "name",
+    sortFn: sortStudentsByField,
+    matchesSearch: (student, term) =>
+      student.name.toLowerCase().includes(term) || student.email.toLowerCase().includes(term),
+  });
 
   const handleBack = () => {
     navigate(`/adm-cursos?courseId=${courseId}&tab=2`);
-  };
-
-  const handleSortClick = (field) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortOrder("asc");
-    }
   };
 
   const handleOpenDetails = (student) => {
@@ -215,17 +124,9 @@ export default function QuizGradesOverview() {
     setSelectedStudent(null);
   };
 
-  const fmt = (n) =>
-    Number.isFinite(n)
-      ? n.toLocaleString("pt-BR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })
-      : "0,00";
-
   const getQuizDisplayName = (quiz) => {
     if (!data) return quiz.quizName;
-    
+
     if (quiz.isSlideQuiz) {
       const slideId = quiz.quizId.replace("slide_", "");
       return data.slideNames?.[slideId] || quiz.quizName;
@@ -275,8 +176,6 @@ export default function QuizGradesOverview() {
     );
   }
 
-  const filteredStudents = getFilteredAndSortedStudents();
-
   return (
     <>
       <Topbar hideSearch={true} />
@@ -317,9 +216,9 @@ export default function QuizGradesOverview() {
         {/* Título */}
         <Typography
           variant="h4"
-          sx={{ 
-            fontWeight: "bold", 
-            mb: 3, 
+          sx={{
+            fontWeight: "bold",
+            mb: 3,
             color: "#333",
             fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
           }}
@@ -334,25 +233,25 @@ export default function QuizGradesOverview() {
               <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                   <TrendingUpIcon sx={{ color: "#9041c1", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                  <Typography 
-                    variant="subtitle2" 
+                  <Typography
+                    variant="subtitle2"
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                   >
                     Média Geral da Turma
                   </Typography>
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
+                <Typography
+                  variant="h4"
+                  sx={{
                     fontWeight: "bold",
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                   }}
                 >
-                  {fmt(data.summary.averageClassGrade)}
+                  {formatGrade(data.summary.averageClassGrade)}
                 </Typography>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   color="text.secondary"
                   sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                 >
@@ -371,25 +270,25 @@ export default function QuizGradesOverview() {
               <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                   <QuizIcon sx={{ color: "#2196f3", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                  <Typography 
-                    variant="subtitle2" 
+                  <Typography
+                    variant="subtitle2"
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                   >
                     Total de Quizzes
                   </Typography>
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
+                <Typography
+                  variant="h4"
+                  sx={{
                     fontWeight: "bold",
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                   }}
                 >
                   {data.summary.totalQuizzes}
                 </Typography>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   color="text.secondary"
                   sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                 >
@@ -404,25 +303,25 @@ export default function QuizGradesOverview() {
               <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                   <PeopleIcon sx={{ color: "#ff9800", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                  <Typography 
-                    variant="subtitle2" 
+                  <Typography
+                    variant="subtitle2"
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                   >
                     Total de Estudantes
                   </Typography>
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
+                <Typography
+                  variant="h4"
+                  sx={{
                     fontWeight: "bold",
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                   }}
                 >
                   {data.summary.totalStudents}
                 </Typography>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   color="text.secondary"
                   sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                 >
@@ -437,26 +336,26 @@ export default function QuizGradesOverview() {
               <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
                   <CheckCircleIcon sx={{ color: "#4caf50", fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                  <Typography 
-                    variant="subtitle2" 
+                  <Typography
+                    variant="subtitle2"
                     color="text.secondary"
                     sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}
                   >
                     Conclusão Completa
                   </Typography>
                 </Box>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: "bold", 
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: "bold",
                     color: "#4caf50",
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                   }}
                 >
                   {data.summary.studentsWithAllQuizzes}
                 </Typography>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   color="text.secondary"
                   sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                 >
@@ -496,7 +395,7 @@ export default function QuizGradesOverview() {
                 <InputLabel>Ordenar por</InputLabel>
                 <Select
                   value={sortField}
-                  onChange={(e) => setSortField(e.target.value)}
+                  onChange={(e) => setSortFieldRaw(e.target.value)}
                   label="Ordenar por"
                 >
                   <MenuItem value="name">Nome</MenuItem>
@@ -511,7 +410,7 @@ export default function QuizGradesOverview() {
                 <InputLabel>Ordem</InputLabel>
                 <Select
                   value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
+                  onChange={(e) => setSortOrderRaw(e.target.value)}
                   label="Ordem"
                 >
                   <MenuItem value="asc">Crescente</MenuItem>
@@ -598,7 +497,7 @@ export default function QuizGradesOverview() {
                       </TableCell>
                       <TableCell align="center">
                         <Chip
-                          label={fmt(student.averageGrade)}
+                          label={formatGrade(student.averageGrade)}
                           color={
                             student.averageGrade >= MINIMUM_PASSING_GRADE
                               ? "success"
@@ -651,8 +550,8 @@ export default function QuizGradesOverview() {
 
           {filteredStudents.length > 0 && (
             <Box sx={{ p: 2, textAlign: "right", backgroundColor: "#f5f5f5" }}>
-              <Typography 
-                variant="body2" 
+              <Typography
+                variant="body2"
                 color="text.secondary"
                 sx={{ fontSize: { xs: '0.813rem', sm: '0.875rem' } }}
               >
@@ -683,44 +582,9 @@ export default function QuizGradesOverview() {
                   <CardContent sx={{ p: 2 }}>
                     {/* Cabeçalho do Card */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Avatar
-                        src={student.photoURL}
-                        alt={student.name}
-                        sx={{
-                          width: 50,
-                          height: 50,
-                          backgroundColor: "#9041c1",
-                        }}
-                      >
-                        {student.name.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography 
-                          variant="body1" 
-                          sx={{ 
-                            fontWeight: 600,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}
-                        >
-                          {student.name}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary"
-                          sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            display: 'block'
-                          }}
-                        >
-                          {student.email}
-                        </Typography>
-                      </Box>
+                      <StudentIdentityCell student={student} avatarSize={50} truncate showEmail />
                       <Chip
-                        label={fmt(student.averageGrade)}
+                        label={formatGrade(student.averageGrade)}
                         color={
                           student.averageGrade >= MINIMUM_PASSING_GRADE
                             ? "success"
@@ -809,9 +673,9 @@ export default function QuizGradesOverview() {
                     {selectedStudent.name.charAt(0).toUpperCase()}
                   </Avatar>
                   <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography 
-                      variant="h6" 
-                      sx={{ 
+                    <Typography
+                      variant="h6"
+                      sx={{
                         fontSize: { xs: '1rem', sm: '1.25rem' },
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -820,9 +684,9 @@ export default function QuizGradesOverview() {
                     >
                       {selectedStudent.name}
                     </Typography>
-                    <Typography 
-                      variant="caption" 
-                      sx={{ 
+                    <Typography
+                      variant="caption"
+                      sx={{
                         opacity: 0.9,
                         fontSize: { xs: '0.7rem', sm: '0.75rem' },
                         display: 'block',
@@ -845,10 +709,10 @@ export default function QuizGradesOverview() {
               <DialogContent sx={{ mt: 2, p: { xs: 2, sm: 3 } }}>
                 {/* Resumo Geral */}
                 <Box sx={{ mb: 3 }}>
-                  <Typography 
-                    variant="h6" 
-                    sx={{ 
-                      mb: 2, 
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      mb: 2,
                       fontWeight: "bold",
                       fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                     }}
@@ -858,18 +722,18 @@ export default function QuizGradesOverview() {
                   <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                     <Grid item xs={6} sm={6} md={3}>
                       <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography 
-                          variant="h4" 
-                          sx={{ 
-                            fontWeight: "bold", 
+                        <Typography
+                          variant="h4"
+                          sx={{
+                            fontWeight: "bold",
                             color: "#9041c1",
                             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                           }}
                         >
-                          {fmt(selectedStudent.averageGrade)}
+                          {formatGrade(selectedStudent.averageGrade)}
                         </Typography>
-                        <Typography 
-                          variant="caption" 
+                        <Typography
+                          variant="caption"
                           color="text.secondary"
                           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                         >
@@ -879,17 +743,17 @@ export default function QuizGradesOverview() {
                     </Grid>
                     <Grid item xs={6} sm={6} md={3}>
                       <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography 
-                          variant="h4" 
-                          sx={{ 
+                        <Typography
+                          variant="h4"
+                          sx={{
                             fontWeight: "bold",
                             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                           }}
                         >
                           {selectedStudent.attemptedQuizzes}/{selectedStudent.totalQuizzes}
                         </Typography>
-                        <Typography 
-                          variant="caption" 
+                        <Typography
+                          variant="caption"
                           color="text.secondary"
                           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                         >
@@ -899,18 +763,18 @@ export default function QuizGradesOverview() {
                     </Grid>
                     <Grid item xs={6} sm={6} md={3}>
                       <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography 
-                          variant="h4" 
-                          sx={{ 
-                            fontWeight: "bold", 
+                        <Typography
+                          variant="h4"
+                          sx={{
+                            fontWeight: "bold",
                             color: "#4caf50",
                             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                           }}
                         >
                           {selectedStudent.passedQuizzes}/{selectedStudent.totalEvaluative}
                         </Typography>
-                        <Typography 
-                          variant="caption" 
+                        <Typography
+                          variant="caption"
                           color="text.secondary"
                           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                         >
@@ -920,17 +784,17 @@ export default function QuizGradesOverview() {
                     </Grid>
                     <Grid item xs={6} sm={6} md={3}>
                       <Paper sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f5f5f5" }}>
-                        <Typography 
-                          variant="h4" 
-                          sx={{ 
+                        <Typography
+                          variant="h4"
+                          sx={{
                             fontWeight: "bold",
                             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
                           }}
                         >
                           {selectedStudent.completionRate}%
                         </Typography>
-                        <Typography 
-                          variant="caption" 
+                        <Typography
+                          variant="caption"
                           color="text.secondary"
                           sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' } }}
                         >
@@ -944,10 +808,10 @@ export default function QuizGradesOverview() {
                 <Divider sx={{ my: 3 }} />
 
                 {/* Detalhes por Quiz */}
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    mb: 2, 
+                <Typography
+                  variant="h6"
+                  sx={{
+                    mb: 2,
                     fontWeight: "bold",
                     fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
                   }}
@@ -961,7 +825,7 @@ export default function QuizGradesOverview() {
                   </Typography>
                 ) : (
                   <Box sx={{ maxHeight: 400, overflowY: "auto" }}>
-                    {selectedStudent.quizGrades.map((quiz, index) => (
+                    {selectedStudent.quizGrades.map((quiz) => (
                       <Paper
                         key={quiz.quizId}
                         sx={{
@@ -978,9 +842,9 @@ export default function QuizGradesOverview() {
                         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
                           <Box sx={{ flex: 1 }}>
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}>
-                              <Typography 
-                                variant="subtitle1" 
-                                sx={{ 
+                              <Typography
+                                variant="subtitle1"
+                                sx={{
                                   fontWeight: "bold",
                                   color: "#9041c1",
                                   cursor: "pointer",
@@ -1042,7 +906,7 @@ export default function QuizGradesOverview() {
                                 size="small"
                                 startIcon={<ReplayIcon />}
                                 onClick={() =>
-                                  setAttemptToRestore({
+                                  restoreAttempt.setAttemptToRestore({
                                     userId: selectedStudent.userId,
                                     studentName: selectedStudent.name,
                                     quizId: quiz.quizId,
@@ -1089,7 +953,7 @@ export default function QuizGradesOverview() {
                                   },
                                 }}
                               />
-                              
+
                               {quiz.hasBonus && (
                                 <>
                                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5, mt: 1.5 }}>
@@ -1112,13 +976,13 @@ export default function QuizGradesOverview() {
                                       },
                                     }}
                                   />
-                                  
-                                  <Box sx={{ 
-                                    display: "flex", 
-                                    justifyContent: "space-between", 
+
+                                  <Box sx={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
                                     alignItems: "center",
-                                    mt: 1.5, 
-                                    pt: 1.5, 
+                                    mt: 1.5,
+                                    pt: 1.5,
                                     borderTop: '2px solid #ff9800',
                                     bgcolor: '#f3e5f5',
                                     p: 1.5,
@@ -1134,8 +998,8 @@ export default function QuizGradesOverview() {
                                     </Box>
                                     <Chip
                                       label={`${quiz.grade.toFixed(2)}`}
-                                      sx={{ 
-                                        fontWeight: "bold", 
+                                      sx={{
+                                        fontWeight: "bold",
                                         fontSize: '1.1rem',
                                         bgcolor: '#9c27b0',
                                         color: 'white',
@@ -1189,16 +1053,16 @@ export default function QuizGradesOverview() {
 
         {/* Confirmação: devolver uma tentativa ao aluno */}
         <Dialog
-          open={Boolean(attemptToRestore)}
-          onClose={() => !restoringAttempt && setAttemptToRestore(null)}
+          open={Boolean(restoreAttempt.attemptToRestore)}
+          onClose={() => !restoreAttempt.restoringAttempt && restoreAttempt.setAttemptToRestore(null)}
         >
           <DialogTitle sx={{ fontWeight: "bold" }}>Devolver uma tentativa?</DialogTitle>
           <DialogContent>
             <Typography variant="body2">
-              {attemptToRestore?.studentName} poderá refazer o quiz{" "}
-              <strong>{attemptToRestore?.quizName}</strong>: as tentativas usadas
-              passam de {attemptToRestore?.attemptCount} para{" "}
-              {Math.max((attemptToRestore?.attemptCount || 1) - 1, 0)}.
+              {restoreAttempt.attemptToRestore?.studentName} poderá refazer o quiz{" "}
+              <strong>{restoreAttempt.attemptToRestore?.quizName}</strong>: as tentativas usadas
+              passam de {restoreAttempt.attemptToRestore?.attemptCount} para{" "}
+              {Math.max((restoreAttempt.attemptToRestore?.attemptCount || 1) - 1, 0)}.
             </Typography>
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>
               A nota e as respostas já registradas são preservadas.
@@ -1206,19 +1070,19 @@ export default function QuizGradesOverview() {
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
             <Button
-              onClick={() => setAttemptToRestore(null)}
-              disabled={restoringAttempt}
+              onClick={() => restoreAttempt.setAttemptToRestore(null)}
+              disabled={restoreAttempt.restoringAttempt}
               sx={{ color: "#666", textTransform: "none" }}
             >
               Cancelar
             </Button>
             <Button
               variant="contained"
-              onClick={handleConfirmRestoreAttempt}
-              disabled={restoringAttempt}
+              onClick={restoreAttempt.handleConfirmRestoreAttempt}
+              disabled={restoreAttempt.restoringAttempt}
               sx={{ bgcolor: "#9041c1", textTransform: "none" }}
             >
-              {restoringAttempt ? "Devolvendo..." : "Devolver tentativa"}
+              {restoreAttempt.restoringAttempt ? "Devolvendo..." : "Devolver tentativa"}
             </Button>
           </DialogActions>
         </Dialog>
