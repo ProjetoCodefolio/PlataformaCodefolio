@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { generateQuestionsWithFallback } from "./quizGenerator";
-import { QUESTION_TYPES } from "./quizGenerator";
+import { generateQuestionsWithFallback } from "./orchestrator";
+import { QUESTION_TYPES } from "./constants";
 
 afterEach(() => {
   vi.restoreAllMocks();

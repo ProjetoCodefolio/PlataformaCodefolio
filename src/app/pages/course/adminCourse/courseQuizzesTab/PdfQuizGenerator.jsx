@@ -37,14 +37,10 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import KeyIcon from "@mui/icons-material/Key";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import { toast } from "react-toastify";
-import {
-  GROQ_MODELS,
-  QUESTION_TYPES,
-  createDefaultPrompt,
-  JSON_FORMAT_INSTRUCTION,
-  formatFriendlyError,
-  processPdfAndGenerateQuestions
-} from "$api/services/courses/quizGenerator";
+import { GROQ_MODELS, QUESTION_TYPES } from "$api/services/courses/quizGenerator/constants";
+import { createDefaultPrompt, JSON_FORMAT_INSTRUCTION } from "$api/services/courses/quizGenerator/promptBuilder";
+import { formatFriendlyError } from "$api/services/courses/quizGenerator/errors";
+import { processPdfAndGenerateQuestions } from "$api/services/courses/quizGenerator/orchestrator";
 import { fetchAllLlmModels } from "$api/services/courses/llmModels";
 
 const PdfQuizGenerator = ({ onQuestionsGenerated }) => {

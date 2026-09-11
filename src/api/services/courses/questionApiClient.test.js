@@ -4,7 +4,7 @@ import {
   shouldFallbackToGroq,
   generateQuestionsWithQuestionApi,
 } from "./questionApiClient";
-import { QUESTION_TYPES } from "./quizGenerator";
+import { QUESTION_TYPES } from "./quizGenerator/constants";
 
 const okResponse = (body) => ({
   ok: true,
