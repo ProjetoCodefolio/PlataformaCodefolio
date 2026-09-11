@@ -47,13 +47,7 @@ import {
 } from "$api/services/courses/quizGenerator";
 import { fetchAllLlmModels } from "$api/services/courses/llmModels";
 
-const PdfQuizGenerator = ({
-  onQuestionsGenerated,
-  setEditQuestion,
-  setNewQuizQuestion,
-  setNewQuizOptions,
-  setNewQuizCorrectOption,
-}) => {
+const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
   const [pdfFile, setPdfFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
