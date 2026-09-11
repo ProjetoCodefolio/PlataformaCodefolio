@@ -105,3 +105,103 @@ export const hasVerdict = (answer) => {
   const veredito = answerVerdict(answer);
   return veredito === "correct" || veredito === "incorrect";
 };
+
+/**
+ * Calcula o resultado de uma tentativa de quiz a partir das respostas do
+ * aluno: nota (só entre as questões que valem nota), aprovação/reprovação e o
+ * detalhamento de cada questão usado tanto na tela de resultado quanto na
+ * gravação em `saveQuizResults`.
+ *
+ * Dissertativa nunca entra na nota (corrigida à mão) e pergunta de opinião
+ * registra a escolha do aluno sem contribuir para `earnedPoints`/`totalPoints`
+ * — sem isso a distribuição de respostas de opinião ficaria sem dado.
+ *
+ * @param {Array} questions
+ * @param {Object} multipleChoiceAnswers - respostas de múltipla escolha, por questionId
+ * @param {Object} openEndedAnswers - respostas dissertativas, por questionId
+ * @param {number} minPercentage - percentual mínimo de aprovação
+ * @returns {{isPassed:boolean, scorePercentage:number, minPercentage:number,
+ *   earnedPoints:number, totalPoints:number, hasOpenEnded:boolean,
+ *   answersDetails:Array, multipleChoiceQuestions:Array,
+ *   filteredMultipleChoiceAnswers:Object}}
+ */
+export const computeQuizAttemptResult = (
+  questions,
+  multipleChoiceAnswers = {},
+  openEndedAnswers = {},
+  minPercentage
+) => {
+  let earnedPoints = 0;
+  let totalMultipleChoice = 0;
+  const answersDetails = [];
+
+  const lista = Array.isArray(questions) ? questions : [];
+
+  lista.forEach((question) => {
+    if (question.questionType === "open-ended") {
+      const answer = openEndedAnswers[question.id] || "";
+      answersDetails.push({
+        questionId: question.id,
+        question: question.question,
+        questionType: "open-ended",
+        answer,
+        isCorrect: null,
+      });
+    } else if (!isGradedQuestion(question)) {
+      answersDetails.push({
+        questionId: question.id,
+        question: question.question,
+        questionType: "multiple-choice",
+        graded: false,
+        scale: question.scale || null,
+        options: question.options,
+        userOption: Number(multipleChoiceAnswers[question.id] ?? -1),
+        isCorrect: null,
+      });
+    } else {
+      totalMultipleChoice++;
+      const userAnswer = Number(multipleChoiceAnswers[question.id] || 0);
+      const correctOption = Number(question.correctOption);
+      const isCorrect = userAnswer === correctOption;
+
+      if (isCorrect) earnedPoints++;
+
+      answersDetails.push({
+        questionId: question.id,
+        question: question.question,
+        questionType: "multiple-choice",
+        options: question.options,
+        correctOption,
+        userOption: userAnswer,
+        isCorrect,
+      });
+    }
+  });
+
+  const scorePercentage =
+    totalMultipleChoice > 0 ? (earnedPoints / totalMultipleChoice) * 100 : 100;
+  const minRequired = Number(minPercentage);
+  const isPassed = scorePercentage >= minRequired;
+
+  const multipleChoiceQuestions = lista.filter(
+    (q) => q.questionType !== "open-ended"
+  );
+  const filteredMultipleChoiceAnswers = {};
+  multipleChoiceQuestions.forEach((q) => {
+    if (multipleChoiceAnswers[q.id] !== undefined) {
+      filteredMultipleChoiceAnswers[q.id] = multipleChoiceAnswers[q.id];
+    }
+  });
+
+  return {
+    isPassed,
+    scorePercentage,
+    minPercentage: minRequired,
+    earnedPoints,
+    totalPoints: totalMultipleChoice,
+    hasOpenEnded: Object.keys(openEndedAnswers).length > 0,
+    answersDetails,
+    multipleChoiceQuestions,
+    filteredMultipleChoiceAnswers,
+  };
+};
