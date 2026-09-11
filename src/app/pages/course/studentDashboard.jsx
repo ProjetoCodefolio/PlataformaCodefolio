@@ -32,7 +32,6 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { useTheme, useMediaQuery } from '@mui/material';
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
@@ -59,8 +58,6 @@ const StudentDashboard = () => {
   const params = new URLSearchParams(location.search);
   const quizId = params.get("quizId");
   const { userDetails } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   // Estados para armazenar dados
   const [quiz, setQuiz] = useState(null);
@@ -216,10 +213,6 @@ const StudentDashboard = () => {
       (s.correctAnswers || 0) +
       (liveQuizResults[s.userId]?.correctAnswers || 0) +
       (customQuizResults[s.userId]?.correctAnswers || 0),
-  };
-
-  const handleSearch = (term) => {
-    setSearchTerm(term);
   };
 
   const handleTabChange = (event, newValue) => {
@@ -1521,7 +1514,7 @@ const StudentAnswersDetail = ({ student }) => (
       <Box>
         {Object.entries(student.detailedAnswers)
           // Sort questions by their keys or try to extract question numbers
-          .sort(([keyA, detailA], [keyB, detailB]) => {
+          .sort(([keyA], [keyB]) => {
             // Try to extract numbers from the keys (e.g., "q2" -> 2)
             const numA = parseInt(keyA.replace(/\D/g, '')) || 0;
             const numB = parseInt(keyB.replace(/\D/g, '')) || 0;
