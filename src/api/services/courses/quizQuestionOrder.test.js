@@ -18,7 +18,7 @@ vi.mock("firebase/database", () => ({
   push: () => ({ key: "novo" }),
 }));
 
-const { reorderQuizQuestions } = await import("./quizzes.js");
+const { reorderQuizQuestions } = await import("./quizQuestions.js");
 
 const Q = (id) => ({ id, question: `Pergunta ${id}`, options: ["a", "b"], correctOption: 0 });
 

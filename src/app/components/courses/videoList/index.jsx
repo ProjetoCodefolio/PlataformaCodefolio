@@ -31,7 +31,7 @@ import {
   getQuizWindowState,
   getQuizWindowMessage,
   formatQuizDate,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizWindow";
 import { formatTimeRemaining } from "$api/services/courses/assignments";
 
 const VideoList = ({

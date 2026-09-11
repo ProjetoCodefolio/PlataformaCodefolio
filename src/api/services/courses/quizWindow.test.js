@@ -12,7 +12,7 @@ const {
   getQuizWindowState,
   getQuizWindowMessage,
   persistableQuizSettings,
-} = await import("./quizzes.js");
+} = await import("./quizWindow.js");
 
 const NOW = new Date("2026-07-30T12:00:00.000Z");
 const PAST = "2026-07-01T12:00:00.000Z";

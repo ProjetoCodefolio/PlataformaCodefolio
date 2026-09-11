@@ -33,18 +33,20 @@ import LoginModal from "$components/modals/LoginModal";
 import CompletionModal from "$components/modals/CompletionModal";
 import QuizGigi from "$components/courses/quizGigi";
 import SlidePlayer from "$components/courses/slidePlayer";
-import { validateQuizAnswers } from "$api/services/courses/quizzes";
+import { validateQuizAnswers } from "$api/services/courses/quizSubmission";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
 import {
   fetchCourseQuizzes,
   fetchUserQuizResults,
+} from "$api/services/courses/quizFetch";
+import {
   getQuizAttemptLimit,
   hasUserReachedQuizAttemptLimit,
   getQuizWindowMessage,
   isQuizAfterClose,
   isQuizLocked,
   formatQuizDate,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizWindow";
 import { formatTimeRemaining } from "$api/services/courses/assignments";
 import { loadCourseContentForStudent } from "$api/services/courses/content";
 import {

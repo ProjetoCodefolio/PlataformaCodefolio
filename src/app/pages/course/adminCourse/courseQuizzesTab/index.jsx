@@ -24,16 +24,20 @@ import PdfQuizGenerator from "./PdfQuizGenerator";
 import {
   fetchCourseVideosForQuiz,
   fetchCourseQuizzes,
+} from "$api/services/courses/quizFetch";
+import {
   addQuiz,
   removeQuiz,
+  saveAllCourseQuizzes,
+} from "$api/services/courses/quizCrud";
+import {
   addQuestionToQuiz,
   updateQuizQuestion,
   removeQuizQuestion,
   reorderQuizQuestions,
   addMultipleQuestionsToQuiz,
-  saveAllCourseQuizzes,
-  normalizeDiagnosticFlag,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizQuestions";
+import { normalizeDiagnosticFlag } from "$api/services/courses/quizWindow";
 import { normalizeGradedFlag } from "$api/services/courses/quizGrading";
 import { notifyNewQuiz } from "$api/services/notifications";
 import { fetchCourseSlides } from "$api/services/courses/slides";

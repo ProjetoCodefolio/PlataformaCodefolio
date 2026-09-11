@@ -55,7 +55,7 @@ import {
   fetchAggregatedQuizGrades,
   exportQuizGradesToCSV,
 } from "../../../../api/services/courses/quizAggregation";
-import { restoreQuizAttempt } from "../../../../api/services/courses/quizzes";
+import { restoreQuizAttempt } from "$api/services/courses/quizSubmission";
 import { MINIMUM_PASSING_GRADE, GRADE_COLORS } from "$api/constants/gradeConstants";
 
 export default function QuizGradesOverview() {

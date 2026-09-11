@@ -46,7 +46,7 @@ import {
   capitalizeWords,
   getSortedStudentResults,
 } from "$api/services/courses/studentDashboard";
-import { recalculateQuizResults } from "$api/services/courses/quizzes";
+import { recalculateQuizResults } from "$api/services/courses/quizSubmission";
 import { canAssignGrades } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { MarkdownView } from "$components/common/MarkdownEditor";

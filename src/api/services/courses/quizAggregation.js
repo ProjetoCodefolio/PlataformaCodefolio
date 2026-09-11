@@ -1,6 +1,6 @@
 import { database } from "../../config/firebase";
 import { ref, get } from "firebase/database";
-import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizzes";
+import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizWindow";
 import { fetchFlippedClassroomVideos } from "./submissions";
 import { gradedQuestions, isOpinionQuiz } from "./quizGrading";
 

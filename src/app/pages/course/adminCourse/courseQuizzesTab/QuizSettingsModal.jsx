@@ -21,11 +21,13 @@ import {
   updateQuizDiagnosticStatus,
   updateQuizRetrySettings,
   updateQuizSchedule,
+} from "$api/services/courses/quizCrud";
+import {
   normalizeDiagnosticFlag,
   normalizeAllowRetry,
   normalizeMaxAttempts,
   normalizeQuizDate,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizWindow";
 
 /**
  * Configuração de UM quiz: nota mínima, diagnóstico, tentativas e janela de

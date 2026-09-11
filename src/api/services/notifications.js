@@ -2,7 +2,7 @@ import { database } from "$api/config/firebase";
 import { ref, push, set, get, update, query, orderByChild, onValue } from "firebase/database";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
-import { formatQuizDate } from "$api/services/courses/quizzes";
+import { formatQuizDate } from "$api/services/courses/quizWindow";
 import { sendNotificationEmailJS } from "$api/services/emailService";
 
 /**

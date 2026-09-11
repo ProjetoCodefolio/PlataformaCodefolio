@@ -47,7 +47,7 @@ if (!emuladorNoAr) {
   );
 }
 
-const { saveQuizResults } = await import("./quizzes");
+const { saveQuizResults } = await import("./quizSubmission");
 const { database } = await import("../../config/firebase");
 
 const LIKERT = ["Discordo fortemente", "Discordo", "Neutro", "Concordo", "Concordo fortemente"];

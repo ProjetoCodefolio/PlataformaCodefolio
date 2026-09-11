@@ -10,13 +10,15 @@ import {
   FormControl,
   TextField,
 } from "@mui/material";
+import { fetchQuizQuestions } from "$api/services/courses/quizFetch";
 import {
-  fetchQuizQuestions,
   validateQuizAnswers,
   saveQuizResults,
+} from "$api/services/courses/quizSubmission";
+import {
   normalizeAllowRetry,
   normalizeMaxAttempts,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizWindow";
 import { useAuth } from "$context/AuthContext";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import { toast } from "react-toastify";
