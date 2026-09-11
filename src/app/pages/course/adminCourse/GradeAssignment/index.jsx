@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useRef, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -15,7 +15,6 @@ import {
   Stack,
   Avatar,
   InputAdornment,
-  Chip,
   Tooltip,
   FormControl,
   InputLabel,
@@ -30,22 +29,24 @@ import {
   DialogActions,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
-import PendingIcon from "@mui/icons-material/Pending";
-import FilterListIcon from "@mui/icons-material/FilterList";
 import SaveIcon from "@mui/icons-material/Save";
 import DownloadIcon from "@mui/icons-material/Download";
 import Topbar from "$components/topbar/Topbar";
 import BreadcrumbsComponent from "$components/common/BreadcrumbsComponent";
 import { useLocation, useNavigate } from "react-router-dom";
-import * as assessmentService from "$api/services/courses/assessments";
-import * as studentService from "$api/services/courses/students";
-import * as courseService from "$api/services/courses/courses";
 import { useAuth } from "$context/AuthContext";
 import { toast } from "react-toastify";
 import { canAssignGrades } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
+import { MINIMUM_PASSING_GRADE } from "$api/constants/gradeConstants";
+
+import GradeStatusIcon from "../grades/GradeStatusIcon";
+import { downloadCsv } from "../grades/downloadCsv";
+import { useGradeAssignmentData } from "./hooks/useGradeAssignmentData";
+import { useGradeEditing } from "./hooks/useGradeEditing";
+import { useKeyboardGradeNavigation } from "./hooks/useKeyboardGradeNavigation";
+import { useMissingGradesWarning } from "./hooks/useMissingGradesWarning";
 
 // Função para formatar nomes com capitalização adequada - igual ao CourseStudentsTab
 const capitalizeWords = (name) => {
@@ -57,280 +58,70 @@ const capitalizeWords = (name) => {
 };
 
 export default function GradeAssignmentPage() {
-  const [students, setStudents] = useState([]);
-  const [assessment, setAssessment] = useState(null);
-  const [assessmentDetails, setAssessmentDetails] = useState(null);
-  const [courseDetails, setCourseDetails] = useState({});
-  const [grades, setGrades] = useState({});
-  // Valor EM DIGITAÇÃO de cada campo de nota. Fica separado de `grades`
-  // (a nota commitada) porque `grades` alimenta o filtro/status: se o valor
-  // digitado fosse direto para `grades`, a linha sairia da listagem no meio da
-  // digitação (ex.: filtro "sem nota" + digitar "1" removeria o aluno antes de
-  // completar "10"). O commit para `grades` só acontece ao sair do campo (blur).
-  const [draftGrades, setDraftGrades] = useState({});
-  const [sortField, setSortField] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc");
-
-  const handleSort = (field) => {
-    const next = getNextSort({ sortField, sortOrder }, field);
-    setSortField(next.sortField);
-    setSortOrder(next.sortOrder);
-  };
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState({});
-  const [saveStatus, setSaveStatus] = useState({});
-  const [invalidStatus, setInvalidStatus] = useState({});
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [attemptedSave, setAttemptedSave] = useState(false);
-  const [missingGradesWarningShown, setMissingGradesWarningShown] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(0);
-  const [showExitWarning, setShowExitWarning] = useState(false);
-  const [showSaveWarning, setShowSaveWarning] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState(null);
-
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   const courseId = params.get("courseId");
   const assessmentId = params.get("assessmentId");
   const inputRefs = useRef([]);
+  const { userDetails } = useAuth();
 
-  const { currentUser, userDetails } = useAuth();
-  
+  const {
+    students,
+    assessmentDetails,
+    courseDetails,
+    grades,
+    setGrades,
+    saveStatus,
+    setSaveStatus,
+    loading,
+    error,
+  } = useGradeAssignmentData({ courseId, assessmentId });
+
+  const editing = useGradeEditing({ courseId, assessmentId, grades, setGrades, setSaveStatus });
+
+  const [sortField, setSortField] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [showExitWarning, setShowExitWarning] = useState(false);
+  const [showSaveWarning, setShowSaveWarning] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+
+  const handleSort = (field) => {
+    const next = getNextSort({ sortField, sortOrder }, field);
+    setSortField(next.sortField);
+    setSortOrder(next.sortOrder);
+  };
+
   // Verificar se o usuário é dono do curso ou admin
   const isCourseOwner = canAssignGrades(userDetails, courseDetails?.userId, courseId);
-
-  // Carregar dados necessários ao iniciar
-  useEffect(() => {
-    if (!courseId || !assessmentId) {
-      setError("Parâmetros inválidos");
-      setLoading(false);
-      return;
-    }
-
-    const loadData = async () => {
-      try {
-        setLoading(true);
-
-        // Carregar detalhes do curso
-        const course = await courseService.fetchCourseDetails(courseId);
-        setCourseDetails(course);
-
-        // Carregar avaliação
-        const assessments = await assessmentService.fetchAllAssessmentsByCourse(courseId);
-        const currentAssessment = assessments.find(
-          (a) => a.id === assessmentId
-        );
-        if (!currentAssessment) {
-          setError("Avaliação não encontrada");
-          setLoading(false);
-          return;
-        }
-        setAssessment(currentAssessment);
-        setAssessmentDetails(currentAssessment);
-
-        // Carregar estudantes do curso usando o método enriquecido
-        const courseStudents = await studentService.fetchCourseStudentsEnriched(
-          courseId
-        );
-        setStudents(courseStudents);
-
-        // Carregar notas existentes
-        const existingGrades = await assessmentService.getAssessmentGrades(
-          courseId,
-          assessmentId
-        );
-        const gradesMap = {};
-        const saveMap = {};
-
-        existingGrades.forEach((grade) => {
-          gradesMap[grade.studentId] = grade.grade.toString();
-          saveMap[grade.studentId] = true; // Marca como salvo
-        });
-
-        setGrades(gradesMap);
-        setSaveStatus(saveMap); // Marca todos os que já tinham nota como salvos
-      } catch (err) {
-        setError(err.message || "Erro ao carregar dados");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [courseId, assessmentId]);
-
-  // Valor exibido no campo: o rascunho em digitação, se houver; senão a nota
-  // já commitada. Usa `??` para preservar corretamente a nota "0".
-  const getFieldValue = (studentId) =>
-    draftGrades[studentId] ?? grades[studentId] ?? "";
-
-  // Função para atualizar o valor da nota EM DIGITAÇÃO (não commita ainda).
-  const handleGradeChange = (studentId, value) => {
-    setDraftGrades((prev) => ({
-      ...prev,
-      [studentId]: value,
-    }));
-
-    // Validação instantânea
-    const numValue = parseFloat(value);
-    if (
-      value.trim() !== "" &&
-      (isNaN(numValue) || numValue < 0 || numValue > 10)
-    ) {
-      setInvalidStatus((prev) => ({
-        ...prev,
-        [studentId]: true,
-      }));
-      // Remova o toast daqui para evitar duplicidade!
-    } else {
-      setInvalidStatus((prev) => {
-        const newStatus = { ...prev };
-        delete newStatus[studentId];
-        return newStatus;
-      });
-    }
-  };
-
-  // Função para salvar a nota quando o usuário clicar fora do campo
-  const handleSaveGrade = async (studentId, value) => {
-    const numValue = parseFloat(value);
-    
-    // Validação silenciosa - apenas marca como inválido
-    if (
-      value.trim() === "" ||
-      isNaN(numValue) ||
-      numValue < 0 ||
-      numValue > 10
-    ) {
-      setInvalidStatus((prev) => ({
-        ...prev,
-        [studentId]: true,
-      }));
-      return;
-    }
-
-    setInvalidStatus((prev) => {
-      const newStatus = { ...prev };
-      delete newStatus[studentId];
-      return newStatus;
-    });
-
-    // Marcar que está salvando
-    setSaving((prev) => ({
-      ...prev,
-      [studentId]: true,
-    }));
-
-    try {
-      await assessmentService.assignGrade(
-        courseId,
-        assessmentId,
-        studentId,
-        numValue
-      );
-
-      // Commit da nota para o estado usado pelo filtro/status e limpeza do
-      // rascunho. Só agora (após o blur) a linha pode sair da listagem — com o
-      // valor correto (ex.: "10"), e não com um valor parcial digitado.
-      setGrades((prev) => ({
-        ...prev,
-        [studentId]: String(numValue),
-      }));
-      setDraftGrades((prev) => {
-        const next = { ...prev };
-        delete next[studentId];
-        return next;
-      });
-
-      // Atualizar status de salvamento
-      setSaveStatus((prev) => ({
-        ...prev,
-        [studentId]: true,
-      }));
-
-      // Toast de sucesso silencioso - apenas visual
-    } catch (err) {
-      toast.error(
-        `Erro ao salvar nota: ${err.message}`
-      );
-    } finally {
-      setSaving((prev) => {
-        const newSaving = { ...prev };
-        delete newSaving[studentId];
-        return newSaving;
-      });
-    }
-  };
-
-  // Voltar para a página de avaliações
-  const handleBack = () => {
-    const studentsWithoutGrades = students.filter(student => {
-      const studentId = student.userId || student.id;
-      const grade = grades[studentId];
-      const matchesSearch = (student.name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      
-      let matchesStatus = true;
-      if (filterStatus !== "all") {
-        const studentStatus = getStudentStatus(studentId);
-        matchesStatus = studentStatus === filterStatus;
-      }
-      
-      return matchesSearch && matchesStatus && (!grade || grade.trim() === "");
-    });
-
-    if (studentsWithoutGrades.length > 0) {
-      setPendingNavigation(`/adm-cursos?courseId=${courseId}&tab=4`);
-      setShowExitWarning(true);
-    } else {
-      navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
-    }
-  };
 
   // Função para determinar o status do estudante
   const getStudentStatus = (studentId) => {
     const grade = grades[studentId];
-    
+
     // Sem nota (diferente de zero)
     if (!grade || grade.trim() === "") {
       return "pending";
     }
-    
+
     const numValue = parseFloat(grade);
-    
+
     // Nota inválida
     if (isNaN(numValue)) {
       return "pending";
     }
-    
-    // Aprovado (>= 6)
-    if (numValue >= 6) {
+
+    // Aprovado (>= nota de corte)
+    if (numValue >= MINIMUM_PASSING_GRADE) {
       return "approved";
     }
-    
-    // Reprovado (< 6, incluindo zero)
+
+    // Reprovado (< nota de corte, incluindo zero)
     return "failed";
   };
 
-  // Função para obter ícone de status
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "approved":
-        return <CheckCircleIcon sx={{ color: "#4caf50" }} />;
-      case "failed":
-        return <CancelIcon sx={{ color: "#f44336" }} />;
-      case "pending":
-        return <PendingIcon sx={{ color: "#9e9e9e" }} />;
-      default:
-        return null;
-    }
-  };
-
-  // Função para obter label de status
   const getStatusLabel = (status) => {
     switch (status) {
       case "approved":
@@ -371,6 +162,41 @@ export default function GradeAssignmentPage() {
     sortOrder
   );
 
+  useMissingGradesWarning({ students, grades });
+
+  const keyboardNav = useKeyboardGradeNavigation({
+    filteredStudents,
+    loading,
+    inputRefs,
+    onCommit: (studentId) => editing.handleSaveGrade(studentId, editing.getFieldValue(studentId)),
+  });
+
+  // Voltar para a página de avaliações
+  const handleBack = () => {
+    const studentsWithoutGrades = students.filter(student => {
+      const studentId = student.userId || student.id;
+      const grade = grades[studentId];
+      const matchesSearch = (student.name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
+
+      let matchesStatus = true;
+      if (filterStatus !== "all") {
+        const studentStatus = getStudentStatus(studentId);
+        matchesStatus = studentStatus === filterStatus;
+      }
+
+      return matchesSearch && matchesStatus && (!grade || grade.trim() === "");
+    });
+
+    if (studentsWithoutGrades.length > 0) {
+      setPendingNavigation(`/adm-cursos?courseId=${courseId}&tab=4`);
+      setShowExitWarning(true);
+    } else {
+      navigate(`/adm-cursos?courseId=${courseId}&tab=4`);
+    }
+  };
+
   // Confirmar navegação mesmo com notas pendentes
   const confirmNavigation = () => {
     setShowExitWarning(false);
@@ -400,25 +226,19 @@ export default function GradeAssignmentPage() {
     }
   };
 
-  // Confirmar salvamento mesmo com notas pendentes
-  const confirmSave = () => {
-    setShowSaveWarning(false);
-    toast.success("Notas salvas! Alguns alunos permanecem sem nota.");
-  };
-
   // Exportar para CSV
   const handleExportCSV = () => {
     const csvRows = [];
-    
+
     // Cabeçalho
     csvRows.push(['Nome', 'Email', 'Nota', 'Status'].join(','));
-    
+
     // Dados dos estudantes
     filteredStudents.forEach(student => {
       const studentId = student.userId || student.id;
       const grade = grades[studentId] || 'Pendente';
       const status = getStatusLabel(getStudentStatus(studentId));
-      
+
       csvRows.push([
         `"${capitalizeWords(student.name)}"`,
         student.email,
@@ -426,102 +246,10 @@ export default function GradeAssignmentPage() {
         status
       ].join(','));
     });
-    
-    // Criar arquivo e fazer download
-    const csvContent = csvRows.join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', `notas_${assessmentDetails?.name || 'avaliacao'}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+
+    downloadCsv(`notas_${assessmentDetails?.name || 'avaliacao'}.csv`, csvRows.join('\n'));
     toast.success('CSV exportado com sucesso!');
   };
-
-  // Navegação por teclado
-  const handleKeyDown = (e, index) => {
-    const totalStudents = filteredStudents.length;
-    
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const nextIndex = Math.min(index + 1, totalStudents - 1);
-      setFocusedIndex(nextIndex);
-      inputRefs.current[nextIndex]?.focus();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prevIndex = Math.max(index - 1, 0);
-      setFocusedIndex(prevIndex);
-      inputRefs.current[prevIndex]?.focus();
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-      }
-      // Salvar nota atual (usa o valor em digitação, se houver)
-      const student = filteredStudents[index];
-      const studentId = student.userId || student.id;
-      handleSaveGrade(studentId, getFieldValue(studentId));
-      
-      // Ir para o próximo
-      if (index < totalStudents - 1) {
-        const nextIndex = index + 1;
-        setFocusedIndex(nextIndex);
-        setTimeout(() => {
-          inputRefs.current[nextIndex]?.focus();
-        }, 50);
-      }
-    }
-  };
-
-  // Focar no primeiro input ao carregar
-  useEffect(() => {
-    if (!loading && filteredStudents.length > 0) {
-      setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 100);
-    }
-  }, [loading, filteredStudents.length]);
-
-  // Função para verificar se há notas pendentes e mostrar aviso APENAS uma vez
-  const checkMissingGrades = () => {
-    if (missingGradesWarningShown) return;
-    
-    const studentsWithoutGrades = students.filter(student => {
-      const studentId = student.userId || student.id;
-      const grade = grades[studentId];
-      return !grade || grade.trim() === "";
-    });
-
-    if (studentsWithoutGrades.length > 0 && !attemptedSave) {
-      setAttemptedSave(true);
-      setMissingGradesWarningShown(true);
-      
-      const studentNames = studentsWithoutGrades
-        .slice(0, 3)
-        .map(s => s.name)
-        .join(", ");
-      
-      const additionalCount = studentsWithoutGrades.length - 3;
-      const message = studentsWithoutGrades.length <= 3
-        ? `Atenção: ${studentNames} ${studentsWithoutGrades.length === 1 ? 'está' : 'estão'} sem nota.`
-        : `Atenção: ${studentNames} e mais ${additionalCount} estudante${additionalCount > 1 ? 's' : ''} estão sem nota.`;
-      
-      toast.warning(message, {
-        autoClose: 5000,
-      });
-    }
-  };
-
-  // Chamar verificação ao tentar salvar
-  useEffect(() => {
-    if (attemptedSave && !missingGradesWarningShown) {
-      checkMissingGrades();
-    }
-  }, [grades, attemptedSave]);
 
   return (
     <Box>
@@ -676,8 +404,8 @@ export default function GradeAssignmentPage() {
                         }}
                       >
                         <MenuItem value="all">Todos</MenuItem>
-                        <MenuItem value="approved">Aprovados (≥6)</MenuItem>
-                        <MenuItem value="failed">Reprovados (&lt;6)</MenuItem>
+                        <MenuItem value="approved">Aprovados (≥{MINIMUM_PASSING_GRADE})</MenuItem>
+                        <MenuItem value="failed">Reprovados (&lt;{MINIMUM_PASSING_GRADE})</MenuItem>
                         <MenuItem value="pending">Pendentes (Sem nota)</MenuItem>
                       </Select>
                     </FormControl>
@@ -760,8 +488,8 @@ export default function GradeAssignmentPage() {
                     ) : (
                       filteredStudents.map((student, index) => {
                         const studentId = student.userId || student.id;
-                        const isInvalid = !!invalidStatus[studentId];
-                        const isSaving = !!saving[studentId];
+                        const isInvalid = editing.isInvalid(studentId);
+                        const isSaving = editing.isSaving(studentId);
                         const isSaved = !!saveStatus[studentId];
                         const studentStatus = getStudentStatus(studentId);
 
@@ -801,15 +529,15 @@ export default function GradeAssignmentPage() {
                                 }}
                               >
                                 <TextField
-                                  value={getFieldValue(studentId)}
+                                  value={editing.getFieldValue(studentId)}
                                   disabled={!isCourseOwner}
                                   onChange={(e) =>
-                                    handleGradeChange(studentId, e.target.value)
+                                    editing.handleGradeChange(studentId, e.target.value)
                                   }
                                   onBlur={(e) =>
-                                    handleSaveGrade(studentId, e.target.value)
+                                    editing.handleSaveGrade(studentId, e.target.value)
                                   }
-                                  onKeyDown={(e) => handleKeyDown(e, index)}
+                                  onKeyDown={(e) => keyboardNav.handleKeyDown(e, index)}
                                   inputRef={(el) => (inputRefs.current[index] = el)}
                                   error={isInvalid}
                                   helperText={
@@ -855,9 +583,7 @@ export default function GradeAssignmentPage() {
                               </Box>
                             </TableCell>
                             <TableCell align="center">
-                              <Tooltip title={getStatusLabel(studentStatus)}>
-                                {getStatusIcon(studentStatus)}
-                              </Tooltip>
+                              <GradeStatusIcon status={studentStatus} />
                             </TableCell>
                           </TableRow>
                         );
@@ -878,8 +604,8 @@ export default function GradeAssignmentPage() {
                 ) : (
                   filteredStudents.map((student, index) => {
                     const studentId = student.userId || student.id;
-                    const isInvalid = !!invalidStatus[studentId];
-                    const isSaving = !!saving[studentId];
+                    const isInvalid = editing.isInvalid(studentId);
+                    const isSaving = editing.isSaving(studentId);
                     const isSaved = !!saveStatus[studentId];
                     const studentStatus = getStudentStatus(studentId);
 
@@ -904,9 +630,7 @@ export default function GradeAssignmentPage() {
                             right: 16,
                           }}
                         >
-                          <Tooltip title={getStatusLabel(studentStatus)}>
-                            {getStatusIcon(studentStatus)}
-                          </Tooltip>
+                          <GradeStatusIcon status={studentStatus} />
                         </Box>
 
                         {/* Nome com Avatar */}
@@ -962,15 +686,15 @@ export default function GradeAssignmentPage() {
                           }}
                         >
                           <TextField
-                            value={getFieldValue(studentId)}
+                            value={editing.getFieldValue(studentId)}
                             disabled={!isCourseOwner}
                             onChange={(e) =>
-                              handleGradeChange(studentId, e.target.value)
+                              editing.handleGradeChange(studentId, e.target.value)
                             }
                             onBlur={(e) =>
-                              handleSaveGrade(studentId, e.target.value)
+                              editing.handleSaveGrade(studentId, e.target.value)
                             }
-                            onKeyDown={(e) => handleKeyDown(e, index)}
+                            onKeyDown={(e) => keyboardNav.handleKeyDown(e, index)}
                             inputRef={(el) => (inputRefs.current[index] = el)}
                             error={isInvalid}
                             helperText={
