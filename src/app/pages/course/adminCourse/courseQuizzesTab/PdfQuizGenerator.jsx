@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -10,22 +10,15 @@ import {
   Collapse,
   List,
   ListItem,
-  ListItemText,
   Tooltip,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   TextField,
-  Switch,
-  FormControlLabel,
-  FormHelperText,
   Grid,
   Chip,
+  FormHelperText,
 } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
@@ -36,321 +29,54 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyIcon from "@mui/icons-material/Key";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import { QUESTION_TYPES } from "$api/services/courses/quizGenerator/constants";
+
+import PromptSettingsDialog from "./PromptSettingsDialog";
+import ApiKeyDialog from "./ApiKeyDialog";
+import { usePdfUpload } from "./hooks/usePdfUpload";
+import { useGroqSettings } from "./hooks/useGroqSettings";
+import { usePromptSettings } from "./hooks/usePromptSettings";
+import { usePdfQuizGeneration } from "./hooks/usePdfQuizGeneration";
+import { useGeneratedQuestionsEditor } from "./hooks/useGeneratedQuestionsEditor";
 import { toast } from "react-toastify";
-import { GROQ_MODELS, QUESTION_TYPES } from "$api/services/courses/quizGenerator/constants";
-import { createDefaultPrompt, JSON_FORMAT_INSTRUCTION } from "$api/services/courses/quizGenerator/promptBuilder";
-import { formatFriendlyError } from "$api/services/courses/quizGenerator/errors";
-import { processPdfAndGenerateQuestions } from "$api/services/courses/quizGenerator/orchestrator";
-import { fetchAllLlmModels } from "$api/services/courses/llmModels";
 
 const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
-  const [pdfFile, setPdfFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [extractedText, setExtractedText] = useState("");
-  const [generatedQuestions, setGeneratedQuestions] = useState([]);
-  // Provider que gerou as questões: 'question_api' (IA Codefolio/GPT-5.5) ou 'groq'
-  const [provider, setProvider] = useState(null);
-  const [processingStep, setProcessingStep] = useState("");
-  const [error, setError] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const [questionType, setQuestionType] = useState(QUESTION_TYPES.MULTIPLE_CHOICE);
-  const fileInputRef = useRef(null);
 
-  // Estados para o diálogo de configurações
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [usingCustomPrompt, setUsingCustomPrompt] = useState(false);
+  const pdfUpload = usePdfUpload();
+  const groqSettings = useGroqSettings();
+  const promptSettings = usePromptSettings({ numQuestions, questionType });
+  const generation = usePdfQuizGeneration({
+    pdfFile: pdfUpload.pdfFile,
+    numQuestions,
+    questionType,
+    resolveApiKey: groqSettings.resolveApiKey,
+    selectedModel: groqSettings.selectedModel,
+    getPromptToUse: promptSettings.getPromptToUse,
+  });
+  const questionsEditor = useGeneratedQuestionsEditor({
+    generatedQuestions: generation.generatedQuestions,
+    setGeneratedQuestions: generation.setGeneratedQuestions,
+  });
 
-  // Estados para configuração da API
-  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
-  const [customApiKey, setCustomApiKey] = useState("");
-  const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
-  const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
-
-  // Edição inline das questões geradas (não mexe no formulário principal)
-  const [editingGeneratedIndex, setEditingGeneratedIndex] = useState(null);
-
-  useEffect(() => {
-    // Buscar modelos LLM disponíveis
-    const loadModels = async () => {
-      try {
-        const fetchedModels = await fetchAllLlmModels();
-        const modelsArray = Object.values(fetchedModels);
-        // Excluir modelos que não suportam chat completions (áudio/STT/TTS),
-        // pois geram erro 400 ao serem usados para gerar questões.
-        const NON_CHAT_MODEL_PATTERN = /whisper|tts|guard|playai|distil-whisper/i;
-        const activeModels = modelsArray.filter(
-          (model) => model.isActive && !NON_CHAT_MODEL_PATTERN.test(model.modelId || "")
-        );
-        setModels(activeModels);
-      } catch (err) {
-        console.error("Erro ao buscar modelos LLM:", err);
-      }
-    };
-
-    loadModels();
-  }, []);
-
-  // Recuperar configurações salvas
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem("groq_custom_api_key");
-    const usingCustomKey = localStorage.getItem("groq_using_custom_key");
-    const savedModel = localStorage.getItem("groq_selected_model");
-
-    if (savedApiKey) setCustomApiKey(savedApiKey);
-    if (usingCustomKey) setUsingCustomApiKey(usingCustomKey === "true");
-    if (savedModel && models.some((m) => m.modelId === savedModel))
-      setSelectedModel(savedModel);
-  }, [models]);
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    const files = e.dataTransfer.files;
-    if (files && files.length) {
-      handleFileSelected(files[0]);
-    }
-  };
-
-  const handleFileSelected = (file) => {
-    if (file && file.type === "application/pdf") {
-      setPdfFile(file);
-      setError("");
-    } else {
-      setPdfFile(null);
-      setError("Por favor, selecione um arquivo PDF válido.");
-      toast.error("Formato de arquivo inválido. Selecione um PDF.");
-    }
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    handleFileSelected(file);
-  };
-
-  const handleNumQuestionsChange = (e) => {
-    setNumQuestions(e.target.value);
-  };
-
-  const handleQuestionTypeChange = (e) => {
-    setQuestionType(e.target.value);
-  };
-
-  // Manipulação do diálogo de configurações
-  const handleOpenSettings = () => {
-    if (!customPrompt && !usingCustomPrompt) {
-      setCustomPrompt(createDefaultPrompt(numQuestions, questionType));
-    }
-    setSettingsOpen(true);
-  };
-
-  const handleCloseSettings = () => {
-    setSettingsOpen(false);
-  };
-
-  const handleSaveSettings = () => {
-    if (customPrompt.trim()) {
-      // Verifica se o prompt personalizado menciona o formato JSON esperado
-      if (
-        !customPrompt.includes('"question"') ||
-        !customPrompt.includes('"options"') ||
-        !customPrompt.includes('"correctOption"')
-      ) {
-        toast.warning(
-          "Atenção: Seu prompt personalizado pode não especificar o formato JSON correto. As instruções de formato serão adicionadas automaticamente."
-        );
-      }
-
-      setUsingCustomPrompt(true);
-      toast.success("Configurações personalizadas de prompt salvas!");
-    } else {
-      setUsingCustomPrompt(false);
-    }
-    setSettingsOpen(false);
-  };
-
-  const handleResetPrompt = () => {
-    setCustomPrompt(createDefaultPrompt(numQuestions, questionType));
-    toast.info("Prompt restaurado para o padrão");
-  };
-
-  // Manipulação do diálogo de chave API
-  const handleOpenApiKeyDialog = () => {
-    setApiKeyDialogOpen(true);
-  };
-
-  const handleCloseApiKeyDialog = () => {
-    setApiKeyDialogOpen(false);
-  };
-
-  const handleSaveApiKey = () => {
-    if (customApiKey.trim()) {
-      localStorage.setItem("groq_custom_api_key", customApiKey.trim());
-      localStorage.setItem("groq_using_custom_key", "true");
-      setUsingCustomApiKey(true);
-      toast.success("Chave API personalizada salva!");
-    } else {
-      localStorage.removeItem("groq_custom_api_key");
-      localStorage.setItem("groq_using_custom_key", "false");
-      setUsingCustomApiKey(false);
-      toast.info("Usando chave API padrão do sistema");
-    }
-    setApiKeyDialogOpen(false);
-  };
-
-  const handleModelChange = (e) => {
-    const newModel = e.target.value;
-    setSelectedModel(newModel);
-    localStorage.setItem("groq_selected_model", newModel);
-
-    const selectedModelInfo = models.find((m) => m.modelId === newModel);
-    toast.info(`Modelo alterado para: ${selectedModelInfo?.name || newModel}`);
-  };
-
-  const processFile = async () => {
-    if (!pdfFile) return;
-
-    setLoading(true);
-    setError("");
-    setProgress(0);
-    setGeneratedQuestions([]);
-    setProvider(null);
-
-    try {
-      // Determinar qual chave API usar
-      let apiKey;
-      const usingSystemKey = !usingCustomApiKey || !customApiKey.trim();
-
-      if (usingSystemKey) {
-        apiKey = import.meta.env.VITE_GROQ_API_KEY || import.meta.env.REACT_APP_GROQ_API_KEY;
-      } else {
-        apiKey = customApiKey;
-      }
-
-      // Usar a função da API para processar o PDF e gerar questões
-      const result = await processPdfAndGenerateQuestions(
-        pdfFile, 
-        numQuestions, 
-        selectedModel, 
-        apiKey, 
-        usingCustomPrompt ? customPrompt.trim() : null,
-        {
-          onProgress: setProgress,
-          onProcessingStep: setProcessingStep
-        },
-        questionType
-      );
-
-      setExtractedText(result.text);
-      setGeneratedQuestions(result.questions);
-      setProvider(result.provider);
-
-      // Notificar se OCR foi usado
-      if (result.stats && result.stats.usedOcr) {
-        toast.warning('⚠️ Texto extraído usando OCR (imagens do PDF)', {
-          autoClose: 5000,
-        });
-      }
-
-      toast.success(`${result.questions.length} questões geradas com sucesso!`);
-    } catch (err) {
-      // Usar mensagens de erro mais amigáveis
-      const friendlyError = formatFriendlyError(err);
-      setError(friendlyError);
-      toast.error(friendlyError);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleNumQuestionsChange = (e) => setNumQuestions(e.target.value);
+  const handleQuestionTypeChange = (e) => setQuestionType(e.target.value);
 
   const handleAddToQuiz = () => {
-    if (generatedQuestions.length > 0) {
-      onQuestionsGenerated(generatedQuestions);
+    if (generation.generatedQuestions.length > 0) {
+      onQuestionsGenerated(generation.generatedQuestions);
       toast.success(
-        `${generatedQuestions.length} questões adicionadas ao quiz!`
+        `${generation.generatedQuestions.length} questões adicionadas ao quiz!`
       );
 
       // Reset do estado após adicionar ao quiz
-      setPdfFile(null);
-      setGeneratedQuestions([]);
-      setExtractedText("");
-      setProvider(null);
+      pdfUpload.resetFile();
+      generation.resetResults();
     }
   };
 
-  const toggleInlineEdit = (index) => {
-    setEditingGeneratedIndex((prev) => (prev === index ? null : index));
-  };
-
-  const updateGeneratedQuestion = (index, patch) => {
-    setGeneratedQuestions((prev) =>
-      prev.map((q, i) => (i === index ? { ...q, ...patch } : q))
-    );
-  };
-
-  const updateGeneratedOption = (qIndex, optIndex, value) => {
-    setGeneratedQuestions((prev) =>
-      prev.map((q, i) => {
-        if (i !== qIndex) return q;
-        const nextOptions = Array.isArray(q.options) ? [...q.options] : ["", ""];
-        nextOptions[optIndex] = value;
-        return { ...q, options: nextOptions };
-      })
-    );
-  };
-
-  const removeGeneratedOption = (qIndex, optIndexToRemove) => {
-    setGeneratedQuestions((prev) =>
-      prev.map((q, i) => {
-        if (i !== qIndex) return q;
-        const cur = Array.isArray(q.options) ? q.options : ["", ""];
-        if (cur.length <= 2) return q;
-
-        const next = cur.filter((_, oi) => oi !== optIndexToRemove);
-        let nextCorrect = Number(q.correctOption) || 0;
-        if (optIndexToRemove === nextCorrect) nextCorrect = 0;
-        if (optIndexToRemove < nextCorrect) nextCorrect -= 1;
-
-        return {
-          ...q,
-          options: next,
-          correctOption: Math.min(nextCorrect, next.length - 1),
-        };
-      })
-    );
-  };
-
-  const addGeneratedOption = (qIndex) => {
-    setGeneratedQuestions((prev) =>
-      prev.map((q, i) => {
-        if (i !== qIndex) return q;
-        const cur = Array.isArray(q.options) ? q.options : ["", ""];
-        if (cur.length >= 5) return q;
-        return { ...q, options: [...cur, ""] };
-      })
-    );
-  };
-
-  const handleDeleteQuestion = (indexToRemove) => {
-    setGeneratedQuestions((prev) =>
-      prev.filter((_, index) => index !== indexToRemove)
-    );
-
-    setEditingGeneratedIndex((prev) => {
-      if (prev == null) return prev;
-      if (prev === indexToRemove) return null;
-      if (prev > indexToRemove) return prev - 1;
-      return prev;
-    });
-  };
+  const displayError = pdfUpload.error || generation.error;
 
   return (
     <Box sx={{ mt: 3, mb: 4 }}>
@@ -378,9 +104,9 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
         <Box sx={{ display: "flex", gap: 0.5 }}>
           <Tooltip title="Configurar chave API GROQ">
             <IconButton
-              onClick={handleOpenApiKeyDialog}
+              onClick={groqSettings.handleOpenApiKeyDialog}
               sx={{
-                color: usingCustomApiKey ? "#4caf50" : "#666",
+                color: groqSettings.usingCustomApiKey ? "#4caf50" : "#666",
                 "&:hover": { backgroundColor: "rgba(76, 175, 80, 0.08)" },
               }}
             >
@@ -390,9 +116,9 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
 
           <Tooltip title="Configurações do gerador">
             <IconButton
-              onClick={handleOpenSettings}
+              onClick={promptSettings.handleOpenSettings}
               sx={{
-                color: usingCustomPrompt ? "#9041c1" : "#666",
+                color: promptSettings.usingCustomPrompt ? "#9041c1" : "#666",
                 "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.08)" },
               }}
             >
@@ -403,7 +129,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
       </Box>
 
       {/* Configurações de geração */}
-      {!loading && (
+      {!generation.loading && (
         <Grid container spacing={2} sx={{ mb: 2 }}>
           <Grid item xs={12} sm={6}>
             <FormControl fullWidth variant="outlined" size="small">
@@ -464,21 +190,21 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
           p: 3,
           borderRadius: 2,
           border: "2px dashed #9041c1",
-          backgroundColor: pdfFile ? "rgba(144, 65, 193, 0.04)" : "#F5F5FA",
+          backgroundColor: pdfUpload.pdfFile ? "rgba(144, 65, 193, 0.04)" : "#F5F5FA",
           position: "relative",
         }}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        onDragOver={pdfUpload.handleDragOver}
+        onDrop={pdfUpload.handleDrop}
       >
         <input
           type="file"
           accept=".pdf"
-          ref={fileInputRef}
-          onChange={handleFileChange}
+          ref={pdfUpload.fileInputRef}
+          onChange={pdfUpload.handleFileChange}
           style={{ display: "none" }}
         />
 
-        {!pdfFile ? (
+        {!pdfUpload.pdfFile ? (
           <Box
             sx={{
               display: "flex",
@@ -518,7 +244,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
             </Typography>
             <Button
               variant="contained"
-              onClick={() => fileInputRef.current.click()}
+              onClick={() => pdfUpload.fileInputRef.current.click()}
               sx={{
                 backgroundColor: "#9041c1",
                 "&:hover": { backgroundColor: "#7d37a7" },
@@ -559,15 +285,15 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {pdfFile.name}
+                  {pdfUpload.pdfFile.name}
                 </Typography>
               </Box>
               <Button
                 variant="outlined"
                 color="secondary"
                 size="small"
-                onClick={() => setPdfFile(null)}
-                disabled={loading}
+                onClick={pdfUpload.resetFile}
+                disabled={generation.loading}
                 sx={{
                   fontSize: { xs: "0.75rem", sm: "0.813rem" },
                   width: { xs: "100%", sm: "auto" },
@@ -577,7 +303,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
               </Button>
             </Box>
 
-            {loading ? (
+            {generation.loading ? (
               <Box sx={{ mt: 2 }}>
                 <Typography
                   variant="body2"
@@ -586,11 +312,11 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     fontSize: { xs: "0.813rem", sm: "0.875rem" },
                   }}
                 >
-                  {processingStep}
+                  {generation.processingStep}
                 </Typography>
                 <LinearProgress
                   variant="determinate"
-                  value={progress}
+                  value={generation.progress}
                   sx={{
                     height: 10,
                     borderRadius: 5,
@@ -600,7 +326,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     },
                   }}
                 />
-                {processingStep.toLowerCase().includes('ocr') && (
+                {generation.processingStep.toLowerCase().includes('ocr') && (
                   <Typography
                     variant="caption"
                     sx={{
@@ -613,7 +339,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     🔍 Usando OCR para extrair texto de imagens. Isso pode levar mais tempo...
                   </Typography>
                 )}
-                {numQuestions > 20 && !processingStep.toLowerCase().includes('ocr') && (
+                {numQuestions > 20 && !generation.processingStep.toLowerCase().includes('ocr') && (
                   <Typography
                     variant="caption"
                     sx={{
@@ -632,7 +358,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
               <Button
                 variant="contained"
                 startIcon={<AutoFixHighIcon />}
-                onClick={processFile}
+                onClick={generation.processFile}
                 fullWidth
                 sx={{
                   mt: 1,
@@ -648,22 +374,22 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
           </Box>
         )}
 
-        {error && (
-          <Alert 
-            severity="error" 
-            sx={{ 
+        {displayError && (
+          <Alert
+            severity="error"
+            sx={{
               mt: 2,
               '& .MuiAlert-message': {
                 whiteSpace: 'pre-line' // Permite quebras de linha nas mensagens
               }
             }}
           >
-            {error}
+            {displayError}
           </Alert>
         )}
       </Paper>
 
-      {generatedQuestions.length > 0 && (
+      {generation.generatedQuestions.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Box
             sx={{
@@ -682,13 +408,13 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
               }}
             >
               <CheckCircleIcon sx={{ color: "green", mr: 1 }} />
-              {generatedQuestions.length} questões geradas
+              {generation.generatedQuestions.length} questões geradas
             </Typography>
 
-            {provider && (
+            {generation.provider && (
               <Tooltip
                 title={
-                  provider === "question_api"
+                  generation.provider === "question_api"
                     ? "Geradas pela IA própria da Codefolio (GPT-5.5), o provedor principal."
                     : "Geradas pela GROQ, usada como provedor de fallback."
                 }
@@ -696,14 +422,14 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                 <Chip
                   size="small"
                   icon={
-                    provider === "question_api" ? (
+                    generation.provider === "question_api" ? (
                       <AutoFixHighIcon />
                     ) : (
                       <KeyIcon />
                     )
                   }
                   label={
-                    provider === "question_api"
+                    generation.provider === "question_api"
                       ? "IA Codefolio • GPT-5.5"
                       : "GROQ (fallback)"
                   }
@@ -711,7 +437,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     fontWeight: 600,
                     color: "#fff",
                     backgroundColor:
-                      provider === "question_api" ? "#9041c1" : "#f59e0b",
+                      generation.provider === "question_api" ? "#9041c1" : "#f59e0b",
                     "& .MuiChip-icon": { color: "#fff" },
                   }}
                 />
@@ -729,8 +455,8 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
               overflow: "auto",
             }}
           >
-            {generatedQuestions.map((question, index) => {
-              const isEditing = editingGeneratedIndex === index;
+            {generation.generatedQuestions.map((question, index) => {
+              const isEditing = questionsEditor.editingGeneratedIndex === index;
               const isOpenEnded = !question.options;
 
               return (
@@ -763,7 +489,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                   <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
                     <Tooltip title={isEditing ? "Fechar edição" : "Editar questão"}>
                       <IconButton
-                        onClick={() => toggleInlineEdit(index)}
+                        onClick={() => questionsEditor.toggleInlineEdit(index)}
                         sx={{ color: "#9041c1" }}
                         size="small"
                       >
@@ -772,7 +498,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                     </Tooltip>
                     <Tooltip title="Remover questão">
                       <IconButton
-                        onClick={() => handleDeleteQuestion(index)}
+                        onClick={() => questionsEditor.handleDeleteQuestion(index)}
                         sx={{ color: "#d32f2f" }}
                         size="small"
                       >
@@ -866,7 +592,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                       fullWidth
                       value={question.question || ""}
                       onChange={(e) =>
-                        updateGeneratedQuestion(index, { question: e.target.value })
+                        questionsEditor.updateGeneratedQuestion(index, { question: e.target.value })
                       }
                       helperText="Aceita markdown: **negrito**, *itálico*, [link](url)"
                     />
@@ -881,7 +607,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                         size="small"
                         value={question.imageUrl || ""}
                         onChange={(e) =>
-                          updateGeneratedQuestion(index, { imageUrl: e.target.value })
+                          questionsEditor.updateGeneratedQuestion(index, { imageUrl: e.target.value })
                         }
                         placeholder="https://..."
                         sx={{ flex: { xs: "1 1 100%", sm: "1 1 240px" } }}
@@ -892,7 +618,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                         size="small"
                         value={question.imageWidth || ""}
                         onChange={(e) =>
-                          updateGeneratedQuestion(index, { imageWidth: e.target.value })
+                          questionsEditor.updateGeneratedQuestion(index, { imageWidth: e.target.value })
                         }
                         sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
                       />
@@ -902,7 +628,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                         size="small"
                         value={question.imageHeight || ""}
                         onChange={(e) =>
-                          updateGeneratedQuestion(index, { imageHeight: e.target.value })
+                          questionsEditor.updateGeneratedQuestion(index, { imageHeight: e.target.value })
                         }
                         sx={{ width: { xs: "calc(50% - 4px)", sm: 120 } }}
                       />
@@ -924,7 +650,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                             >
                               <IconButton
                                 onClick={() =>
-                                  updateGeneratedQuestion(index, {
+                                  questionsEditor.updateGeneratedQuestion(index, {
                                     correctOption: optIndex,
                                   })
                                 }
@@ -947,12 +673,12 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                                 fullWidth
                                 value={opt}
                                 onChange={(e) =>
-                                  updateGeneratedOption(index, optIndex, e.target.value)
+                                  questionsEditor.updateGeneratedOption(index, optIndex, e.target.value)
                                 }
                               />
 
                               <IconButton
-                                onClick={() => removeGeneratedOption(index, optIndex)}
+                                onClick={() => questionsEditor.removeGeneratedOption(index, optIndex)}
                                 size="small"
                                 sx={{ color: "#d32f2f" }}
                                 disabled={(question.options || []).length <= 2}
@@ -967,7 +693,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                         <Button
                           variant="outlined"
                           size="small"
-                          onClick={() => addGeneratedOption(index)}
+                          onClick={() => questionsEditor.addGeneratedOption(index)}
                           disabled={(question.options || []).length >= 5}
                           sx={{
                             color: "#9041c1",
@@ -990,7 +716,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                         minRows={3}
                         value={question.expectedAnswer || ""}
                         onChange={(e) =>
-                          updateGeneratedQuestion(index, {
+                          questionsEditor.updateGeneratedQuestion(index, {
                             expectedAnswer: e.target.value,
                             questionType: "open-ended",
                           })
@@ -1017,374 +743,32 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
               py: { xs: 1, sm: 1.5 },
             }}
           >
-            Adicionar {generatedQuestions.length} Questões ao Quiz
+            Adicionar {generation.generatedQuestions.length} Questões ao Quiz
           </Button>
         </Box>
       )}
 
-      {/* Diálogo de configurações do prompt */}
-      <Dialog
-        open={settingsOpen}
-        onClose={handleCloseSettings}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            width: { xs: "95%", sm: "90%", md: "100%" },
-            maxHeight: { xs: "90vh", sm: "85vh" },
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            bgcolor: "#f5f5fa",
-            fontSize: { xs: "1rem", sm: "1.25rem" },
-            py: { xs: 1.5, sm: 2 },
-            px: { xs: 2, sm: 3 },
-          }}
-        >
-          Configurações do Gerador de Questões
-        </DialogTitle>
-        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
-          {/* Provedor de IA: GPT-5.5 é o padrão; modelo GROQ é só fallback */}
-          <Box
-            sx={{
-              p: { xs: 1.5, sm: 2 },
-              mb: 2,
-              bgcolor: "rgba(144, 65, 193, 0.08)",
-              borderLeft: "4px solid #9041c1",
-              borderRadius: 1,
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              sx={{ color: "#9041c1", fontSize: { xs: "0.875rem", sm: "1rem" } }}
-            >
-              Modelo padrão: GPT-5.5 (IA Codefolio)
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ mt: 1, fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-            >
-              As questões são geradas por padrão pela IA própria da Codefolio
-              (GPT-5.5). O modelo abaixo é usado apenas como <strong>fallback</strong>,
-              caso o provedor principal fique indisponível.
-            </Typography>
+      <PromptSettingsDialog
+        open={promptSettings.settingsOpen}
+        onClose={promptSettings.handleCloseSettings}
+        customPrompt={promptSettings.customPrompt}
+        setCustomPrompt={promptSettings.setCustomPrompt}
+        onSave={promptSettings.handleSaveSettings}
+        onReset={promptSettings.handleResetPrompt}
+        models={groqSettings.models}
+        selectedModel={groqSettings.selectedModel}
+        onModelChange={groqSettings.handleModelChange}
+      />
 
-            <FormControl
-              fullWidth
-              variant="outlined"
-              size="small"
-              sx={{ mt: 2 }}
-            >
-              <InputLabel id="fallback-model-select-label">
-                Modelo de fallback (GROQ)
-              </InputLabel>
-              <Select
-                labelId="fallback-model-select-label"
-                value={selectedModel}
-                onChange={handleModelChange}
-                label="Modelo de fallback (GROQ)"
-                sx={{ bgcolor: "#fff" }}
-              >
-                {models.map((model) => (
-                  <MenuItem key={model.modelId} value={model.modelId}>
-                    {model.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            gutterBottom
-            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
-          >
-            Personalize o prompt usado para gerar questões. As instruções de
-            formato JSON serão adicionadas automaticamente ao final do seu
-            prompt.
-          </Typography>
-
-          <Box
-            sx={{
-              p: { xs: 1.5, sm: 2 },
-              mb: 2,
-              bgcolor: "rgba(25, 118, 210, 0.08)",
-              borderLeft: "4px solid #1976d2",
-              borderRadius: 1,
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              color="primary"
-              sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
-            >
-              Formato obrigatório (não editável)
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                mt: 1,
-                fontSize: { xs: "0.75rem", sm: "0.875rem" },
-              }}
-            >
-              O sistema adicionará automaticamente as seguintes instruções para
-              garantir que as questões sejam retornadas no formato correto:
-            </Typography>
-            <Box
-              component="div"
-              sx={{
-                my: 1,
-                overflow: "auto",
-                fontFamily: "monospace",
-                p: 1,
-                bgcolor: "rgba(0, 0, 0, 0.04)",
-                color: "#555",
-                fontSize: { xs: "0.688rem", sm: "0.75rem" },
-              }}
-            >
-              <pre style={{ margin: 0 }}>{JSON_FORMAT_INSTRUCTION.trim()}</pre>
-            </Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontSize: { xs: "0.688rem", sm: "0.75rem" } }}
-            >
-              Esta parte será sempre adicionada ao seu prompt personalizado para
-              garantir a compatibilidade do formato.
-            </Typography>
-          </Box>
-
-          <TextField
-            label="Prompt personalizado"
-            multiline
-            rows={window.innerWidth < 600 ? 8 : 15}
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            fullWidth
-            variant="outlined"
-            margin="normal"
-            placeholder="Insira seu prompt personalizado aqui..."
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": { borderColor: "#666" },
-                "&:hover fieldset": { borderColor: "#9041c1" },
-                "&.Mui-focused fieldset": { borderColor: "#9041c1" },
-                fontSize: { xs: "0.813rem", sm: "0.875rem" },
-              },
-              fontFamily: "monospace",
-            }}
-            InputLabelProps={{
-              sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
-            }}
-          />
-
-          <Box sx={{ mt: 2 }}>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontSize: { xs: "0.75rem", sm: "0.813rem" } }}
-            >
-              O texto do PDF será anexado após as instruções de formato.
-              Certifique-se de incluir uma referência a ele em suas instruções
-              personalizadas.
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions
-          sx={{
-            p: { xs: 1.5, sm: 2 },
-            flexDirection: { xs: "column", sm: "row" },
-            gap: { xs: 1, sm: 0 },
-          }}
-        >
-          <Button
-            onClick={handleResetPrompt}
-            color="secondary"
-            fullWidth={window.innerWidth < 600}
-            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
-          >
-            Restaurar Padrão
-          </Button>
-          <Button
-            onClick={handleCloseSettings}
-            color="inherit"
-            fullWidth={window.innerWidth < 600}
-            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSaveSettings}
-            variant="contained"
-            fullWidth={window.innerWidth < 600}
-            sx={{
-              backgroundColor: "#9041c1",
-              "&:hover": { backgroundColor: "#7d37a7" },
-              fontSize: { xs: "0.813rem", sm: "0.875rem" },
-            }}
-          >
-            Salvar Configurações
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Diálogo de configuração da API */}
-      <Dialog
-        open={apiKeyDialogOpen}
-        onClose={handleCloseApiKeyDialog}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            width: { xs: "95%", sm: "90%", md: "100%" },
-            maxHeight: { xs: "90vh", sm: "85vh" },
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{
-            bgcolor: "#f5f5fa",
-            fontSize: { xs: "1rem", sm: "1.25rem" },
-            py: { xs: 1.5, sm: 2 },
-            px: { xs: 2, sm: 3 },
-          }}
-        >
-          Configurar Chave API GROQ
-        </DialogTitle>
-        <DialogContent dividers sx={{ px: { xs: 2, sm: 3 } }}>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            gutterBottom
-            sx={{
-              mb: 2,
-              fontSize: { xs: "0.813rem", sm: "0.875rem" },
-            }}
-          >
-            Você pode usar sua própria chave API do GROQ para gerar questões.
-            Caso não forneça uma chave, será utilizada a chave padrão do
-            sistema.
-          </Typography>
-
-          <TextField
-            label="Sua chave API GROQ"
-            fullWidth
-            value={customApiKey}
-            onChange={(e) => setCustomApiKey(e.target.value)}
-            variant="outlined"
-            margin="normal"
-            type="password"
-            placeholder="sk-xxxxxxxxxxxxxxxxxxxx"
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": { borderColor: "#666" },
-                "&:hover fieldset": { borderColor: "#4caf50" },
-                "&.Mui-focused fieldset": { borderColor: "#4caf50" },
-                fontSize: { xs: "0.813rem", sm: "0.875rem" },
-              },
-            }}
-            InputLabelProps={{
-              sx: { fontSize: { xs: "0.875rem", sm: "1rem" } },
-            }}
-            helperText="Sua chave API será armazenada apenas no seu navegador e nunca enviada para nossos servidores."
-            FormHelperTextProps={{
-              sx: { fontSize: { xs: "0.688rem", sm: "0.75rem" } },
-            }}
-          />
-
-          <Box
-            sx={{
-              mt: 3,
-              bgcolor: "rgba(76, 175, 80, 0.08)",
-              p: { xs: 1.5, sm: 2 },
-              borderRadius: 1,
-              borderLeft: "4px solid #4caf50",
-            }}
-          >
-            <Typography
-              variant="subtitle2"
-              color="primary.main"
-              sx={{ fontSize: { xs: "0.875rem", sm: "1rem" } }}
-            >
-              Como obter uma chave API GROQ?
-            </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                mt: 1,
-                fontSize: { xs: "0.75rem", sm: "0.875rem" },
-              }}
-            >
-              1. Acesse{" "}
-              <a
-                href="https://console.groq.com/keys"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ wordBreak: "break-all" }}
-              >
-                console.groq.com/keys
-              </a>
-              <br />
-              2. Crie uma conta ou faça login
-              <br />
-              3. Gere uma nova chave API
-              <br />
-              4. Cole a chave no campo acima
-            </Typography>
-          </Box>
-
-          <FormControlLabel
-            sx={{ mt: 2 }}
-            control={
-              <Switch
-                checked={!usingCustomApiKey}
-                onChange={(e) => setUsingCustomApiKey(!e.target.checked)}
-                color="primary"
-              />
-            }
-            label="Usar chave padrão do sistema"
-            componentsProps={{
-              typography: {
-                sx: { fontSize: { xs: "0.813rem", sm: "0.875rem" } },
-              },
-            }}
-          />
-        </DialogContent>
-        <DialogActions
-          sx={{
-            p: { xs: 1.5, sm: 2 },
-            flexDirection: { xs: "column", sm: "row" },
-            gap: { xs: 1, sm: 0 },
-          }}
-        >
-          <Button
-            onClick={handleCloseApiKeyDialog}
-            color="inherit"
-            fullWidth={window.innerWidth < 600}
-            sx={{ fontSize: { xs: "0.813rem", sm: "0.875rem" } }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSaveApiKey}
-            variant="contained"
-            fullWidth={window.innerWidth < 600}
-            sx={{
-              backgroundColor: "#4caf50",
-              "&:hover": { backgroundColor: "#388e3c" },
-              fontSize: { xs: "0.813rem", sm: "0.875rem" },
-            }}
-          >
-            Salvar Configurações
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <ApiKeyDialog
+        open={groqSettings.apiKeyDialogOpen}
+        onClose={groqSettings.handleCloseApiKeyDialog}
+        customApiKey={groqSettings.customApiKey}
+        setCustomApiKey={groqSettings.setCustomApiKey}
+        usingCustomApiKey={groqSettings.usingCustomApiKey}
+        setUsingCustomApiKey={groqSettings.setUsingCustomApiKey}
+        onSave={groqSettings.handleSaveApiKey}
+      />
     </Box>
   );
 };
