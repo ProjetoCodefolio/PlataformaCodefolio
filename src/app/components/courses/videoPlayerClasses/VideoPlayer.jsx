@@ -22,10 +22,8 @@ import { getYouTubeID } from "../../../utils/postUtils";
 import { VideoWatcher } from "./VideoWatcher";
 import { useAuth } from "$context/AuthContext";
 import { fetchVideoProgress } from "$api/services/courses/videoProgress";
-import { isVideoLocked } from "$api/utils/videoUtils";
-import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
-import { prepareSlideUrl, checkSlideHasQuiz } from "$api/services/courses/slides";
+import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import { canRunCourse, canViewQuizResults } from "$api/utils/permissions";
 import VideoComments from "$components/courses/videoComments/VideoComments";
 
@@ -71,16 +69,13 @@ export const VideoPlayer = forwardRef(
       video?.progress || 0
     );
     const [watchTime, setWatchTime] = useState(video?.watchedTime || 0);
-    const [showLoginModal, setShowLoginModal] = useState(false);
     const [isVideoLockedState, setIsVideoLockedState] = useState(false);
     const [playerLoadAttempt, setPlayerLoadAttempt] = useState(0);
     const [playerError, setPlayerError] = useState(false);
     const [reportModalOpen, setReportModalOpen] = useState(false);
     const [hasSlideQuiz, setHasSlideQuiz] = useState(false);
-    const videoRef = useRef(null);
     const hasNotifiedRef = useRef(video?.watched || false);
     const navigate = useNavigate();
-    const [showControls, setShowControls] = useState(true);
 
     const handleLogin = async () => {
       try {
@@ -207,7 +202,6 @@ export const VideoPlayer = forwardRef(
         const videoIndex = videos.findIndex((v) => v.id === video.id);
         if (videoIndex > 1) {
           setIsVideoLockedState(true);
-          setShowLoginModal(true);
         } else {
           setIsVideoLockedState(false);
         }
@@ -311,25 +305,6 @@ export const VideoPlayer = forwardRef(
         return () => clearTimeout(timer);
       }
     }, [playerError, playerLoadAttempt]);
-
-    const pauseVideo = () => {
-      try {
-        if (videoRef.current && typeof videoRef.current.pause === "function") {
-          videoRef.current.pause();
-          return true;
-        }
-
-        if (player && typeof player.pauseVideo === "function") {
-          player.pauseVideo();
-          return true;
-        }
-
-        return false;
-      } catch (error) {
-        console.error("Erro ao pausar vídeo:", error);
-        return false;
-      }
-    };
 
     const isSlide = video.isSlide || video.type === "slide";
 
