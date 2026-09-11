@@ -39,13 +39,11 @@ import "react-toastify/dist/ReactToastify.css";
 import AdvancedSettingsModal from "../../../components/courses/AdvancedSettingsModal";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import IconButton from "@mui/material/IconButton";
-import SettingsIcon from "@mui/icons-material/Settings";
 import { checkUserCourseRole } from "$api/services/courses/students";
 import { ALIAS_PERMITIDO } from "$api/services/courses/alias";
 import {
   COURSE_TYPES,
   isDiscipline,
-  isCourseClosed,
   closeDiscipline,
   reopenDiscipline,
 } from "$api/services/courses/courseType";
@@ -59,7 +57,6 @@ const CourseForm = () => {
 
   const courseMaterialsRef = useRef();
   const courseQuizzesRef = useRef();
-  const courseStudentsRef = useRef();
 
   const [courseTitle, setCourseTitle] = useState("");
   const [courseDescription, setCourseDescription] = useState("");
@@ -76,7 +73,7 @@ const CourseForm = () => {
   const [pinRequired, setPinRequired] = useState(false);
   const [coursePin, setCoursePin] = useState("");
   const [showPin, setShowPin] = useState(false);
-  const [randomPin, setRandomPin] = useState(
+  const [randomPin] = useState(
     Math.floor(1000000 + Math.random() * 9000000).toString()
   );
   // Curso com PIN salvo cujo valor não é recuperável (cursos antigos guardam
@@ -126,10 +123,6 @@ const CourseForm = () => {
 
     loadCourse();
   }, [courseId]);
-
-  useEffect(() => {
-    checkCurrentUserRole();
-  }, [courseId, userDetails]);
 
   useEffect(() => {
     if (courseId && userDetails?.userId) {
@@ -798,10 +791,7 @@ const CourseForm = () => {
                 />
               )}
               {selectedTab === 3 && (
-                <CourseStudentsTab
-                  ref={courseStudentsRef}
-                  courseId={courseId}
-                />
+                <CourseStudentsTab courseId={courseId} />
               )}
               {selectedTab === 4 && (
                 <Typography variant="h6" sx={{ color: "#666" }}>
