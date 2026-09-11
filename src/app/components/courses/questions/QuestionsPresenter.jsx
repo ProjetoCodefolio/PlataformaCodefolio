@@ -27,6 +27,7 @@ import FormatListBulletedIcon from "@mui/icons-material/FormatListBulleted";
 import logo from "$assets/img/codefolio.png";
 import { filterCourseQuestions, buildStudentQuestionLink } from "$api/services/courses/questions";
 import QrCodeDuvida from "./QrCodeDuvida";
+import { reindexAnchoredPosition } from "./anchoredPosition";
 
 /**
  * Tela de apresentação das dúvidas dos alunos, no mesmo formato do Quiz Gigi:
@@ -180,14 +181,13 @@ const QuestionsPresenter = ({
   //    posição, que agora é a dúvida seguinte, e não numa tela vazia.
   useEffect(() => {
     setIndex((atual) => {
-      const ancora = idEmCartazRef.current;
-      const posicao = ancora
-        ? visiveis.findIndex((duvida) => duvida?.id === ancora)
-        : -1;
-      const proximo =
-        posicao >= 0 ? posicao : total === 0 ? 0 : Math.min(atual, total - 1);
-      idEmCartazRef.current = visiveis[proximo]?.id || null;
-      return proximo;
+      const { nextIndex, nextAnchorId } = reindexAnchoredPosition(
+        visiveis,
+        idEmCartazRef.current,
+        atual
+      );
+      idEmCartazRef.current = nextAnchorId;
+      return nextIndex;
     });
   }, [visiveis, total]);
 
