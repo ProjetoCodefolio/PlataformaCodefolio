@@ -17,6 +17,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import IconButton from "@mui/material/IconButton";
 import CourseFormFields from "./CourseFormFields";
 import CourseTabsNav from "./CourseTabsNav";
+import EmailQuotaNotice from "./EmailQuotaNotice";
 import CourseSaveFeedbackModal from "./CourseSaveFeedbackModal";
 import { useCourseUserRole } from "./hooks/useCourseUserRole";
 import { useCourseFormFields } from "./hooks/useCourseFormFields";
@@ -206,6 +207,8 @@ const CourseForm = () => {
 
           {courseId && (
             <>
+              <EmailQuotaNotice courseId={courseId} />
+
               <CourseTabsNav selectedTab={selectedTab} onChange={handleTabChange} />
 
               {selectedTab === 0 && (
