@@ -19,6 +19,8 @@ import { ref, get, set } from "firebase/database";
 export const DEFAULT_PREFS = {
   newAssignment: true,
   newQuiz: true,
+  // Item de avaliação do curso (nome + peso na média), não a nota em si.
+  newAssessment: true,
   // Vídeo/slide novo publicado no curso.
   newContent: true,
   // Só tem efeito para o dono do curso: avisa quando um aluno registra dúvida.
@@ -65,7 +67,7 @@ export const savePrefs = async (userId, courseId, prefs) => {
 /**
  * Verifica se um usuário aceita receber um tipo de notificação para o curso.
  * @param {Object} prefs - resultado de fetchPrefs
- * @param {string} type - 'newAssignment' | 'newQuiz' | 'newContent' | 'newQuestion' | 'grade' | 'groupChanges'
+ * @param {string} type - 'newAssignment' | 'newQuiz' | 'newAssessment' | 'newContent' | 'newQuestion' | 'grade' | 'groupChanges'
  */
 export const acceptsInApp = (prefs, type) => {
   if (!prefs) return true;
