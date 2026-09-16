@@ -1,48 +1,23 @@
-import React, { useState, useEffect, useRef, forwardRef } from "react";
+import React, { useState, forwardRef } from "react";
 import PropTypes from "prop-types";
-import {
-  Box,
-  Typography,
-  IconButton,
-  Button,
-} from "@mui/material";
+import { Box, Typography, IconButton, Button } from "@mui/material";
 import YouTube from "react-youtube";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import LockIcon from "@mui/icons-material/Lock";
 import SchoolIcon from "@mui/icons-material/School";
-import PersonIcon from "@mui/icons-material/Person";
-import SlideshowIcon from "@mui/icons-material/Slideshow";
-import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
-import EditIcon from "@mui/icons-material/Edit";
-import QuestionAnswerIcon from "@mui/icons-material/QuestionAnswer";
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import { handleGoogleSignIn } from "$api/services/auth";
 import { useNavigate } from "react-router-dom";
 import { getYouTubeID } from "../../../utils/postUtils";
 import { VideoWatcher } from "./VideoWatcher";
 import { useAuth } from "$context/AuthContext";
-import { fetchVideoProgress } from "$api/services/courses/videoProgress";
-import { isVideoLocked } from "$api/utils/videoUtils";
-import { toast } from "react-toastify";
 import ReportModal from "$components/common/reportModal";
-import { prepareSlideUrl, checkSlideHasQuiz } from "$api/services/courses/slides";
-import { canRunCourse, canViewQuizResults } from "$api/utils/permissions";
 import VideoComments from "$components/courses/videoComments/VideoComments";
-
-export const styles = `
-  .youtube-player .ytp-chrome-bottom,
-  .youtube-player .html5-video-container {
-    background-color: #F5F5FA !important;
-  }
-  .youtube-player iframe {
-    background-color: #F5F5FA !important;
-  }
-  .slide-iframe {
-    border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  }
-`;
+import LockedVideoGate from "./LockedVideoGate";
+import VideoPlayerActionBar from "./VideoPlayerActionBar";
+import { useInjectedPlayerStyles } from "./hooks/useInjectedPlayerStyles";
+import { useVideoLockGate } from "./hooks/useVideoLockGate";
+import { useYoutubePlayerImperative } from "./hooks/useYoutubePlayerImperative";
+import { useVideoWatchProgress } from "./hooks/useVideoWatchProgress";
+import { useSlidePlayer } from "./hooks/useSlidePlayer";
 
 export const VideoPlayer = forwardRef(
   (
@@ -66,21 +41,19 @@ export const VideoPlayer = forwardRef(
     ref
   ) => {
     const { userDetails, refreshUserDetails } = useAuth();
-    const [player, setPlayer] = useState(null);
-    const [percentageWatched, setPercentageWatched] = useState(
-      video?.progress || 0
-    );
-    const [watchTime, setWatchTime] = useState(video?.watchedTime || 0);
-    const [showLoginModal, setShowLoginModal] = useState(false);
-    const [isVideoLockedState, setIsVideoLockedState] = useState(false);
-    const [playerLoadAttempt, setPlayerLoadAttempt] = useState(0);
-    const [playerError, setPlayerError] = useState(false);
     const [reportModalOpen, setReportModalOpen] = useState(false);
-    const [hasSlideQuiz, setHasSlideQuiz] = useState(false);
-    const videoRef = useRef(null);
-    const hasNotifiedRef = useRef(video?.watched || false);
     const navigate = useNavigate();
-    const [showControls, setShowControls] = useState(true);
+
+    useInjectedPlayerStyles();
+
+    const isVideoLockedState = useVideoLockGate({ video, videos, userDetails });
+    const { isSlide, hasSlideQuiz, formatSlideUrl } = useSlidePlayer({ video });
+
+    const { player, playerError, playerLoadAttempt, onReady, setPlayerError } =
+      useYoutubePlayerImperative({ ref, video });
+
+    const { percentageWatched, setPercentageWatched, watchTime, setWatchTime, hasNotifiedRef } =
+      useVideoWatchProgress({ video, userDetails, player });
 
     const handleLogin = async () => {
       try {
@@ -97,197 +70,6 @@ export const VideoPlayer = forwardRef(
       }
     };
 
-    const onReady = (event) => {
-      const playerInstance = event.target;
-
-      if (!playerInstance) {
-        return;
-      }
-
-      const isPlayerReady = () => {
-        try {
-          return (
-            playerInstance &&
-            typeof playerInstance.getPlayerState === "function" &&
-            playerInstance.getPlayerState() !== undefined
-          );
-        } catch (e) {
-          return false;
-        }
-      };
-
-      const safeSeekTo = (time) => {
-        try {
-          if (!isPlayerReady()) {
-            return;
-          }
-          playerInstance.seekTo(time);
-        } catch (e) {
-          console.error("Erro ao chamar seekTo:", e);
-        }
-      };
-
-      ref.current = {
-        seekTo: safeSeekTo,
-        updateProgress: (progress, time) => {
-          setPercentageWatched(progress);
-          setWatchTime(time);
-        },
-        player: playerInstance,
-        pause: () => {
-          try {
-            if (isPlayerReady()) {
-              playerInstance.pauseVideo();
-            }
-          } catch (e) {
-            console.error("Erro ao pausar vídeo:", e);
-          }
-        },
-        getCurrentTime: () => {
-          try {
-            return isPlayerReady() ? playerInstance.getCurrentTime() : 0;
-          } catch (e) {
-            console.error("Erro ao obter tempo atual:", e);
-            return 0;
-          }
-        },
-        getDuration: () => {
-          try {
-            return isPlayerReady() ? playerInstance.getDuration() : 0;
-          } catch (e) {
-            console.error("Erro ao obter duração:", e);
-            return 0;
-          }
-        },
-      };
-
-      setPlayer(playerInstance);
-
-      const startTime = video?.watchedTime || 0;
-      if (startTime > 0) {
-        let attempts = 0;
-        const maxAttempts = 5;
-
-        const trySeekTo = () => {
-          if (attempts >= maxAttempts) {
-            return;
-          }
-
-          attempts++;
-
-          try {
-            if (
-              isPlayerReady() &&
-              playerInstance.getIframe &&
-              playerInstance.getIframe() &&
-              playerInstance.getIframe().src
-            ) {
-              const duration = playerInstance.getDuration();
-              if (isNaN(duration) || duration <= 0) {
-                setTimeout(trySeekTo, 1000 * attempts);
-                return;
-              }
-
-              const safeTime = Math.min(startTime, duration - 1);
-              playerInstance.seekTo(safeTime);
-            } else {
-              setTimeout(trySeekTo, 1000 * attempts);
-            }
-          } catch (e) {
-            setTimeout(trySeekTo, 1000 * attempts);
-          }
-        };
-
-        setTimeout(trySeekTo, 1500);
-      }
-    };
-
-    useEffect(() => {
-      if (!userDetails?.userId && video && videos) {
-        const videoIndex = videos.findIndex((v) => v.id === video.id);
-        if (videoIndex > 1) {
-          setIsVideoLockedState(true);
-          setShowLoginModal(true);
-        } else {
-          setIsVideoLockedState(false);
-        }
-      } else {
-        setIsVideoLockedState(false);
-      }
-    }, [video, videos, userDetails]);
-
-    useEffect(() => {
-      const fetchWatchData = async () => {
-        if (!video?.id || !video?.courseId) return;
-
-        try {
-          setWatchTime(0);
-          setPercentageWatched(0);
-          hasNotifiedRef.current = false;
-
-          if (!userDetails?.userId) {
-            setWatchTime(video.watchedTime || 0);
-            setPercentageWatched(video.progress || 0);
-            return;
-          }
-
-          const progress = await fetchVideoProgress(
-            userDetails.userId,
-            video.courseId,
-            video.id
-          );
-
-          setWatchTime(progress.watchedTime);
-          setPercentageWatched(progress.percentageWatched);
-        } catch (error) {
-          console.error("Erro ao buscar dados do vídeo:", error);
-        }
-      };
-
-      fetchWatchData();
-
-      return () => {
-        setWatchTime(0);
-        setPercentageWatched(0);
-        hasNotifiedRef.current = false;
-      };
-    }, [video?.id, video?.courseId, userDetails?.userId]);
-
-    // Sem isso, um vídeo que falhou e esgotou as tentativas deixava
-    // `playerLoadAttempt` em 3 para sempre: ao navegar para o PRÓXIMO vídeo
-    // (que carrega normalmente), o fallback de erro continuava aparecendo no
-    // lugar do player, porque a condição olha só o número de tentativas.
-    useEffect(() => {
-      setPlayerError(false);
-      setPlayerLoadAttempt(0);
-    }, [video?.id]);
-
-    useEffect(() => {
-      const styleSheet = document.createElement("style");
-      styleSheet.textContent = styles;
-      document.head.appendChild(styleSheet);
-      return () => document.head.removeChild(styleSheet);
-    }, []);
-
-    useEffect(() => {
-      if (video?.id) {
-        setPercentageWatched(video.progress || 0);
-        setWatchTime(video.watchedTime || 0);
-
-        if (player && video.watchedTime > 0) {
-          try {
-            setTimeout(() => {
-              if (player && typeof player.seekTo === "function") {
-                player.seekTo(video.watchedTime);
-              }
-            }, 1000);
-          } catch (error) {
-            console.error("Erro ao posicionar vídeo:", error);
-          }
-        }
-      }
-    }, [video?.id, video?.watchedTime, video?.progress]);
-
     const handleViewStudents = () => {
       navigate(
         `/studentDashboard?quizId=${
@@ -300,96 +82,6 @@ export const VideoPlayer = forwardRef(
       if (typeof onOpenSlide !== "function") return;
       onOpenSlide({ videoId: video?.id, quizId: video?.quizId });
     };
-
-    useEffect(() => {
-      if (playerError && playerLoadAttempt < 3) {
-        const timer = setTimeout(() => {
-          setPlayerLoadAttempt((prev) => prev + 1);
-          setPlayerError(false);
-        }, 2000);
-
-        return () => clearTimeout(timer);
-      }
-    }, [playerError, playerLoadAttempt]);
-
-    const pauseVideo = () => {
-      try {
-        if (videoRef.current && typeof videoRef.current.pause === "function") {
-          videoRef.current.pause();
-          return true;
-        }
-
-        if (player && typeof player.pauseVideo === "function") {
-          player.pauseVideo();
-          return true;
-        }
-
-        return false;
-      } catch (error) {
-        console.error("Erro ao pausar vídeo:", error);
-        return false;
-      }
-    };
-
-    const isSlide = video.isSlide || video.type === "slide";
-
-    const formatSlideUrl = (url) => {
-      if (!url) return "";
-
-      try {
-        url = url.trim();
-
-        if (url.includes("<iframe") && url.includes("src=")) {
-          const srcMatch = url.match(/src=["']([^"']+)["']/);
-          if (srcMatch && srcMatch[1]) {
-            return srcMatch[1];
-          }
-        }
-
-        if (url.includes("embed") && url.includes("docs.google.com")) {
-          return url;
-        }
-
-        if (url.includes("docs.google.com/presentation")) {
-          if (url.includes("/edit")) {
-            const baseUrl = url.split(/[?#]/)[0];
-            return `${baseUrl.replace(
-              "/edit",
-              "/embed"
-            )}?start=false&loop=false&delayms=3000`;
-          }
-
-          if (url.includes("/pub")) {
-            return url.replace("/pub", "/embed");
-          }
-
-          if (!url.includes("/embed")) {
-            const baseUrl = url.split(/[?#]/)[0];
-            return `${baseUrl}/embed?start=false&loop=false&delayms=3000`;
-          }
-        }
-
-        return url;
-      } catch (error) {
-        console.error("Erro ao formatar URL do slide:", error);
-        return url;
-      }
-    };
-
-    useEffect(() => {
-      const checkForSlideQuiz = async () => {
-        if (isSlide && video && video.id && video.courseId) {
-          try {
-            const hasQuiz = await checkSlideHasQuiz(video.courseId, video.id);
-            setHasSlideQuiz(hasQuiz);
-          } catch (error) {
-            console.error("Erro ao verificar quiz do slide:", error);
-          }
-        }
-      };
-
-      checkForSlideQuiz();
-    }, [isSlide, video]);
 
     const handleEditCourse = () => {
       navigate(`/adm-cursos?courseId=${courseId}`);
@@ -412,68 +104,7 @@ export const VideoPlayer = forwardRef(
     }
 
     if (isVideoLockedState) {
-      return (
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: { xs: "90%", sm: "780px" },
-            mx: "auto",
-            p: { xs: 1.5, sm: 4 },
-            textAlign: "center",
-            backgroundColor: "#F5F5FA",
-            borderRadius: "12px",
-            boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: { xs: 1, sm: 2 },
-            minHeight: { xs: "auto", sm: "200px" },
-          }}
-        >
-          <LockIcon sx={{ fontSize: { xs: 30, sm: 40 }, color: "#9041c1" }} />
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 600,
-              color: "#555",
-              fontSize: { xs: "1rem", sm: "1.25rem" },
-              lineHeight: 1.2,
-            }}
-          >
-            Conteúdo Bloqueado
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "#666",
-              maxWidth: { xs: "100%", sm: "400px" },
-              fontSize: { xs: "0.85rem", sm: "1rem" },
-              lineHeight: 1.4,
-            }}
-          >
-            Faça login para acessar este vídeo e continuar seu curso!
-          </Typography>
-          <Button
-            variant="contained"
-            onClick={handleLogin}
-            sx={{
-              backgroundColor: "#9041c1",
-              color: "#fff",
-              fontWeight: 600,
-              px: { xs: 2, sm: 3 },
-              py: { xs: 0.5, sm: 1 },
-              borderRadius: "8px",
-              "&:hover": {
-                backgroundColor: "#7a35a3",
-              },
-              fontSize: { xs: "0.8rem", sm: "1rem" },
-              minWidth: { xs: "120px", sm: "auto" },
-            }}
-          >
-            Fazer Login
-          </Button>
-        </Box>
-      );
+      return <LockedVideoGate onLogin={handleLogin} />;
     }
 
     return (
@@ -525,133 +156,20 @@ export const VideoPlayer = forwardRef(
             {video.title.split(" - ")[0]}
           </Typography>
 
-          <Box sx={{ display: "flex", ml: "auto", flexShrink: 0 }}>
-            {hasSlide && (
-              <IconButton
-                onClick={handleOpenSlidesClick}
-                sx={{
-                  color: "#fff",
-                  bgcolor: "#9041c1",
-                  mr: 1,
-                  p: 0.8,
-                  "&:hover": {
-                    bgcolor: "#7a35a3",
-                  },
-                }}
-                title="Ver Slides"
-              >
-                <SlideshowIcon sx={{ fontSize: "18px" }} />
-              </IconButton>
-            )}
-
-            {onAskQuestion && (
-              <IconButton
-                onClick={onAskQuestion}
-                sx={{
-                  color: "#fff",
-                  bgcolor: "#9041c1",
-                  mr: 1,
-                  p: 0.8,
-                  "&:hover": {
-                    bgcolor: "#7a35a3",
-                  },
-                }}
-                title="Registrar dúvida sobre este vídeo"
-              >
-                <QuestionAnswerIcon sx={{ fontSize: "18px" }} />
-              </IconButton>
-            )}
-
-            {onOpenQuestions && canViewQuizResults(userDetails, courseOwnerUid, courseId) && (
-              <IconButton
-                onClick={onOpenQuestions}
-                sx={{
-                  color: "#fff",
-                  bgcolor: "#9041c1",
-                  mr: 1,
-                  p: 0.8,
-                  "&:hover": {
-                    bgcolor: "#7a35a3",
-                  },
-                }}
-                title="Ver dúvidas da turma sobre este vídeo"
-              >
-                <HelpOutlineIcon sx={{ fontSize: "18px" }} />
-              </IconButton>
-            )}
-
-            {canViewQuizResults(userDetails, courseOwnerUid, courseId) && video.quizId && (
-              <>
-                <IconButton
-                  onClick={handleViewStudents}
-                  sx={{
-                    color: "#fff",
-                    bgcolor: "#9041c1",
-                    mr: 1,
-                    p: 0.8,
-                    "&:hover": {
-                      bgcolor: "#7a35a3",
-                    },
-                  }}
-                  title="Ver resultados dos estudantes"
-                >
-                  <PersonIcon sx={{ fontSize: "18px" }} />
-                </IconButton>
-
-                {onOpenQuizGigi && (
-                  <IconButton
-                    onClick={onOpenQuizGigi}
-                    sx={{
-                      color: "#fff",
-                      bgcolor: "#9041c1",
-                      mr: 1,
-                      p: 0.8,
-                      "&:hover": {
-                        bgcolor: "#7a35a3",
-                      },
-                    }}
-                    title="Abrir Quiz Gigi"
-                  >
-                    <SchoolIcon sx={{ fontSize: "18px" }} />
-                  </IconButton>
-                )}
-              </>
-            )}
-
-            {canRunCourse(userDetails, courseOwnerUid, courseId) && (
-              <IconButton
-                onClick={handleEditCourse}
-                sx={{
-                  color: "#fff",
-                  bgcolor: "#9041c1",
-                  mr: 1,
-                  p: 0.8,
-                  "&:hover": {
-                    bgcolor: "#7a35a3",
-                  },
-                }}
-                title="Editar curso"
-              >
-                <EditIcon sx={{ fontSize: "18px" }} />
-              </IconButton>
-            )}
-
-            <IconButton
-              onClick={() => setReportModalOpen(true)}
-              sx={{
-                color: "text.secondary",
-                bgcolor: "grey.200",
-                mr: 1,
-                p: 0.8,
-                "&:hover": {
-                  bgcolor: "grey.300",
-                },
-              }}
-              title="Reportar problema"
-            >
-              <OutlinedFlagIcon sx={{ fontSize: "18px" }} />
-            </IconButton>
-          </Box>
+          <VideoPlayerActionBar
+            video={video}
+            userDetails={userDetails}
+            courseOwnerUid={courseOwnerUid}
+            courseId={courseId}
+            hasSlide={hasSlide}
+            onOpenSlidesClick={handleOpenSlidesClick}
+            onAskQuestion={onAskQuestion}
+            onOpenQuestions={onOpenQuestions}
+            onViewStudents={handleViewStudents}
+            onOpenQuizGigi={onOpenQuizGigi}
+            onEditCourse={handleEditCourse}
+            onReport={() => setReportModalOpen(true)}
+          />
         </Box>
 
         <Box
@@ -755,7 +273,7 @@ export const VideoPlayer = forwardRef(
                       iv_load_policy: 3,
                     },
                   }}
-                  onReady={onReady}
+                  onReady={(event) => onReady(event, setPercentageWatched, setWatchTime)}
                   onError={() => {
                     setPlayerError(true);
                   }}

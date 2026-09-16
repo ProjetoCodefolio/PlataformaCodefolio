@@ -24,7 +24,7 @@ import { useNavigate } from "react-router-dom";
 import {
   getQuizWindowState,
   formatQuizDate,
-} from "$api/services/courses/quizzes";
+} from "$api/services/courses/quizWindow";
 
 // Chip da janela de disponibilidade: só aparece quando o professor definiu
 // alguma data. Cores: azul = agendado, verde = aberto, cinza = encerrado.

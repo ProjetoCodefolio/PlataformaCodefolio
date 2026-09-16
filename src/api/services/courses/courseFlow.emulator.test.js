@@ -46,13 +46,10 @@ if (!emuladorNoAr) {
 
 const { saveVideoProgress, markVideoAsCompleted, fetchVideoProgress } =
   await import("./videoProgress");
-const {
-  markQuizAsCompleted,
-  saveQuizResults,
-  fetchUserQuizResults,
-  hasUserReachedQuizAttemptLimit,
-  restoreQuizAttempt,
-} = await import("./quizzes");
+const { markQuizAsCompleted, saveQuizResults, restoreQuizAttempt } =
+  await import("./quizSubmission");
+const { fetchUserQuizResults } = await import("./quizFetch");
+const { hasUserReachedQuizAttemptLimit } = await import("./quizWindow");
 const { updateCourseProgress, fetchCourseStudentCounts } = await import("./students");
 const { saveCourseContentOrder, fetchCourseContent } = await import("./contentOrder");
 const { database } = await import("../../config/firebase");

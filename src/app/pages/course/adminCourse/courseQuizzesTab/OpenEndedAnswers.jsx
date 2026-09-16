@@ -18,7 +18,7 @@ import {
   IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { gradeOpenEndedAnswer } from '$api/services/courses/quizzes';
+import { gradeOpenEndedAnswer } from '$api/services/courses/quizOpenEnded';
 import { ref, get } from 'firebase/database';
 import { database } from '$api/config/firebase';
 import { toast } from 'react-toastify';

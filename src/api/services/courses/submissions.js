@@ -1,7 +1,7 @@
 import { database } from "$api/config/firebase";
 import { ref, set, get, update, remove } from "firebase/database";
 import { fetchAssignmentsByCourse } from "./assignments";
-import { fetchCourseQuizzes } from "./quizzes";
+import { fetchCourseQuizzes } from "./quizFetch";
 
 /**
  * Serviço de Entregas (submissions) de enunciados.

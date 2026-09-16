@@ -6,7 +6,7 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("../../config/firebase", () => ({ database: {}, auth: {}, analytics: {} }));
 
 const { isVideoLocked } = await import("./videos.js");
-const { isQuizLocked } = await import("./quizzes.js");
+const { isQuizLocked } = await import("./quizWindow.js");
 
 // Sequenciamento: quiz trava até o vídeo ser assistido; o próximo vídeo trava
 // até o anterior estar concluído (assistido e, havendo quiz, aprovado). O

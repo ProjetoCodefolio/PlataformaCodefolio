@@ -14,12 +14,8 @@ import { v4 as uuidv4 } from "uuid";
 import { database } from "../../config/firebase";
 import { fetchCourseContentItems } from "./content";
 import { fetchFlippedClassroomVideos } from "./submissions";
-import {
-  fetchCourseQuizzes,
-  fetchCourseVideosForQuiz,
-  normalizeDiagnosticFlag,
-  persistableQuizSettings,
-} from "./quizzes";
+import { fetchCourseQuizzes, fetchCourseVideosForQuiz } from "./quizFetch";
+import { normalizeDiagnosticFlag, persistableQuizSettings } from "./quizWindow";
 
 /**
  * Monta o rótulo legível de cada alvo de quiz de um curso (vídeo, slide ou

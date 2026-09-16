@@ -13,7 +13,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
-import { fetchQuizQuestions } from "$api/services/courses/quizzes";
+import { fetchQuizQuestions } from "$api/services/courses/quizFetch";
 import { answerVerdict } from "$api/services/courses/quizGrading";
 import { MarkdownView } from "$components/common/MarkdownEditor";
 

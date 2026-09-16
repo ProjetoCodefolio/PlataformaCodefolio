@@ -1,0 +1,69 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+  VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
+  VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
+  VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
+  VITE_MESSAGING_SENDER: ${{ secrets.VITE_MESSAGING_SENDER }}
+  VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
+  VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
+  VITE_MODE: ${{ secrets.VITE_MODE }}
+  VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+  VITE_PIN_SECRET_KEY: ${{ secrets.VITE_PIN_SECRET_KEY }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Testes (com emulador do Firebase)
+        run: npx firebase emulators:exec --project plataformacodefolio "npm run test -- --run"
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy no Firebase (hosting + database rules)
+        run: npx firebase deploy --only hosting,database --project plataformacodefolio
