@@ -32,3 +32,5 @@ conversation-log.md
 .agents/
 .claude/
 skills-lock.json
+# Estado local do wrangler (miniflare) no worker de e-mail
+.wrangler

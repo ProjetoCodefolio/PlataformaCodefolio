@@ -107,12 +107,24 @@ export default function CourseAssignmentsTab() {
     }
   };
 
-  const handleSaved = async (assignmentId, isNew, title) => {
+  const handleSaved = async (assignmentId, isNew, title, details = {}) => {
     await load();
-    if (isNew) {
-      // Notifica os alunos matriculados (in-app). E-mail fica atrás do seam.
-      notifyNewAssignment(courseId, { id: assignmentId, title: title || "Novo trabalho" }, courseTitle);
-    }
+    // Criar sempre avisa; editar só quando o professor marcou no formulário.
+    if (!details.notifyClass) return;
+
+    notifyNewAssignment(
+      courseId,
+      {
+        id: assignmentId,
+        title: title || "Novo trabalho",
+        dueDateText: details.dueDateText,
+        weight: details.weight,
+        mode: details.mode,
+        descriptionHtml: details.descriptionHtml,
+      },
+      courseTitle,
+      isNew ? [] : ["Enunciado ou prazo"]
+    );
   };
 
   const fmtDate = (iso) =>

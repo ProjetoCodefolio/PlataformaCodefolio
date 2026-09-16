@@ -28,6 +28,18 @@ import {
   normalizeMaxAttempts,
   normalizeQuizDate,
 } from "$api/services/courses/quizWindow";
+import { notifyNewQuiz } from "$api/services/notifications";
+
+/**
+ * Mudanças que valem um aviso para a turma. Marcar/desmarcar "diagnóstico"
+ * fica de fora: muda a contabilidade da média, não o que o aluno precisa
+ * fazer, e não justifica um e-mail para todo mundo.
+ */
+const CHANGE_LABELS = {
+  minPercentage: "Nota mínima",
+  attempts: "Tentativas",
+  schedule: "Prazo",
+};
 
 /**
  * Configuração de UM quiz: nota mínima, diagnóstico, tentativas e janela de
@@ -37,11 +49,16 @@ import {
  * Cada campo é gravado ao perder o foco (ou ao alternar, no caso dos toggles);
  * o botão "Salvar" regrava tudo e fecha. Por isso o botão de saída é "Fechar",
  * e não "Cancelar": o que foi digitado já está no banco.
+ *
+ * O aviso para a turma é DESLIGADO por padrão e sai uma única vez, ao fechar,
+ * com o resumo do que mudou na sessão — justamente porque aqui cada campo é
+ * uma gravação: avisar por gravação mandaria um e-mail por campo mexido.
  */
 const QuizSettingsModal = ({
   open,
   onClose,
   courseId,
+  courseTitle = "",
   quiz,
   contentTitle = "",
   onSaved,
@@ -56,6 +73,12 @@ const QuizSettingsModal = ({
   const [openDate, setOpenDate] = useState("");
   const [closeDate, setCloseDate] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notifyClass, setNotifyClass] = useState(false);
+  // Campos materiais mexidos nesta sessão de edição, acumulados até o fechamento.
+  const [changed, setChanged] = useState([]);
+
+  const markChanged = (key) =>
+    setChanged((prev) => (prev.includes(key) ? prev : [...prev, key]));
 
   // Recarrega os campos apenas ao ABRIR o modal para outro quiz. Reagir a toda
   // mudança de `quiz` sobrescreveria o que o professor está digitando, já que
@@ -70,6 +93,8 @@ const QuizSettingsModal = ({
     setMaxAttempts(max == null ? "" : max);
     setOpenDate(normalizeQuizDate(quiz.openDate));
     setCloseDate(normalizeQuizDate(quiz.closeDate));
+    setNotifyClass(false);
+    setChanged([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, quiz?.videoId]);
 
@@ -91,6 +116,7 @@ const QuizSettingsModal = ({
 
   const handleBlurMinPercentage = () => {
     if (Number(current?.minPercentage) === Number(minPercentage)) return;
+    markChanged("minPercentage");
     persist(
       (q) => updateQuizMinPercentage(courseId, q, minPercentage),
       "Nota mínima atualizada!"
@@ -109,6 +135,7 @@ const QuizSettingsModal = ({
 
   const handleAllowRetryToggle = (checked) => {
     setAllowRetry(checked);
+    markChanged("attempts");
     // Sem repetição o limite não se aplica: só existe 1 tentativa.
     if (!checked) setMaxAttempts("");
     persist(
@@ -125,6 +152,7 @@ const QuizSettingsModal = ({
     if (!allowRetry) return;
     if (normalizeMaxAttempts(current?.maxAttempts) === normalizeMaxAttempts(maxAttempts))
       return;
+    markChanged("attempts");
     const updated = await persist(
       (q) =>
         updateQuizRetrySettings(courseId, q, { allowRetry: true, maxAttempts }),
@@ -144,10 +172,68 @@ const QuizSettingsModal = ({
     ) {
       return;
     }
+    markChanged("schedule");
     persist(
       (q) => updateQuizSchedule(courseId, q, { openDate, closeDate }),
       "Janela de disponibilidade atualizada!"
     );
+  };
+
+  /**
+   * União entre o que os blurs já marcaram e o que ainda está só no formulário
+   * (quem clica direto em "Salvar" não dispara blur). Calculado na hora porque
+   * `setChanged` é assíncrono e o disparo acontece no mesmo tick.
+   */
+  const collectChanges = (baseline) => {
+    const keys = new Set(changed);
+    if (Number(baseline?.minPercentage) !== Number(minPercentage))
+      keys.add("minPercentage");
+    if (
+      normalizeAllowRetry(baseline?.allowRetry) !== allowRetry ||
+      normalizeMaxAttempts(baseline?.maxAttempts) !==
+        normalizeMaxAttempts(maxAttempts)
+    )
+      keys.add("attempts");
+    if (
+      normalizeQuizDate(baseline?.openDate) !== openDate ||
+      normalizeQuizDate(baseline?.closeDate) !== closeDate
+    )
+      keys.add("schedule");
+    return [...keys];
+  };
+
+  /**
+   * Avisa a turma UMA vez, no fim da edição, com o resumo do que mudou. Sem
+   * mudança material ou sem a caixinha marcada, não sai nada.
+   */
+  const notifyIfRequested = (finalQuiz, changeKeys) => {
+    if (!notifyClass || changeKeys.length === 0) return;
+    const changeLabels = changeKeys.map((key) => CHANGE_LABELS[key]).filter(Boolean);
+    if (changeLabels.length === 0) return;
+
+    notifyNewQuiz(
+      courseId,
+      {
+        id: finalQuiz?.isSlideQuiz
+          ? `slide_${finalQuiz.slideId}`
+          : finalQuiz?.videoId,
+        title: contentTitle || "Quiz",
+        openDate: finalQuiz?.openDate,
+        closeDate: finalQuiz?.closeDate,
+        minPercentage: finalQuiz?.minPercentage,
+        isDiagnostic: finalQuiz?.isDiagnostic,
+        allowRetry: finalQuiz?.allowRetry,
+        maxAttempts: finalQuiz?.maxAttempts,
+      },
+      courseTitle,
+      changeLabels
+    );
+    toast.info("A turma será avisada sobre as alterações.");
+  };
+
+  const handleClose = () => {
+    notifyIfRequested(current, collectChanges(current));
+    onClose?.();
   };
 
   // Regrava tudo de uma vez e fecha. Serve para quem prefere um botão explícito
@@ -155,6 +241,7 @@ const QuizSettingsModal = ({
   const handleSave = async () => {
     setSaving(true);
     try {
+      const changeKeys = collectChanges(current);
       let working = current;
       working = await updateQuizMinPercentage(courseId, working, minPercentage);
       working = await updateQuizDiagnosticStatus(courseId, working, isDiagnostic);
@@ -170,6 +257,7 @@ const QuizSettingsModal = ({
       setCurrent(working);
       onSaved?.(working);
       toast.success("Configurações do quiz salvas!");
+      notifyIfRequested(working, changeKeys);
       onClose?.();
     } catch (error) {
       console.error("Erro ao salvar configurações do quiz:", error);
@@ -180,7 +268,7 @@ const QuizSettingsModal = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ fontWeight: 700 }}>
         Editar Quiz
         {contentTitle ? `: ${contentTitle}` : ""}
@@ -269,10 +357,30 @@ const QuizSettingsModal = ({
             setCloseDate={setCloseDate}
             onBlurSave={handleBlurSchedule}
           />
+
+          <Box sx={{ p: 2, borderRadius: 1, border: "1px solid #e0e0e0" }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={notifyClass}
+                  onChange={(e) => setNotifyClass(e.target.checked)}
+                  sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" } }}
+                />
+              }
+              label="Avisar a turma sobre estas alterações"
+            />
+            <Typography
+              variant="caption"
+              sx={{ display: "block", ml: 4, color: "#666", mt: 0.5 }}
+            >
+              Manda um e-mail para todos os alunos matriculados ao fechar, com o
+              resumo do que mudou. Só vale para prazo, nota mínima e tentativas.
+            </Typography>
+          </Box>
         </Box>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} sx={{ color: "#666", textTransform: "none" }}>
+        <Button onClick={handleClose} sx={{ color: "#666", textTransform: "none" }}>
           Fechar
         </Button>
         <Button

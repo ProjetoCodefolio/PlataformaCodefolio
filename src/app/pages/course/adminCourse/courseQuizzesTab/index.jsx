@@ -301,6 +301,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
         open={Boolean(modals.settingsQuiz)}
         onClose={() => modals.setSettingsQuiz(null)}
         courseId={courseId}
+        courseTitle={courseTitle}
         quiz={modals.settingsQuiz}
         contentTitle={
           modals.settingsQuiz?.isSlideQuiz

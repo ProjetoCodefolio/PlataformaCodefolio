@@ -32,6 +32,7 @@ const TYPES = [
   { key: "newContent", label: "Novos vídeos/slides" },
   { key: "newAssignment", label: "Novos enunciados/trabalhos" },
   { key: "newQuiz", label: "Novos quizzes" },
+  { key: "newAssessment", label: "Avaliações do curso (peso na média)" },
   { key: "newQuestion", label: "Novas dúvidas de alunos (cursos que você criou)" },
   { key: "grade", label: "Notas lançadas" },
   { key: "groupChanges", label: "Mudanças de grupo" },
