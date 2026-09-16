@@ -1,0 +1,17 @@
+{
+  "name": "codefolio-email-worker",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "secrets": "echo 'wrangler secret put BREVO_API_KEY'"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

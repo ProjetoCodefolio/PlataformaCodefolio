@@ -1,0 +1,23 @@
+name = "codefolio-email-queue"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[queues.producers]]
+queue = "email-notifications"
+binding = "EMAIL_QUEUE"
+
+[[queues.consumers]]
+queue = "email-notifications"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
+
+[[kv_namespaces]]
+binding = "EMAIL_META"
+id = "3338a6a65e2a4af5925f892567c8d9ee"
+
+[vars]
+FIREBASE_PROJECT_ID = "plataformacodefolio"
+BREVO_SENDER_EMAIL = "projetocodefolio@gmail.com"
+BREVO_DAILY_LIMIT = "290"
+
