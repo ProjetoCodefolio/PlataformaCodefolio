@@ -250,7 +250,13 @@ const TeacherAssessmentsPage = () => {
     return (
       <Box>
         <Topbar hideSearch={true} />
-        <Box sx={{ p: 3 }}>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            pt: { xs: 10, sm: 12 },
+            minHeight: "calc(100vh - 64px)",
+          }}
+        >
           <Alert severity="info">
             Você não possui cursos cadastrados. Crie um curso para começar a
             gerenciar avaliações.
