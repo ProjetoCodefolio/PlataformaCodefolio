@@ -2,8 +2,12 @@ import { database } from "$api/config/firebase";
 import { ref, push, set, get, update, query, orderByChild, onValue } from "firebase/database";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
-import { formatQuizDate } from "$api/services/courses/quizWindow";
-import { sendNotificationEmailJS } from "$api/services/emailService";
+import {
+  formatQuizDate,
+  normalizeAllowRetry,
+  normalizeMaxAttempts,
+} from "$api/services/courses/quizWindow";
+import { enqueueNotificationEmail } from "$api/services/emailService";
 
 /**
  * Notificações in-app por usuário.
@@ -12,8 +16,9 @@ import { sendNotificationEmailJS } from "$api/services/emailService";
  *   notifications/{userId}/{notificationId}
  *     type, courseId, assignmentId, quizId, title, message, link, read, createdAt
  *
- * E-mail: usa um template PRÓPRIO no EmailJS (ver VITE_NOTIFICATION_TEMPLATE_ID
- * em emailService.js), diferente do de reporte de bug.
+ * E-mail: enfileirado no Worker (Cloudflare Queues + Brevo, ver
+ * emailWorker/), não enviado direto — ver VITE_EMAIL_WORKER_URL e
+ * enqueueNotificationEmail em emailService.js.
  */
 
 // Liga/desliga o envio de e-mail de notificação. `import.meta.env.PROD` só é
@@ -22,7 +27,13 @@ import { sendNotificationEmailJS } from "$api/services/emailService";
 // banco). De propósito: sem essa separação, testar localmente contra o
 // Firebase real já dispararia e-mail de verdade para alunos matriculados de
 // verdade.
-export const EMAIL_NOTIFICATIONS_ENABLED = import.meta.env.PROD;
+//
+// VITE_FORCE_EMAIL_NOTIFICATIONS=true é a única forma de ligar isso em `npm
+// run dev`, pra teste local pontual — deve vir sempre acompanhado de
+// VITE_EMAIL_TEST_ALLOWLIST (ver emailService.js), que restringe quem
+// realmente recebe o e-mail.
+export const EMAIL_NOTIFICATIONS_ENABLED =
+  import.meta.env.PROD || import.meta.env.VITE_FORCE_EMAIL_NOTIFICATIONS === "true";
 
 /**
  * Cria uma notificação in-app para um usuário.
@@ -109,18 +120,84 @@ export const markAllAsRead = async (userId) => {
 };
 
 /**
- * Envia o e-mail de UMA notificação para UM destinatário. No-op fora de
+ * Enfileira o e-mail de UMA notificação para UM destinatário. No-op fora de
  * produção (EMAIL_NOTIFICATIONS_ENABLED) ou sem e-mail do destinatário —
  * quem decide QUEM recebe (preferência por tipo) é o chamador.
+ *
+ * Só quiz e enunciado mandam e-mail. Vídeo/slide novo e nota lançada ficam
+ * apenas no sino: são os dois eventos mais frequentes da plataforma e, com
+ * fan-out por aluno, consumiam a cota diária do Brevo (300/dia no plano free)
+ * sem serem urgentes — quem entra no curso vê.
  */
-const sendNotificationEmail = async ({ to, name, subject, message, link, courseTitle }) => {
-  if (!EMAIL_NOTIFICATIONS_ENABLED || !to) return;
+const sendNotificationEmail = async (params) => {
+  if (!EMAIL_NOTIFICATIONS_ENABLED || !params.to) return;
   try {
-    await sendNotificationEmailJS({ to, name, subject, message, link, courseTitle });
+    await enqueueNotificationEmail(params);
   } catch (error) {
     console.error("Erro ao enviar e-mail de notificação:", error);
   }
 };
+
+/**
+ * Link que abre a sala já no conteúdo certo. Sem o `videoId` o aluno cai no
+ * primeiro item do curso e tem que caçar o que mudou.
+ */
+const contentLink = (courseId, contentId) =>
+  contentId
+    ? `/classes?courseId=${courseId}&videoId=${contentId}`
+    : `/classes?courseId=${courseId}`;
+
+/**
+ * O id que chega em notifyNewQuiz/notifyQuizUpdated para quiz de slide vem com
+ * o prefixo `slide_` (chave em courseQuizzes), mas o deep link precisa do id do
+ * CONTEÚDO. Um id inexistente não quebra a tela — ela cai na escolha padrão —,
+ * mas aí o link perde a graça.
+ */
+const contentIdFromQuizId = (quizId) =>
+  String(quizId || "").replace(/^slide_/, "");
+
+/**
+ * Campos do quiz que o e-mail mostra, já formatados. Tudo que estiver vazio
+ * some do e-mail em vez de virar bloco em branco.
+ */
+const quizEmailFields = (quiz) => {
+  const opensAt = formatQuizDate(quiz?.openDate);
+  const closesAt = formatQuizDate(quiz?.closeDate);
+  const janela = [
+    opensAt ? `Abre ${opensAt}` : "",
+    closesAt ? `Encerra ${closesAt}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const maxAttempts = normalizeMaxAttempts(quiz?.maxAttempts);
+  const tentativas = !normalizeAllowRetry(quiz?.allowRetry)
+    ? "1 (sem nova tentativa)"
+    : maxAttempts != null
+      ? String(maxAttempts)
+      : "Ilimitadas";
+
+  // Em quiz diagnóstico a nota mínima fica de fora: anunciar "mínima de 40%"
+  // logo acima de "não entra na média" confunde mais do que informa.
+  const isDiagnostic = Boolean(quiz?.isDiagnostic);
+
+  return {
+    videoTitle: quiz?.title || "",
+    window: janela || "Já está disponível",
+    minPercentage:
+      !isDiagnostic && quiz?.minPercentage ? `${quiz.minPercentage}%` : "",
+    attempts: tentativas,
+    graded: isDiagnostic ? "Não — quiz diagnóstico" : "Sim",
+  };
+};
+
+/**
+ * Campos de um item de avaliação (nome + peso na média do curso).
+ */
+const assessmentEmailFields = (assessment) => ({
+  weight: assessment?.percentage ? `${assessment.percentage}% da nota final` : "",
+  assessmentDescription: assessment?.description || "",
+});
 
 /**
  * Busca e-mail e nome de um único usuário — para as notificações de
@@ -142,19 +219,41 @@ const fetchUserEmailAndName = async (userId) => {
 };
 
 /**
- * Notifica todos os alunos matriculados sobre um novo enunciado, respeitando
- * as preferências individuais por curso. Cria notificação in-app e (quando
- * habilitado) dispara e-mail.
+ * Campos do enunciado que o e-mail mostra, já formatados.
+ */
+const assignmentEmailFields = (assignment) => ({
+  dueDate: assignment?.dueDateText || "",
+  weight: assignment?.weight ? `${assignment.weight}% da nota final` : "",
+  mode: assignment?.mode === "group" ? "Em grupo" : "Individual",
+  descriptionHtml: assignment?.descriptionHtml || "",
+});
+
+/**
+ * Notifica todos os alunos matriculados sobre um enunciado novo ou alterado,
+ * respeitando as preferências individuais por curso.
+ *
+ * A alteração só chega aqui quando o professor marca "avisar a turma" no
+ * formulário: sem isso, corrigir uma vírgula no enunciado mandaria um e-mail
+ * para a turma inteira e queimaria a cota diária do dia.
  *
  * @param {string} courseId
- * @param {Object} assignment - { id, title }
+ * @param {Object} assignment - { id, title, dueDateText, weight, mode, descriptionHtml }
  * @param {string} [courseTitle]
+ * @param {string[]} [changes] - o que mudou; vazio significa enunciado novo
  */
-export const notifyNewAssignment = async (courseId, assignment, courseTitle = "") => {
+export const notifyNewAssignment = async (
+  courseId,
+  assignment,
+  courseTitle = "",
+  changes = []
+) => {
   if (!courseId || !assignment?.id) return;
+  const isUpdate = changes.length > 0;
+  const title = isUpdate ? "Enunciado atualizado" : "Novo enunciado publicado";
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
     const message = `${courseTitle ? courseTitle + ": " : ""}${assignment.title}`;
+    const link = `/classes?courseId=${courseId}`;
 
     await Promise.all(
       students
@@ -166,22 +265,25 @@ export const notifyNewAssignment = async (courseId, assignment, courseTitle = ""
             type: "new_assignment",
             courseId,
             assignmentId: assignment.id,
-            title: "Novo enunciado publicado",
+            title,
             message,
-            link: `/classes?courseId=${courseId}`,
+            link,
           });
           await sendNotificationEmail({
             to: student.email,
             name: student.name,
-            subject: "Novo enunciado publicado",
-            message,
-            link: `/classes?courseId=${courseId}`,
+            type: isUpdate ? "assignment_updated" : "new_assignment",
+            courseId,
             courseTitle,
+            itemTitle: assignment.title,
+            link,
+            changes,
+            fields: assignmentEmailFields(assignment),
           });
         })
     );
   } catch (error) {
-    console.error("Erro ao notificar novo enunciado:", error);
+    console.error("Erro ao notificar enunciado:", error);
   }
 };
 
@@ -204,24 +306,35 @@ const quizWindowSummary = (quiz) => {
 };
 
 /**
- * Notifica todos os alunos matriculados sobre um novo quiz, respeitando as
- * preferências individuais por curso — mesmo caminho dos enunciados.
+ * Notifica todos os alunos matriculados sobre um quiz novo ou alterado,
+ * respeitando as preferências individuais por curso — mesmo caminho dos
+ * enunciados.
  *
- * O disparo acontece na CRIAÇÃO do quiz: com a janela de disponibilidade, é o
- * professor quem decide se aquilo já está no ar (sem data de abertura) ou se é
- * um aviso do que vem (abertura agendada).
+ * Na CRIAÇÃO o disparo é automático: com a janela de disponibilidade, criar é
+ * o momento do lançamento. Na ALTERAÇÃO só chega aqui se o professor marcar
+ * "avisar a turma" no modal de configurações — e o modal manda um aviso só por
+ * sessão de edição, não um por campo salvo.
  *
  * @param {string} courseId
- * @param {Object} quiz - { id, title, openDate, closeDate }
+ * @param {Object} quiz - { id, title, openDate, closeDate, minPercentage, allowRetry, maxAttempts, isDiagnostic }
  * @param {string} [courseTitle]
+ * @param {string[]} [changes] - o que mudou; vazio significa quiz novo
  */
-export const notifyNewQuiz = async (courseId, quiz, courseTitle = "") => {
+export const notifyNewQuiz = async (
+  courseId,
+  quiz,
+  courseTitle = "",
+  changes = []
+) => {
   if (!courseId || !quiz?.id) return;
+  const isUpdate = changes.length > 0;
+  const title = isUpdate ? "Quiz atualizado" : "Novo quiz publicado";
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
     const message = `${courseTitle ? courseTitle + ": " : ""}${
       quiz.title || "Novo quiz"
     }.${quizWindowSummary(quiz)}`;
+    const link = contentLink(courseId, contentIdFromQuizId(quiz.id));
 
     await Promise.all(
       students
@@ -233,30 +346,92 @@ export const notifyNewQuiz = async (courseId, quiz, courseTitle = "") => {
             type: "new_quiz",
             courseId,
             quizId: quiz.id,
-            title: "Novo quiz publicado",
+            title,
             message,
-            link: `/classes?courseId=${courseId}`,
+            link,
           });
           await sendNotificationEmail({
             to: student.email,
             name: student.name,
-            subject: "Novo quiz publicado",
-            message,
-            link: `/classes?courseId=${courseId}`,
+            type: isUpdate ? "quiz_updated" : "new_quiz",
+            courseId,
             courseTitle,
+            itemTitle: quiz.title,
+            link,
+            changes,
+            fields: quizEmailFields(quiz),
           });
         })
     );
   } catch (error) {
-    console.error("Erro ao notificar novo quiz:", error);
+    console.error("Erro ao notificar quiz:", error);
   }
 };
 
 /**
- * Notifica todos os alunos matriculados sobre um novo vídeo/slide publicado,
- * mesmo caminho de notifyNewAssignment/notifyNewQuiz. Era o tipo de aviso mais
- * pedido pelos alunos — hoje só descobrem vídeo novo pelo canal do YouTube ou
- * por alguém avisar no chat da turma.
+ * Notifica a turma sobre um item de avaliação novo ou alterado (o "Prova 1 —
+ * 30%" que compõe a média do curso). Mesmo molde de quiz e enunciado: criar
+ * sempre avisa, alterar só quando o professor marca.
+ *
+ * @param {string} courseId
+ * @param {Object} assessment - { id, name, percentage, description }
+ * @param {string} [courseTitle]
+ * @param {string[]} [changes] - o que mudou; vazio significa avaliação nova
+ */
+export const notifyAssessment = async (
+  courseId,
+  assessment,
+  courseTitle = "",
+  changes = []
+) => {
+  if (!courseId || !assessment?.name) return;
+  const isUpdate = changes.length > 0;
+  const title = isUpdate ? "Avaliação atualizada" : "Nova avaliação cadastrada";
+  try {
+    const students = await fetchCourseStudentsEnriched(courseId);
+    const message = `${courseTitle ? courseTitle + ": " : ""}${assessment.name}${
+      assessment.percentage ? ` (${assessment.percentage}% da nota)` : ""
+    }`;
+    const link = `/minhas-avaliacoes`;
+
+    await Promise.all(
+      students
+        .filter((s) => s.role !== "teacher")
+        .map(async (student) => {
+          const prefs = await fetchPrefs(student.userId, courseId);
+          if (!acceptsInApp(prefs, "newAssessment")) return;
+          await createNotification(student.userId, {
+            type: "new_assessment",
+            courseId,
+            title,
+            message,
+            link,
+          });
+          await sendNotificationEmail({
+            to: student.email,
+            name: student.name,
+            type: isUpdate ? "assessment_updated" : "new_assessment",
+            courseId,
+            courseTitle,
+            itemTitle: assessment.name,
+            link,
+            changes,
+            fields: assessmentEmailFields(assessment),
+          });
+        })
+    );
+  } catch (error) {
+    console.error("Erro ao notificar avaliação:", error);
+  }
+};
+
+/**
+ * Notifica todos os alunos matriculados sobre um novo vídeo/slide publicado.
+ *
+ * SÓ IN-APP, de propósito: publicar conteúdo é o evento mais frequente do
+ * curso e, com fan-out por aluno, uma semana cadastrada de uma vez consumia a
+ * cota diária inteira do Brevo (300/dia no plano free) com aviso que não é
+ * urgente — quem entra no curso vê o item novo.
  *
  * @param {string} courseId
  * @param {Object} content - { id, title, category } (category: 'video'|'slide')
@@ -283,15 +458,7 @@ export const notifyNewContent = async (courseId, content, courseTitle = "") => {
             courseId,
             title,
             message,
-            link: `/classes?courseId=${courseId}`,
-          });
-          await sendNotificationEmail({
-            to: student.email,
-            name: student.name,
-            subject: title,
-            message,
-            link: `/classes?courseId=${courseId}`,
-            courseTitle,
+            link: contentLink(courseId, content.id),
           });
         })
     );
@@ -333,8 +500,25 @@ export const notifyGroupChanges = async (userId, courseId, assignment, action) =
       link,
     });
 
+    // Continua mandando e-mail (diferente de conteúdo/nota): é destinatário
+    // único, então não pesa na cota diária, e o aluno precisa saber que foi
+    // mexido de grupo antes de aparecer na aula achando que está no time errado.
     const { email, name } = await fetchUserEmailAndName(userId);
-    await sendNotificationEmail({ to: email, name, subject: title, message, link });
+    await sendNotificationEmail({
+      to: email,
+      name,
+      type: "group_changes",
+      courseId,
+      itemTitle: trabalho,
+      link,
+      fields: {
+        action:
+          action === "removed"
+            ? "Você foi removido do grupo"
+            : "Você foi movido de grupo",
+        assignmentTitle: trabalho,
+      },
+    });
   } catch (error) {
     console.error("Erro ao notificar mudança de grupo:", error);
   }
@@ -342,6 +526,10 @@ export const notifyGroupChanges = async (userId, courseId, assignment, action) =
 
 /**
  * Notifica um aluno de que sua entrega foi avaliada.
+ *
+ * SÓ IN-APP, de propósito: numa turma inteira avaliada de uma vez o fan-out é
+ * igual ao de um anúncio para todos, e a nota é algo que o aluno confere em
+ * "Minhas avaliações" quando quer — não precisa chegar por e-mail.
  */
 export const notifyGrade = async (userId, courseId, assignment, grade) => {
   if (!userId || !courseId) return;
@@ -349,21 +537,14 @@ export const notifyGrade = async (userId, courseId, assignment, grade) => {
     const prefs = await fetchPrefs(userId, courseId);
     if (!acceptsInApp(prefs, "grade")) return;
 
-    const title = "Nota lançada";
-    const message = `Você recebeu nota ${grade} em "${assignment?.title || "trabalho"}".`;
-    const link = `/minhas-avaliacoes`;
-
     await createNotification(userId, {
       type: "grade",
       courseId,
       assignmentId: assignment?.id || "",
-      title,
-      message,
-      link,
+      title: "Nota lançada",
+      message: `Você recebeu nota ${grade} em "${assignment?.title || "trabalho"}".`,
+      link: `/minhas-avaliacoes`,
     });
-
-    const { email, name } = await fetchUserEmailAndName(userId);
-    await sendNotificationEmail({ to: email, name, subject: title, message, link });
   } catch (error) {
     console.error("Erro ao notificar nota:", error);
   }

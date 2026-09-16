@@ -69,7 +69,22 @@ describe("notifyNewQuiz - quem recebe", () => {
     expect(escritas[0].value.type).toBe("new_quiz");
     expect(escritas[0].value.quizId).toBe("v1");
     expect(escritas[0].value.read).toBe(false);
-    expect(escritas[0].value.link).toBe("/classes?courseId=curso-1");
+    // Abre direto no conteúdo do quiz, não na primeira aula do curso.
+    expect(escritas[0].value.link).toBe("/classes?courseId=curso-1&videoId=v1");
+  });
+
+  it("aponta o link para o conteúdo, não para a chave do quiz de slide", async () => {
+    await notifyNewQuiz("curso-1", { id: "slide_s1", title: "Slide 1" });
+
+    expect(escritas[0].value.link).toBe("/classes?courseId=curso-1&videoId=s1");
+  });
+
+  it("marca a notificação como atualização quando há mudanças", async () => {
+    await notifyNewQuiz("curso-1", { id: "v1", title: "Aula 1" }, "Algoritmos", [
+      "Prazo",
+    ]);
+
+    expect(escritas[0].value.title).toBe("Quiz atualizado");
   });
 
   it("respeita quem desativou o tipo 'newQuiz'", async () => {
