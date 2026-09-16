@@ -85,6 +85,10 @@ export function useQuizCreationForm({
               "Novo quiz",
             openDate: newQuizOpenDate,
             closeDate: newQuizCloseDate,
+            minPercentage: newQuizMinPercentage,
+            isDiagnostic: newQuizIsDiagnostic,
+            allowRetry: newQuizAllowRetry,
+            maxAttempts: newQuizMaxAttempts,
           },
           courseTitle
         );
@@ -141,6 +145,10 @@ export function useQuizCreationForm({
               "Novo quiz",
             openDate: newQuizOpenDate,
             closeDate: newQuizCloseDate,
+            minPercentage: newQuizMinPercentage,
+            isDiagnostic: newQuizIsDiagnostic,
+            allowRetry: newQuizAllowRetry,
+            maxAttempts: newQuizMaxAttempts,
           },
           courseTitle
         );

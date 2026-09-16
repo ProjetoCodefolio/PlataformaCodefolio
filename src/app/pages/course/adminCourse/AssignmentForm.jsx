@@ -76,6 +76,27 @@ const localInputToIso = (local) => {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 };
 
+// Data já formatada para o e-mail de notificação. Formatar aqui, e não no
+// Worker, porque quem conhece o fuso do usuário é o browser — no Worker tudo
+// seria UTC.
+const formatAssignmentDate = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const data = d
+    .toLocaleDateString("pt-BR", {
+      weekday: "short",
+      day: "2-digit",
+      month: "2-digit",
+    })
+    .replace(".", "");
+  const hora = d.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${data} às ${hora}`;
+};
+
 /**
  * Formulário (Dialog) para criar/editar um enunciado.
  */
@@ -101,6 +122,8 @@ export default function AssignmentForm({
   const [flippedClassroom, setFlippedClassroom] = useState(false);
   const [mode, setMode] = useState("individual");
   const [weight, setWeight] = useState("");
+  // Só aparece na edição: criar enunciado sempre avisa a turma.
+  const [notifyClass, setNotifyClass] = useState(false);
   // grupos
   const [maxGroups, setMaxGroups] = useState(2);
   const [maxPerGroup, setMaxPerGroup] = useState(4);
@@ -287,7 +310,15 @@ export default function AssignmentForm({
       }
 
       toast.success(isEditing ? "Enunciado atualizado!" : "Enunciado criado!");
-      onSaved?.(assignmentId, !isEditing, title.trim());
+      // Enunciado novo sempre avisa a turma; alteração só quando o professor
+      // marca — senão corrigir um typo mandaria e-mail para todo mundo.
+      onSaved?.(assignmentId, !isEditing, title.trim(), {
+        notifyClass: !isEditing || notifyClass,
+        dueDateText: formatAssignmentDate(payload.dueDate),
+        weight: weight === "" ? null : Number(weight),
+        mode,
+        descriptionHtml: payload.descriptionHtml,
+      });
       onClose?.();
     } catch (err) {
       console.error(err);
@@ -562,6 +593,47 @@ export default function AssignmentForm({
             />
           </Grid>
         </Grid>
+
+        {/* Avisar a turma sobre a EDIÇÃO é opt-in: um enunciado costuma ser
+            salvo várias vezes em sequência, e cada aviso é um e-mail por aluno
+            matriculado. Na criação o aviso é automático. */}
+        {isEditing && (
+          <Box
+            sx={{
+              mt: 3,
+              p: 2,
+              borderRadius: 1,
+              border: "1px solid",
+              borderColor: notifyClass ? "#9041c1" : "#e0e0e0",
+              backgroundColor: notifyClass ? "rgba(144, 65, 193, 0.08)" : "transparent",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={notifyClass}
+                  onChange={(e) => setNotifyClass(e.target.checked)}
+                  sx={{
+                    "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                      backgroundColor: "#9041c1",
+                    },
+                  }}
+                />
+              }
+              label="Avisar a turma sobre esta alteração"
+            />
+            <Typography
+              variant="caption"
+              sx={{ display: "block", ml: 6, color: "#666", mt: 0.5 }}
+            >
+              Manda um e-mail para todos os alunos matriculados, com o enunciado
+              atualizado, o prazo e o peso. Deixe desligado para correções
+              pequenas de texto.
+            </Typography>
+          </Box>
+        )}
 
         {/* --- Config de grupos --- */}
         {mode === "group" && (

@@ -17,6 +17,8 @@ import {
   InputAdornment,
   CircularProgress,
   Alert,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
@@ -31,6 +33,7 @@ import { canManageAssessments } from "$api/utils/permissions";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
 import { useScrollToForm } from "$utils/useScrollToForm";
+import { notifyAssessment } from "$api/services/notifications";
 
 export default function CourseAssessmentsTab() {
   const navigate = useNavigate();
@@ -55,6 +58,8 @@ export default function CourseAssessmentsTab() {
   };
   const [courseDetails, setCourseDetails] = useState({});
   const [isCourseOwner, setIsCourseOwner] = useState(false);
+  // Só aparece na edição: cadastrar avaliação sempre avisa a turma.
+  const [notifyClass, setNotifyClass] = useState(false);
   const { currentUser, userDetails } = useAuth();
 
   const params = new URLSearchParams(location.search);
@@ -102,25 +107,34 @@ export default function CourseAssessmentsTab() {
 
     setLoading(true);
     try {
+      const payload = {
+        name: assessmentName,
+        percentage: Number(assessmentPercentage),
+        description: assessmentDescription,
+      };
+      let assessmentId = currentAssessmentId;
+
       if (isEditing) {
         await assessmentService.updateAssessment(
           courseId,
           currentAssessmentId,
-          {
-            name: assessmentName,
-            percentage: Number(assessmentPercentage),
-            description: assessmentDescription,
-          }
+          payload
         );
-
       } else {
-        await assessmentService.createAssessment(courseId, {
-          name: assessmentName,
-          percentage: Number(assessmentPercentage),
-          description: assessmentDescription,
-        });
-
+        assessmentId = await assessmentService.createAssessment(courseId, payload);
         toast.success("Avaliação criada com sucesso!"); // <-- Toast de sucesso ao cadastrar
+      }
+
+      // Cadastrar sempre avisa; editar só quando o professor marcou. A
+      // composição da nota mudar é algo que o aluno precisa saber, mas ajustar
+      // o texto três vezes seguidas não vale três e-mails para a turma.
+      if (!isEditing || notifyClass) {
+        notifyAssessment(
+          courseId,
+          { id: assessmentId, ...payload },
+          courseDetails?.title || "",
+          isEditing ? ["Nome ou peso"] : []
+        );
       }
 
       // Reload assessments after changes
@@ -172,6 +186,7 @@ export default function CourseAssessmentsTab() {
     setAssessmentDescription("");
     setCurrentAssessmentId(null);
     setIsEditing(false);
+    setNotifyClass(false);
   };
 
   const totalPercentage = assessments.reduce(
@@ -341,6 +356,49 @@ export default function CourseAssessmentsTab() {
                 }}
               />
             </Grid>
+
+            {/* Cadastrar avaliação já avisa a turma; avisar de novo a cada
+                ajuste de nome ou peso é opt-in, porque cada aviso é um e-mail
+                por aluno matriculado. */}
+            {isEditing && (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: notifyClass ? "#9041c1" : "#e0e0e0",
+                    backgroundColor: notifyClass
+                      ? "rgba(144, 65, 193, 0.08)"
+                      : "transparent",
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={notifyClass}
+                        onChange={(e) => setNotifyClass(e.target.checked)}
+                        sx={{
+                          "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                            backgroundColor: "#9041c1",
+                          },
+                        }}
+                      />
+                    }
+                    label="Avisar a turma sobre esta alteração"
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{ display: "block", ml: 6, color: "#666", mt: 0.5 }}
+                  >
+                    Manda um e-mail para todos os alunos matriculados, com o novo
+                    peso na média. Deixe desligado para ajustes de texto.
+                  </Typography>
+                </Box>
+              </Grid>
+            )}
 
             <Grid item xs={12} sx={{ display: "flex", gap: 2 }}>
               <Button
