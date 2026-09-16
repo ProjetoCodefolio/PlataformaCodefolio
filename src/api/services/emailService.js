@@ -15,6 +15,22 @@ const EMAILJS_SERVICE_ID = 'service_nez6txl';
 const EMAILJS_TEMPLATE_ID = 'template_m2s51wz';
 const EMAILJS_PUBLIC_KEY = 'cqn_V5cXWHYGDfUWO';
 
+// Template PRÓPRIO para notificações (novo enunciado/quiz/vídeo/nota/grupo) —
+// não reaproveita o de reporte acima, que tem campos e assunto de bug. Crie
+// um template no painel do EmailJS com "To Email" = {{to_email}} e o corpo
+// usando {{student_name}}, {{subject}}, {{message}}, {{link}}, {{course_title}};
+// depois cole o Template ID (algo como "template_xxxxxxx") em
+// VITE_NOTIFICATION_TEMPLATE_ID no .env. Mesmo serviço/chave pública do
+// reporte — é a mesma conta do EmailJS, só o template muda.
+const NOTIFICATION_TEMPLATE_ID = import.meta.env.VITE_NOTIFICATION_TEMPLATE_ID;
+
+// URL pública do app, para o link da notificação funcionar dentro do e-mail
+// (um link relativo tipo "/classes?courseId=x" não significa nada fora do
+// navegador). Envio de notificação só acontece em build de produção real
+// (ver EMAIL_NOTIFICATIONS_ENABLED em notifications.js), então não precisa
+// do branch de localhost que sendReportEmail tem.
+const APP_BASE_URL = 'https://plataformacodefolio.web.app';
+
 /**
  * Envia email de notificação de reporte
  * @param {object} reportData - Dados do reporte
@@ -105,6 +121,65 @@ export const sendReportEmail = async (reportData) => {
   } catch (error) {
     console.error('❌ Erro ao enviar email:', error);
     // Não falha o reporte se o email não for enviado
+    return false;
+  }
+};
+
+/**
+ * Envia o e-mail de uma notificação (novo enunciado/quiz/vídeo, nota lançada,
+ * mudança de grupo) para um único destinatário. Quem decide SE deve enviar
+ * (EMAIL_NOTIFICATIONS_ENABLED, preferência do aluno) é o chamador, em
+ * notifications.js — esta função só sabe disparar.
+ *
+ * @param {object} params
+ * @param {string} params.to - e-mail do destinatário
+ * @param {string} [params.name] - nome do destinatário, para saudação
+ * @param {string} params.subject - assunto/título da notificação
+ * @param {string} params.message - corpo da notificação
+ * @param {string} [params.link] - caminho relativo (ex.: "/classes?courseId=x")
+ * @param {string} [params.courseTitle]
+ * @returns {Promise<boolean>}
+ */
+export const sendNotificationEmailJS = async ({
+  to,
+  name,
+  subject,
+  message,
+  link,
+  courseTitle,
+}) => {
+  if (!to) return false;
+
+  if (!NOTIFICATION_TEMPLATE_ID) {
+    console.warn(
+      '⚠️ VITE_NOTIFICATION_TEMPLATE_ID não configurado. E-mail de notificação não enviado.'
+    );
+    return false;
+  }
+
+  const templateParams = {
+    to_email: to,
+    student_name: name || 'aluno(a)',
+    subject: subject || 'Nova notificação',
+    message: message || '',
+    link: link ? `${APP_BASE_URL}${link}` : APP_BASE_URL,
+    course_title: courseTitle || '',
+    date: new Date().toLocaleString('pt-BR', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+    }),
+  };
+
+  try {
+    await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      NOTIFICATION_TEMPLATE_ID,
+      templateParams,
+      EMAILJS_PUBLIC_KEY
+    );
+    return true;
+  } catch (error) {
+    console.error('❌ Erro ao enviar e-mail de notificação:', error);
     return false;
   }
 };

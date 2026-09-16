@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Dialog,
   DialogTitle,
@@ -28,12 +29,12 @@ const purpleSwitch = {
 
 const TYPES = [
   { key: "inAppEnabled", label: "Receber notificações deste curso" },
+  { key: "newContent", label: "Novos vídeos/slides" },
   { key: "newAssignment", label: "Novos enunciados/trabalhos" },
   { key: "newQuiz", label: "Novos quizzes" },
   { key: "newQuestion", label: "Novas dúvidas de alunos (cursos que você criou)" },
   { key: "grade", label: "Notas lançadas" },
   { key: "groupChanges", label: "Mudanças de grupo" },
-  { key: "deadline", label: "Lembretes de prazo" },
 ];
 
 /**
@@ -130,7 +131,7 @@ export default function NotificationPrefs({ open, onClose, userId }) {
             <Divider sx={{ mb: 1 }} />
             {loading ? (
               <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-                <CircularProgress size={22} sx={{ color: "#9041c1" }} />
+                <Loader size={22} />
               </Box>
             ) : (
               <Box sx={{ display: "flex", flexDirection: "column" }}>

@@ -1,4 +1,4 @@
-import { QUESTION_TYPES } from "./quizGenerator";
+import { QUESTION_TYPES } from "./quizGenerator/constants";
 
 /**
  * Mapeia o tipo de questão interno para o aceito pela Question Generator API.

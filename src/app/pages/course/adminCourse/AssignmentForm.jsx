@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Dialog,
   DialogTitle,
@@ -408,7 +409,7 @@ export default function AssignmentForm({
               <Button
                 component="label"
                 disabled={uploadingImage}
-                startIcon={uploadingImage ? <CircularProgress size={16} /> : <ImageIcon />}
+                startIcon={uploadingImage ? <Loader size={16} /> : <ImageIcon />}
                 variant="outlined"
                 sx={{ color: "#9041c1", borderColor: "#9041c1", whiteSpace: "nowrap" }}
               >

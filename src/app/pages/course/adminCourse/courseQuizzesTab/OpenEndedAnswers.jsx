@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Loader from "$components/common/Loader";
 import {
   Dialog,
   DialogTitle,
@@ -12,13 +13,12 @@ import {
   ListItem,
   Avatar,
   Chip,
-  CircularProgress,
   Divider,
   Alert,
   IconButton,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { gradeOpenEndedAnswer } from '$api/services/courses/quizzes';
+import { gradeOpenEndedAnswer } from '$api/services/courses/quizOpenEnded';
 import { ref, get } from 'firebase/database';
 import { database } from '$api/config/firebase';
 import { toast } from 'react-toastify';
@@ -164,7 +164,7 @@ const OpenEndedAnswers = ({ open, onClose, courseId, quizId, question }) => {
       <DialogContent sx={{ p: 0 }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 4, flexDirection: 'column', gap: 2 }}>
-            <CircularProgress sx={{ color: '#9041c1' }} />
+            <Loader />
             <Typography variant="body2" color="text.secondary">
               Carregando respostas...
             </Typography>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -11,7 +12,6 @@ import {
   TableHead,
   TableRow,
   Button,
-  CircularProgress,
   Card,
   CardContent,
   Grid,
@@ -166,7 +166,7 @@ export default function CoursePresence() {
       <>
         <Topbar hideSearch={true} />
         <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", mt: 8 }}>
-          <CircularProgress sx={{ color: PURPLE }} />
+          <Loader />
         </Box>
       </>
     );

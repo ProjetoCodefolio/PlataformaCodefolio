@@ -27,3 +27,8 @@ serviceAccount.json
 rules.js
 
 conversation-log.md
+
+# Ignore the agents and claude folders, which are used for AI agents and Claude integration
+.agents/
+.claude/
+skills-lock.json

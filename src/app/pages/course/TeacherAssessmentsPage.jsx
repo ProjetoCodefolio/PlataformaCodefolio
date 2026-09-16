@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -8,7 +9,6 @@ import {
   CardContent,
   CardActions,
   Button,
-  CircularProgress,
   Alert,
   Chip,
   IconButton,
@@ -240,7 +240,7 @@ const TeacherAssessmentsPage = () => {
             minHeight: "calc(100vh - 64px)",
           }}
         >
-          <CircularProgress sx={{ color: "#9041c1" }} />
+          <Loader />
         </Box>
       </Box>
     );
@@ -250,7 +250,13 @@ const TeacherAssessmentsPage = () => {
     return (
       <Box>
         <Topbar hideSearch={true} />
-        <Box sx={{ p: 3 }}>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 3 },
+            pt: { xs: 10, sm: 12 },
+            minHeight: "calc(100vh - 64px)",
+          }}
+        >
           <Alert severity="info">
             Você não possui cursos cadastrados. Crie um curso para começar a
             gerenciar avaliações.

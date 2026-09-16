@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -9,8 +10,7 @@ import {
   CardContent,
   CardActions,
   Button,
-  Grid,
-  CircularProgress, // Adicionando a importação que faltava
+  Grid, // Adicionando a importação que faltava
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "$components/topbar/Topbar";
@@ -258,7 +258,7 @@ const MyCourses = () => {
 
         {loading ? (
           <Box sx={{ p: 4, textAlign: "center" }}>
-            <CircularProgress color="secondary" />
+            <Loader />
             <Typography variant="body1" sx={{ mt: 2, color: "#888" }}>
               Carregando cursos...
             </Typography>

@@ -2,8 +2,9 @@ import React, { lazy, Suspense } from "react";
 import "@fontsource-variable/inter";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { Box, CircularProgress } from "@mui/material";
+import { Box } from "@mui/material";
 import theme from "./theme";
+import Loader from "$components/common/Loader";
 import {
   BrowserRouter as Router,
   Route,
@@ -55,7 +56,7 @@ const AssignmentSubmissionsDashboard = lazy(() =>
 function PageLoader() {
   return (
     <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
-      <CircularProgress sx={{ color: "#9041c1" }} />
+      <Loader />
     </Box>
   );
 }

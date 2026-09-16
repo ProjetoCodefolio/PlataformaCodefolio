@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Modal,
@@ -128,7 +129,7 @@ const AdvancedSettingsModal = ({ open, onClose, courseId, onSave }) => {
 
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-              <CircularProgress color="secondary" />
+              <Loader />
             </Box>
           ) : (
             <>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -16,7 +17,6 @@ import {
   ListItemText,
   Chip,
   IconButton,
-  CircularProgress,
   Modal,
   Tooltip,
 } from "@mui/material";
@@ -69,6 +69,7 @@ import {
 import { useAuth } from "$context/AuthContext";
 import { useScrollToForm } from "$utils/useScrollToForm";
 import ImportContentModal from "$components/courses/import/ImportContentModal";
+import { notifyNewContent } from "$api/services/notifications";
 
 const PURPLE = "#9041c1";
 
@@ -384,8 +385,11 @@ const CourseContentTab = ({ courseId }) => {
         toast.success("Conteúdo atualizado com sucesso!");
       } else {
         // Itens novos são sempre criados na nova collection unificada.
-        await addCourseContent(courseId, form);
+        const created = await addCourseContent(courseId, form);
         toast.success("Conteúdo adicionado com sucesso!");
+        // Sem await de propósito: notifica os alunos matriculados em segundo
+        // plano (in-app) — notifyNewContent já engole os próprios erros.
+        notifyNewContent(courseId, created);
       }
       resetForm();
       await loadContent();
@@ -630,7 +634,7 @@ const CourseContentTab = ({ courseId }) => {
           <Typography variant="h6" sx={{ fontWeight: "bold", color: "#333", fontSize: { xs: "1.1rem", sm: "1.25rem" } }}>
             Ordem do Conteúdo
           </Typography>
-          {saving && <CircularProgress size={20} sx={{ color: PURPLE }} />}
+          {saving && <Loader size={20} />}
         </Box>
         <Button
           variant="outlined"
@@ -656,7 +660,7 @@ const CourseContentTab = ({ courseId }) => {
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-          <CircularProgress sx={{ color: PURPLE }} />
+          <Loader />
         </Box>
       ) : items.length === 0 ? (
         <Typography sx={{ color: "#999", textAlign: "center", py: 4 }}>

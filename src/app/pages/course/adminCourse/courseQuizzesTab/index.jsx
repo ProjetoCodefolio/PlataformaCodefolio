@@ -1,12 +1,5 @@
-import { useLocation, useNavigate } from "react-router-dom";
-import React, {
-  useEffect,
-  useState,
-  forwardRef,
-  useImperativeHandle,
-  useRef,
-  useCallback,
-} from "react";
+import { useNavigate } from "react-router-dom";
+import { useEffect, forwardRef, useImperativeHandle, useRef } from "react";
 import { Box, Typography, Tabs, Tab, Button } from "@mui/material";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -14,507 +7,90 @@ import { toast } from "react-toastify";
 
 import QuizForm from "./QuizForm";
 import QuizSettingsModal from "./QuizSettingsModal";
-import QuestionForm from "./QuestionForm";
 import QuizList from "./QuizList";
 import ImportQuizModal from "$components/courses/import/ImportQuizModal";
 import OpinionResultsModal from "./OpinionResultsModal";
 import { ConfirmationModal, SuccessModal } from "./Modals";
-import { generateUUID } from "../../../../utils/courseUtils";
-import PdfQuizGenerator from "./PdfQuizGenerator";
-import {
-  fetchCourseVideosForQuiz,
-  fetchCourseQuizzes,
-  addQuiz,
-  removeQuiz,
-  addQuestionToQuiz,
-  updateQuizQuestion,
-  removeQuizQuestion,
-  reorderQuizQuestions,
-  addMultipleQuestionsToQuiz,
-  saveAllCourseQuizzes,
-  normalizeDiagnosticFlag,
-} from "$api/services/courses/quizzes";
-import { normalizeGradedFlag } from "$api/services/courses/quizGrading";
-import { notifyNewQuiz } from "$api/services/notifications";
-import { fetchCourseSlides } from "$api/services/courses/slides";
-import { fetchCourseContentItems } from "$api/services/courses/content";
-import { fetchFlippedClassroomVideos } from "$api/services/courses/submissions";
+import QuestionEditorPanel from "./QuestionEditorPanel";
+import { removeQuiz } from "$api/services/courses/quizCrud";
+
+import { useQuizModals } from "./hooks/useQuizModals";
+import { useQuizContentSources } from "./hooks/useQuizContentSources";
+import { useQuizCatalog } from "./hooks/useQuizCatalog";
+import { useQuizCreationForm } from "./hooks/useQuizCreationForm";
+import { useQuestionForm } from "./hooks/useQuestionForm";
+import { useQuestionEditor } from "./hooks/useQuestionEditor";
 
 const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slides }, ref) => {
-  // Estados existentes
-  const [newQuizVideoId, setNewQuizVideoId] = useState("");
-  const [newQuizMinPercentage, setNewQuizMinPercentage] = useState(0);
-  const [newQuizQuestion, setNewQuizQuestion] = useState("");
-  const [newQuizOptions, setNewQuizOptions] = useState(["", ""]);
-  const [newQuizCorrectOption, setNewQuizCorrectOption] = useState(0);
-  // "Esta pergunta tem resposta certa": desligado, a questão não vale nota e
-  // não pede gabarito (é o que permite a escala Likert sem induzir resposta).
-  const [newQuizGraded, setNewQuizGraded] = useState(true);
-  const [newQuizScale, setNewQuizScale] = useState("");
+  const navigate = useNavigate();
 
-  // Imagem opcional da questão (URL + dimensões em px)
-  const [newQuizImageUrl, setNewQuizImageUrl] = useState("");
-  const [newQuizImageWidth, setNewQuizImageWidth] = useState("");
-  const [newQuizImageHeight, setNewQuizImageHeight] = useState("");
-
-  // Novos estados para questões abertas
-  const [newQuestionType, setNewQuestionType] = useState('multiple-choice');
-
-  const [videosState, setVideos] = useState(videos || []);
-  const [slidesState, setSlides] = useState(slides || []);
-
-  const [quizzes, setQuizzes] = useState([]);
-  const [showImportQuizModal, setShowImportQuizModal] = useState(false);
-  const [opinionQuiz, setOpinionQuiz] = useState(null);
-  const [expandedQuiz, setExpandedQuiz] = useState(null);
-
-  // Novos estados para gerenciar slides e quizzes de slides
-  const [activeTab, setActiveTab] = useState(0); // 0 = Videos, 1 = Slides
-  const [newQuizSlideId, setNewQuizSlideId] = useState("");
-  const [slideQuizzes, setSlideQuizzes] = useState([]);
-
-  // `editQuiz` = quiz cujas QUESTÕES estão em edição (editor dentro do card).
-  // A configuração do quiz (nota, diagnóstico, tentativas, janela) fica no
-  // modal, controlado por `settingsQuiz`. São dois fluxos separados de propósito.
-  const [editQuiz, setEditQuiz] = useState(null);
-  const [settingsQuiz, setSettingsQuiz] = useState(null);
-  const [editQuestion, setEditQuestion] = useState(null);
-  const [showAddQuizModal, setShowAddQuizModal] = useState(false);
-  const [showDeleteQuizModal, setShowDeleteQuizModal] = useState(false);
-  const [quizToDelete, setQuizToDelete] = useState(null);
-  const [showDeleteQuestionModal, setShowDeleteQuestionModal] = useState(false);
-  const [questionToDelete, setQuestionToDelete] = useState(null);
-  const [draftQuestionId, setDraftQuestionId] = useState(null);
-  // Campos do formulário de CRIAÇÃO (a edição vive no QuizSettingsModal).
-  const [newQuizIsDiagnostic, setNewQuizIsDiagnostic] = useState(false);
-  const [newQuizAllowRetry, setNewQuizAllowRetry] = useState(true);
-  const [newQuizMaxAttempts, setNewQuizMaxAttempts] = useState("");
-  // Janela de disponibilidade do novo quiz (datas ISO; "" = sem restrição).
-  const [newQuizOpenDate, setNewQuizOpenDate] = useState("");
-  const [newQuizCloseDate, setNewQuizCloseDate] = useState("");
-
-  // Refs existentes
+  // Refs que não pertencem a nenhum hook de domínio específico.
   const questionFormRef = useRef(null);
   const quizzesListEndRef = useRef(null);
   // Âncora do topo da aba, usada para levar o professor de volta ao formulário
   // de criação depois de adicionar um quiz.
   const quizSettingsRef = useRef(null);
-  const questionRef = useRef(null);
-  const optionsRefs = useRef([]);
-  const addOptionButtonRef = useRef(null);
-  const saveButtonRef = useRef(null);
-  const cancelButtonRef = useRef(null);
-  const editQuizRef = useRef(null);
 
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    optionsRefs.current = newQuizOptions.map(
-      (_, i) => optionsRefs.current[i] || React.createRef()
-    );
-  }, [newQuizOptions.length]);
-
-  // Função para carregar os alvos de quiz da aba "Quizzes de Conteúdo":
-  // itens da nova collection unificada (vídeos e slides) + vídeos legados.
-  // Ambos usam a mesma chave de quiz (courseQuizzes/{courseId}/{id}, sem prefixo).
-  const loadVideos = async () => {
-    try {
-      const [contentData, videosData, flippedData] = await Promise.all([
-        fetchCourseContentItems(courseId),
-        fetchCourseVideosForQuiz(courseId),
-        fetchFlippedClassroomVideos(courseId),
-      ]);
-
-      const contentTargets = contentData.map((item) => ({
-        id: item.id,
-        title:
-          item.category === "slide" ? `${item.title} (Slide)` : item.title,
-      }));
-
-      // Vídeos de entrega (sala de aula invertida): quiz chaveado pelo id `flip_...`.
-      const flippedTargets = flippedData.map((v) => ({
-        id: v.id,
-        title: `${v.title} (Entrega)`,
-      }));
-
-      const targets = [...contentTargets, ...flippedTargets, ...videosData];
-      setVideos(targets);
-
-      if (targets.length > 0 && !newQuizVideoId) {
-        setNewQuizVideoId(targets[0].id);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar conteúdo:", error);
-      toast.error("Erro ao buscar o conteúdo do curso");
-      setVideos([]);
-    }
-  };
-
-  // Nova função para carregar slides
-  const loadSlides = async () => {
-    try {
-      const slidesData = await fetchCourseSlides(courseId);
-      setSlides(slidesData);
-
-      if (slidesData && slidesData.length > 0 && !newQuizSlideId) {
-        setNewQuizSlideId(slidesData[0].id);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar slides:", error);
-      toast.error("Erro ao buscar slides do curso");
-      setSlides([]);
-    }
-  };
-
-  // Função para carregar quizzes (adaptada para vídeos e slides)
-  const loadQuizzes = async () => {
-    try {
-      if (courseId) {
-        const quizzesData = await fetchCourseQuizzes(courseId);
-
-        if (!quizzesData) {
-          setQuizzes([]);
-          setSlideQuizzes([]);
-          return;
-        }
-
-        // Separar quizzes de vídeos e slides
-        const videoQuizzesArray = [];
-        const slideQuizzesArray = [];
-
-        Object.entries(quizzesData).forEach(([id, quiz]) => {
-          const quizObject = {
-            ...quiz,
-            videoId: id,
-            questions: quiz.questions || [],
-            isDiagnostic: normalizeDiagnosticFlag(quiz.isDiagnostic),
-            isSlideQuiz: id.startsWith("slide_"),
-          };
-
-          if (id.startsWith("slide_")) {
-            // Remove 'slide_' prefix para obter o ID real do slide
-            quizObject.slideId = id.replace("slide_", "");
-            slideQuizzesArray.push(quizObject);
-          } else {
-            videoQuizzesArray.push(quizObject);
-          }
-        });
-
-        setQuizzes(videoQuizzesArray);
-        setSlideQuizzes(slideQuizzesArray);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar quizzes:", error);
-      toast.error("Erro ao buscar quizzes do curso");
-      setQuizzes([]);
-      setSlideQuizzes([]);
-    }
-  };
+  const modals = useQuizModals();
+  const catalog = useQuizCatalog(courseId);
+  const contentSources = useQuizContentSources(courseId, videos, slides);
+  const creationForm = useQuizCreationForm({
+    courseId,
+    courseTitle,
+    videosState: contentSources.videosState,
+    slidesState: contentSources.slidesState,
+    quizzes: catalog.quizzes,
+    slideQuizzes: catalog.slideQuizzes,
+    setQuizzes: catalog.setQuizzes,
+    setSlideQuizzes: catalog.setSlideQuizzes,
+    onQuizAdded: () => modals.setShowAddQuizModal(true),
+  });
+  const questionForm = useQuestionForm();
+  const questionEditor = useQuestionEditor({
+    courseId,
+    quizzes: catalog.quizzes,
+    slideQuizzes: catalog.slideQuizzes,
+    setQuizzes: catalog.setQuizzes,
+    setSlideQuizzes: catalog.setSlideQuizzes,
+    form: questionForm,
+  });
 
   useEffect(() => {
     if (courseId) {
-      loadVideos();
-      loadSlides();
-      loadQuizzes();
+      contentSources.loadVideos(creationForm.newQuizVideoId, creationForm.setNewQuizVideoId);
+      contentSources.loadSlides(creationForm.newQuizSlideId, creationForm.setNewQuizSlideId);
+      catalog.loadQuizzes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
-  useEffect(() => {
-    // Apenas focará no campo quando iniciarmos uma edição (não em atualizações subsequentes)
-    if (editQuiz && questionRef.current && !editQuizRef.current) {
-      setTimeout(() => {
-        questionRef.current.focus();
-      }, 100);
-    }
-    // Armazenamos o estado atual de editQuiz para comparação na próxima execução
-    editQuizRef.current = editQuiz;
-  }, [editQuiz]);
-
-  // A abertura precisa vir antes do encerramento — senão o quiz nasceria
-  // impossível de responder.
-  const isScheduleValid = () => {
-    if (
-      newQuizOpenDate &&
-      newQuizCloseDate &&
-      new Date(newQuizOpenDate).getTime() >= new Date(newQuizCloseDate).getTime()
-    ) {
-      toast.error(
-        "A data de abertura deve ser anterior à data de encerramento."
-      );
-      return false;
-    }
-    return true;
-  };
-
-  // Função para adicionar quiz (adaptada para vídeos e slides)
-  const handleAddQuiz = async () => {
-    if (activeTab === 0) {
-      // Quiz para vídeo
-      if (!newQuizVideoId) {
-        toast.error("Selecione um vídeo para o quiz");
-        return;
-      }
-
-      if (quizzes.some((quiz) => quiz.videoId === newQuizVideoId)) {
-        toast.error("Já existe um quiz associado a este vídeo");
-        return;
-      }
-
-      if (!isScheduleValid()) return;
-
-      try {
-        const newQuiz = await addQuiz(
-          courseId,
-          newQuizVideoId,
-          newQuizMinPercentage,
-          newQuizIsDiagnostic,
-          newQuizAllowRetry,
-          newQuizMaxAttempts,
-          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
-        );
-
-        // Avisa a turma. Com a janela de disponibilidade, criar o quiz é o
-        // momento do lançamento: sem data de abertura ele já está no ar; com
-        // data, o aviso diz quando abre.
-        notifyNewQuiz(
-          courseId,
-          {
-            id: newQuizVideoId,
-            title:
-              videosState.find((v) => v.id === newQuizVideoId)?.title ||
-              "Novo quiz",
-            openDate: newQuizOpenDate,
-            closeDate: newQuizCloseDate,
-          },
-          courseTitle
-        );
-
-        setQuizzes((prev) => [...prev, newQuiz]);
-        setNewQuizVideoId(videosState[0]?.id || "");
-        setNewQuizMinPercentage(0);
-        setNewQuizIsDiagnostic(false);
-        setNewQuizAllowRetry(true);
-        setNewQuizMaxAttempts("");
-        setNewQuizOpenDate("");
-        setNewQuizCloseDate("");
-        setShowAddQuizModal(true);
-        toast.success("Quiz adicionado com sucesso!");
-      } catch (error) {
-        console.error("Erro ao adicionar quiz:", error);
-        toast.error(error.message || "Erro ao adicionar o quiz");
-      }
-    } else if (activeTab === 1) {
-      // Quiz para slide
-      if (!newQuizSlideId) {
-        toast.error("Selecione um slide para o quiz");
-        return;
-      }
-
-      if (slideQuizzes.some((quiz) => quiz.slideId === newQuizSlideId)) {
-        toast.error("Já existe um quiz associado a este slide");
-        return;
-      }
-
-      if (!isScheduleValid()) return;
-
-      try {
-        const slidePrefix = `slide_${newQuizSlideId}`;
-        const newQuiz = await addQuiz(
-          courseId,
-          slidePrefix,
-          newQuizMinPercentage,
-          newQuizIsDiagnostic,
-          newQuizAllowRetry,
-          newQuizMaxAttempts,
-          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
-        );
-
-        newQuiz.isSlideQuiz = true;
-        newQuiz.slideId = newQuizSlideId;
-
-        notifyNewQuiz(
-          courseId,
-          {
-            id: slidePrefix,
-            title:
-              slidesState.find((s) => s.id === newQuizSlideId)?.title ||
-              "Novo quiz",
-            openDate: newQuizOpenDate,
-            closeDate: newQuizCloseDate,
-          },
-          courseTitle
-        );
-
-        setSlideQuizzes((prev) => [...prev, newQuiz]);
-        setNewQuizSlideId(slidesState[0]?.id || "");
-        setNewQuizMinPercentage(0);
-        setNewQuizIsDiagnostic(false);
-        setNewQuizAllowRetry(true);
-        setNewQuizMaxAttempts("");
-        setNewQuizOpenDate("");
-        setNewQuizCloseDate("");
-        setShowAddQuizModal(true);
-        toast.success("Quiz do slide adicionado com sucesso!");
-      } catch (error) {
-        console.error("Erro ao adicionar quiz do slide:", error);
-        toast.error(error.message || "Erro ao adicionar o quiz");
-      }
-    }
-  };
-
-  // Funções existentes com adaptações para slides
-  const handleEditQuestion = (quiz, question) => {
-    setEditQuiz(quiz);
-    setEditQuestion(question);
-    setNewQuizQuestion(question.question);
-    setNewQuestionType(question.questionType || 'multiple-choice');
-    setNewQuizImageUrl(question.imageUrl || "");
-    setNewQuizImageWidth(question.imageWidth || "");
-    setNewQuizImageHeight(question.imageHeight || "");
-
-    if (question.questionType === 'open-ended') {
-      setNewQuizOptions(["", ""]);
-      setNewQuizCorrectOption(0);
-      setNewQuizGraded(true);
-      setNewQuizScale("");
-    } else {
-      setNewQuizOptions([...question.options]);
-      // Questão sem resposta certa não tem gabarito gravado; o 0 aqui é só o
-      // estado inicial do seletor, que fica escondido enquanto o switch estiver
-      // desligado.
-      setNewQuizCorrectOption(question.correctOption ?? 0);
-      setNewQuizGraded(normalizeGradedFlag(question.graded));
-      setNewQuizScale(question.scale || "");
-    }
-  };
-
-  // Excluir uma questão NÃO abre o editor de questões: a exclusão sai da própria
-  // lista, e o quiz alvo viaja junto em `questionToDelete`.
-  const handleRemoveQuestion = (quiz, questionId) => {
-    setQuestionToDelete({ quiz, id: questionId });
-    setShowDeleteQuestionModal(true);
-  };
-
-  const confirmRemoveQuestion = async () => {
-    try {
-      if (!questionToDelete?.quiz) return;
-
-      // Parte da versão mais recente do quiz na lista: o objeto guardado no
-      // modal pode ter envelhecido (outra questão editada nesse meio-tempo).
-      const target = questionToDelete.quiz;
-      const latestQuiz =
-        (target.isSlideQuiz ? slideQuizzes : quizzes).find(
-          (q) => q.videoId === target.videoId
-        ) || target;
-
-      const updatedQuiz = await removeQuizQuestion(
-        courseId,
-        latestQuiz,
-        questionToDelete.id
-      );
-
-      if (target.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === target.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === target.videoId ? updatedQuiz : q))
-        );
-      }
-
-      // Só atualiza o editor se ele estiver aberto NESTE quiz.
-      setEditQuiz((prev) =>
-        prev?.videoId === target.videoId ? updatedQuiz : prev
-      );
-
-      toast.success("Questão deletada com sucesso!");
-    } catch (error) {
-      console.error("Erro ao deletar questão:", error);
-      toast.error(error.message || "Erro ao deletar questão no banco de dados");
-    } finally {
-      setShowDeleteQuestionModal(false);
-      setQuestionToDelete(null);
-    }
-  };
+  useImperativeHandle(ref, () => ({
+    saveQuizzes: catalog.saveQuizzes,
+    getQuizzes: catalog.getQuizzes,
+  }));
 
   // Lápis na lista: abre APENAS a configuração do quiz, num modal. Questões não
   // entram aqui — elas ficam no editor do card expandido.
-  const handleEditQuiz = (quiz) => {
-    setSettingsQuiz(quiz);
-  };
-
-  // Reflete na lista (e no editor de questões, se for o mesmo quiz) o quiz
-  // atualizado por uma gravação do modal de configuração.
-  const handleQuizSettingsSaved = (updatedQuiz) => {
-    const applyTo = (prev) =>
-      prev.map((q) => (q.videoId === updatedQuiz.videoId ? updatedQuiz : q));
-
-    if (updatedQuiz.isSlideQuiz) {
-      setSlideQuizzes(applyTo);
-    } else {
-      setQuizzes(applyTo);
-    }
-    setEditQuiz((prev) =>
-      prev?.videoId === updatedQuiz.videoId ? updatedQuiz : prev
-    );
-  };
-
-  // Reordena as questões de um quiz (arraste na lista). A ordem é a própria
-  // ordem do array `questions`, gravada na hora do "soltar" — igual ao
-  // reordenamento de conteúdos, sem depender de um botão de salvar.
-  const handleReorderQuestions = async (quiz, orderedQuestions) => {
-    const lista = quiz.isSlideQuiz ? slideQuizzes : quizzes;
-    const setList = quiz.isSlideQuiz ? setSlideQuizzes : setQuizzes;
-    const anterior = lista.find((q) => q.videoId === quiz.videoId) || quiz;
-
-    // Atualização otimista: o arraste precisa parecer instantâneo.
-    const otimista = { ...anterior, questions: orderedQuestions };
-    setList((prev) =>
-      prev.map((q) => (q.videoId === quiz.videoId ? otimista : q))
-    );
-    setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? otimista : prev));
-
-    try {
-      await reorderQuizQuestions(courseId, anterior, orderedQuestions);
-      toast.success("Ordem das questões salva!", { autoClose: 1200 });
-    } catch (error) {
-      console.error("Erro ao reordenar as questões:", error);
-      // Desfaz: a lista na tela não pode mentir sobre o que está no banco.
-      setList((prev) =>
-        prev.map((q) => (q.videoId === quiz.videoId ? anterior : q))
-      );
-      setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? anterior : prev));
-      toast.error(error.message || "Erro ao salvar a ordem das questões");
-    }
-  };
-
-  // Botão "Adicionar questões" do card expandido: alterna o editor e garante
-  // que o card esteja aberto para o professor ver a lista junto.
-  const handleToggleQuestionEditor = (quiz) => {
-    setEditQuestion(null);
-    setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? null : quiz));
-    setExpandedQuiz(quiz.videoId);
-  };
+  const handleEditQuiz = modals.setSettingsQuiz;
 
   const handleRemoveQuiz = (quiz) => {
-    setQuizToDelete(quiz);
-    setShowDeleteQuizModal(true);
+    modals.setQuizToDelete(quiz);
+    modals.setShowDeleteQuizModal(true);
   };
 
   const confirmRemoveQuiz = async () => {
-    if (!quizToDelete) return;
+    if (!modals.quizToDelete) return;
 
     try {
-      await removeQuiz(courseId, quizToDelete.videoId);
+      await removeQuiz(courseId, modals.quizToDelete.videoId);
 
-      if (quizToDelete.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.filter((q) => q.videoId !== quizToDelete.videoId)
+      if (modals.quizToDelete.isSlideQuiz) {
+        catalog.setSlideQuizzes((prev) =>
+          prev.filter((q) => q.videoId !== modals.quizToDelete.videoId)
         );
       } else {
-        setQuizzes((prev) =>
-          prev.filter((q) => q.videoId !== quizToDelete.videoId)
+        catalog.setQuizzes((prev) =>
+          prev.filter((q) => q.videoId !== modals.quizToDelete.videoId)
         );
       }
 
@@ -523,351 +99,16 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       console.error("Erro ao excluir quiz:", error);
       toast.error(error.message || "Erro ao excluir quiz");
     } finally {
-      setShowDeleteQuizModal(false);
-      setQuizToDelete(null);
+      modals.setShowDeleteQuizModal(false);
+      modals.setQuizToDelete(null);
     }
   };
-
-  const handleAddQuizOption = () => {
-    if (newQuizOptions.length < 5) {
-      setNewQuizOptions((prev) => [...prev, ""]);
-    }
-  };
-
-  const handleRemoveQuizOption = (indexToRemove) => {
-    if (newQuizOptions.length > 2) {
-      setNewQuizOptions((prev) =>
-        prev.filter((_, index) => index !== indexToRemove)
-      );
-      if (newQuizCorrectOption >= newQuizOptions.length - 1) {
-        setNewQuizCorrectOption(newQuizOptions.length - 2);
-      }
-    }
-  };
-
-  // Função para salvar os quizzes (adaptada para vídeos e slides)
-  const saveQuizzes = async (newCourseId = null) => {
-    try {
-      // Combine both quiz arrays for saving
-      const allQuizzes = [...quizzes, ...slideQuizzes];
-      await saveAllCourseQuizzes(courseId, allQuizzes, newCourseId);
-      return true;
-    } catch (error) {
-      console.error("Erro ao salvar quizzes:", error);
-      throw error;
-    }
-  };
-
-  const getQuizzes = () => {
-    return [...quizzes, ...slideQuizzes];
-  };
-
-  useImperativeHandle(ref, () => ({
-    saveQuizzes,
-    getQuizzes,
-  }));
 
   // Função para gerenciar a mudança de aba
   const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
+    creationForm.handleTabChanged(newValue);
     // Limpar estado de edição ao mudar de aba
-    setEditQuiz(null);
-    setEditQuestion(null);
-    
-    // Inicializar seleções quando mudar de aba
-    if (newValue === 0 && videosState.length > 0 && !newQuizVideoId) {
-      setNewQuizVideoId(videosState[0].id);
-    } else if (newValue === 1 && slidesState.length > 0 && !newQuizSlideId) {
-      setNewQuizSlideId(slidesState[0].id);
-    }
-  };
-
-  // Função para adicionar questões de PDF
-  const handleQuestionsFromPdf = async (generatedQuestions) => {
-    if (!editQuiz || generatedQuestions.length === 0) {
-      toast.error("Selecione um quiz primeiro para adicionar as questões");
-      return;
-    }
-
-    try {
-      const formattedQuestions = generatedQuestions.map((question) => {
-        const isOpenEnded =
-          question.questionType === "open-ended" ||
-          question.options == null ||
-          !Array.isArray(question.options);
-
-        const base = {
-          id: question.id || generateUUID(),
-          question: question.question,
-          questionType: isOpenEnded ? "open-ended" : "multiple-choice",
-        };
-
-        // Carrega imagem opcional, se definida no editor do gerador
-        if (question.imageUrl && String(question.imageUrl).trim()) {
-          base.imageUrl = String(question.imageUrl).trim();
-          if (Number(question.imageWidth) > 0)
-            base.imageWidth = Number(question.imageWidth);
-          if (Number(question.imageHeight) > 0)
-            base.imageHeight = Number(question.imageHeight);
-        }
-
-        if (isOpenEnded) {
-          return base;
-        }
-
-        return {
-          ...base,
-          options: question.options,
-          correctOption: question.correctOption,
-        };
-      });
-
-      const updatedQuiz = await addMultipleQuestionsToQuiz(
-        courseId,
-        editQuiz,
-        formattedQuestions
-      );
-
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-      setEditQuiz(updatedQuiz);
-    } catch (error) {
-      console.error("Erro ao adicionar questões do PDF:", error);
-      toast.error(error.message || "Erro ao salvar questões no banco de dados");
-    }
-  };
-
-  // Auto-save de uma questão (para edição inline na lista)
-  const handleAutoSaveQuestion = useCallback(
-    async (quiz, questionData) => {
-      if (!courseId || !quiz || !questionData?.id) return;
-
-      const latestQuiz = (quiz.isSlideQuiz ? slideQuizzes : quizzes).find(
-        (q) => q.videoId === quiz.videoId
-      ) || quiz;
-
-      const updatedQuiz = await updateQuizQuestion(
-        courseId,
-        latestQuiz,
-        questionData
-      );
-
-      if (quiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === quiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === quiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz((prev) => (prev?.videoId === quiz.videoId ? updatedQuiz : prev));
-    },
-    [courseId, quizzes, slideQuizzes]
-  );
-
-
-  // Adicione esta função ao componente CourseQuizzesTab (antes do return)
-  const handleBlurSave = async (field) => {
-    if (!editQuiz || !editQuestion) return;
-
-    try {
-      const questionData = {
-        id: editQuestion.id,
-        question: newQuizQuestion,
-        options: newQuizOptions,
-        correctOption: newQuizCorrectOption,
-        graded: newQuizGraded,
-        scale: newQuizScale,
-      };
-
-      // Atualizar a questão no quiz
-      const updatedQuiz = await updateQuizQuestion(
-        courseId,
-        editQuiz,
-        questionData
-      );
-
-      // Atualizar o estado do quiz
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz(updatedQuiz);
-      toast.success("Questão atualizada com sucesso!");
-    } catch (error) {
-      console.error("Erro ao atualizar questão:", error);
-      toast.error("Erro ao salvar a questão");
-    }
-  };
-
-  // Também precisamos adicionar a função handleKeyDown se não existir
-  const handleKeyDown = (event) => {
-    // Esta função permite salvar ao pressionar Ctrl+Enter
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      if (editQuestion) {
-        handleSaveEditQuestion();
-      } else {
-        handleAddQuestion();
-      }
-    }
-  };
-
-  const handleSaveEditQuestion = async () => {
-    if (!editQuiz || !editQuestion) return;
-
-    // Validações básicas
-    if (!newQuizQuestion.trim()) {
-      toast.error("A pergunta não pode estar vazia");
-      return;
-    }
-
-    const isOpenEnded = newQuestionType === 'open-ended';
-
-    if (!isOpenEnded && newQuizOptions.some((opt) => !opt.trim())) {
-      toast.error("Todas as opções devem ser preenchidas");
-      return;
-    }
-
-    try {
-      const questionData = {
-        id: editQuestion.id,
-        question: newQuizQuestion.trim(),
-        questionType: newQuestionType,
-        imageUrl: newQuizImageUrl,
-        imageWidth: newQuizImageWidth,
-        imageHeight: newQuizImageHeight,
-      };
-
-      if (isOpenEnded) {
-        // Questão aberta não precisa de campos extras
-      } else {
-        questionData.options = newQuizOptions.map((opt) => opt.trim());
-        questionData.correctOption = newQuizCorrectOption;
-        questionData.graded = newQuizGraded;
-        questionData.scale = newQuizScale;
-      }
-
-      // Atualizar a questão no quiz
-      const updatedQuiz = await updateQuizQuestion(
-        courseId,
-        editQuiz,
-        questionData
-      );
-
-      // Atualizar o estado do quiz
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz(updatedQuiz);
-      setEditQuestion(null);
-      setNewQuizQuestion("");
-      setNewQuizOptions(["", ""]);
-      setNewQuizCorrectOption(0);
-      setNewQuizGraded(true);
-      setNewQuizScale("");
-      setNewQuestionType('multiple-choice');
-      setNewQuizImageUrl("");
-      setNewQuizImageWidth("");
-      setNewQuizImageHeight("");
-
-      toast.success("Questão atualizada com sucesso!");
-    } catch (error) {
-      console.error("Erro ao atualizar questão:", error);
-      toast.error(error.message || "Erro ao salvar a questão");
-    }
-  };
-
-  const handleAddQuestion = async () => {
-    if (!editQuiz) return;
-
-    // Validações básicas
-    if (!newQuizQuestion.trim()) {
-      toast.error("A pergunta não pode estar vazia");
-      return;
-    }
-
-    const isOpenEnded = newQuestionType === 'open-ended';
-
-    if (!isOpenEnded && newQuizOptions.some((opt) => !opt.trim())) {
-      toast.error("Todas as opções devem ser preenchidas");
-      return;
-    }
-
-    try {
-      const questionData = {
-        id: generateUUID(), // Gera um ID único para a nova questão
-        question: newQuizQuestion.trim(),
-        questionType: newQuestionType,
-        imageUrl: newQuizImageUrl,
-        imageWidth: newQuizImageWidth,
-        imageHeight: newQuizImageHeight,
-      };
-
-      if (isOpenEnded) {
-        // Questão aberta não precisa de campos extras
-      } else {
-        questionData.options = newQuizOptions.map((opt) => opt.trim());
-        questionData.correctOption = newQuizCorrectOption;
-        questionData.graded = newQuizGraded;
-        questionData.scale = newQuizScale;
-      }
-
-      // Adicionar a questão ao quiz
-      const updatedQuiz = await addQuestionToQuiz(
-        courseId,
-        editQuiz,
-        questionData
-      );
-
-      // Atualizar o estado do quiz
-      if (editQuiz.isSlideQuiz) {
-        setSlideQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      } else {
-        setQuizzes((prev) =>
-          prev.map((q) => (q.videoId === editQuiz.videoId ? updatedQuiz : q))
-        );
-      }
-
-      setEditQuiz(updatedQuiz);
-      setNewQuizQuestion("");
-      setNewQuizOptions(["", ""]);
-      setNewQuizCorrectOption(0);
-      setNewQuizGraded(true);
-      setNewQuizScale("");
-      setNewQuestionType('multiple-choice');
-      setNewQuizImageUrl("");
-      setNewQuizImageWidth("");
-      setNewQuizImageHeight("");
-
-      toast.success("Questão adicionada com sucesso!");
-    } catch (error) {
-      console.error("Erro ao adicionar questão:", error);
-      toast.error(error.message || "Erro ao adicionar a questão");
-    }
+    questionEditor.resetEditingState();
   };
 
   // Função para navegar para visão geral de notas
@@ -896,7 +137,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       <Button
         variant="outlined"
         startIcon={<DownloadIcon />}
-        onClick={() => setShowImportQuizModal(true)}
+        onClick={() => modals.setShowImportQuizModal(true)}
         sx={{
           borderColor: "#9041c1",
           color: "#9041c1",
@@ -912,56 +153,10 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
   );
 
   // Editor de questões renderizado DENTRO do card do quiz expandido (a lista o
-  // chama só para o card em edição). Mantém aqui todo o estado do formulário,
-  // em vez de espalhar duas dúzias de props pela QuizList.
+  // chama só para o card em edição). Mantém aqui a composição dos hooks de
+  // formulário/edição, em vez de espalhar duas dúzias de props pela QuizList.
   const renderQuestionEditor = () => (
-    <>
-      <PdfQuizGenerator
-        onQuestionsGenerated={handleQuestionsFromPdf}
-        setEditQuestion={setEditQuestion}
-        setNewQuizQuestion={setNewQuizQuestion}
-        setNewQuizOptions={setNewQuizOptions}
-        setNewQuizCorrectOption={setNewQuizCorrectOption}
-      />
-
-      <Box id="question-form" sx={{ scrollMarginTop: "20px" }}>
-        <QuestionForm
-          editQuiz={editQuiz}
-          newQuizQuestion={newQuizQuestion}
-          setNewQuizQuestion={setNewQuizQuestion}
-          newQuizOptions={newQuizOptions}
-          setNewQuizOptions={setNewQuizOptions}
-          newQuizCorrectOption={newQuizCorrectOption}
-          newQuizGraded={newQuizGraded}
-          setNewQuizGraded={setNewQuizGraded}
-          newQuizScale={newQuizScale}
-          setNewQuizScale={setNewQuizScale}
-          setNewQuizCorrectOption={setNewQuizCorrectOption}
-          newQuestionType={newQuestionType}
-          setNewQuestionType={setNewQuestionType}
-          newQuizImageUrl={newQuizImageUrl}
-          setNewQuizImageUrl={setNewQuizImageUrl}
-          newQuizImageWidth={newQuizImageWidth}
-          setNewQuizImageWidth={setNewQuizImageWidth}
-          newQuizImageHeight={newQuizImageHeight}
-          setNewQuizImageHeight={setNewQuizImageHeight}
-          handleBlurSave={handleBlurSave}
-          handleKeyDown={handleKeyDown}
-          questionRef={questionRef}
-          optionsRefs={optionsRefs}
-          addOptionButtonRef={addOptionButtonRef}
-          saveButtonRef={saveButtonRef}
-          cancelButtonRef={cancelButtonRef}
-          handleAddQuizOption={handleAddQuizOption}
-          handleRemoveQuizOption={handleRemoveQuizOption}
-          editQuestion={editQuestion}
-          handleSaveEditQuestion={handleSaveEditQuestion}
-          handleAddQuestion={handleAddQuestion}
-          setEditQuiz={setEditQuiz}
-          setEditQuestion={setEditQuestion}
-        />
-      </Box>
-    </>
+    <QuestionEditorPanel form={questionForm} editor={questionEditor} />
   );
 
   // Interface modificada com tabs para separar quizzes de vídeos e slides
@@ -977,7 +172,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     >
       {/* Tabs para alternar entre quizzes de vídeos e slides */}
       <Tabs
-        value={activeTab}
+        value={creationForm.activeTab}
         onChange={handleTabChange}
         sx={{ mb: 3 }}
         variant="fullWidth"
@@ -987,26 +182,26 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       </Tabs>
 
       {/* Conteúdo da tab de quizzes de vídeos */}
-      {activeTab === 0 && (
+      {creationForm.activeTab === 0 && (
         <>
           {/* Formulário para criar quiz para vídeo */}
           <QuizForm
-            videos={videosState}
-            newQuizVideoId={newQuizVideoId}
-            setNewQuizVideoId={setNewQuizVideoId}
-            newQuizMinPercentage={newQuizMinPercentage}
-            setNewQuizMinPercentage={setNewQuizMinPercentage}
-            newQuizIsDiagnostic={newQuizIsDiagnostic}
-            setNewQuizIsDiagnostic={setNewQuizIsDiagnostic}
-            handleAddQuiz={handleAddQuiz}
-            newQuizAllowRetry={newQuizAllowRetry}
-            setNewQuizAllowRetry={setNewQuizAllowRetry}
-            newQuizMaxAttempts={newQuizMaxAttempts}
-            setNewQuizMaxAttempts={setNewQuizMaxAttempts}
-            newQuizOpenDate={newQuizOpenDate}
-            setNewQuizOpenDate={setNewQuizOpenDate}
-            newQuizCloseDate={newQuizCloseDate}
-            setNewQuizCloseDate={setNewQuizCloseDate}
+            videos={contentSources.videosState}
+            newQuizVideoId={creationForm.newQuizVideoId}
+            setNewQuizVideoId={creationForm.setNewQuizVideoId}
+            newQuizMinPercentage={creationForm.newQuizMinPercentage}
+            setNewQuizMinPercentage={creationForm.setNewQuizMinPercentage}
+            newQuizIsDiagnostic={creationForm.newQuizIsDiagnostic}
+            setNewQuizIsDiagnostic={creationForm.setNewQuizIsDiagnostic}
+            handleAddQuiz={creationForm.handleAddQuiz}
+            newQuizAllowRetry={creationForm.newQuizAllowRetry}
+            setNewQuizAllowRetry={creationForm.setNewQuizAllowRetry}
+            newQuizMaxAttempts={creationForm.newQuizMaxAttempts}
+            setNewQuizMaxAttempts={creationForm.setNewQuizMaxAttempts}
+            newQuizOpenDate={creationForm.newQuizOpenDate}
+            setNewQuizOpenDate={creationForm.setNewQuizOpenDate}
+            newQuizCloseDate={creationForm.newQuizCloseDate}
+            setNewQuizCloseDate={creationForm.setNewQuizCloseDate}
             questionFormRef={questionFormRef}
             entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
@@ -1014,33 +209,33 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
 
           {/* Lista de quizzes de vídeos */}
           <QuizList
-            quizzes={quizzes}
-            videos={videosState}
-            expandedQuiz={expandedQuiz}
-            setExpandedQuiz={setExpandedQuiz}
+            quizzes={catalog.quizzes}
+            videos={contentSources.videosState}
+            expandedQuiz={questionEditor.expandedQuiz}
+            setExpandedQuiz={questionEditor.setExpandedQuiz}
             handleEditQuiz={handleEditQuiz}
             handleRemoveQuiz={handleRemoveQuiz}
             questionFormRef={questionFormRef}
-            handleEditQuestion={handleEditQuestion}
-            handleRemoveQuestion={handleRemoveQuestion}
+            handleEditQuestion={questionEditor.handleEditQuestion}
+            handleRemoveQuestion={questionEditor.handleRemoveQuestion}
             quizzesListEndRef={quizzesListEndRef}
             entityType="conteúdo"
-            entityItems={videosState}
+            entityItems={contentSources.videosState}
             courseId={courseId}
-            onAutoSaveQuestion={handleAutoSaveQuestion}
-            onViewOpinionResults={setOpinionQuiz}
-            editQuiz={editQuiz}
-            onToggleQuestionEditor={handleToggleQuestionEditor}
+            onAutoSaveQuestion={questionEditor.handleAutoSaveQuestion}
+            onViewOpinionResults={modals.setOpinionQuiz}
+            editQuiz={questionEditor.editQuiz}
+            onToggleQuestionEditor={questionEditor.handleToggleQuestionEditor}
             renderQuestionEditor={renderQuestionEditor}
-            onReorderQuestions={handleReorderQuestions}
+            onReorderQuestions={questionEditor.handleReorderQuestions}
           />
         </>
       )}
 
       {/* Conteúdo da tab de quizzes de slides */}
-      {activeTab === 1 && (
+      {creationForm.activeTab === 1 && (
         <>
-          {!slidesState || slidesState.length === 0 ? (
+          {!contentSources.slidesState || contentSources.slidesState.length === 0 ? (
             <Box sx={{ p: 3, textAlign: 'center', bgcolor: '#f5f5f5', borderRadius: 2 }}>
               <Typography variant="body1" color="text.secondary">
                 Nenhum slide no formato legado. Para slides novos, crie o quiz
@@ -1053,22 +248,22 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               {/* Mesmo formulário de criação da aba de conteúdo: a aba legada
                   tinha uma cópia manual dos mesmos campos. */}
               <QuizForm
-                videos={slidesState}
-                newQuizVideoId={newQuizSlideId}
-                setNewQuizVideoId={setNewQuizSlideId}
-                newQuizMinPercentage={newQuizMinPercentage}
-                setNewQuizMinPercentage={setNewQuizMinPercentage}
-                newQuizIsDiagnostic={newQuizIsDiagnostic}
-                setNewQuizIsDiagnostic={setNewQuizIsDiagnostic}
-                handleAddQuiz={handleAddQuiz}
-                newQuizAllowRetry={newQuizAllowRetry}
-                setNewQuizAllowRetry={setNewQuizAllowRetry}
-                newQuizMaxAttempts={newQuizMaxAttempts}
-                setNewQuizMaxAttempts={setNewQuizMaxAttempts}
-                newQuizOpenDate={newQuizOpenDate}
-                setNewQuizOpenDate={setNewQuizOpenDate}
-                newQuizCloseDate={newQuizCloseDate}
-                setNewQuizCloseDate={setNewQuizCloseDate}
+                videos={contentSources.slidesState}
+                newQuizVideoId={creationForm.newQuizSlideId}
+                setNewQuizVideoId={creationForm.setNewQuizSlideId}
+                newQuizMinPercentage={creationForm.newQuizMinPercentage}
+                setNewQuizMinPercentage={creationForm.setNewQuizMinPercentage}
+                newQuizIsDiagnostic={creationForm.newQuizIsDiagnostic}
+                setNewQuizIsDiagnostic={creationForm.setNewQuizIsDiagnostic}
+                handleAddQuiz={creationForm.handleAddQuiz}
+                newQuizAllowRetry={creationForm.newQuizAllowRetry}
+                setNewQuizAllowRetry={creationForm.setNewQuizAllowRetry}
+                newQuizMaxAttempts={creationForm.newQuizMaxAttempts}
+                setNewQuizMaxAttempts={creationForm.setNewQuizMaxAttempts}
+                newQuizOpenDate={creationForm.newQuizOpenDate}
+                setNewQuizOpenDate={creationForm.setNewQuizOpenDate}
+                newQuizCloseDate={creationForm.newQuizCloseDate}
+                setNewQuizCloseDate={creationForm.setNewQuizCloseDate}
                 questionFormRef={questionFormRef}
                 entityType="slide"
                 additionalButtons={gradesOverviewButton}
@@ -1076,25 +271,25 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
 
               {/* Lista de quizzes de slides */}
               <QuizList
-                quizzes={slideQuizzes || []}
-                videos={slidesState || []}
-                expandedQuiz={expandedQuiz}
-                setExpandedQuiz={setExpandedQuiz}
+                quizzes={catalog.slideQuizzes || []}
+                videos={contentSources.slidesState || []}
+                expandedQuiz={questionEditor.expandedQuiz}
+                setExpandedQuiz={questionEditor.setExpandedQuiz}
                 handleEditQuiz={handleEditQuiz}
                 handleRemoveQuiz={handleRemoveQuiz}
                 questionFormRef={questionFormRef}
-                handleEditQuestion={handleEditQuestion}
-                handleRemoveQuestion={handleRemoveQuestion}
+                handleEditQuestion={questionEditor.handleEditQuestion}
+                handleRemoveQuestion={questionEditor.handleRemoveQuestion}
                 quizzesListEndRef={quizzesListEndRef}
                 entityType="slide"
-                entityItems={slidesState || []}
+                entityItems={contentSources.slidesState || []}
                 courseId={courseId}
-                onAutoSaveQuestion={handleAutoSaveQuestion}
-                onViewOpinionResults={setOpinionQuiz}
-                editQuiz={editQuiz}
-                onToggleQuestionEditor={handleToggleQuestionEditor}
+                onAutoSaveQuestion={questionEditor.handleAutoSaveQuestion}
+                onViewOpinionResults={modals.setOpinionQuiz}
+                editQuiz={questionEditor.editQuiz}
+                onToggleQuestionEditor={questionEditor.handleToggleQuestionEditor}
                 renderQuestionEditor={renderQuestionEditor}
-                onReorderQuestions={handleReorderQuestions}
+                onReorderQuestions={questionEditor.handleReorderQuestions}
               />
             </>
           )}
@@ -1103,76 +298,76 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
 
       {/* Modais */}
       <QuizSettingsModal
-        open={Boolean(settingsQuiz)}
-        onClose={() => setSettingsQuiz(null)}
+        open={Boolean(modals.settingsQuiz)}
+        onClose={() => modals.setSettingsQuiz(null)}
         courseId={courseId}
-        quiz={settingsQuiz}
+        quiz={modals.settingsQuiz}
         contentTitle={
-          settingsQuiz?.isSlideQuiz
-            ? slidesState.find((s) => s.id === settingsQuiz?.slideId)?.title ||
-              settingsQuiz?.slideId
-            : videosState.find((v) => v.id === settingsQuiz?.videoId)?.title ||
-              settingsQuiz?.videoId
+          modals.settingsQuiz?.isSlideQuiz
+            ? contentSources.slidesState.find((s) => s.id === modals.settingsQuiz?.slideId)?.title ||
+              modals.settingsQuiz?.slideId
+            : contentSources.videosState.find((v) => v.id === modals.settingsQuiz?.videoId)?.title ||
+              modals.settingsQuiz?.videoId
         }
-        onSaved={handleQuizSettingsSaved}
+        onSaved={questionEditor.handleQuizSettingsSaved}
       />
 
       <OpinionResultsModal
-        open={Boolean(opinionQuiz)}
-        onClose={() => setOpinionQuiz(null)}
+        open={Boolean(modals.opinionQuiz)}
+        onClose={() => modals.setOpinionQuiz(null)}
         courseId={courseId}
-        quizId={opinionQuiz?.videoId}
+        quizId={modals.opinionQuiz?.videoId}
         quizTitle={
-          opinionQuiz?.isSlideQuiz
-            ? slidesState.find((s) => s.id === opinionQuiz?.slideId)?.title || ""
-            : videosState.find((v) => v.id === opinionQuiz?.videoId)?.title || ""
+          modals.opinionQuiz?.isSlideQuiz
+            ? contentSources.slidesState.find((s) => s.id === modals.opinionQuiz?.slideId)?.title || ""
+            : contentSources.videosState.find((v) => v.id === modals.opinionQuiz?.videoId)?.title || ""
         }
       />
 
       <ImportQuizModal
-        open={showImportQuizModal}
-        onClose={() => setShowImportQuizModal(false)}
+        open={modals.showImportQuizModal}
+        onClose={() => modals.setShowImportQuizModal(false)}
         courseId={courseId}
         targets={
-          activeTab === 0
-            ? videosState
+          creationForm.activeTab === 0
+            ? contentSources.videosState
             : // O quiz de slide é chaveado com o prefixo `slide_`; os alvos
               // precisam chegar ao modal já na forma da chave, que é o que o
               // serviço grava e o que a lista de ocupados compara.
-              slidesState.map((slide) => ({
+              contentSources.slidesState.map((slide) => ({
                 id: `slide_${slide.id}`,
                 title: slide.title,
               }))
         }
-        existingQuizIds={(activeTab === 0 ? quizzes : slideQuizzes).map(
+        existingQuizIds={(creationForm.activeTab === 0 ? catalog.quizzes : catalog.slideQuizzes).map(
           (quiz) => quiz.videoId
         )}
-        onImported={loadQuizzes}
+        onImported={catalog.loadQuizzes}
       />
 
       <SuccessModal
-        open={showAddQuizModal}
+        open={modals.showAddQuizModal}
         onClose={() => {
-          setShowAddQuizModal(false);
+          modals.setShowAddQuizModal(false);
           window.scrollTo({
             top: document.body.scrollHeight,
             behavior: "smooth",
           });
         }}
-        title={`Quiz ${activeTab === 0 ? "do conteúdo" : "do slide"
+        title={`Quiz ${creationForm.activeTab === 0 ? "do conteúdo" : "do slide"
           } adicionado com sucesso!`}
       />
 
       <ConfirmationModal
-        open={showDeleteQuizModal}
-        onClose={() => setShowDeleteQuizModal(false)}
+        open={modals.showDeleteQuizModal}
+        onClose={() => modals.setShowDeleteQuizModal(false)}
         onConfirm={confirmRemoveQuiz}
         title={
-          quizToDelete?.isSlideQuiz
-            ? `Tem certeza que deseja excluir o quiz do slide "${slidesState.find((s) => s.id === quizToDelete?.slideId)?.title ||
+          modals.quizToDelete?.isSlideQuiz
+            ? `Tem certeza que deseja excluir o quiz do slide "${contentSources.slidesState.find((s) => s.id === modals.quizToDelete?.slideId)?.title ||
             "selecionado"
             }?"`
-            : `Tem certeza que deseja excluir o quiz do vídeo "${videosState.find((v) => v.id === quizToDelete?.videoId)?.title ||
+            : `Tem certeza que deseja excluir o quiz do vídeo "${contentSources.videosState.find((v) => v.id === modals.quizToDelete?.videoId)?.title ||
             "selecionado"
             }?"`
         }
@@ -1180,11 +375,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
       />
 
       <ConfirmationModal
-        open={showDeleteQuestionModal}
-        onClose={() => setShowDeleteQuestionModal(false)}
-        onConfirm={confirmRemoveQuestion}
-        title={`Tem certeza que deseja excluir a questão "${questionToDelete?.quiz?.questions.find(
-          (q) => q.id === questionToDelete?.id
+        open={questionEditor.showDeleteQuestionModal}
+        onClose={() => questionEditor.setShowDeleteQuestionModal(false)}
+        onConfirm={questionEditor.confirmRemoveQuestion}
+        title={`Tem certeza que deseja excluir a questão "${questionEditor.questionToDelete?.quiz?.questions.find(
+          (q) => q.id === questionEditor.questionToDelete?.id
         )?.question || "selecionada"
           }?"`}
       />

@@ -4,11 +4,10 @@ import { fetchCourseSlides } from "./slides";
 import { updateCourseProgress } from "./students";
 import {
   fetchQuizQuestions,
-  validateQuizAnswers,
   fetchUserQuizResults,
   fetchCourseQuizzes,
-  markQuizAsCompleted,
-} from "./quizzes";
+} from "./quizFetch";
+import { validateQuizAnswers, markQuizAsCompleted } from "./quizSubmission";
 import {
   saveVideoProgress,
   markVideoAsCompleted,

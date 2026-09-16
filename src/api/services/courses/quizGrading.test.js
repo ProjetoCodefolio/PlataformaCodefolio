@@ -3,6 +3,7 @@ import {
   LIKERT_5_OPTIONS,
   LIKERT_5_SCALE,
   answerVerdict,
+  computeQuizAttemptResult,
   hasVerdict,
   gradedQuestions,
   isGradedQuestion,
@@ -152,5 +153,77 @@ describe("answerVerdict", () => {
   it("resposta avaliada tem veredito", () => {
     expect(hasVerdict(resposta())).toBe(true);
     expect(hasVerdict(resposta({ isCorrect: false }))).toBe(true);
+  });
+});
+
+describe("computeQuizAttemptResult", () => {
+  it("calcula a nota só entre as questões de múltipla escolha que valem nota", () => {
+    const questions = [multipla(), multipla({ id: "q4", correctOption: 1 })];
+    const result = computeQuizAttemptResult(questions, { q1: 0, q4: 0 }, {}, 70);
+
+    expect(result.earnedPoints).toBe(1);
+    expect(result.totalPoints).toBe(2);
+    expect(result.scorePercentage).toBe(50);
+    expect(result.isPassed).toBe(false);
+  });
+
+  it("aprova quando a pontuação atinge o mínimo exigido", () => {
+    const questions = [multipla(), multipla({ id: "q4", correctOption: 1 })];
+    const result = computeQuizAttemptResult(questions, { q1: 0, q4: 1 }, {}, 70);
+
+    expect(result.scorePercentage).toBe(100);
+    expect(result.isPassed).toBe(true);
+  });
+
+  it("quiz só de perguntas de opinião: 100% e aprovado, sem pontos em jogo", () => {
+    // Nenhuma questão vale nota: responder já é a nota máxima e a aprovação
+    // não trava nada (mesmo espírito de isOpinionQuiz).
+    const questions = [likert(), likert({ id: "q5" })];
+    const result = computeQuizAttemptResult(questions, { q2: 2, q5: 4 }, {}, 70);
+
+    expect(result.totalPoints).toBe(0);
+    expect(result.scorePercentage).toBe(100);
+    expect(result.isPassed).toBe(true);
+    expect(result.answersDetails.every((a) => a.isCorrect === null)).toBe(true);
+  });
+
+  it("dissertativa não entra na nota, mas aparece nos detalhes com a resposta do aluno", () => {
+    const questions = [multipla(), dissertativa()];
+    const result = computeQuizAttemptResult(
+      questions,
+      { q1: 0 },
+      { q3: "minha resposta" },
+      70
+    );
+
+    expect(result.totalPoints).toBe(1);
+    expect(result.hasOpenEnded).toBe(true);
+    const detalheDissertativa = result.answersDetails.find((a) => a.questionId === "q3");
+    expect(detalheDissertativa).toMatchObject({
+      questionType: "open-ended",
+      answer: "minha resposta",
+      isCorrect: null,
+    });
+  });
+
+  it("filteredMultipleChoiceAnswers só inclui questões de múltipla escolha respondidas", () => {
+    const questions = [multipla(), dissertativa(), likert()];
+    const result = computeQuizAttemptResult(
+      questions,
+      { q1: 0, q2: 3 },
+      { q3: "texto" },
+      70
+    );
+
+    expect(result.filteredMultipleChoiceAnswers).toEqual({ q1: 0, q2: 3 });
+    expect(result.multipleChoiceQuestions.map((q) => q.id)).toEqual(["q1", "q2"]);
+  });
+
+  it("quiz vazio: 100% e aprovado, sem detalhes", () => {
+    const result = computeQuizAttemptResult([], {}, {}, 70);
+    expect(result.totalPoints).toBe(0);
+    expect(result.scorePercentage).toBe(100);
+    expect(result.isPassed).toBe(true);
+    expect(result.answersDetails).toEqual([]);
   });
 });

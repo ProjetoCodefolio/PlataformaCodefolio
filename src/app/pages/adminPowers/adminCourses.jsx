@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Loader from "$components/common/Loader";
 import { 
   Box, 
   Typography, 
@@ -12,7 +13,6 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  CircularProgress,
   Alert,
   FormControl,
   InputLabel,
@@ -416,7 +416,7 @@ const AdminCourses = () => {
         <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-              <CircularProgress sx={{ color: "#9041c1" }} />
+              <Loader />
             </Box>
           ) : error ? (
             <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
@@ -522,7 +522,7 @@ const AdminCourses = () => {
                         </TableCell>
                         <TableCell>
                           {course.ownerName === null ? (
-                            <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                            <Loader size={16} />
                           ) : (
                             <Box sx={{ display: 'flex', alignItems: 'center' }}>
                               <Avatar
@@ -540,7 +540,7 @@ const AdminCourses = () => {
                         </TableCell>
                         <TableCell>
                           {course.studentCount === null ? (
-                            <CircularProgress size={16} sx={{ color: "#9041c1" }} />
+                            <Loader size={16} />
                           ) : (
                             course.studentCount
                           )}

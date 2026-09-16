@@ -310,7 +310,7 @@ const AdminPowers = () => {
                   height: 56, // Altura para alinhar com o Autocomplete
                 }}
               >
-                {loading ? <CircularProgress size={24} sx={{ color: "white" }} /> : "Buscar"}
+                {loading ? <CircularProgress size={24} color="inherit" /> : "Buscar"}
               </Button>
             </Box>
             

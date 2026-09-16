@@ -2,7 +2,7 @@ import React from "react";
 import { Box, TextField, Typography, InputAdornment } from "@mui/material";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
-import { formatQuizDate } from "$api/services/courses/quizzes";
+import { formatQuizDate } from "$api/services/courses/quizWindow";
 
 // ISO <-> valor do input datetime-local (horário local do professor).
 const isoToLocalInput = (iso) => {

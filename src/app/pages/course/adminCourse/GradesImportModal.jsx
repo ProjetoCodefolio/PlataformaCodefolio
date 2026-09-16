@@ -1,11 +1,11 @@
 import React, { useState } from "react";
+import Loader from "$components/common/Loader";
 import {
   Alert,
   AlertTitle,
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -194,7 +194,7 @@ export default function GradesImportModal({
 
   const renderProcessing = (message) => (
     <Stack alignItems="center" spacing={2} sx={{ py: 5 }}>
-      <CircularProgress sx={{ color: "#9041c1" }} />
+      <Loader />
       <Typography variant="body2" color="text.secondary">
         {message}
       </Typography>

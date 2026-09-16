@@ -14,10 +14,14 @@ const firebaseConfig = {
 };
 
 // import.meta.env.DEV é definido automaticamente pelo Vite: true apenas ao
-// rodar o dev server (`vite`), sempre false em `vite build` — diferente de
-// VITE_MODE (variável do .env), que fica cravada no bundle e não muda entre
-// build de dev e de produção se o .env não for trocado.
-const useEmulators = import.meta.env.DEV;
+// rodar o dev server (`vite`), sempre false em `vite build`. Sem VITE_MODE,
+// dev server sempre caía no emulador — mesmo com o .env configurado para
+// produção, sem nenhum jeito de testar o dev server contra o Firebase real
+// sem editar código. VITE_MODE=production no .env agora tira o emulador da
+// jogada mesmo em dev; qualquer outro valor (ou ausente) mantém o
+// comportamento de sempre (emulador em dev, real em build de produção).
+const useEmulators =
+  import.meta.env.VITE_MODE === "production" ? false : import.meta.env.DEV;
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

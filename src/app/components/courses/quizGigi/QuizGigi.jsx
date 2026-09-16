@@ -21,7 +21,7 @@ import QuestionMarkIcon from "@mui/icons-material/QuestionMark";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
-import ReportIcon from "@mui/icons-material/Report";
+import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
 import { toast } from "react-toastify";
 import logo from "$assets/img/codefolio.png";
 import { database } from "$api/config/firebase";
@@ -320,6 +320,10 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
           <CloseIcon fontSize="large" />
         </IconButton>
 
+        {/* Botões flutuantes: cada um tem ícone "large" (35px) + padding.
+            O passo entre eles precisa cobrir esse footprint (que CRESCE com o
+            padding a cada breakpoint) — um passo fixo de 50px, igual em todos
+            os breakpoints, deixava os alvos de toque se sobrepondo. */}
         {!showSummary && (
           <Tooltip
             title={
@@ -364,7 +368,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               sx={{
                 position: "absolute",
                 top: 20,
-                right: { xs: 85, sm: 95, md: 105 },
+                right: { xs: 100, sm: 110, md: 120 },
                 color: "#fff",
                 zIndex: 1500,
                 padding: { xs: "8px", sm: "10px", md: "12px" },
@@ -382,17 +386,13 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               sx={{
                 position: "absolute",
                 top: 20,
-                right: { xs: 135, sm: 145, md: 155 },
+                right: { xs: 165, sm: 175, md: 185 },
                 color: "#fff",
-                backgroundColor: "#f44336",
-                zIndex: 1600,
+                zIndex: 1500,
                 padding: { xs: "8px", sm: "10px", md: "12px" },
-                "&:hover": {
-                  backgroundColor: "#d32f2f",
-                },
               }}
             >
-              <ReportIcon fontSize="large" />
+              <OutlinedFlagIcon fontSize="large" />
             </IconButton>
           </Tooltip>
         )}
@@ -404,7 +404,7 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
               sx={{
                 position: "absolute",
                 top: 20,
-                right: { xs: 85, sm: 95, md: 105 },
+                right: { xs: 100, sm: 110, md: 120 },
                 color: "#fff",
                 zIndex: 1500,
                 padding: { xs: "8px", sm: "10px", md: "12px" },

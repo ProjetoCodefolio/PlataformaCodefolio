@@ -1,10 +1,11 @@
 {
   "rules": {
-    ".read": true,
+    ".read": false,
     ".write": false,
 
     "courseAssessments": {
       "$courseId": {
+        ".read": "auth != null",
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$assessmentId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
@@ -55,6 +56,9 @@
     },
 
     "notifications": {
+      // Só a exclusão de curso (admin) lê o nó inteiro para limpar as
+      // notificações órfãs de todo mundo; leitura normal continua por usuário.
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
         ".write": "auth != null && auth.uid === $userId",
@@ -66,6 +70,9 @@
     },
 
     "notificationPrefs": {
+      // Mesmo motivo de `notifications`: só a exclusão de curso (admin) lê
+      // em massa.
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$userId": {
         ".read": "auth != null && auth.uid === $userId",
         ".write": "auth != null && auth.uid === $userId"
@@ -145,6 +152,7 @@
     },
 
     "courseAliases": {
+      ".read": true,
       "$aliasId": {
         ".read": true,
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (data.exists() && root.child('courses').child(data.child('courseId').val()).child('userId').val() === auth.uid) || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid))"
@@ -152,6 +160,11 @@
     },
 
     "courses": {
+      // Sem isso, uma leitura do nó INTEIRO (catálogo, importação, checagem de
+      // tipo de curso) era negada mesmo com `.read:true` no `$courseId`: esse
+      // grau só cobre uma leitura NAQUELE nível ou abaixo, nunca uma listagem
+      // do pai — regra que fica óbvia só depois de tirar o `.read:true` da raiz.
+      ".read": true,
       "$courseId": {
         ".read": true,
         ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || (data.exists() && data.child('userId').val() === auth.uid) || (!data.exists() && root.child('users').child(auth.uid).child('role').val() === 'teacher'))",
@@ -181,6 +194,7 @@
 
     "customQuizResults": {
       "$courseId": {
+        ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
@@ -194,6 +208,7 @@
 
     "liveQuizResults": {
       "$courseId": {
+        ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
@@ -207,6 +222,7 @@
 
     "openEndedAnswers": {
       "$courseId": {
+        ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
@@ -221,6 +237,7 @@
     },
 
     "llmModels": {
+      ".read": true,
       "$modelId": {
         ".read": true,
         ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
@@ -228,6 +245,7 @@
     },
 
     "post": {
+      ".read": true,
       "$postId": {
         ".read": true,
         ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
@@ -254,6 +272,7 @@
 
     "quizGigi": {
       "$courseId": {
+        ".read": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
         ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()) && !newData.exists()",
         "$quizId": {
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())"
@@ -262,10 +281,18 @@
     },
 
     "quizResults": {
+      // Telas de professor (notas de um quiz, exclusão de quiz) leem o nó
+      // INTEIRO (todo userId) para filtrar por curso depois em memória — não
+      // dá para restringir por curso numa leitura que nem tem o courseId no
+      // caminho, então a concessão aqui é "é professor de algum curso ou
+      // admin", não "é dono deste curso". `$userId/$courseId` abaixo continua
+      // sendo a regra fina (aluno só lê o próprio; dono do curso lê o do
+      // curso dele).
+      ".read": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'teacher' || root.child('users').child(auth.uid).child('coursesTeacher').exists())",
       "$userId": {
         ".write": "auth != null && auth.uid === $userId",
         "$courseId": {
-          ".read": "auth != null && root.child('courses').child($courseId).child('userId').val() === auth.uid",
+          ".read": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
           "$quizId": {
             ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
@@ -276,6 +303,11 @@
 
     "reports": {
       ".write": false,
+      // A lista de admin (fetchAllReports) e a exclusão de curso leem o nó
+      // inteiro; a numeração sequencial ao enviar um report (getNextReportNumber,
+      // alcançável por quem não está logado) também tenta ler aqui, mas cai com
+      // segurança num número por timestamp se a leitura for negada.
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$reportId": {
         ".read": true,
         ".write": "auth != null"
@@ -283,6 +315,11 @@
     },
 
     "studentCourses": {
+      // A tela "meus cursos" do próprio aluno (studentCourses/{seuId}) e a
+      // agregação de turma do professor (studentCourses inteiro) leem em
+      // massa, um nível ACIMA de onde ".read" está declarado abaixo — sem
+      // grau aqui, ambas eram negadas mesmo sendo leituras legítimas.
+      ".read": "auth != null",
       "$userId": {
         "$courseId":{
           ".write": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists())",
@@ -292,6 +329,7 @@
     },
 
     "tags": {
+      ".read": true,
       "$tagId": {
         ".read": true,
         ".write": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'"
@@ -300,6 +338,7 @@
 
     "users": {
       ".indexOn": ["email"],
+      ".read": "auth != null",
       "$userId": {
         ".read": "auth != null && (auth.uid === $userId || root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".write": "auth != null && (auth.uid === $userId || (root.child('users').child(auth.uid).child('role').val() === 'admin' && newData.hasChild('role')))",
@@ -312,6 +351,9 @@
     },
 
     "videoProgress": {
+      // Só a exclusão de curso (admin) lê o nó inteiro para limpar as
+      // referências de todo mundo; leitura normal já é pública em `$userId`.
+      ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       "$userId": {
         ".write": "auth != null && auth.uid === $userId",
         ".read": true,

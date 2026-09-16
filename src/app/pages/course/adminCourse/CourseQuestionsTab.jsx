@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
+import Loader from "$components/common/Loader";
 import {
   Box,
   Typography,
@@ -13,7 +14,6 @@ import {
   TableRow,
   Button,
   IconButton,
-  CircularProgress,
   Chip,
   Tooltip,
   FormControl,
@@ -401,7 +401,7 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
 
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-          <CircularProgress sx={{ color: PURPLE }} />
+          <Loader />
         </Box>
       ) : (
         <>
