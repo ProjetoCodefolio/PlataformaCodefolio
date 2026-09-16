@@ -17,6 +17,7 @@ env:
   VITE_MODE: ${{ secrets.VITE_MODE }}
   VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
   VITE_PIN_SECRET_KEY: ${{ secrets.VITE_PIN_SECRET_KEY }}
+  VITE_EMAIL_WORKER_URL: ${{ secrets.VITE_EMAIL_WORKER_URL }}
 
 jobs:
   test:
