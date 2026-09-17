@@ -12,6 +12,7 @@
 
 import { ref, get } from "firebase/database";
 import { database } from "../../config/firebase";
+import { ensureQuestionIds } from "./quizQuestions";
 import { isGradedQuestion } from "./quizGrading";
 
 /** Rótulo usado quando o aluno pulou a pergunta. */
@@ -103,7 +104,8 @@ export const fetchOpinionResults = async (courseId, quizId) => {
   if (!quizSnap.exists()) {
     throw new Error("Questionário não encontrado");
   }
-  const questions = quizSnap.val()?.questions || [];
+  // Mesmos ids que a tela do aluno usou para gravar em `detailedAnswers`.
+  const questions = ensureQuestionIds(quizSnap.val()?.questions) || [];
 
   const [matriculasSnap, usuariosSnap] = await Promise.all([
     get(ref(database, "studentCourses")),

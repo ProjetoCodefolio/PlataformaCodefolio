@@ -8,6 +8,7 @@ import {
 } from "./quizRecalculation";
 import { gradedQuestions, normalizeGradedFlag } from "./quizGrading";
 import { fetchQuizQuestions } from "./quizFetch";
+import { ensureQuestionIds } from "./quizQuestions";
 
 /**
  * ==============================
@@ -435,7 +436,9 @@ export const recalculateQuizResults = async (
     }
 
     const quiz = quizSnapshot.val();
-    const questions = normalizeQuestionList(quiz.questions);
+    // Mesma normalização de id feita na leitura do quiz pelo aluno: o recálculo
+    // precisa chegar às mesmas chaves que a tela usou para gravar as respostas.
+    const questions = normalizeQuestionList(ensureQuestionIds(quiz.questions));
 
     // Trava contra o quiz meio-editado: sem questões, recalcular zeraria a nota
     // da turma inteira.
