@@ -37,9 +37,12 @@ const fallbackQuestionId = (index, ocupados) => {
  * ou com o id repetido de outra — faz todas essas chaves colidirem: editar uma
  * questão aparece como edição de todas, e responder uma responde todas.
  *
- * Questões assim existem no banco (quizzes anteriores ao id por questão), por
- * isso a normalização acontece na LEITURA, antes de a lista chegar a qualquer
- * tela; a primeira gravação de questão persiste os ids junto.
+ * Nenhum caminho de escrita do app grava questão sem id, mas o banco tem
+ * questões assim mesmo: quizzes grandes gerados por IA e inseridos direto no
+ * banco, fora do app, com o formato cru `{question, options, correctOption}`
+ * (3 quizzes em 17/09/2026). Por isso a normalização acontece na LEITURA, antes
+ * de a lista chegar a qualquer tela; a primeira gravação de questão, ou o
+ * "Salvar" do curso, persiste os ids junto.
  *
  * Devolve a MESMA lista quando não há nada a consertar — o caso comum —, para
  * não trocar a identidade do array a cada leitura.
