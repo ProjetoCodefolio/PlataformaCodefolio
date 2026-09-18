@@ -223,40 +223,13 @@ export const generateQuestionsWithGroq = async (
         );
       }
 
-      // Ajustar para o número exato de questões
-      let finalQuestions;
-
-      if (validatedQuestions.length > numQuestions) {
-        // Se temos questões extras, pegamos apenas a quantidade solicitada
-        finalQuestions = validatedQuestions.slice(0, numQuestions);
-      } else if (validatedQuestions.length < numQuestions) {
-        // Se faltam questões, duplicamos algumas com pequenas variações
-        finalQuestions = [...validatedQuestions];
-        const missingCount = numQuestions - validatedQuestions.length;
-
-        for (let i = 0; i < missingCount; i++) {
-          const baseIndex = i % validatedQuestions.length;
-          const baseQuestion = validatedQuestions[baseIndex];
-
-          // Cria variante para completar o número necessário
-          if (questionType === QUESTION_TYPES.OPEN) {
-            const newQuestion = {
-              ...baseQuestion,
-              question: `${baseQuestion.question} (variação ${i + 1})`,
-            };
-            finalQuestions.push(newQuestion);
-          } else {
-            const newQuestion = {
-              ...baseQuestion,
-              question: `${baseQuestion.question} (variação ${i + 1})`,
-              options: [...baseQuestion.options],
-            };
-            finalQuestions.push(newQuestion);
-          }
-        }
-      } else {
-        finalQuestions = validatedQuestions;
-      }
+      // Ajustar para o número pedido. Se vieram menos questões válidas do que
+      // o pedido, devolvemos o que veio: completar a lista duplicando questões
+      // entrega ao professor questão inventada com cara de questão gerada.
+      const finalQuestions =
+        validatedQuestions.length > numQuestions
+          ? validatedQuestions.slice(0, numQuestions)
+          : validatedQuestions;
 
       // Adicionar IDs únicos
       return finalQuestions.map((q, index) => ({

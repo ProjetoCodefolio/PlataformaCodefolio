@@ -51,7 +51,18 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
         });
       }
 
-      toast.success(`${result.questions.length} questões geradas com sucesso!`);
+      // O provedor pode devolver menos questões do que o pedido. Avisar o
+      // número real em vez de anunciar sucesso cheio: o gerador não completa
+      // a lista por conta própria.
+      const geradas = result.questions.length;
+      if (geradas < numQuestions) {
+        toast.warning(
+          `Foram pedidas ${numQuestions} questões e vieram ${geradas}. Gere novamente para completar.`,
+          { autoClose: 6000 }
+        );
+      } else {
+        toast.success(`${geradas} questões geradas com sucesso!`);
+      }
     } catch (err) {
       // Usar mensagens de erro mais amigáveis
       const friendlyError = formatFriendlyError(err);
