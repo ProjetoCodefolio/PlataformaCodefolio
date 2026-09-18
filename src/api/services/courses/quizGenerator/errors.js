@@ -80,8 +80,16 @@ export const formatFriendlyError = (error) => {
       case ErrorTypes.CONTEXT_TOO_LARGE:
         return `O PDF é muito grande para o modelo selecionado.\n\nTamanho: ${details.textLength || '?'} caracteres\nLimite: ${details.maxLength || '?'} caracteres\n\nSugestões:\n• Use um modelo com contexto maior (ex: Llama 3.3 70B)\n• Divida o PDF em partes menores\n• Reduza o número de questões`;
 
-      case ErrorTypes.MODEL_NOT_FOUND:
-        return `O modelo de IA selecionado não está disponível.\n\nModelo: ${details.modelId || 'desconhecido'}\n\nPossíveis causas:\n• O modelo foi descontinuado pela API\n• Você não tem acesso a este modelo\n• O nome do modelo está incorreto\n\nSugestão: Selecione outro modelo disponível (recomendamos "Llama 3.3 70B Versatile")`;
+      case ErrorTypes.MODEL_NOT_FOUND: {
+        // Nunca recomendar um modelo pelo nome aqui: o catálogo muda, e um
+        // nome fixo nesta mensagem já mandou o professor escolher justamente
+        // o modelo que tinha sido descontinuado.
+        const tentados = details.modelosTentados || [];
+        if (tentados.length > 1) {
+          return `Nenhum modelo de IA disponível respondeu.\n\nForam tentados, nesta ordem: ${tentados.join(', ')}.\n\nTodos foram descontinuados pelo provedor. Avise um administrador para atualizar o catálogo de modelos.`;
+        }
+        return `O modelo de IA selecionado não está disponível.\n\nModelo: ${details.modelId || 'desconhecido'}\n\nEle foi descontinuado pelo provedor ou esta conta não tem acesso a ele.\n\nSugestão: escolha outro modelo nas configurações do gerador, ou avise um administrador para atualizar o catálogo.`;
+      }
 
       default:
         return error.message || 'Erro desconhecido. Tente novamente.';

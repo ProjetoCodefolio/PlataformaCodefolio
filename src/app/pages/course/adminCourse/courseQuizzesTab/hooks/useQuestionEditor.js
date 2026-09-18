@@ -6,6 +6,7 @@ import {
   removeQuizQuestion,
   reorderQuizQuestions,
   addMultipleQuestionsToQuiz,
+  applyQuestionGradingFields,
 } from "$api/services/courses/quizQuestions";
 import { normalizeGradedFlag } from "$api/services/courses/quizGrading";
 import { generateUUID } from "../../../../../utils/courseUtils";
@@ -215,14 +216,20 @@ export function useQuestionEditor({
         }
 
         if (isOpenEnded) {
+          // A resposta esperada vem tanto do gerador por PDF quanto da
+          // colagem de JSON; descartá-la aqui apagava o gabarito da questão
+          // discursiva na hora de gravar.
+          if (question.expectedAnswer) {
+            base.expectedAnswer = question.expectedAnswer;
+          }
           return base;
         }
 
-        return {
-          ...base,
-          options: question.options,
-          correctOption: question.correctOption,
-        };
+        const multiplaEscolha = { ...base, options: question.options };
+        // Mesma regra do formulário manual: `graded: false` grava a pergunta
+        // sem resposta certa (enquete, escala Likert) e sem `correctOption`.
+        applyQuestionGradingFields(multiplaEscolha, question);
+        return multiplaEscolha;
       });
 
       const updatedQuiz = await addMultipleQuestionsToQuiz(

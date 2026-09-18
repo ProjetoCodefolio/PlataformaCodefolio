@@ -95,6 +95,11 @@ const PromptSettingsDialog = ({
             label="Modelo de fallback (GROQ)"
             sx={{ bgcolor: "#fff" }}
           >
+            {models.length === 0 && (
+              <MenuItem value="" disabled>
+                Nenhum modelo ativo no catálogo
+              </MenuItem>
+            )}
             {models.map((model) => (
               <MenuItem key={model.modelId} value={model.modelId}>
                 {model.name}

@@ -93,17 +93,22 @@ export const validateParsedQuestions = (questions, questionType = QUESTION_TYPES
 };
 
 /**
- * Analisa a resposta da API GROQ para extrair as questões em formato JSON
- * @param {string} responseContent - Conteúdo da resposta da API
- * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
- * @returns {Array} - Array de questões analisadas
+ * Extrai o array de questões cru de um texto que deveria conter JSON.
+ *
+ * Cinco estratégias, da mais direta à mais tolerante: JSON puro, objeto com
+ * `.questions`, array embutido em prosa, bloco de código markdown, limpeza de
+ * vírgula sobrando e aspas simples, e por fim recuperação objeto a objeto de
+ * uma resposta truncada no meio.
+ *
+ * Vive separado da validação porque tem duas fontes: a resposta da IA e o
+ * JSON que o professor cola na tela. Um segundo parser tolerante seria um
+ * segundo conjunto de bugs.
+ *
+ * @param {string} conteudo - Texto que deveria conter o JSON das questões
+ * @returns {Array} - Array de questões ainda não validadas
  */
-export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) => {
-  // Log para diagnóstico
-  console.debug('parseGroqResponse - Conteúdo recebido (primeiros 500 chars):',
-    responseContent ? responseContent.substring(0, 500) : 'VAZIO');
-
-  if (!responseContent || typeof responseContent !== 'string') {
+export const extrairArrayDeQuestoes = (conteudo) => {
+  if (!conteudo || typeof conteudo !== 'string') {
     throw createDetailedError(
       ErrorTypes.INVALID_RESPONSE_FORMAT,
       'A IA não retornou nenhum conteúdo.',
@@ -114,73 +119,57 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
   let parseError = null;
   let parsedData = null;
 
-  // Tentativa 1: Tentar analisar diretamente como JSON
+  // Tentativa 1: analisar diretamente como JSON
   try {
-    parsedData = JSON.parse(responseContent);
+    parsedData = JSON.parse(conteudo);
     if (Array.isArray(parsedData)) {
-      console.debug('parseGroqResponse - Sucesso na tentativa 1 (JSON direto)');
-      return validateParsedQuestions(parsedData, questionType);
-    } else if (parsedData && typeof parsedData === 'object') {
+      return parsedData;
+    }
+    if (parsedData && typeof parsedData === 'object' && Array.isArray(parsedData.questions)) {
       // Alguns modelos retornam { questions: [...] }
-      if (Array.isArray(parsedData.questions)) {
-        console.debug('parseGroqResponse - Sucesso na tentativa 1 (objeto com .questions)');
-        return validateParsedQuestions(parsedData.questions, questionType);
-      }
+      return parsedData.questions;
     }
   } catch (e) {
     parseError = e.message;
-    console.debug('parseGroqResponse - Tentativa 1 falhou:', e.message);
   }
 
-  // Tentativa 2: Procurar por array JSON na resposta
+  // Tentativa 2: procurar por array JSON no meio do texto
   try {
-    const jsonRegex = /\[\s*\{[\s\S]*?\}\s*\]/g;
-    const matches = responseContent.match(jsonRegex);
-    if (matches && matches.length > 0) {
-      // Tentar cada match até encontrar um válido
-      for (const match of matches) {
-        try {
-          parsedData = JSON.parse(match);
-          if (Array.isArray(parsedData) && parsedData.length > 0) {
-            console.debug('parseGroqResponse - Sucesso na tentativa 2 (regex array)');
-            return validateParsedQuestions(parsedData, questionType);
-          }
-        } catch (innerE) {
-          continue;
+    const matches = conteudo.match(/\[\s*\{[\s\S]*?\}\s*\]/g);
+    for (const match of matches || []) {
+      try {
+        parsedData = JSON.parse(match);
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          return parsedData;
         }
+      } catch (innerE) {
+        continue;
       }
     }
   } catch (e) {
     parseError = parseError || e.message;
-    console.debug('parseGroqResponse - Tentativa 2 falhou:', e.message);
   }
 
-  // Tentativa 3: Procurar por blocos de código markdown
+  // Tentativa 3: procurar por blocos de código markdown
   try {
-    const markdownCodeRegex = /```(?:json)?([\s\S]*?)```/g;
-    const codeMatches = [...responseContent.matchAll(markdownCodeRegex)];
-    if (codeMatches && codeMatches.length > 0) {
-      for (const codeMatch of codeMatches) {
-        try {
-          const jsonContent = codeMatch[1].trim();
-          parsedData = JSON.parse(jsonContent);
-          if (Array.isArray(parsedData)) {
-            console.debug('parseGroqResponse - Sucesso na tentativa 3 (markdown code block)');
-            return validateParsedQuestions(parsedData, questionType);
-          }
-        } catch (innerE) {
-          continue;
+    const codeMatches = [...conteudo.matchAll(/```(?:json)?([\s\S]*?)```/g)];
+    for (const codeMatch of codeMatches) {
+      try {
+        parsedData = JSON.parse(codeMatch[1].trim());
+        if (Array.isArray(parsedData)) {
+          return parsedData;
         }
+      } catch (innerE) {
+        continue;
       }
     }
   } catch (e) {
     parseError = parseError || e.message;
-    console.debug('parseGroqResponse - Tentativa 3 falhou:', e.message);
   }
 
-  // Tentativa 4: Tentar extrair JSON com correção de erros comuns
+  // Tentativa 4: corrigir os erros comuns de formato
   try {
-    let cleanedContent = responseContent
+    const cleanedContent = conteudo
       // Remover texto antes do primeiro [
       .replace(/^[^[]*/, '')
       // Remover texto após o último ]
@@ -193,22 +182,19 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
 
     parsedData = JSON.parse(cleanedContent);
     if (Array.isArray(parsedData)) {
-      console.debug('parseGroqResponse - Sucesso na tentativa 4 (limpeza de JSON)');
-      return validateParsedQuestions(parsedData, questionType);
+      return parsedData;
     }
   } catch (e) {
     parseError = parseError || e.message;
-    console.debug('parseGroqResponse - Tentativa 4 falhou:', e.message);
   }
 
-  // Tentativa 5: Recuperar questões completas de uma resposta truncada.
+  // Tentativa 5: recuperar questões completas de uma resposta truncada.
   // Quando o array é cortado por max_tokens (falta o "]" final), as tentativas
   // acima falham. Como os objetos de questão não têm chaves {} aninhadas
   // (options usa []), extraímos cada objeto {...} completo individualmente e
   // descartamos apenas o fragmento final incompleto.
   try {
-    const objectRegex = /\{[^{}]*\}/g;
-    const objectMatches = responseContent.match(objectRegex);
+    const objectMatches = conteudo.match(/\{[^{}]*\}/g);
     if (objectMatches && objectMatches.length > 0) {
       const salvaged = [];
       for (const objStr of objectMatches) {
@@ -220,21 +206,19 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
       }
       if (salvaged.length > 0) {
         console.warn(
-          `parseGroqResponse - Resposta truncada: recuperadas ${salvaged.length} questão(ões) completa(s) de ${objectMatches.length} bloco(s).`
+          `extrairArrayDeQuestoes - Resposta truncada: recuperadas ${salvaged.length} questão(ões) completa(s) de ${objectMatches.length} bloco(s).`
         );
-        return validateParsedQuestions(salvaged, questionType);
+        return salvaged;
       }
     }
   } catch (e) {
     parseError = parseError || e.message;
-    console.debug('parseGroqResponse - Tentativa 5 falhou:', e.message);
   }
 
-  // Se chegou aqui, não conseguimos extrair o JSON
-  // Criar erro detalhado com diagnóstico
-  const contentPreview = responseContent.substring(0, 200);
-  const hasJsonStart = responseContent.includes('[') || responseContent.includes('{');
-  const hasJsonEnd = responseContent.includes(']') || responseContent.includes('}');
+  // Nenhuma estratégia funcionou: montar o diagnóstico
+  const contentPreview = conteudo.substring(0, 200);
+  const hasJsonStart = conteudo.includes('[') || conteudo.includes('{');
+  const hasJsonEnd = conteudo.includes(']') || conteudo.includes('}');
 
   let diagnosticMessage = '';
   if (!hasJsonStart && !hasJsonEnd) {
@@ -247,7 +231,7 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
     diagnosticMessage = `Erro ao interpretar JSON: ${parseError || 'formato inválido'}`;
   }
 
-  console.error('parseGroqResponse - Todas as tentativas falharam. Preview:', contentPreview);
+  console.error('extrairArrayDeQuestoes - Todas as tentativas falharam. Preview:', contentPreview);
 
   throw createDetailedError(
     ErrorTypes.JSON_PARSE_ERROR,
@@ -257,7 +241,16 @@ export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES
       contentPreview,
       hasJsonStart,
       hasJsonEnd,
-      contentLength: responseContent.length
+      contentLength: conteudo.length
     }
   );
 };
+
+/**
+ * Analisa a resposta da API GROQ para extrair as questões em formato JSON
+ * @param {string} responseContent - Conteúdo da resposta da API
+ * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
+ * @returns {Array} - Array de questões analisadas
+ */
+export const parseGroqResponse = (responseContent, questionType = QUESTION_TYPES.MULTIPLE_CHOICE) =>
+  validateParsedQuestions(extrairArrayDeQuestoes(responseContent), questionType);

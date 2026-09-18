@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { parseGroqResponse, validateParsedQuestions } from "./responseParser";
+import {
+  parseGroqResponse,
+  validateParsedQuestions,
+  extrairArrayDeQuestoes,
+} from "./responseParser";
 import { QUESTION_TYPES } from "./constants";
 
 const mcQuestion = (n) => ({
@@ -117,5 +121,25 @@ describe("validateParsedQuestions", () => {
     ];
     const result = validateParsedQuestions(questions, QUESTION_TYPES.OPEN);
     expect(result).toHaveLength(1);
+  });
+});
+
+describe("extrairArrayDeQuestoes", () => {
+  it("devolve o array cru, sem validar, para a colagem de JSON reusar", () => {
+    const bruto = [{ question: "Q?", options: ["A"] }];
+    expect(extrairArrayDeQuestoes(JSON.stringify(bruto))).toEqual(bruto);
+  });
+
+  it("não engole o erro de validação quando o JSON é lido mas nada é válido", () => {
+    // Antes, a validação rodava dentro do try da primeira tentativa e o erro
+    // era engolido, virando um "não foi possível interpretar" que escondia o
+    // motivo real. Extração e validação agora são etapas separadas.
+    try {
+      parseGroqResponse(JSON.stringify([{ question: "sem alternativas" }]));
+      throw new Error("deveria ter lançado");
+    } catch (error) {
+      expect(error.errorType).toBe("NO_VALID_QUESTIONS");
+      expect(error.details.invalidReasons[0]).toContain("Questão 1");
+    }
   });
 });

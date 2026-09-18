@@ -3,6 +3,7 @@ import { ref, get } from "firebase/database";
 import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizWindow";
 import { fetchFlippedClassroomVideos } from "./submissions";
 import { gradedQuestions, isOpinionQuiz } from "./quizGrading";
+import { ensureQuestionIds } from "./quizQuestions";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -27,7 +28,7 @@ export const fetchAllCourseQuizzes = async (courseId) => {
         videoId: quizData.videoId || quizId,
         minPercentage: quizData.minPercentage || 0,
         isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
-        questions: quizData.questions || [],
+        questions: ensureQuestionIds(quizData.questions) || [],
         isSlideQuiz: quizId.startsWith("slide_"),
         // Limite efetivo de tentativas (Infinity quando ilimitado), para a tela
         // de notas mostrar quantas o aluno ainda tem.

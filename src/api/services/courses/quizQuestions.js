@@ -8,6 +8,83 @@ import {
 import { normalizeGradedFlag } from "./quizGrading";
 
 /**
+ * Id de reposição de uma questão sem id (ou com id repetido). É POSICIONAL, e
+ * não aleatório: a mesma questão precisa receber o mesmo id em toda leitura,
+ * senão a revisão das respostas e o recálculo de nota deixariam de casar com o
+ * que o aluno respondeu.
+ * @param {number} index - posição da questão na lista
+ * @param {Set<string>} ocupados - ids já usados na mesma lista
+ * @returns {string}
+ */
+const fallbackQuestionId = (index, ocupados) => {
+  let candidato = `q${index + 1}`;
+  let sufixo = 2;
+
+  while (ocupados.has(candidato)) {
+    candidato = `q${index + 1}-${sufixo}`;
+    sufixo += 1;
+  }
+
+  return candidato;
+};
+
+/**
+ * Garante que cada questão da lista tenha um id próprio e único.
+ *
+ * TODA a plataforma endereça questão por `id`: o rascunho do editor inline do
+ * professor (`QuestionList`), a resposta do aluno (`userAnswers[question.id]`),
+ * o mapa gravado em `detailedAnswers` e o recálculo de nota. Questão sem id —
+ * ou com o id repetido de outra — faz todas essas chaves colidirem: editar uma
+ * questão aparece como edição de todas, e responder uma responde todas.
+ *
+ * Nenhum caminho de escrita do app grava questão sem id, mas o banco tem
+ * questões assim mesmo: quizzes grandes gerados por IA e inseridos direto no
+ * banco, fora do app, com o formato cru `{question, options, correctOption}`
+ * (3 quizzes em 17/09/2026). Por isso a normalização acontece na LEITURA, antes
+ * de a lista chegar a qualquer tela; a primeira gravação de questão, ou o
+ * "Salvar" do curso, persiste os ids junto.
+ *
+ * Devolve a MESMA lista quando não há nada a consertar — o caso comum —, para
+ * não trocar a identidade do array a cada leitura.
+ *
+ * @param {Array} questions - questões como vieram do banco
+ * @returns {Array} - lista com ids garantidos (ou a original, se já estava boa)
+ */
+export const ensureQuestionIds = (questions) => {
+  if (!Array.isArray(questions)) return questions;
+
+  const idDe = (q) =>
+    q && typeof q === "object" && q.id !== null && q.id !== undefined
+      ? String(q.id).trim()
+      : "";
+
+  // Todos os ids que a lista já usa: um substituto não pode roubar o id de uma
+  // questão que ainda está mais abaixo.
+  const ocupados = new Set(questions.map(idDe).filter(Boolean));
+  const vistos = new Set();
+  let mudou = false;
+
+  const normalizadas = questions.map((question, index) => {
+    if (!question || typeof question !== "object") return question;
+
+    const id = idDe(question);
+    if (id && !vistos.has(id)) {
+      vistos.add(id);
+      return question;
+    }
+
+    const novoId = fallbackQuestionId(index, ocupados);
+    ocupados.add(novoId);
+    vistos.add(novoId);
+    mudou = true;
+
+    return { ...question, id: novoId };
+  });
+
+  return mudou ? normalizadas : questions;
+};
+
+/**
  * Aplica os campos de "esta questão tem resposta certa" numa questão de múltipla
  * escolha. `graded` só é gravado quando é `false`: a ausência já significa "vale
  * nota", e escrever `true` em toda questão inflaria o nó sem informação nova.

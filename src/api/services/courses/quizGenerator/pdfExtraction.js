@@ -1,5 +1,5 @@
 import * as pdfjs from "pdfjs-dist";
-import { GROQ_MODELS } from "./constants";
+import { calcularOrcamento, cortarNoLimite } from "./tokenBudget";
 import { ErrorTypes, createDetailedError } from "./errors";
 
 /**
@@ -74,11 +74,11 @@ export const preprocessPdfText = (rawText) => {
  * Extrai texto de imagens do PDF usando OCR (Tesseract.js)
  * @param {File} file - Arquivo PDF
  * @param {Function} onProgress - Callback para atualizar progresso
- * @param {string} selectedModel - ID do modelo selecionado
+ * @param {object} modelo - Registro do modelo no catálogo `llmModels`
  * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
  * @returns {Promise<{text: string, stats: Object, usedOcr: boolean}>}
  */
-const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProcessingStep) => {
+const extractTextFromPdfWithOcr = async (file, onProgress, modelo, onProcessingStep, numQuestions) => {
   try {
     if (onProcessingStep) {
       onProcessingStep('Extraindo texto usando OCR (reconhecimento óptico)...');
@@ -159,23 +159,14 @@ const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProc
       onProgress(50);
     }
 
-    // Ajustar o tamanho máximo com base no modelo selecionado
-    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
-    const maxContextSize = selectedModelInfo ? selectedModelInfo.maxContext : 8192;
-    const maxLength = Math.floor(maxContextSize * 0.5 * 4);
-
-    let finalText = processedText;
-    let wasTruncated = false;
-
-    if (processedText.length > maxLength) {
-      finalText = processedText.substring(0, maxLength);
-      const lastParagraph = finalText.lastIndexOf('\n\n');
-      if (lastParagraph > maxLength * 0.8) {
-        finalText = finalText.substring(0, lastParagraph);
-      }
-      finalText += '\n\n[Texto truncado devido ao tamanho. Partes finais do documento não foram incluídas.]';
-      wasTruncated = true;
-    }
+    // Corte pelo orçamento real do modelo escolhido. É um primeiro corte: o
+    // definitivo acontece no groqClient, que sabe qual modelo da cadeia de
+    // fallback vai de fato atender.
+    const { maxPdfChars: maxLength } = calcularOrcamento(modelo, numQuestions);
+    const { texto: finalText, truncado: wasTruncated } = cortarNoLimite(
+      processedText,
+      maxLength
+    );
 
     return {
       text: finalText,
@@ -203,11 +194,11 @@ const extractTextFromPdfWithOcr = async (file, onProgress, selectedModel, onProc
  * Extrai texto de um arquivo PDF com pré-processamento e OCR fallback
  * @param {File} file - Arquivo PDF
  * @param {Function} onProgress - Callback para atualizar progresso (0-100)
- * @param {string} selectedModel - ID do modelo selecionado
+ * @param {object} modelo - Registro do modelo no catálogo `llmModels`
  * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
  * @returns {Promise<{text: string, stats: Object}>} - Texto extraído e estatísticas
  */
-export const extractTextFromPdf = async (file, onProgress, selectedModel, onProcessingStep) => {
+export const extractTextFromPdf = async (file, onProgress, modelo, onProcessingStep, numQuestions = 1) => {
   try {
     // Defina o worker para o pdfjs
     pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -315,7 +306,7 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
 
       // Tentar OCR como fallback
       try {
-        const ocrResult = await extractTextFromPdfWithOcr(file, onProgress, selectedModel, onProcessingStep);
+        const ocrResult = await extractTextFromPdfWithOcr(file, onProgress, modelo, onProcessingStep, numQuestions);
 
         if (ocrResult.text.trim().length >= 50) {
           console.debug('extractTextFromPdf - OCR bem-sucedido! Texto extraído:', ocrResult.text.length, 'caracteres');
@@ -352,27 +343,16 @@ export const extractTextFromPdf = async (file, onProgress, selectedModel, onProc
       }
     }
 
-    // Ajustar o tamanho máximo com base no modelo selecionado
-    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
-    const maxContextSize = selectedModelInfo ? selectedModelInfo.maxContext : 8192;
+    // Corte pelo orçamento real do modelo escolhido (contexto, teto de saída e
+    // limite de tokens por minuto), em vez de "metade do contexto" de um
+    // catálogo que vivia desatualizado dentro do código.
+    const { maxPdfChars: maxLength } = calcularOrcamento(modelo, numQuestions);
+    const { texto: finalText, truncado: wasTruncated } = cortarNoLimite(
+      processedText,
+      maxLength
+    );
 
-    // Converter para tokens aproximados (1 token ~= 4 caracteres)
-    // Mantendo margem para o prompt e resposta (50% do contexto para o texto)
-    const maxLength = Math.floor(maxContextSize * 0.5 * 4);
-
-    let finalText = processedText;
-    let wasTruncated = false;
-
-    if (processedText.length > maxLength) {
-      // Truncar de forma inteligente - tentar manter parágrafos completos
-      finalText = processedText.substring(0, maxLength);
-      const lastParagraph = finalText.lastIndexOf('\n\n');
-      if (lastParagraph > maxLength * 0.8) {
-        finalText = finalText.substring(0, lastParagraph);
-      }
-      finalText += '\n\n[Texto truncado devido ao tamanho. Partes finais do documento não foram incluídas.]';
-      wasTruncated = true;
-
+    if (wasTruncated) {
       console.warn(`extractTextFromPdf - Texto truncado de ${processedText.length} para ${finalText.length} caracteres`);
     }
 

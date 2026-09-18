@@ -29,10 +29,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyIcon from "@mui/icons-material/Key";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import ContentPasteIcon from "@mui/icons-material/ContentPaste";
 import { QUESTION_TYPES } from "$api/services/courses/quizGenerator/constants";
 
 import PromptSettingsDialog from "./PromptSettingsDialog";
 import ApiKeyDialog from "./ApiKeyDialog";
+import PasteQuestionsDialog from "./PasteQuestionsDialog";
 import { usePdfUpload } from "./hooks/usePdfUpload";
 import { useGroqSettings } from "./hooks/useGroqSettings";
 import { usePromptSettings } from "./hooks/usePromptSettings";
@@ -42,6 +44,7 @@ import { toast } from "react-toastify";
 
 const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
   const [numQuestions, setNumQuestions] = useState(5);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [questionType, setQuestionType] = useState(QUESTION_TYPES.MULTIPLE_CHOICE);
 
   const pdfUpload = usePdfUpload();
@@ -52,13 +55,30 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
     numQuestions,
     questionType,
     resolveApiKey: groqSettings.resolveApiKey,
-    selectedModel: groqSettings.selectedModel,
+    cadeiaDeGeracao: groqSettings.cadeiaDeGeracao,
     getPromptToUse: promptSettings.getPromptToUse,
   });
   const questionsEditor = useGeneratedQuestionsEditor({
     generatedQuestions: generation.generatedQuestions,
     setGeneratedQuestions: generation.setGeneratedQuestions,
   });
+
+  // Sem catálogo carregado não há modelo para mandar ao provedor, e sem
+  // nenhum modelo ativo não há geração possível: nos dois casos o botão fica
+  // bloqueado em vez de disparar uma chamada que já nasce perdida.
+  const geracaoBloqueada =
+    groqSettings.modelsLoading || groqSettings.noActiveModels;
+
+  // A colagem de JSON é uma segunda FONTE da mesma esteira: as questões caem
+  // na área de conferência do gerador, e a gravação continua sendo uma só.
+  const handleQuestionsParsed = (questoes) => {
+    generation.setGeneratedQuestions(questoes);
+    toast.success(
+      `${questoes.length} ${
+        questoes.length === 1 ? "questão colada" : "questões coladas"
+      }. Confira antes de adicionar ao quiz.`
+    );
+  };
 
   const handleNumQuestionsChange = (e) => setNumQuestions(e.target.value);
   const handleQuestionTypeChange = (e) => setQuestionType(e.target.value);
@@ -98,10 +118,22 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
             fontSize: { xs: "1rem", sm: "1.25rem" },
           }}
         >
-          Gerar Questões a partir de PDF
+          Gerar ou Colar Questões
         </Typography>
 
         <Box sx={{ display: "flex", gap: 0.5 }}>
+          <Tooltip title="Colar questões prontas em JSON">
+            <IconButton
+              onClick={() => setPasteDialogOpen(true)}
+              sx={{
+                color: "#666",
+                "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.08)" },
+              }}
+            >
+              <ContentPasteIcon />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Configurar chave API GROQ">
             <IconButton
               onClick={groqSettings.handleOpenApiKeyDialog}
@@ -359,6 +391,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                 variant="contained"
                 startIcon={<AutoFixHighIcon />}
                 onClick={generation.processFile}
+                disabled={geracaoBloqueada}
                 fullWidth
                 sx={{
                   mt: 1,
@@ -368,10 +401,19 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                   py: { xs: 1, sm: 1.5 },
                 }}
               >
-                Gerar {numQuestions} Questões com GPT-5.5
+                {groqSettings.modelsLoading
+                  ? "Carregando modelos..."
+                  : `Gerar ${numQuestions} Questões com GPT-5.5`}
               </Button>
             )}
           </Box>
+        )}
+
+        {groqSettings.noActiveModels && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Nenhum modelo de IA está ativo no catálogo. Peça a um administrador
+            para habilitar um modelo em Poderes de Admin, Modelos LLM.
+          </Alert>
         )}
 
         {displayError && (
@@ -758,6 +800,12 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
         models={groqSettings.models}
         selectedModel={groqSettings.selectedModel}
         onModelChange={groqSettings.handleModelChange}
+      />
+
+      <PasteQuestionsDialog
+        open={pasteDialogOpen}
+        onClose={() => setPasteDialogOpen(false)}
+        onQuestionsParsed={handleQuestionsParsed}
       />
 
       <ApiKeyDialog

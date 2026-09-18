@@ -1,6 +1,7 @@
 import { ref, get } from "firebase/database";
 import { database } from "../../config/firebase";
 import { normalizeDiagnosticFlag } from "./quizWindow";
+import { ensureQuestionIds } from "./quizQuestions";
 
 /**
  * ==============================
@@ -55,7 +56,19 @@ export const fetchCourseQuizzes = async (courseId) => {
       return {};
     }
 
-    return quizzesSnapshot.val() || {};
+    const quizzes = quizzesSnapshot.val() || {};
+
+    // Ponto único em que as questões de um curso inteiro entram na aplicação:
+    // é aqui que uma lista com id faltando ou repetido é consertada, antes de
+    // virar estado de tela.
+    return Object.fromEntries(
+      Object.entries(quizzes).map(([quizId, quiz]) => [
+        quizId,
+        quiz && typeof quiz === "object"
+          ? { ...quiz, questions: ensureQuestionIds(quiz.questions) }
+          : quiz,
+      ])
+    );
   } catch (error) {
     console.error("Erro ao buscar quizzes do curso:", error);
     return {};
@@ -99,6 +112,9 @@ export const fetchQuizQuestions = async (quizId) => {
     const quizData = snapshot.val();
     return {
       ...quizData,
+      // Sem id por questão o aluno responderia todas de uma vez: as respostas
+      // são chaveadas por `question.id`.
+      questions: ensureQuestionIds(quizData.questions),
       id: elementId,
       isDiagnostic: normalizeDiagnosticFlag(quizData.isDiagnostic),
     };

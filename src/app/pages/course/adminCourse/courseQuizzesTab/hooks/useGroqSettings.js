@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchAllLlmModels } from "$api/services/courses/llmModels";
-
-// Excluir modelos que não suportam chat completions (áudio/STT/TTS), pois
-// geram erro 400 ao serem usados para gerar questões.
-const NON_CHAT_MODEL_PATTERN = /whisper|tts|guard|playai|distil-whisper/i;
+import {
+  cadeiaDeModelos,
+  resolverModeloSelecionado,
+} from "$api/services/courses/llmModelPolicy";
 
 /**
  * Configuração do provedor GROQ (usado como fallback do gerador de
@@ -16,7 +16,11 @@ export function useGroqSettings() {
   const [customApiKey, setCustomApiKey] = useState("");
   const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
   const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
+  const [modelsLoading, setModelsLoading] = useState(true);
+  // Começa vazio de propósito: o modelo é resolvido quando o catálogo chega.
+  // Um nome fixo aqui vira 404 silencioso no dia em que o provedor aposenta
+  // o modelo, e foi exatamente o que aconteceu com o llama-3.3-70b-versatile.
+  const [selectedModel, setSelectedModel] = useState("");
 
   useEffect(() => {
     // Buscar modelos LLM disponíveis
@@ -24,12 +28,16 @@ export function useGroqSettings() {
       try {
         const fetchedModels = await fetchAllLlmModels();
         const modelsArray = Object.values(fetchedModels);
-        const activeModels = modelsArray.filter(
-          (model) => model.isActive && !NON_CHAT_MODEL_PATTERN.test(model.modelId || "")
-        );
-        setModels(activeModels);
+        // Quem decide se um modelo serve é a sincronização do catálogo, por
+        // capacidade declarada (`isModeloApto`). A regex de nome que morava
+        // aqui excluía por palavra no id e barrava o gpt-oss-safeguard-20b só
+        // por conter "guard".
+        setModels(modelsArray.filter((model) => model.isActive));
       } catch (err) {
         console.error("Erro ao buscar modelos LLM:", err);
+        setModels([]);
+      } finally {
+        setModelsLoading(false);
       }
     };
 
@@ -40,13 +48,27 @@ export function useGroqSettings() {
   useEffect(() => {
     const savedApiKey = localStorage.getItem("groq_custom_api_key");
     const usingCustomKey = localStorage.getItem("groq_using_custom_key");
-    const savedModel = localStorage.getItem("groq_selected_model");
 
     if (savedApiKey) setCustomApiKey(savedApiKey);
     if (usingCustomKey) setUsingCustomApiKey(usingCustomKey === "true");
-    if (savedModel && models.some((m) => m.modelId === savedModel))
-      setSelectedModel(savedModel);
-  }, [models]);
+  }, []);
+
+  // Resolver o modelo assim que o catálogo carrega: a preferência salva vale
+  // só enquanto o modelo continuar ativo, senão a política escolhe.
+  useEffect(() => {
+    if (modelsLoading) return;
+
+    const savedModel = localStorage.getItem("groq_selected_model");
+    setSelectedModel(resolverModeloSelecionado(models, savedModel));
+  }, [models, modelsLoading]);
+
+  // Cadeia de geração: o modelo escolhido primeiro e os alternativos na ordem
+  // da política, como REGISTROS, porque o orçamento de tokens de cada chamada
+  // sai do contexto e do teto de saída do modelo que vai atender.
+  const cadeiaDeGeracao = useMemo(
+    () => cadeiaDeModelos(models, selectedModel),
+    [models, selectedModel]
+  );
 
   const handleOpenApiKeyDialog = () => setApiKeyDialogOpen(true);
   const handleCloseApiKeyDialog = () => setApiKeyDialogOpen(false);
@@ -92,7 +114,12 @@ export function useGroqSettings() {
     usingCustomApiKey,
     setUsingCustomApiKey,
     models,
+    modelsLoading,
+    // Sem modelo ativo no catálogo não há o que gerar: a tela precisa
+    // bloquear o botão em vez de disparar uma requisição fadada ao 404.
+    noActiveModels: !modelsLoading && models.length === 0,
     selectedModel,
+    cadeiaDeGeracao,
     handleOpenApiKeyDialog,
     handleCloseApiKeyDialog,
     handleSaveApiKey,

@@ -1,0 +1,81 @@
+# Mantém o catálogo `llmModels` em dia com a lista real de modelos da Groq.
+#
+# Sem isto o catálogo é mantido por digitação humana e envelhece calado: em
+# 18/09/2026, 4 dos 8 modelos que o seletor oferecia já não existiam, entre
+# eles o padrão do gerador, e o professor descobria isso na cara dele.
+#
+# O script é conservador por desenho (dry-run por padrão, três portões de
+# sanidade, nunca apaga registro), então rodar todo dia é seguro: se a Groq
+# estiver fora do ar ou a chave for revogada, o job falha e o catálogo do dia
+# anterior continua valendo.
+name: Sincronizar catálogo de modelos LLM
+
+on:
+  schedule:
+    # 09:00 UTC = 06:00 em Brasília, antes do horário de aula.
+    - cron: "0 9 * * *"
+  # O GitHub suspende workflows agendados em repositório sem atividade por 60
+  # dias. O disparo manual é o resgate, e também serve para conferir o diff
+  # antes de uma mudança grande no catálogo.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Só mostrar o diff, sem gravar no banco"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Duas execuções simultâneas escreveriam o mesmo nó com listas possivelmente
+# diferentes.
+concurrency:
+  group: sync-llm-models
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Exporta GOOGLE_APPLICATION_CREDENTIALS para os passos seguintes, que é
+      # o que o Admin SDK do script procura.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Sincronizar catálogo
+        env:
+          GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            MODO=""
+            echo "### Catálogo de modelos LLM (dry-run)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            MODO="--apply"
+            echo "### Catálogo de modelos LLM" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          # `tee` manda a saída para o log do job e para o resumo: é o diff que
+          # explica por que um modelo entrou ou saiu do seletor, e é o que
+          # alguém vai procurar quando o gerador mudar de comportamento.
+          #
+          # O `|| FALHOU=1` existe para o resumo fechar o bloco de código mesmo
+          # quando o script aborta num portão de sanidade. Sem ele, o `-e` que
+          # o Actions usa por padrão mataria o passo antes disso.
+          set -o pipefail
+          node scripts/syncLlmModels.mjs $MODO 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || FALHOU=1
+
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          exit "${FALHOU:-0}"

@@ -7,7 +7,7 @@ import { formatFriendlyError } from "$api/services/courses/quizGenerator/errors"
  * Núcleo da geração: extrai o texto do PDF e gera as questões (Question API
  * como provedor primário, GROQ como fallback), reportando progresso/etapa.
  */
-export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, selectedModel, getPromptToUse }) {
+export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, cadeiaDeGeracao = [], getPromptToUse }) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processingStep, setProcessingStep] = useState("");
@@ -31,7 +31,7 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
       const result = await processPdfAndGenerateQuestions(
         pdfFile,
         numQuestions,
-        selectedModel,
+        cadeiaDeGeracao,
         apiKey,
         getPromptToUse(),
         {
@@ -44,6 +44,15 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
       setGeneratedQuestions(result.questions);
       setProvider(result.provider);
 
+      // Um modelo que sumiu do provedor não é problema do professor: a cadeia
+      // já resolveu, e o aviso é informativo, não erro.
+      if (result.modelosIndisponiveis?.length > 0) {
+        toast.info(
+          `${result.modelosIndisponiveis.join(", ")} indisponível no provedor. As questões foram geradas com ${result.modeloUsado}.`,
+          { autoClose: 8000 }
+        );
+      }
+
       // Notificar se OCR foi usado
       if (result.stats && result.stats.usedOcr) {
         toast.warning('⚠️ Texto extraído usando OCR (imagens do PDF)', {
@@ -51,7 +60,18 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
         });
       }
 
-      toast.success(`${result.questions.length} questões geradas com sucesso!`);
+      // O provedor pode devolver menos questões do que o pedido. Avisar o
+      // número real em vez de anunciar sucesso cheio: o gerador não completa
+      // a lista por conta própria.
+      const geradas = result.questions.length;
+      if (geradas < numQuestions) {
+        toast.warning(
+          `Foram pedidas ${numQuestions} questões e vieram ${geradas}. Gere novamente para completar.`,
+          { autoClose: 6000 }
+        );
+      } else {
+        toast.success(`${geradas} questões geradas com sucesso!`);
+      }
     } catch (err) {
       // Usar mensagens de erro mais amigáveis
       const friendlyError = formatFriendlyError(err);

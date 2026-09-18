@@ -6,6 +6,7 @@ import {
 import { QUESTION_PROVIDERS, QUESTION_TYPES } from "./constants";
 import { extractTextFromPdf } from "./pdfExtraction";
 import { generateQuestionsWithGroq } from "./groqClient";
+import { ErrorTypes } from "./errors";
 
 /**
  * Orquestra a geração de questões usando a Question Generator API como
@@ -22,7 +23,7 @@ import { generateQuestionsWithGroq } from "./groqClient";
 export const generateQuestionsWithFallback = async (
   pdfText,
   numQuestions,
-  selectedModel,
+  cadeiaDeModelos,
   apiKey,
   customPrompt,
   onProcessingStep,
@@ -75,36 +76,83 @@ export const generateQuestionsWithFallback = async (
     }
   }
 
-  try {
-    const questions = await callGroq(
-      pdfText,
-      numQuestions,
-      selectedModel,
-      apiKey,
-      customPrompt,
-      onProcessingStep,
-      questionType
-    );
-    console.info(
-      `[QuestionGen] Provider usado: groq${usedFallback ? " (fallback)" : ""}`
-    );
-    return { questions, provider: QUESTION_PROVIDERS.GROQ };
-  } catch (groqError) {
-    // Diz claramente o que falhou: a GROQ (e se era o fallback do GPT).
-    console.error(
-      `[QuestionGen] GROQ${usedFallback ? " (fallback)" : ""} também falhou:`,
-      groqError?.message,
-      groqError
-    );
-    throw groqError;
+  // Cadeia de modelos: o selecionado primeiro, e os alternativos na ordem da
+  // política. Só um modelo que sumiu do provedor (404) faz a vez passar
+  // adiante; qualquer outro erro é do pedido, e repetir com outro modelo só
+  // gastaria o tempo do professor.
+  //
+  // São REGISTROS do catálogo, não ids: cada modelo tem contexto, teto de
+  // saída e limite de tokens por minuto próprios, e é com eles que o
+  // groqClient monta o orçamento da chamada.
+  const cadeia = (cadeiaDeModelos || []).filter((m) => m?.modelId);
+  const indisponiveis = [];
+  let ultimoErro = null;
+
+  for (const modelo of cadeia) {
+    try {
+      const questions = await callGroq(
+        pdfText,
+        numQuestions,
+        modelo,
+        apiKey,
+        customPrompt,
+        onProcessingStep,
+        questionType
+      );
+      console.info(
+        `[QuestionGen] Provider usado: groq${usedFallback ? " (fallback)" : ""}`,
+        `modelo=${modelo.modelId}`
+      );
+      return {
+        questions,
+        provider: QUESTION_PROVIDERS.GROQ,
+        modeloUsado: modelo.modelId,
+        modelosIndisponiveis: indisponiveis,
+      };
+    } catch (groqError) {
+      ultimoErro = groqError;
+
+      if (groqError?.errorType !== ErrorTypes.MODEL_NOT_FOUND) {
+        console.error(
+          `[QuestionGen] GROQ${usedFallback ? " (fallback)" : ""} falhou com modelo ${modelo.modelId}:`,
+          groqError?.message,
+          groqError
+        );
+        throw groqError;
+      }
+
+      indisponiveis.push(modelo.modelId);
+      const proximo = cadeia[cadeia.indexOf(modelo) + 1];
+      console.warn(
+        `[QuestionGen] Modelo ${modelo.modelId} indisponível no provedor.`,
+        proximo ? `Tentando ${proximo.modelId}...` : "Sem alternativa na cadeia."
+      );
+
+      if (proximo && onProcessingStep) {
+        onProcessingStep(
+          `Modelo ${modelo.modelId} indisponível. Tentando ${proximo.modelId}...`
+        );
+      }
+    }
   }
+
+  // A cadeia inteira caiu por 404: o catálogo está velho. A mensagem precisa
+  // dizer o que foi tentado, senão o admin não sabe o que desativar.
+  console.error(
+    "[QuestionGen] Nenhum modelo da cadeia respondeu:",
+    indisponiveis.join(", ")
+  );
+  if (ultimoErro?.details) {
+    ultimoErro.details.modelosTentados = indisponiveis;
+  }
+  throw ultimoErro;
 };
 
 /**
  * Processa um arquivo PDF e gera questões a partir do seu conteúdo
  * @param {File} pdfFile - Arquivo PDF
  * @param {number} numQuestions - Número de questões a gerar
- * @param {string} selectedModel - ID do modelo selecionado
+ * @param {object[]} cadeiaDeModelos - Registros do catálogo, o escolhido primeiro
  * @param {string} apiKey - Chave API GROQ
  * @param {string} customPrompt - Prompt personalizado (opcional)
  * @param {Object} callbacks - Callbacks para atualizar UI
@@ -114,13 +162,14 @@ export const generateQuestionsWithFallback = async (
 export const processPdfAndGenerateQuestions = async (
   pdfFile,
   numQuestions,
-  selectedModel,
+  cadeiaDeModelos,
   apiKey,
   customPrompt,
   callbacks = {},
   questionType = QUESTION_TYPES.MULTIPLE_CHOICE
 ) => {
   const { onProgress, onProcessingStep } = callbacks;
+  const cadeia = (cadeiaDeModelos || []).filter((m) => m?.modelId);
 
   try {
     if (onProcessingStep) {
@@ -128,7 +177,9 @@ export const processPdfAndGenerateQuestions = async (
     }
 
     // Extrair texto do PDF (agora retorna objeto com text e stats)
-    const extractResult = await extractTextFromPdf(pdfFile, onProgress, selectedModel, onProcessingStep);
+    // O primeiro da cadeia é o que o professor escolheu: é o orçamento dele
+    // que dimensiona o corte inicial do texto.
+    const extractResult = await extractTextFromPdf(pdfFile, onProgress, cadeia[0], onProcessingStep, numQuestions);
     const { text, stats } = extractResult;
 
     // Log das estatísticas de extração
@@ -148,15 +199,16 @@ export const processPdfAndGenerateQuestions = async (
     }
 
     // Gerar questões: Question API (primário) com fallback para GROQ
-    const { questions, provider } = await generateQuestionsWithFallback(
-      text,
-      numQuestions,
-      selectedModel,
-      apiKey,
-      customPrompt,
-      onProcessingStep,
-      questionType
-    );
+    const { questions, provider, modeloUsado, modelosIndisponiveis } =
+      await generateQuestionsWithFallback(
+        text,
+        numQuestions,
+        cadeia,
+        apiKey,
+        customPrompt,
+        onProcessingStep,
+        questionType
+      );
 
     if (onProgress) {
       onProgress(100);
@@ -166,6 +218,8 @@ export const processPdfAndGenerateQuestions = async (
       text,
       questions,
       provider, // 'question_api' ou 'groq' — usado para feedback visual
+      modeloUsado, // modelo que de fato respondeu, que pode não ser o escolhido
+      modelosIndisponiveis, // modelos que sumiram do provedor nesta geração
       stats // Incluir estatísticas no retorno para diagnóstico
     };
   } catch (error) {
