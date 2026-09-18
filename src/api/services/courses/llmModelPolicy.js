@@ -136,3 +136,75 @@ export const resolverModeloSelecionado = (modelos, preferidoPeloUsuario) => {
 
   return escolherPadrao(ativos)?.modelId || "";
 };
+
+/** Mínimos de capacidade para um modelo servir à geração de questões. */
+export const CONTEXTO_MINIMO = 8192;
+export const SAIDA_MINIMA = 2048;
+
+/**
+ * Converte um registro cru do `GET /openai/v1/models` da Groq para o formato
+ * do nó `llmModels`. Só os campos de que a plataforma depende: o resto da
+ * resposta (preço, parâmetros de amostragem, hugging_face_id) não é problema
+ * nosso e envelheceria no banco sem ninguém ler.
+ *
+ * @param {object} bruto - Registro como a Groq devolve
+ * @returns {object} - Registro no formato do catálogo
+ */
+export const normalizarModeloDaGroq = (bruto = {}) => ({
+  modelId: bruto.id,
+  name: bruto.name || bruto.id,
+  contextWindow: Number(bruto.context_window) || 0,
+  maxCompletionTokens: Number(bruto.max_completion_tokens) || 0,
+  ownedBy: bruto.owned_by || "",
+  inputModalities: bruto.input_modalities || [],
+  outputModalities: bruto.output_modalities || [],
+  features: bruto.supported_features || [],
+  activeNaGroq: bruto.active !== false,
+});
+
+/**
+ * Decide se um modelo serve para gerar questões, por capacidade declarada.
+ *
+ * Substitui a regex de nome (`/whisper|tts|guard|playai/i`), que excluía por
+ * palavra no identificador e por isso barrava o `openai/gpt-oss-safeguard-20b`
+ * por causa de "guard". Aqui o que decide é o que o modelo sabe fazer, e
+ * excluir um modelo apto vira decisão declarada em `denyPatterns`.
+ *
+ * Não cobre o que só a chamada real revela (cota, tier, política da conta):
+ * disso cuida o canário do script de sincronização.
+ *
+ * @param {object} modelo - Registro já normalizado
+ * @param {string[]} [denyPatterns] - Expressões regulares de exclusão declarada
+ * @returns {{apto: boolean, motivo: string|null}}
+ */
+export const isModeloApto = (modelo, denyPatterns = []) => {
+  const reprovar = (motivo) => ({ apto: false, motivo });
+
+  if (!modelo?.modelId) return reprovar("sem modelId");
+
+  const entrada = modelo.inputModalities || [];
+  const saida = modelo.outputModalities || [];
+  if (!entrada.includes("text")) return reprovar(`entrada não é texto (${entrada.join(", ") || "?"})`);
+  if (!saida.includes("text")) return reprovar(`saída não é texto (${saida.join(", ") || "?"})`);
+
+  if (!temRecurso(modelo, "json_mode")) return reprovar("sem json_mode");
+
+  const contexto = janelaDeContexto(modelo);
+  if (contexto < CONTEXTO_MINIMO) return reprovar(`contexto ${contexto} < ${CONTEXTO_MINIMO}`);
+
+  const saidaMaxima = capacidadeDeSaida(modelo);
+  if (saidaMaxima < SAIDA_MINIMA) return reprovar(`saída ${saidaMaxima} < ${SAIDA_MINIMA}`);
+
+  const banido = (denyPatterns || []).find((padrao) => {
+    try {
+      return new RegExp(padrao, "i").test(modelo.modelId);
+    } catch {
+      // Padrão inválido no banco não pode derrubar o sync inteiro.
+      console.warn(`denyPattern inválido ignorado: ${padrao}`);
+      return false;
+    }
+  });
+  if (banido) return reprovar(`excluído por denyPattern "${banido}"`);
+
+  return { apto: true, motivo: null };
+};

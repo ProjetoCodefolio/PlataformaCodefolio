@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  isModeloApto,
+  normalizarModeloDaGroq,
   cadeiaDeModelos,
   ordenarPorPolitica,
   escolherPadrao,
@@ -209,5 +211,102 @@ describe("cadeiaDeModelos", () => {
   it("usa a mesma ordem de ordenarPorPolitica", () => {
     const ordenados = ordenarPorPolitica(catalogo).map((m) => m.modelId);
     expect(cadeiaDeModelos(catalogo, null)).toEqual(ordenados);
+  });
+});
+
+describe("normalizarModeloDaGroq", () => {
+  const bruto = {
+    id: "openai/gpt-oss-120b",
+    name: "GPT OSS 120B",
+    owned_by: "OpenAI",
+    active: true,
+    context_window: 131072,
+    max_completion_tokens: 65536,
+    input_modalities: ["text"],
+    output_modalities: ["text"],
+    supported_features: ["tools", "json_mode", "structured_outputs"],
+    pricing: { prompt: "0.00000015" },
+  };
+
+  it("mapeia os campos que o catálogo usa", () => {
+    expect(normalizarModeloDaGroq(bruto)).toEqual({
+      modelId: "openai/gpt-oss-120b",
+      name: "GPT OSS 120B",
+      contextWindow: 131072,
+      maxCompletionTokens: 65536,
+      ownedBy: "OpenAI",
+      inputModalities: ["text"],
+      outputModalities: ["text"],
+      features: ["tools", "json_mode", "structured_outputs"],
+      activeNaGroq: true,
+    });
+  });
+
+  it("não carrega o resto da resposta para o banco", () => {
+    expect(normalizarModeloDaGroq(bruto).pricing).toBeUndefined();
+  });
+
+  it("cai no id quando o modelo não tem nome", () => {
+    expect(normalizarModeloDaGroq({ id: "sem-nome" }).name).toBe("sem-nome");
+  });
+});
+
+describe("isModeloApto", () => {
+  const apto = {
+    modelId: "openai/gpt-oss-120b",
+    contextWindow: 131072,
+    maxCompletionTokens: 65536,
+    inputModalities: ["text"],
+    outputModalities: ["text"],
+    features: ["json_mode", "structured_outputs"],
+  };
+
+  it("aprova um modelo de texto com json_mode e capacidade suficiente", () => {
+    expect(isModeloApto(apto).apto).toBe(true);
+  });
+
+  it("recusa modelo de entrada em áudio", () => {
+    const whisper = { ...apto, modelId: "whisper-large-v3", inputModalities: ["audio"] };
+    expect(isModeloApto(whisper)).toMatchObject({ apto: false });
+    expect(isModeloApto(whisper).motivo).toContain("entrada");
+  });
+
+  it("recusa modelo de saída em fala", () => {
+    const orpheus = { ...apto, modelId: "orpheus", outputModalities: ["speech"] };
+    expect(isModeloApto(orpheus).motivo).toContain("saída");
+  });
+
+  it("recusa modelo sem json_mode", () => {
+    expect(isModeloApto({ ...apto, features: ["tools"] }).motivo).toContain("json_mode");
+  });
+
+  it("recusa contexto pequeno demais", () => {
+    const guard = { ...apto, modelId: "prompt-guard", contextWindow: 512, maxCompletionTokens: 512 };
+    expect(isModeloApto(guard).motivo).toContain("contexto");
+  });
+
+  it("recusa saída pequena demais", () => {
+    expect(isModeloApto({ ...apto, maxCompletionTokens: 512 }).motivo).toContain("saída");
+  });
+
+  it("NÃO barra o safeguard só por ter 'guard' no nome", () => {
+    // A regex antiga (/whisper|tts|guard|playai/i) excluía este modelo por
+    // acidente, mesmo ele sendo tão capaz quanto o gpt-oss-20b.
+    const safeguard = { ...apto, modelId: "openai/gpt-oss-safeguard-20b" };
+    expect(isModeloApto(safeguard).apto).toBe(true);
+  });
+
+  it("barra quem casa com um denyPattern declarado", () => {
+    const resultado = isModeloApto(apto, ["^openai/"]);
+    expect(resultado.apto).toBe(false);
+    expect(resultado.motivo).toContain("denyPattern");
+  });
+
+  it("ignora denyPattern inválido em vez de derrubar a análise", () => {
+    expect(isModeloApto(apto, ["(((("]).apto).toBe(true);
+  });
+
+  it("recusa registro sem modelId", () => {
+    expect(isModeloApto({}).motivo).toBe("sem modelId");
   });
 });
