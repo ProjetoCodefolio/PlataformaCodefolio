@@ -60,6 +60,12 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
     setGeneratedQuestions: generation.setGeneratedQuestions,
   });
 
+  // Sem catálogo carregado não há modelo para mandar ao provedor, e sem
+  // nenhum modelo ativo não há geração possível: nos dois casos o botão fica
+  // bloqueado em vez de disparar uma chamada que já nasce perdida.
+  const geracaoBloqueada =
+    groqSettings.modelsLoading || groqSettings.noActiveModels;
+
   const handleNumQuestionsChange = (e) => setNumQuestions(e.target.value);
   const handleQuestionTypeChange = (e) => setQuestionType(e.target.value);
 
@@ -359,6 +365,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                 variant="contained"
                 startIcon={<AutoFixHighIcon />}
                 onClick={generation.processFile}
+                disabled={geracaoBloqueada}
                 fullWidth
                 sx={{
                   mt: 1,
@@ -368,10 +375,19 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
                   py: { xs: 1, sm: 1.5 },
                 }}
               >
-                Gerar {numQuestions} Questões com GPT-5.5
+                {groqSettings.modelsLoading
+                  ? "Carregando modelos..."
+                  : `Gerar ${numQuestions} Questões com GPT-5.5`}
               </Button>
             )}
           </Box>
+        )}
+
+        {groqSettings.noActiveModels && (
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Nenhum modelo de IA está ativo no catálogo. Peça a um administrador
+            para habilitar um modelo em Poderes de Admin, Modelos LLM.
+          </Alert>
         )}
 
         {displayError && (

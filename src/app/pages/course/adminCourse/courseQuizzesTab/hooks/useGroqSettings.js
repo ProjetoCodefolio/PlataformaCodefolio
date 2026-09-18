@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchAllLlmModels } from "$api/services/courses/llmModels";
+import { resolverModeloSelecionado } from "$api/services/courses/llmModelPolicy";
 
 // Excluir modelos que não suportam chat completions (áudio/STT/TTS), pois
 // geram erro 400 ao serem usados para gerar questões.
@@ -16,7 +17,11 @@ export function useGroqSettings() {
   const [customApiKey, setCustomApiKey] = useState("");
   const [usingCustomApiKey, setUsingCustomApiKey] = useState(false);
   const [models, setModels] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
+  const [modelsLoading, setModelsLoading] = useState(true);
+  // Começa vazio de propósito: o modelo é resolvido quando o catálogo chega.
+  // Um nome fixo aqui vira 404 silencioso no dia em que o provedor aposenta
+  // o modelo, e foi exatamente o que aconteceu com o llama-3.3-70b-versatile.
+  const [selectedModel, setSelectedModel] = useState("");
 
   useEffect(() => {
     // Buscar modelos LLM disponíveis
@@ -30,6 +35,9 @@ export function useGroqSettings() {
         setModels(activeModels);
       } catch (err) {
         console.error("Erro ao buscar modelos LLM:", err);
+        setModels([]);
+      } finally {
+        setModelsLoading(false);
       }
     };
 
@@ -40,13 +48,19 @@ export function useGroqSettings() {
   useEffect(() => {
     const savedApiKey = localStorage.getItem("groq_custom_api_key");
     const usingCustomKey = localStorage.getItem("groq_using_custom_key");
-    const savedModel = localStorage.getItem("groq_selected_model");
 
     if (savedApiKey) setCustomApiKey(savedApiKey);
     if (usingCustomKey) setUsingCustomApiKey(usingCustomKey === "true");
-    if (savedModel && models.some((m) => m.modelId === savedModel))
-      setSelectedModel(savedModel);
-  }, [models]);
+  }, []);
+
+  // Resolver o modelo assim que o catálogo carrega: a preferência salva vale
+  // só enquanto o modelo continuar ativo, senão a política escolhe.
+  useEffect(() => {
+    if (modelsLoading) return;
+
+    const savedModel = localStorage.getItem("groq_selected_model");
+    setSelectedModel(resolverModeloSelecionado(models, savedModel));
+  }, [models, modelsLoading]);
 
   const handleOpenApiKeyDialog = () => setApiKeyDialogOpen(true);
   const handleCloseApiKeyDialog = () => setApiKeyDialogOpen(false);
@@ -92,6 +106,10 @@ export function useGroqSettings() {
     usingCustomApiKey,
     setUsingCustomApiKey,
     models,
+    modelsLoading,
+    // Sem modelo ativo no catálogo não há o que gerar: a tela precisa
+    // bloquear o botão em vez de disparar uma requisição fadada ao 404.
+    noActiveModels: !modelsLoading && models.length === 0,
     selectedModel,
     handleOpenApiKeyDialog,
     handleCloseApiKeyDialog,
