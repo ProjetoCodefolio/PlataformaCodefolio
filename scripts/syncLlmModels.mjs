@@ -190,8 +190,16 @@ const lerCatalogo = async () => {
   }
 
   console.log(`Banco: ${RTDB} (leitura pública, dry-run)`);
+
+  // A URL pode trazer query string, e o emulador EXIGE `?ns=<namespace>`.
+  // Colar ".json" no fim sem preservar a query faz o emulador responder null,
+  // e aí o diff acha que o catálogo está vazio e marca todo modelo como novo.
+  const [base, query] = RTDB.split("?");
+  const urlDe = (caminho) =>
+    `${base.replace(/\/$/, "")}/${caminho}.json${query ? `?${query}` : ""}`;
+
   const ler = async (caminho) => {
-    const r = await fetch(`${RTDB}/${caminho}.json`);
+    const r = await fetch(urlDe(caminho));
     if (!r.ok) abortar(`GET ${caminho} devolveu ${r.status}`);
     return r.json();
   };
@@ -201,7 +209,7 @@ const lerCatalogo = async () => {
   // --apply vai enxergar. Abortar aqui esconderia o diff por causa de um nó
   // que na maioria das vezes nem existe.
   let denyPatterns = [];
-  const resposta = await fetch(`${RTDB}/llmModelPolicy/denyPatterns.json`);
+  const resposta = await fetch(urlDe("llmModelPolicy/denyPatterns"));
   if (resposta.ok) {
     denyPatterns = Object.values((await resposta.json()) || {});
   } else {
@@ -307,6 +315,17 @@ const main = async () => {
     `Catálogo atual: ${Object.keys(registros).length} registros` +
       (denyPatterns.length ? `, denyPatterns: ${denyPatterns.join(", ")}` : "")
   );
+
+  // Catálogo vazio quase nunca é um banco vazio de verdade: é URL errada. Sem
+  // este aviso, o diff marcaria todos os modelos como novos e ninguém como
+  // aposentado, o que parece um resultado legítimo.
+  if (Object.keys(registros).length === 0) {
+    console.warn(
+      "  aviso: o catálogo veio VAZIO. Confira a URL do banco. Para o emulador,\n" +
+        "  use RTDB_URL='http://localhost:9000?ns=<projeto>-default-rtdb' no dry-run\n" +
+        "  ou FIREBASE_DATABASE_EMULATOR_HOST=127.0.0.1:9000 com --apply."
+    );
+  }
 
   const normalizados = brutos.map(normalizarModeloDaGroq);
   const aptos = [];
