@@ -7,7 +7,7 @@ import { formatFriendlyError } from "$api/services/courses/quizGenerator/errors"
  * Núcleo da geração: extrai o texto do PDF e gera as questões (Question API
  * como provedor primário, GROQ como fallback), reportando progresso/etapa.
  */
-export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, selectedModel, modelosAlternativos = [], getPromptToUse }) {
+export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, cadeiaDeGeracao = [], getPromptToUse }) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processingStep, setProcessingStep] = useState("");
@@ -31,15 +31,14 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
       const result = await processPdfAndGenerateQuestions(
         pdfFile,
         numQuestions,
-        selectedModel,
+        cadeiaDeGeracao,
         apiKey,
         getPromptToUse(),
         {
           onProgress: setProgress,
           onProcessingStep: setProcessingStep
         },
-        questionType,
-        modelosAlternativos
+        questionType
       );
 
       setGeneratedQuestions(result.questions);

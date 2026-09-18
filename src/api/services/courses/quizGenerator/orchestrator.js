@@ -23,12 +23,11 @@ import { ErrorTypes } from "./errors";
 export const generateQuestionsWithFallback = async (
   pdfText,
   numQuestions,
-  selectedModel,
+  cadeiaDeModelos,
   apiKey,
   customPrompt,
   onProcessingStep,
   questionType = QUESTION_TYPES.MULTIPLE_CHOICE,
-  modelosAlternativos = [],
   deps = {}
 ) => {
   const {
@@ -81,7 +80,11 @@ export const generateQuestionsWithFallback = async (
   // política. Só um modelo que sumiu do provedor (404) faz a vez passar
   // adiante; qualquer outro erro é do pedido, e repetir com outro modelo só
   // gastaria o tempo do professor.
-  const cadeia = [selectedModel, ...modelosAlternativos].filter(Boolean);
+  //
+  // São REGISTROS do catálogo, não ids: cada modelo tem contexto, teto de
+  // saída e limite de tokens por minuto próprios, e é com eles que o
+  // groqClient monta o orçamento da chamada.
+  const cadeia = (cadeiaDeModelos || []).filter((m) => m?.modelId);
   const indisponiveis = [];
   let ultimoErro = null;
 
@@ -98,12 +101,12 @@ export const generateQuestionsWithFallback = async (
       );
       console.info(
         `[QuestionGen] Provider usado: groq${usedFallback ? " (fallback)" : ""}`,
-        `modelo=${modelo}`
+        `modelo=${modelo.modelId}`
       );
       return {
         questions,
         provider: QUESTION_PROVIDERS.GROQ,
-        modeloUsado: modelo,
+        modeloUsado: modelo.modelId,
         modelosIndisponiveis: indisponiveis,
       };
     } catch (groqError) {
@@ -111,22 +114,24 @@ export const generateQuestionsWithFallback = async (
 
       if (groqError?.errorType !== ErrorTypes.MODEL_NOT_FOUND) {
         console.error(
-          `[QuestionGen] GROQ${usedFallback ? " (fallback)" : ""} falhou com modelo ${modelo}:`,
+          `[QuestionGen] GROQ${usedFallback ? " (fallback)" : ""} falhou com modelo ${modelo.modelId}:`,
           groqError?.message,
           groqError
         );
         throw groqError;
       }
 
-      indisponiveis.push(modelo);
+      indisponiveis.push(modelo.modelId);
       const proximo = cadeia[cadeia.indexOf(modelo) + 1];
       console.warn(
-        `[QuestionGen] Modelo ${modelo} indisponível no provedor.`,
-        proximo ? `Tentando ${proximo}...` : "Sem alternativa na cadeia."
+        `[QuestionGen] Modelo ${modelo.modelId} indisponível no provedor.`,
+        proximo ? `Tentando ${proximo.modelId}...` : "Sem alternativa na cadeia."
       );
 
       if (proximo && onProcessingStep) {
-        onProcessingStep(`Modelo ${modelo} indisponível. Tentando ${proximo}...`);
+        onProcessingStep(
+          `Modelo ${modelo.modelId} indisponível. Tentando ${proximo.modelId}...`
+        );
       }
     }
   }
@@ -147,25 +152,24 @@ export const generateQuestionsWithFallback = async (
  * Processa um arquivo PDF e gera questões a partir do seu conteúdo
  * @param {File} pdfFile - Arquivo PDF
  * @param {number} numQuestions - Número de questões a gerar
- * @param {string} selectedModel - ID do modelo selecionado
+ * @param {object[]} cadeiaDeModelos - Registros do catálogo, o escolhido primeiro
  * @param {string} apiKey - Chave API GROQ
  * @param {string} customPrompt - Prompt personalizado (opcional)
  * @param {Object} callbacks - Callbacks para atualizar UI
  * @param {string} questionType - Tipo de questão ('multiple' ou 'open')
- * @param {string[]} modelosAlternativos - Modelos a tentar se o selecionado sumir
  * @returns {Promise<{text: string, questions: Array}>} - Texto extraído e questões geradas
  */
 export const processPdfAndGenerateQuestions = async (
   pdfFile,
   numQuestions,
-  selectedModel,
+  cadeiaDeModelos,
   apiKey,
   customPrompt,
   callbacks = {},
-  questionType = QUESTION_TYPES.MULTIPLE_CHOICE,
-  modelosAlternativos = []
+  questionType = QUESTION_TYPES.MULTIPLE_CHOICE
 ) => {
   const { onProgress, onProcessingStep } = callbacks;
+  const cadeia = (cadeiaDeModelos || []).filter((m) => m?.modelId);
 
   try {
     if (onProcessingStep) {
@@ -173,7 +177,9 @@ export const processPdfAndGenerateQuestions = async (
     }
 
     // Extrair texto do PDF (agora retorna objeto com text e stats)
-    const extractResult = await extractTextFromPdf(pdfFile, onProgress, selectedModel, onProcessingStep);
+    // O primeiro da cadeia é o que o professor escolheu: é o orçamento dele
+    // que dimensiona o corte inicial do texto.
+    const extractResult = await extractTextFromPdf(pdfFile, onProgress, cadeia[0], onProcessingStep, numQuestions);
     const { text, stats } = extractResult;
 
     // Log das estatísticas de extração
@@ -197,12 +203,11 @@ export const processPdfAndGenerateQuestions = async (
       await generateQuestionsWithFallback(
         text,
         numQuestions,
-        selectedModel,
+        cadeia,
         apiKey,
         customPrompt,
         onProcessingStep,
-        questionType,
-        modelosAlternativos
+        questionType
       );
 
     if (onProgress) {

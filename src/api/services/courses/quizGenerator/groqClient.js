@@ -1,14 +1,15 @@
 import { v4 as uuidv4 } from "uuid";
-import { GROQ_MODELS, QUESTION_TYPES } from "./constants";
+import { QUESTION_TYPES } from "./constants";
 import { createPrompt } from "./promptBuilder";
 import { ErrorTypes, createDetailedError } from "./errors";
 import { parseGroqResponse } from "./responseParser";
+import { calcularOrcamento, cortarNoLimite, deveUsarModoJson } from "./tokenBudget";
 
 /**
  * Gera questões usando a API GROQ com base no texto do PDF
  * @param {string} pdfText - Texto extraído do PDF
  * @param {number} numQuestions - Número de questões a gerar
- * @param {string} selectedModel - Modelo selecionado
+ * @param {object} modelo - Registro do modelo no catálogo `llmModels`
  * @param {string} apiKey - Chave da API GROQ
  * @param {string} customPrompt - Prompt personalizado opcional
  * @param {Function} onProcessingStep - Callback para atualizar etapa de processamento
@@ -18,20 +19,21 @@ import { parseGroqResponse } from "./responseParser";
 export const generateQuestionsWithGroq = async (
   pdfText,
   numQuestions,
-  selectedModel,
+  modelo,
   apiKey,
   customPrompt,
   onProcessingStep,
   questionType = QUESTION_TYPES.MULTIPLE_CHOICE
 ) => {
   try {
-    const selectedModelInfo = GROQ_MODELS.find((m) => m.id === selectedModel);
+    const modelId = modelo?.modelId;
+    if (!modelId) {
+      throw new Error("Nenhum modelo de IA foi informado para a geração.");
+    }
 
     if (onProcessingStep) {
       onProcessingStep(
-        `Gerando ${numQuestions} questões com ${
-          selectedModelInfo?.name || selectedModel
-        }...`
+        `Gerando ${numQuestions} questões com ${modelo.name || modelId}...`
       );
     }
 
@@ -41,8 +43,23 @@ export const generateQuestionsWithGroq = async (
       );
     }
 
+    // O orçamento é recalculado AQUI, e não só na extração do PDF, porque a
+    // cadeia de fallback pode ter trocado o modelo depois que o texto foi
+    // extraído: o próximo da fila pode ter um envelope menor que o primeiro.
+    const orcamento = calcularOrcamento(modelo, numQuestions);
+    const { texto: textoNoOrcamento, truncado } = cortarNoLimite(
+      pdfText,
+      orcamento.maxPdfChars
+    );
+    if (truncado) {
+      console.warn(
+        `generateQuestionsWithGroq - texto cortado de ${pdfText.length} para ` +
+          `${textoNoOrcamento.length} caracteres pelo orçamento de ${modelId}.`
+      );
+    }
+
     // Preparar o prompt para o GROQ com o texto do PDF e o número de questões
-    const prompt = createPrompt(pdfText, numQuestions, customPrompt, questionType);
+    const prompt = createPrompt(textoNoOrcamento, numQuestions, customPrompt, questionType);
 
     // URL da API GROQ
     const apiUrl = "https://api.groq.com/openai/v1/chat/completions";
@@ -53,20 +70,14 @@ export const generateQuestionsWithGroq = async (
         ? "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões discursivas em formato JSON sem explicações adicionais."
         : "Você é um professor especializado em criar avaliações educacionais de alta qualidade. Retorne questões de múltipla escolha em formato JSON sem explicações adicionais.";
 
-      // No free tier da GROQ o gargalo é o limite de tokens-por-minuto (TPM),
-      // não o contexto do modelo. Tanto os tokens do prompt quanto o max_tokens
-      // (reserva de saída) contam para o TPM. Por isso estimamos os tokens do
-      // prompt (~4 chars/token) e reservamos o restante de um orçamento
-      // conservador (abaixo do menor limite de TPM, ~6000) para a saída.
-      const TPM_BUDGET = 5500;
-      const estimatedPromptTokens = Math.ceil(prompt.length / 4) + 250; // +overhead de system/format
-      const maxOutputTokens = Math.max(
-        1024,
-        Math.min(4000, TPM_BUDGET - estimatedPromptTokens)
-      );
+      // Modo JSON quando o modelo suporta: com ele a resposta já vem JSON
+      // válido, em vez de depender das cinco estratégias de recuperação do
+      // responseParser. As instruções de formato já contêm a palavra "json",
+      // que a Groq exige para aceitar `response_format`.
+      const usarModoJson = deveUsarModoJson(modelo, orcamento.maxOutputTokens);
 
       const requestBody = {
-        model: selectedModel,
+        model: modelId,
         messages: [
           {
             role: "system",
@@ -78,13 +89,14 @@ export const generateQuestionsWithGroq = async (
           },
         ],
         temperature: 0.2,
-        max_tokens: maxOutputTokens,
+        max_tokens: orcamento.maxOutputTokens,
+        ...(usarModoJson ? { response_format: { type: "json_object" } } : {}),
       };
 
       // Logs para diagnóstico
       console.debug("GROQ request -> apiUrl:", apiUrl);
-      console.debug("GROQ request -> selectedModel:", selectedModel);
-      console.debug("GROQ request -> selectedModelInfo:", selectedModelInfo);
+      console.debug("GROQ request -> modelo:", modelId);
+      console.debug("GROQ request -> orçamento:", orcamento);
       console.debug("GROQ request -> questionType:", questionType);
       console.debug("GROQ request -> prompt length:", prompt.length);
       console.debug("GROQ request -> requestBody (truncated):", {
@@ -122,21 +134,21 @@ export const generateQuestionsWithGroq = async (
           );
         } else if (response.status === 404) {
           // Tentar extrair o nome do modelo da resposta
-          let modelId = selectedModel;
+          let modeloDoErro = modelId;
           try {
             const errorData = JSON.parse(respText);
             if (errorData.error && errorData.error.message) {
               // Extrair modelo da mensagem de erro se possível
               const match = errorData.error.message.match(/model [`']([^`']+)[`']/i);
-              if (match) modelId = match[1];
+              if (match) modeloDoErro = match[1];
             }
           } catch (e) {
             // Ignorar erro de parse
           }
           throw createDetailedError(
             ErrorTypes.MODEL_NOT_FOUND,
-            `O modelo "${modelId}" não está disponível.`,
-            { statusCode: 404, modelId, responseBody: respText }
+            `O modelo "${modeloDoErro}" não está disponível.`,
+            { statusCode: 404, modelId: modeloDoErro, responseBody: respText }
           );
         } else if (response.status === 429 || response.status === 413) {
           // 413 da GROQ = "Request too large" por tokens-por-minuto (TPM),

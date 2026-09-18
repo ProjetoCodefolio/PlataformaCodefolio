@@ -7,16 +7,24 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const run = (deps, modelosAlternativos = []) =>
+/** A cadeia carrega registros do catálogo, não ids. */
+const registro = (modelId) => ({
+  modelId,
+  contextWindow: 131072,
+  maxCompletionTokens: 65536,
+  tpmLimit: 8000,
+  features: ["json_mode"],
+});
+
+const run = (deps, alternativos = []) =>
   generateQuestionsWithFallback(
     "Texto do material",
     3,
-    "llama-3.3-70b-versatile",
+    [registro("llama-3.3-70b-versatile"), ...alternativos.map(registro)],
     "groq-key",
     null,
     null,
     QUESTION_TYPES.MULTIPLE_CHOICE,
-    modelosAlternativos,
     deps
   );
 
@@ -137,7 +145,7 @@ describe("generateQuestionsWithFallback - cadeia de modelos", () => {
   });
 
   const modeloUsadoNaChamada = (callGroq, indice) =>
-    callGroq.mock.calls[indice][2];
+    callGroq.mock.calls[indice][2].modelId;
 
   it("passa para o próximo modelo quando o selecionado sumiu do provedor", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -185,12 +193,11 @@ describe("generateQuestionsWithFallback - cadeia de modelos", () => {
     await generateQuestionsWithFallback(
       "Texto",
       3,
-      "morto",
+      [registro("morto"), registro("vivo")],
       "groq-key",
       null,
       onProcessingStep,
       QUESTION_TYPES.MULTIPLE_CHOICE,
-      ["vivo"],
       semQuestionApi(callGroq)
     );
 

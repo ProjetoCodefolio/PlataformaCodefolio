@@ -125,6 +125,15 @@ const canario = async (chave, modelId) => {
     });
 
     const latencyMs = Date.now() - inicio;
+
+    // O limite de tokens por minuto é POR MODELO e não aparece na lista de
+    // modelos, só no cabeçalho da resposta de uma chamada real. Medido em
+    // 18/09/2026: 8.000 no openai/gpt-oss-120b contra 70.000 no groq/compound,
+    // com o mesmo contexto de 131.072. É ele, e não a janela de contexto, que
+    // limita o tamanho do PDF que cabe numa geração, então o canário aproveita
+    // a chamada que já faz para trazê-lo.
+    const tpmLimit = Number(resposta.headers.get("x-ratelimit-limit-tokens")) || null;
+
     if (!resposta.ok) {
       const corpo = await resposta.text().catch(() => "");
       let errorCode = String(resposta.status);
@@ -133,7 +142,7 @@ const canario = async (chave, modelId) => {
       } catch {
         // corpo não-JSON: fica o status
       }
-      return { ok: false, at: agora(), status: resposta.status, errorCode, latencyMs };
+      return { ok: false, at: agora(), status: resposta.status, errorCode, latencyMs, tpmLimit };
     }
 
     const corpo = await resposta.json();
@@ -147,9 +156,10 @@ const canario = async (chave, modelId) => {
         status: 200,
         errorCode: "resposta_nao_json",
         latencyMs,
+        tpmLimit,
       };
     }
-    return { ok: true, at: agora(), status: 200, errorCode: null, latencyMs };
+    return { ok: true, at: agora(), status: 200, errorCode: null, latencyMs, tpmLimit };
   } catch (erro) {
     return {
       ok: false,
@@ -157,6 +167,7 @@ const canario = async (chave, modelId) => {
       status: 0,
       errorCode: erro?.name || "erro_de_rede",
       latencyMs: Date.now() - inicio,
+      tpmLimit: null,
     };
   }
 };
@@ -238,6 +249,11 @@ export const calcularDiff = (registros, aptos, canarios, motivosDeExclusao = new
       canary: canarios.get(modelo.modelId) || null,
       syncedAt: agora(),
     };
+
+    // Fora do canário para o orçamento de tokens não precisar cavar dentro
+    // dele; sem medição, o campo não é escrito e o app usa o piso conservador.
+    const tpm = canarios.get(modelo.modelId)?.tpmLimit;
+    if (tpm) campos.tpmLimit = tpm;
 
     // Nome renomeado pelo admin não é sobrescrito.
     if (existente?.name && existente.name !== modelo.name) campos.name = existente.name;
@@ -346,14 +362,15 @@ const main = async () => {
   console.log(`padrão eleito: ${vencedor?.modelId || "(nenhum)"}`);
 
   console.log(`\nnovos (${novos.length}):`);
-  for (const { modelo } of novos) {
+  for (const { modelo, campos } of novos) {
     console.log(
-      `  + ${modelo.modelId}  ctx=${modelo.contextWindow} out=${modelo.maxCompletionTokens} [${modelo.features.join(", ")}]`
+      `  + ${modelo.modelId}  ctx=${modelo.contextWindow} out=${modelo.maxCompletionTokens}` +
+        `${campos.tpmLimit ? ` tpm=${campos.tpmLimit}` : ""} [${modelo.features.join(", ")}]`
     );
   }
 
   console.log(`\natualizados (${atualizados.length}):`);
-  for (const { modelo, antes } of atualizados) {
+  for (const { modelo, antes, campos } of atualizados) {
     const mudancas = [];
     if (Number(antes.maxContext) !== modelo.contextWindow) {
       mudancas.push(`contexto ${antes.maxContext} -> ${modelo.contextWindow}`);
@@ -362,6 +379,9 @@ const main = async () => {
       mudancas.push(`saída ${antes.maxCompletionTokens || "ausente"} -> ${modelo.maxCompletionTokens}`);
     }
     if (!antes.features) mudancas.push(`features ausentes -> [${modelo.features.join(", ")}]`);
+  if (campos.tpmLimit && Number(antes.tpmLimit || 0) !== campos.tpmLimit) {
+    mudancas.push(`tpm ${antes.tpmLimit || "ausente"} -> ${campos.tpmLimit}`);
+  }
     if (antes.isActive === false) mudancas.push("reativado");
     console.log(`  ~ ${modelo.modelId}${mudancas.length ? `  (${mudancas.join("; ")})` : "  (sem mudança de capacidade)"}`);
   }

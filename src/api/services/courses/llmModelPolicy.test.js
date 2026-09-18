@@ -178,22 +178,31 @@ describe("cadeiaDeModelos", () => {
     modelo({ modelId: "aposentado", isActive: false, maxCompletionTokens: 65536 }),
   ];
 
+  const ids = (cadeia) => cadeia.map((m) => m.modelId);
+
   it("começa pelo modelo selecionado e segue pela ordem da política", () => {
-    expect(cadeiaDeModelos(catalogo, "pequeno")).toEqual([
+    expect(ids(cadeiaDeModelos(catalogo, "pequeno"))).toEqual([
       "pequeno",
       "grande",
       "medio",
     ]);
   });
 
+  it("devolve os registros inteiros, não só os ids", () => {
+    // Quem gera precisa de contextWindow, maxCompletionTokens e features para
+    // montar o orçamento da chamada.
+    const [primeiro] = cadeiaDeModelos(catalogo, "grande");
+    expect(primeiro).toMatchObject({ modelId: "grande", maxCompletionTokens: 65536 });
+  });
+
   it("não repete o selecionado dentro da cadeia", () => {
-    const cadeia = cadeiaDeModelos(catalogo, "grande");
+    const cadeia = ids(cadeiaDeModelos(catalogo, "grande"));
     expect(cadeia).toEqual(["grande", "medio", "pequeno"]);
     expect(new Set(cadeia).size).toBe(cadeia.length);
   });
 
   it("ignora o selecionado que não está mais ativo", () => {
-    expect(cadeiaDeModelos(catalogo, "aposentado")).toEqual([
+    expect(ids(cadeiaDeModelos(catalogo, "aposentado"))).toEqual([
       "grande",
       "medio",
       "pequeno",
@@ -201,7 +210,7 @@ describe("cadeiaDeModelos", () => {
   });
 
   it("nunca inclui modelo inativo como alternativa", () => {
-    expect(cadeiaDeModelos(catalogo, "grande")).not.toContain("aposentado");
+    expect(ids(cadeiaDeModelos(catalogo, "grande"))).not.toContain("aposentado");
   });
 
   it("devolve lista vazia quando não há modelo ativo", () => {
@@ -210,7 +219,7 @@ describe("cadeiaDeModelos", () => {
 
   it("usa a mesma ordem de ordenarPorPolitica", () => {
     const ordenados = ordenarPorPolitica(catalogo).map((m) => m.modelId);
-    expect(cadeiaDeModelos(catalogo, null)).toEqual(ordenados);
+    expect(ids(cadeiaDeModelos(catalogo, null))).toEqual(ordenados);
   });
 });
 

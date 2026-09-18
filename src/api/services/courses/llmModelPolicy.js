@@ -101,15 +101,22 @@ export const escolherPadrao = (modelos) => ordenarPorPolitica(modelos)[0] || nul
  * aposentado pelo provedor vira erro na tela do professor, quando o app tem
  * catálogo suficiente para simplesmente tentar o próximo.
  *
+ * Devolve os REGISTROS, não os ids: quem gera precisa de `contextWindow`,
+ * `maxCompletionTokens` e `features` para montar o orçamento da chamada, e
+ * cada modelo da cadeia tem os seus.
+ *
  * @param {object[]} modelos - Registros do nó `llmModels`
  * @param {string} [modeloSelecionado] - `modelId` em uso agora
- * @returns {string[]} - `modelId`s a tentar, na ordem, sem repetição
+ * @returns {object[]} - Registros a tentar, na ordem, sem repetição
  */
 export const cadeiaDeModelos = (modelos, modeloSelecionado) => {
-  const ordenados = ordenarPorPolitica(modelos).map((m) => m.modelId);
-  const primeiro = ordenados.includes(modeloSelecionado) ? [modeloSelecionado] : [];
+  const ordenados = ordenarPorPolitica(modelos);
+  const escolhido = ordenados.find((m) => m.modelId === modeloSelecionado);
 
-  return [...primeiro, ...ordenados.filter((id) => id !== modeloSelecionado)];
+  return [
+    ...(escolhido ? [escolhido] : []),
+    ...ordenados.filter((m) => m.modelId !== modeloSelecionado),
+  ];
 };
 
 /**

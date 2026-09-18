@@ -55,8 +55,7 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
     numQuestions,
     questionType,
     resolveApiKey: groqSettings.resolveApiKey,
-    selectedModel: groqSettings.selectedModel,
-    modelosAlternativos: groqSettings.modelosAlternativos,
+    cadeiaDeGeracao: groqSettings.cadeiaDeGeracao,
     getPromptToUse: promptSettings.getPromptToUse,
   });
   const questionsEditor = useGeneratedQuestionsEditor({
