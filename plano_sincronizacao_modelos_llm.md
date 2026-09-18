@@ -1,6 +1,6 @@
 # Plano: sincronização automática do catálogo de modelos LLM
 
-Status: planejado, não implementado. Escrito em 18/09/2026.
+Status: planejado, não implementado. A semente da fase 1 já existe: `src/api/services/courses/llmModelPolicy.js` nasceu com o passo 1a do plano de recuperação, com `escolherPadrao` e `resolverModeloSelecionado` testados, e é onde `isModeloApto` e `normalizarModeloDaGroq` entram. Escrito em 18/09/2026.
 
 Restrição que guia todo o desenho: **mínimo de mão humana**. O catálogo se mantém sozinho, inclusive ativando e aposentando modelos, e o admin só entra por exceção. Uma requisição por dia ao endpoint da Groq é aceitável e é o que este plano assume.
 

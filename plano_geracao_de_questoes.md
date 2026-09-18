@@ -1,6 +1,6 @@
 # Plano de recuperação do gerador de questões
 
-Status: passos 1, 2 e 3 planejados, nenhum implementado. Escrito em 18/09/2026.
+Status, atualizado em 18/09/2026: **passo 1 implementado** (1a e 1b), passo 2 pendente, passo 3 com o item 3 das "correções obrigatórias no cliente" feito e o resto bloqueado na decisão de proxy. Escrito em 18/09/2026.
 
 Este documento é o mapa. O passo 2 tem plano próprio e detalhado em `plano_sincronizacao_modelos_llm.md`; aqui ele aparece resumido, no lugar certo da ordem.
 
@@ -15,9 +15,11 @@ Verificado em 18/09/2026, com chamadas reais:
 
 Os três problemas são independentes. O primeiro é o que trava a geração hoje, e não depende de VM, de proxy nem de ninguém de fora.
 
-## Passo 1: destravar a geração (hoje)
+## Passo 1: destravar a geração (hoje) — FEITO
 
-### 1a. O padrão para de ser um nome fixo no código
+### 1a. O padrão para de ser um nome fixo no código — FEITO
+
+Implementado no commit `feat(quiz): resolver o modelo padrao pelo catalogo ativo`. Falta apenas o passo de banco: desativar pelo admin os 4 modelos mortos.
 
 Hoje `useGroqSettings.js` começa com `useState("llama-3.3-70b-versatile")` e só troca se o `localStorage` tiver um modelo que ainda esteja na lista. Desativar o modelo morto no admin **não basta**: o app continua mandando o nome fixo até o professor escolher outro na mão.
 
@@ -29,7 +31,9 @@ Mudanças:
 
 No banco, pelo admin: desativar `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `qwen/qwen3-32b` e `meta-llama/llama-4-scout-17b-16e-instruct`. São dois minutos de tela, e o passo 2 depois faz isso sozinho para sempre.
 
-### 1b. O app para de inventar questão
+### 1b. O app para de inventar questão — FEITO
+
+Implementado no commit `fix(quiz): parar de fabricar questoes duplicadas na geracao`.
 
 Independente do 1a, e do mesmo tamanho. No `groqClient.js`, remover o trecho que completa a lista duplicando questões com "(variação N)". Em vez disso, devolver o que veio e informar: "foram pedidas 30 e vieram 12". A interface mostra o número real, e o professor decide se gera mais.
 

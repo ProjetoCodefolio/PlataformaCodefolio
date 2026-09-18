@@ -1,6 +1,6 @@
 # Plano: importar questões prontas por JSON
 
-Status: planejado, não implementado. Escrito em 18/09/2026.
+Status: **implementado em 18/09/2026**, no commit `feat(quiz): importar questoes prontas por JSON`. Escolhido o encaixe "barato" da seção 2 (botão dentro do `PdfQuizGenerator`); a extração do `GeneratedQuestionsReview.jsx` continua valendo como refatoração futura. Escrito em 18/09/2026.
 
 ## Por que
 
@@ -30,7 +30,7 @@ Validação por questão, com erro posicional em vez de descarte silencioso (é 
 
 Teto de 100 questões por colagem, para não travar a tela de conferência.
 
-Decisão pendente de aval: com erros na lista, bloquear a importação inteira e mostrar "questão 7: `correctOption` fora do intervalo", em vez de importar as válidas e engolir o resto.
+Decidido assim na implementação: com erros na lista, a importação inteira é bloqueada e a tela mostra "questão 7: `correctOption` fora do intervalo", em vez de importar as válidas e engolir o resto.
 
 ## 2. Interface
 
