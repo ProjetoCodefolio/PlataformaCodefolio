@@ -11,30 +11,89 @@ export const mapQuestionTypeToApi = (internalType) =>
 const DEFAULT_TIMEOUT_MS = 180000;
 
 /**
- * Converte o valor de `correct_answer` retornado pela Question Generator API
- * no índice numérico (`correctOption`) que a plataforma usa internamente.
- * Aceita letra (A/B/C/D), número (0-based ou 1-based) ou o texto da alternativa.
- * @param {*} correctAnswer - Valor de correct_answer da API
- * @param {string[]} options - Alternativas da questão
- * @returns {number} - Índice da alternativa correta (0 se indeterminável)
+ * Índice devolvido quando o gabarito não pode ser determinado. Vale mais
+ * descartar a questão do que gravar a primeira alternativa como correta: o
+ * erro passa despercebido na conferência e só aparece na nota do aluno.
  */
-const resolveCorrectOption = (correctAnswer, options) => {
-  if (correctAnswer == null) return 0;
-  const raw = String(correctAnswer).trim();
+export const GABARITO_INDETERMINADO = -1;
 
-  // Letra única A-Z -> índice
-  if (/^[A-Za-z]$/.test(raw)) {
-    const idx = raw.toUpperCase().charCodeAt(0) - 65;
-    if (idx >= 0 && idx < options.length) return idx;
+const semAcento = (texto) =>
+  texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+const normalizarTexto = (texto) =>
+  semAcento(String(texto).trim().toLowerCase()).replace(/\s+/g, " ");
+
+/**
+ * Converte o valor de `correct_answer` no índice numérico (`correctOption`)
+ * que a plataforma usa internamente.
+ *
+ * Formatos aceitos:
+ *   - letra sozinha: `"A"`, `"b"`;
+ *   - letra com marcador: `"B)"`, `"B."`, `"B -"`, `"B) Paris"`;
+ *   - número: tratado como índice 0-based, que é a convenção da plataforma
+ *     (`correctOption`). O único caso em que isso não fecha é o valor igual à
+ *     quantidade de alternativas, que só pode ser 1-based e é lido assim;
+ *   - texto da alternativa, exato ou desprezando caixa, acento e espaço.
+ *
+ * @param {*} correctAnswer - Valor de correct_answer da API ou da colagem
+ * @param {string[]} options - Alternativas da questão
+ * @returns {number} - Índice da alternativa correta, ou -1 se indeterminável
+ */
+export const resolveCorrectOption = (correctAnswer, options) => {
+  const alternativas = Array.isArray(options) ? options : [];
+  if (correctAnswer == null || alternativas.length === 0) {
+    return GABARITO_INDETERMINADO;
   }
 
-  // Texto exatamente igual a uma alternativa
-  const textMatch = options.findIndex(
-    (opt) => String(opt).trim() === raw
-  );
-  if (textMatch >= 0) return textMatch;
+  const raw = String(correctAnswer).trim();
+  if (raw === "") return GABARITO_INDETERMINADO;
 
-  return 0;
+  const noIntervalo = (idx) => idx >= 0 && idx < alternativas.length;
+
+  // Número: 0-based, exceto quando só cabe como 1-based.
+  if (/^\d+$/.test(raw)) {
+    const numero = Number(raw);
+    if (numero === alternativas.length) return numero - 1;
+    return noIntervalo(numero) ? numero : GABARITO_INDETERMINADO;
+  }
+
+  // Letra sozinha.
+  if (/^[A-Za-z]$/.test(raw)) {
+    const idx = raw.toUpperCase().charCodeAt(0) - 65;
+    return noIntervalo(idx) ? idx : GABARITO_INDETERMINADO;
+  }
+
+  // Texto igual a uma alternativa, primeiro exato e depois normalizado.
+  const exato = alternativas.findIndex((opt) => String(opt).trim() === raw);
+  if (exato >= 0) return exato;
+
+  const alvo = normalizarTexto(raw);
+  const normalizado = alternativas.findIndex(
+    (opt) => normalizarTexto(opt) === alvo
+  );
+  if (normalizado >= 0) return normalizado;
+
+  // Letra com marcador, com ou sem o texto da alternativa junto.
+  const comMarcador = raw.match(/^([A-Za-z])\s*[).:\-–]\s*(.*)$/);
+  if (comMarcador) {
+    const idx = comMarcador[1].toUpperCase().charCodeAt(0) - 65;
+    const resto = comMarcador[2].trim();
+
+    if (resto === "") {
+      return noIntervalo(idx) ? idx : GABARITO_INDETERMINADO;
+    }
+
+    // Com texto junto, a letra só vale se o texto bater com a alternativa
+    // que ela aponta. Divergindo, o texto manda, porque é o que o professor
+    // lê na tela.
+    const porTexto = alternativas.findIndex(
+      (opt) => normalizarTexto(opt) === normalizarTexto(resto)
+    );
+    if (porTexto >= 0) return porTexto;
+    if (noIntervalo(idx)) return idx;
+  }
+
+  return GABARITO_INDETERMINADO;
 };
 
 /**
@@ -75,20 +134,42 @@ export const normalizeQuestionApiResponse = (
   const questions = apiResponse?.questions || [];
 
   if (questionType === QUESTION_TYPES.OPEN) {
-    return questions.map((q) => ({
-      question: q.question,
-      expectedAnswer: q.correct_answer || q.explanation || "",
-    }));
+    return questions
+      .map((q) => ({
+        question: q?.question,
+        expectedAnswer: q?.correct_answer || q?.explanation || "",
+      }))
+      .filter((q) => q.question && q.expectedAnswer);
   }
 
-  return questions.map((q) => {
+  // Validar como a resposta da GROQ é validada. Mapear às cegas grava no quiz
+  // múltipla escolha sem alternativa e gabarito chutado na alternativa A.
+  const normalizadas = questions.map((q) => {
     const options = Array.isArray(q.options) ? q.options : [];
     return {
-      question: q.question,
+      question: q?.question,
       options,
-      correctOption: resolveCorrectOption(q.correct_answer, options),
+      correctOption: resolveCorrectOption(q?.correct_answer, options),
     };
   });
+
+  const validas = normalizadas.filter(
+    (q) =>
+      q.question &&
+      typeof q.question === "string" &&
+      q.options.length >= 2 &&
+      q.correctOption !== GABARITO_INDETERMINADO
+  );
+
+  if (validas.length < normalizadas.length) {
+    console.warn(
+      `Question API: ${normalizadas.length - validas.length} de ${
+        normalizadas.length
+      } questões descartadas por enunciado, alternativas ou gabarito inválidos.`
+    );
+  }
+
+  return validas;
 };
 
 /**

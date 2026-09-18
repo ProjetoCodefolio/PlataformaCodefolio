@@ -3,6 +3,8 @@ import {
   normalizeQuestionApiResponse,
   shouldFallbackToGroq,
   generateQuestionsWithQuestionApi,
+  resolveCorrectOption,
+  GABARITO_INDETERMINADO,
 } from "./questionApiClient";
 import { QUESTION_TYPES } from "./quizGenerator/constants";
 
@@ -212,5 +214,109 @@ describe("generateQuestionsWithQuestionApi", () => {
         baseConfig(fetchImpl)
       )
     ).rejects.toMatchObject({ status: 503 });
+  });
+});
+
+describe("resolveCorrectOption - formatos de gabarito", () => {
+  const options = ["Paris", "Londres", "Roma", "Berlim"];
+
+  it("aceita letra sozinha, em maiúscula e minúscula", () => {
+    expect(resolveCorrectOption("A", options)).toBe(0);
+    expect(resolveCorrectOption("b", options)).toBe(1);
+    expect(resolveCorrectOption("D", options)).toBe(3);
+  });
+
+  it("aceita letra com marcador", () => {
+    expect(resolveCorrectOption("B)", options)).toBe(1);
+    expect(resolveCorrectOption("C.", options)).toBe(2);
+    expect(resolveCorrectOption("D -", options)).toBe(3);
+  });
+
+  it("aceita letra com o texto da alternativa junto", () => {
+    expect(resolveCorrectOption("B) Londres", options)).toBe(1);
+    expect(resolveCorrectOption("C - Roma", options)).toBe(2);
+  });
+
+  it("deixa o texto mandar quando a letra e o texto divergem", () => {
+    expect(resolveCorrectOption("A) Roma", options)).toBe(2);
+  });
+
+  it("aceita número como índice 0-based", () => {
+    expect(resolveCorrectOption(0, options)).toBe(0);
+    expect(resolveCorrectOption(2, options)).toBe(2);
+    expect(resolveCorrectOption("1", options)).toBe(1);
+  });
+
+  it("lê como 1-based o número que só caberia assim", () => {
+    expect(resolveCorrectOption(4, options)).toBe(3);
+  });
+
+  it("aceita o texto exato da alternativa", () => {
+    expect(resolveCorrectOption("Roma", options)).toBe(2);
+  });
+
+  it("aceita o texto desprezando caixa, acento e espaço", () => {
+    expect(resolveCorrectOption("  sao paulo ", ["Rio", "São Paulo"])).toBe(1);
+  });
+
+  it("não chuta a primeira alternativa quando o gabarito é indeterminável", () => {
+    expect(resolveCorrectOption(null, options)).toBe(GABARITO_INDETERMINADO);
+    expect(resolveCorrectOption("", options)).toBe(GABARITO_INDETERMINADO);
+    expect(resolveCorrectOption("Z", options)).toBe(GABARITO_INDETERMINADO);
+    expect(resolveCorrectOption(9, options)).toBe(GABARITO_INDETERMINADO);
+    expect(resolveCorrectOption("Lisboa", options)).toBe(GABARITO_INDETERMINADO);
+  });
+
+  it("é indeterminável quando não há alternativas", () => {
+    expect(resolveCorrectOption("A", [])).toBe(GABARITO_INDETERMINADO);
+    expect(resolveCorrectOption("A", undefined)).toBe(GABARITO_INDETERMINADO);
+  });
+});
+
+describe("normalizeQuestionApiResponse - descarte de questão inválida", () => {
+  it("descarta a questão de múltipla escolha sem alternativas", () => {
+    const result = normalizeQuestionApiResponse(
+      {
+        questions: [
+          { question: "Sem alternativas", correct_answer: "A" },
+          {
+            question: "Completa",
+            options: ["Um", "Dois"],
+            correct_answer: "B",
+          },
+        ],
+      },
+      QUESTION_TYPES.MULTIPLE_CHOICE
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].question).toBe("Completa");
+    expect(result[0].correctOption).toBe(1);
+  });
+
+  it("descarta a questão cujo gabarito não bate com nenhuma alternativa", () => {
+    const result = normalizeQuestionApiResponse(
+      {
+        questions: [
+          {
+            question: "Gabarito perdido",
+            options: ["Um", "Dois"],
+            correct_answer: "Três",
+          },
+        ],
+      },
+      QUESTION_TYPES.MULTIPLE_CHOICE
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("descarta a questão sem enunciado", () => {
+    const result = normalizeQuestionApiResponse(
+      { questions: [{ options: ["Um", "Dois"], correct_answer: "A" }] },
+      QUESTION_TYPES.MULTIPLE_CHOICE
+    );
+
+    expect(result).toEqual([]);
   });
 });
