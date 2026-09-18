@@ -6,10 +6,6 @@ import {
   resolverModeloSelecionado,
 } from "$api/services/courses/llmModelPolicy";
 
-// Excluir modelos que não suportam chat completions (áudio/STT/TTS), pois
-// geram erro 400 ao serem usados para gerar questões.
-const NON_CHAT_MODEL_PATTERN = /whisper|tts|guard|playai|distil-whisper/i;
-
 /**
  * Configuração do provedor GROQ (usado como fallback do gerador de
  * questões): chave de API customizada e modelo selecionado, ambos
@@ -32,10 +28,11 @@ export function useGroqSettings() {
       try {
         const fetchedModels = await fetchAllLlmModels();
         const modelsArray = Object.values(fetchedModels);
-        const activeModels = modelsArray.filter(
-          (model) => model.isActive && !NON_CHAT_MODEL_PATTERN.test(model.modelId || "")
-        );
-        setModels(activeModels);
+        // Quem decide se um modelo serve é a sincronização do catálogo, por
+        // capacidade declarada (`isModeloApto`). A regex de nome que morava
+        // aqui excluía por palavra no id e barrava o gpt-oss-safeguard-20b só
+        // por conter "guard".
+        setModels(modelsArray.filter((model) => model.isActive));
       } catch (err) {
         console.error("Erro ao buscar modelos LLM:", err);
         setModels([]);
@@ -65,10 +62,11 @@ export function useGroqSettings() {
     setSelectedModel(resolverModeloSelecionado(models, savedModel));
   }, [models, modelsLoading]);
 
-  // Modelos a tentar se o selecionado tiver sumido do provedor, na ordem da
-  // política. É o que evita que um 404 vire erro na cara do professor.
-  const modelosAlternativos = useMemo(
-    () => cadeiaDeModelos(models, selectedModel).filter((id) => id !== selectedModel),
+  // Cadeia de geração: o modelo escolhido primeiro e os alternativos na ordem
+  // da política, como REGISTROS, porque o orçamento de tokens de cada chamada
+  // sai do contexto e do teto de saída do modelo que vai atender.
+  const cadeiaDeGeracao = useMemo(
+    () => cadeiaDeModelos(models, selectedModel),
     [models, selectedModel]
   );
 
@@ -121,7 +119,7 @@ export function useGroqSettings() {
     // bloquear o botão em vez de disparar uma requisição fadada ao 404.
     noActiveModels: !modelsLoading && models.length === 0,
     selectedModel,
-    modelosAlternativos,
+    cadeiaDeGeracao,
     handleOpenApiKeyDialog,
     handleCloseApiKeyDialog,
     handleSaveApiKey,
