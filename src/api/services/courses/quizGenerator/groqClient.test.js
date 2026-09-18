@@ -89,7 +89,7 @@ describe("generateQuestionsWithGroq - ajuste de quantidade", () => {
   it("falha quando nenhuma questão válida veio na resposta", async () => {
     mockGroqRespondendo([{ question: "sem alternativas" }]);
 
-    // A resposta sem alternativas é barrada antes da validação, no parser.
-    await expect(gerar(5)).rejects.toThrow(/não foi possível interpretar/i);
+    // O JSON é lido, mas nenhuma questão passa na validação de formato.
+    await expect(gerar(5)).rejects.toThrow(/nenhuma questão válida/i);
   });
 });

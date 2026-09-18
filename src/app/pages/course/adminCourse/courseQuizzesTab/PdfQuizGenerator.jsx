@@ -29,10 +29,12 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SettingsIcon from "@mui/icons-material/Settings";
 import KeyIcon from "@mui/icons-material/Key";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import ContentPasteIcon from "@mui/icons-material/ContentPaste";
 import { QUESTION_TYPES } from "$api/services/courses/quizGenerator/constants";
 
 import PromptSettingsDialog from "./PromptSettingsDialog";
 import ApiKeyDialog from "./ApiKeyDialog";
+import PasteQuestionsDialog from "./PasteQuestionsDialog";
 import { usePdfUpload } from "./hooks/usePdfUpload";
 import { useGroqSettings } from "./hooks/useGroqSettings";
 import { usePromptSettings } from "./hooks/usePromptSettings";
@@ -42,6 +44,7 @@ import { toast } from "react-toastify";
 
 const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
   const [numQuestions, setNumQuestions] = useState(5);
+  const [pasteDialogOpen, setPasteDialogOpen] = useState(false);
   const [questionType, setQuestionType] = useState(QUESTION_TYPES.MULTIPLE_CHOICE);
 
   const pdfUpload = usePdfUpload();
@@ -65,6 +68,17 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
   // bloqueado em vez de disparar uma chamada que já nasce perdida.
   const geracaoBloqueada =
     groqSettings.modelsLoading || groqSettings.noActiveModels;
+
+  // A colagem de JSON é uma segunda FONTE da mesma esteira: as questões caem
+  // na área de conferência do gerador, e a gravação continua sendo uma só.
+  const handleQuestionsParsed = (questoes) => {
+    generation.setGeneratedQuestions(questoes);
+    toast.success(
+      `${questoes.length} ${
+        questoes.length === 1 ? "questão colada" : "questões coladas"
+      }. Confira antes de adicionar ao quiz.`
+    );
+  };
 
   const handleNumQuestionsChange = (e) => setNumQuestions(e.target.value);
   const handleQuestionTypeChange = (e) => setQuestionType(e.target.value);
@@ -104,10 +118,22 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
             fontSize: { xs: "1rem", sm: "1.25rem" },
           }}
         >
-          Gerar Questões a partir de PDF
+          Gerar ou Colar Questões
         </Typography>
 
         <Box sx={{ display: "flex", gap: 0.5 }}>
+          <Tooltip title="Colar questões prontas em JSON">
+            <IconButton
+              onClick={() => setPasteDialogOpen(true)}
+              sx={{
+                color: "#666",
+                "&:hover": { backgroundColor: "rgba(144, 65, 193, 0.08)" },
+              }}
+            >
+              <ContentPasteIcon />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Configurar chave API GROQ">
             <IconButton
               onClick={groqSettings.handleOpenApiKeyDialog}
@@ -774,6 +800,12 @@ const PdfQuizGenerator = ({ onQuestionsGenerated }) => {
         models={groqSettings.models}
         selectedModel={groqSettings.selectedModel}
         onModelChange={groqSettings.handleModelChange}
+      />
+
+      <PasteQuestionsDialog
+        open={pasteDialogOpen}
+        onClose={() => setPasteDialogOpen(false)}
+        onQuestionsParsed={handleQuestionsParsed}
       />
 
       <ApiKeyDialog
