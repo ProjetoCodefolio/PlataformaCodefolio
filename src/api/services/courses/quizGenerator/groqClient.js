@@ -196,11 +196,41 @@ export const generateQuestionsWithGroq = async (
         throw new Error("Resposta da GROQ não está em JSON válido.");
       }
 
-      const content = data?.choices?.[0]?.message?.content;
+      const escolha = data?.choices?.[0];
+      const content = escolha?.message?.content;
+      const cortadaNoLimite = escolha?.finish_reason === "length";
+
       if (!content) {
         console.error("Resposta GROQ sem campo content:", data);
+
+        // Modelo de raciocínio que gasta o orçamento inteiro pensando devolve
+        // 200 com conteúdo vazio. Dizer "resposta inesperada" manda o
+        // professor procurar um problema que não é dele: o que resolve é
+        // pedir menos questões de uma vez.
+        if (cortadaNoLimite) {
+          throw createDetailedError(
+            ErrorTypes.NO_VALID_QUESTIONS,
+            `O modelo ${modelo.name || modelId} usou todo o espaço de resposta antes de escrever as questões.`,
+            {
+              issue: "finish_reason=length com conteúdo vazio",
+              maxTokens: orcamento.maxOutputTokens,
+              sugestao: "Peça menos questões de uma vez.",
+            }
+          );
+        }
+
         throw new Error(
           "Resposta inesperada da API GROQ. Verifique logs para detalhes."
+        );
+      }
+
+      if (cortadaNoLimite) {
+        // Ainda dá para aproveitar: o parser recupera as questões completas e
+        // descarta a última, pela metade. O aviso de quantas vieram já sai na
+        // tela pelo ajuste de quantidade.
+        console.warn(
+          `generateQuestionsWithGroq - resposta cortada em ${orcamento.maxOutputTokens} tokens; ` +
+            "recuperando as questões completas."
         );
       }
 

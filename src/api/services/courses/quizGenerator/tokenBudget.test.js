@@ -13,7 +13,7 @@ const GPT_OSS_120B = {
   contextWindow: 131072,
   maxCompletionTokens: 65536,
   tpmLimit: 8000,
-  features: ["tools", "json_mode", "structured_outputs"],
+  features: ["tools", "json_mode", "structured_outputs", "reasoning"],
 };
 
 const COMPOUND = {
@@ -24,6 +24,8 @@ const COMPOUND = {
   features: ["json_mode"],
 };
 
+const SEM_RACIOCINIO = { ...GPT_OSS_120B, features: ["json_mode"] };
+
 describe("envelopeDaRequisicao", () => {
   it("usa o limite de tokens por minuto quando ele é menor que o contexto", () => {
     // 131072 de contexto não valem nada com 8000 de TPM.
@@ -32,6 +34,12 @@ describe("envelopeDaRequisicao", () => {
 
   it("usa o contexto quando ele é menor que o TPM", () => {
     expect(envelopeDaRequisicao({ contextWindow: 4096, tpmLimit: 70000 })).toBe(4096);
+  });
+
+  it("não confia num TPM alto: respeita o teto por requisição", () => {
+    // O compound reporta 70000 de TPM e 131072 de contexto, mas 16000 tokens
+    // numa requisição só devolvem 413.
+    expect(envelopeDaRequisicao(COMPOUND)).toBe(6800);
   });
 
   it("é conservador enquanto o TPM não foi sincronizado", () => {
@@ -84,11 +92,13 @@ describe("calcularOrcamento - a saída acompanha o que foi pedido", () => {
 });
 
 describe("calcularOrcamento - o PDF fica com o que sobra", () => {
-  it("dá muito mais espaço de texto ao modelo com TPM alto", () => {
-    const apertado = calcularOrcamento(GPT_OSS_120B, 10);
-    const folgado = calcularOrcamento(COMPOUND, 10);
+  it("sobra mais texto para o modelo que não gasta tokens raciocinando", () => {
+    // Os dois têm o mesmo envelope na prática; a diferença é a reserva de
+    // raciocínio que o gpt-oss precisa e o compound não.
+    const comRaciocinio = calcularOrcamento(GPT_OSS_120B, 10);
+    const semRaciocinio = calcularOrcamento(COMPOUND, 10);
 
-    expect(folgado.maxPdfChars).toBeGreaterThan(apertado.maxPdfChars * 5);
+    expect(semRaciocinio.maxPdfChars).toBeGreaterThan(comRaciocinio.maxPdfChars);
   });
 
   it("prompt e saída somados não estouram o envelope", () => {
@@ -151,5 +161,22 @@ describe("deveUsarModoJson", () => {
 
   it("não liga para catálogo sem features sincronizadas", () => {
     expect(deveUsarModoJson({ modelId: "antigo" }, 4000)).toBe(false);
+  });
+});
+
+describe("calcularOrcamento - modelos de raciocínio", () => {
+  it("reserva espaço para os tokens de raciocínio", () => {
+    const comum = calcularOrcamento(SEM_RACIOCINIO, 5);
+    const raciocina = calcularOrcamento(GPT_OSS_120B, 5);
+
+    expect(raciocina.maxOutputTokens).toBeGreaterThan(comum.maxOutputTokens);
+  });
+
+  it("nunca desce abaixo do piso que evita resposta vazia", () => {
+    // Com 688 tokens, um modelo de raciocínio devolvia 200 com conteúdo vazio
+    // e a tela dizia "Resposta inesperada da API GROQ".
+    for (const n of [1, 3, 5]) {
+      expect(calcularOrcamento(GPT_OSS_120B, n).maxOutputTokens).toBeGreaterThanOrEqual(1024);
+    }
   });
 });

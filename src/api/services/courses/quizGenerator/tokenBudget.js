@@ -28,8 +28,22 @@ export const TOKENS_POR_QUESTAO = 110;
 /** Sobra sobre o custo estimado, para variação de tamanho entre questões. */
 const FOLGA_DE_SAIDA = 1.25;
 
-/** Saída mínima: abaixo disso não sai nem uma questão inteira. */
-const SAIDA_MINIMA = 512;
+/**
+ * Saída mínima. Não é folga: com menos que isto um modelo de raciocínio gasta
+ * o orçamento inteiro pensando e devolve conteúdo vazio, que chega na tela
+ * como "Resposta inesperada da API GROQ".
+ */
+const SAIDA_MINIMA = 1024;
+
+/**
+ * Reserva para os tokens de raciocínio dos modelos que têm a feature
+ * `reasoning` (hoje, os quatro melhores do catálogo). Eles contam no mesmo
+ * `max_tokens` da resposta: medido em 18/09/2026, ~210 tokens de raciocínio
+ * num pedido de 5 questões, e cresce com a dificuldade da tarefa. Sem esta
+ * reserva, o pedido de 5 questões saía com `max_tokens` 688 e voltava
+ * `finish_reason: "length"` com o JSON cortado no meio.
+ */
+const RESERVA_DE_RACIOCINIO = 700;
 
 /**
  * Quanto do TPM a gente se permite usar numa requisição. O contador da Groq
@@ -39,11 +53,35 @@ const SAIDA_MINIMA = 512;
  */
 const FATIA_DO_TPM = 0.85;
 
+/**
+ * Teto de tokens de UMA requisição, independente do que o cabeçalho de TPM
+ * anuncia. Medido em 18/09/2026 no `groq/compound-mini`, que reporta 70.000 de
+ * TPM e 131.072 de contexto: 8.000 tokens passam, 16.000 devolvem 413
+ * `request_too_large`, e isso com 36.590 tokens ainda livres na janela do
+ * minuto. Ou seja, "cabe no contexto" e "cabe no minuto" não garantem que
+ * cabe numa requisição só.
+ */
+const TETO_POR_REQUISICAO = 8000;
+
 /** Tokens gastos pelas instruções fixas de formato, papel de sistema e afins. */
 const OVERHEAD_DE_INSTRUCOES = 400;
 
 /** Aproximação usual para português: 1 token ~ 4 caracteres. */
 export const CARACTERES_POR_TOKEN = 4;
+
+const temFeature = (modelo, nome) => {
+  const features = modelo?.features;
+  if (Array.isArray(features)) return features.includes(nome);
+  return Boolean(features && features[nome]);
+};
+
+/**
+ * Modelos de raciocínio gastam tokens "pensando" antes de escrever, e esse
+ * gasto sai do mesmo `max_tokens` da resposta.
+ * @param {object} modelo - Registro do catálogo
+ * @returns {boolean}
+ */
+export const modeloRaciocina = (modelo) => temFeature(modelo, "reasoning");
 
 /**
  * Teto de tokens que uma requisição a este modelo pode ocupar, somando prompt
@@ -55,9 +93,10 @@ export const CARACTERES_POR_TOKEN = 4;
 export const envelopeDaRequisicao = (modelo = {}) => {
   const contexto = Number(modelo.contextWindow) || Number(modelo.maxContext) || 8192;
   const tpm = Number(modelo.tpmLimit) || 0;
+  const porRequisicao = Math.floor(TETO_POR_REQUISICAO * FATIA_DO_TPM);
 
-  if (!tpm) return Math.min(contexto, 6000);
-  return Math.min(contexto, Math.floor(tpm * FATIA_DO_TPM));
+  if (!tpm) return Math.min(contexto, 6000, porRequisicao);
+  return Math.min(contexto, Math.floor(tpm * FATIA_DO_TPM), porRequisicao);
 };
 
 /**
@@ -82,11 +121,13 @@ export const calcularOrcamento = (
   const tetoDoModelo =
     Number(modelo.maxCompletionTokens) || Number(modelo.maxOutputTokens) || envelope;
 
-  const desejado = Math.ceil(numQuestions * TOKENS_POR_QUESTAO * FOLGA_DE_SAIDA);
+  const desejado =
+    Math.ceil(numQuestions * TOKENS_POR_QUESTAO * FOLGA_DE_SAIDA) +
+    (modeloRaciocina(modelo) ? RESERVA_DE_RACIOCINIO : 0);
 
   // A saída nunca pode comer o envelope inteiro: sem espaço de prompt não há
   // texto para gerar questão a partir de quê.
-  const tetoNoEnvelope = Math.floor(envelope * 0.6);
+  const tetoNoEnvelope = Math.floor(envelope * 0.65);
 
   const maxOutputTokens = Math.max(
     SAIDA_MINIMA,
@@ -139,11 +180,5 @@ export const cortarNoLimite = (texto, maxChars) => {
  * @param {number} maxOutputTokens - Saída já calculada
  * @returns {boolean}
  */
-export const deveUsarModoJson = (modelo = {}, maxOutputTokens = 0) => {
-  const features = modelo.features;
-  const temJsonMode = Array.isArray(features)
-    ? features.includes("json_mode")
-    : Boolean(features && features.json_mode);
-
-  return temJsonMode && maxOutputTokens >= SAIDA_MINIMA;
-};
+export const deveUsarModoJson = (modelo = {}, maxOutputTokens = 0) =>
+  temFeature(modelo, "json_mode") && maxOutputTokens >= SAIDA_MINIMA;
