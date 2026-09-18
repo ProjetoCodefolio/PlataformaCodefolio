@@ -7,7 +7,7 @@ import { formatFriendlyError } from "$api/services/courses/quizGenerator/errors"
  * Núcleo da geração: extrai o texto do PDF e gera as questões (Question API
  * como provedor primário, GROQ como fallback), reportando progresso/etapa.
  */
-export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, selectedModel, getPromptToUse }) {
+export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, resolveApiKey, selectedModel, modelosAlternativos = [], getPromptToUse }) {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [processingStep, setProcessingStep] = useState("");
@@ -38,11 +38,21 @@ export function usePdfQuizGeneration({ pdfFile, numQuestions, questionType, reso
           onProgress: setProgress,
           onProcessingStep: setProcessingStep
         },
-        questionType
+        questionType,
+        modelosAlternativos
       );
 
       setGeneratedQuestions(result.questions);
       setProvider(result.provider);
+
+      // Um modelo que sumiu do provedor não é problema do professor: a cadeia
+      // já resolveu, e o aviso é informativo, não erro.
+      if (result.modelosIndisponiveis?.length > 0) {
+        toast.info(
+          `${result.modelosIndisponiveis.join(", ")} indisponível no provedor. As questões foram geradas com ${result.modeloUsado}.`,
+          { autoClose: 8000 }
+        );
+      }
 
       // Notificar se OCR foi usado
       if (result.stats && result.stats.usedOcr) {

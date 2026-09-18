@@ -55,7 +55,7 @@ export const modelosAtivos = (modelos) =>
   (Array.isArray(modelos) ? modelos : []).filter(modeloEstaAtivo);
 
 /**
- * Escolhe o modelo padrão entre os ativos, de forma determinística.
+ * Ordena os modelos ativos do melhor para o pior, de forma determinística.
  *
  * Ordem de preferência:
  *   1. suporta `structured_outputs`;
@@ -68,14 +68,14 @@ export const modelosAtivos = (modelos) =>
  * features sincronizadas; com os dados de hoje eles são neutros e a decisão
  * cai em capacidade e contexto.
  *
+ * É esta ordem que vira a cadeia de fallback quando um modelo some do
+ * provedor: o próximo da fila é sempre o melhor que restou.
+ *
  * @param {object[]} modelos - Registros do nó `llmModels`
- * @returns {object|null} - O modelo escolhido, ou null se não houver ativo
+ * @returns {object[]} - Ativos ordenados, do preferido ao último recurso
  */
-export const escolherPadrao = (modelos) => {
-  const candidatos = modelosAtivos(modelos);
-  if (candidatos.length === 0) return null;
-
-  const ordenados = [...candidatos].sort((a, b) => {
+export const ordenarPorPolitica = (modelos) =>
+  [...modelosAtivos(modelos)].sort((a, b) => {
     const porRecurso = (recurso) =>
       Number(temRecurso(b, recurso)) - Number(temRecurso(a, recurso));
 
@@ -88,7 +88,28 @@ export const escolherPadrao = (modelos) => {
     );
   });
 
-  return ordenados[0];
+/**
+ * Escolhe o modelo padrão entre os ativos.
+ * @param {object[]} modelos - Registros do nó `llmModels`
+ * @returns {object|null} - O modelo escolhido, ou null se não houver ativo
+ */
+export const escolherPadrao = (modelos) => ordenarPorPolitica(modelos)[0] || null;
+
+/**
+ * Monta a cadeia de modelos a tentar, começando pelo que o professor tem
+ * selecionado e seguindo pela ordem da política. Sem isso, um modelo
+ * aposentado pelo provedor vira erro na tela do professor, quando o app tem
+ * catálogo suficiente para simplesmente tentar o próximo.
+ *
+ * @param {object[]} modelos - Registros do nó `llmModels`
+ * @param {string} [modeloSelecionado] - `modelId` em uso agora
+ * @returns {string[]} - `modelId`s a tentar, na ordem, sem repetição
+ */
+export const cadeiaDeModelos = (modelos, modeloSelecionado) => {
+  const ordenados = ordenarPorPolitica(modelos).map((m) => m.modelId);
+  const primeiro = ordenados.includes(modeloSelecionado) ? [modeloSelecionado] : [];
+
+  return [...primeiro, ...ordenados.filter((id) => id !== modeloSelecionado)];
 };
 
 /**

@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { fetchAllLlmModels } from "$api/services/courses/llmModels";
-import { resolverModeloSelecionado } from "$api/services/courses/llmModelPolicy";
+import {
+  cadeiaDeModelos,
+  resolverModeloSelecionado,
+} from "$api/services/courses/llmModelPolicy";
 
 // Excluir modelos que não suportam chat completions (áudio/STT/TTS), pois
 // geram erro 400 ao serem usados para gerar questões.
@@ -62,6 +65,13 @@ export function useGroqSettings() {
     setSelectedModel(resolverModeloSelecionado(models, savedModel));
   }, [models, modelsLoading]);
 
+  // Modelos a tentar se o selecionado tiver sumido do provedor, na ordem da
+  // política. É o que evita que um 404 vire erro na cara do professor.
+  const modelosAlternativos = useMemo(
+    () => cadeiaDeModelos(models, selectedModel).filter((id) => id !== selectedModel),
+    [models, selectedModel]
+  );
+
   const handleOpenApiKeyDialog = () => setApiKeyDialogOpen(true);
   const handleCloseApiKeyDialog = () => setApiKeyDialogOpen(false);
 
@@ -111,6 +121,7 @@ export function useGroqSettings() {
     // bloquear o botão em vez de disparar uma requisição fadada ao 404.
     noActiveModels: !modelsLoading && models.length === 0,
     selectedModel,
+    modelosAlternativos,
     handleOpenApiKeyDialog,
     handleCloseApiKeyDialog,
     handleSaveApiKey,

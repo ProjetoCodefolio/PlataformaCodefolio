@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  cadeiaDeModelos,
+  ordenarPorPolitica,
   escolherPadrao,
   modeloEstaAtivo,
   modelosAtivos,
@@ -163,5 +165,49 @@ describe("resolverModeloSelecionado", () => {
   it("devolve string vazia quando não sobrou nenhum modelo ativo", () => {
     const mortos = [modelo({ modelId: "a", isActive: false })];
     expect(resolverModeloSelecionado(mortos, "a")).toBe("");
+  });
+});
+
+describe("cadeiaDeModelos", () => {
+  const catalogo = [
+    modelo({ modelId: "medio", maxCompletionTokens: 8192 }),
+    modelo({ modelId: "grande", maxCompletionTokens: 65536 }),
+    modelo({ modelId: "pequeno", maxCompletionTokens: 4096 }),
+    modelo({ modelId: "aposentado", isActive: false, maxCompletionTokens: 65536 }),
+  ];
+
+  it("começa pelo modelo selecionado e segue pela ordem da política", () => {
+    expect(cadeiaDeModelos(catalogo, "pequeno")).toEqual([
+      "pequeno",
+      "grande",
+      "medio",
+    ]);
+  });
+
+  it("não repete o selecionado dentro da cadeia", () => {
+    const cadeia = cadeiaDeModelos(catalogo, "grande");
+    expect(cadeia).toEqual(["grande", "medio", "pequeno"]);
+    expect(new Set(cadeia).size).toBe(cadeia.length);
+  });
+
+  it("ignora o selecionado que não está mais ativo", () => {
+    expect(cadeiaDeModelos(catalogo, "aposentado")).toEqual([
+      "grande",
+      "medio",
+      "pequeno",
+    ]);
+  });
+
+  it("nunca inclui modelo inativo como alternativa", () => {
+    expect(cadeiaDeModelos(catalogo, "grande")).not.toContain("aposentado");
+  });
+
+  it("devolve lista vazia quando não há modelo ativo", () => {
+    expect(cadeiaDeModelos([modelo({ modelId: "a", isActive: false })], "a")).toEqual([]);
+  });
+
+  it("usa a mesma ordem de ordenarPorPolitica", () => {
+    const ordenados = ordenarPorPolitica(catalogo).map((m) => m.modelId);
+    expect(cadeiaDeModelos(catalogo, null)).toEqual(ordenados);
   });
 });
