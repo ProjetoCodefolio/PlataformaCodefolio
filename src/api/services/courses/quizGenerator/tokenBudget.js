@@ -33,7 +33,7 @@ const FOLGA_DE_SAIDA = 1.25;
  * o orçamento inteiro pensando e devolve conteúdo vazio, que chega na tela
  * como "Resposta inesperada da API GROQ".
  */
-const SAIDA_MINIMA = 1024;
+export const SAIDA_MINIMA = 1024;
 
 /**
  * Reserva para os tokens de raciocínio dos modelos que têm a feature

@@ -34,6 +34,7 @@ import {
   isModeloApto,
   escolherPadrao,
 } from "../src/api/services/courses/llmModelPolicy.js";
+import { SAIDA_MINIMA } from "../src/api/services/courses/quizGenerator/tokenBudget.js";
 
 const args = process.argv.slice(2);
 const temFlag = (nome) => args.includes(nome);
@@ -166,7 +167,15 @@ const listarModelosDaGroq = async (chave) => {
  *   - as mensagens PRECISAM conter a palavra "json", senão a resposta é 400
  *     `'messages' must contain the word 'json' in some form`;
  *   - com `max_tokens` apertado a resposta é 400 `json_validate_failed` em vez
- *     de JSON cortado, por isso os 128 tokens de folga.
+ *     de JSON cortado, o que faz orçamento curto parecer modelo incapaz.
+ *
+ * Por isso o canário usa o MESMO piso de saída do gerador, e não um número
+ * próprio. Ele rodou com 128 tokens até 21/09/2026 e aposentou o
+ * openai/gpt-oss-20b, que funcionava: medido nesse dia, o modelo gasta de 64 a
+ * 144 tokens de raciocínio nesta mesma pergunta trivial, dentro do mesmo
+ * `max_tokens`, então passar ou falhar dependia de quanto ele resolvia pensar
+ * (2 de 5 chamadas passavam com 128; 5 de 5 com 1024). O gerador já tinha
+ * aprendido isso; o canário havia ficado de fora da lição.
  */
 const canario = async (chave, modelId) => {
   const inicio = Date.now();
@@ -187,7 +196,7 @@ const canario = async (chave, modelId) => {
           { role: "user", content: 'Devolva o json {"ok":true}' },
         ],
         temperature: 0,
-        max_tokens: 128,
+        max_tokens: SAIDA_MINIMA,
         response_format: { type: "json_object" },
       }),
     });
