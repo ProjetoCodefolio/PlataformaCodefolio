@@ -376,6 +376,20 @@ export const calcularDiff = (registros, aptos, canarios, motivosDeExclusao = new
     // `overrideIsActive` é decisão humana declarada: o sync não encosta.
     if (typeof existente?.overrideIsActive === "boolean") delete campos.isActive;
 
+    // Carimbo de aposentadoria não sobrevive à reativação. Sem isto, um modelo
+    // vivo no seletor carrega o `retiredReason` que explica por que ele saiu
+    // dele, e o registro contradiz a si mesmo do mesmo jeito que um aposentado
+    // carregando um canário ok. `null` apaga o caminho no RTDB.
+    //
+    // Condicionado a `campos.isActive`: quando um humano declarou
+    // `overrideIsActive`, o sync não mexe no estado nem na explicação dele. E
+    // condicionado ao registro ter carimbo, para não escrever dois caminhos
+    // por modelo em toda execução só para apagar nada.
+    if (campos.isActive && (existente?.retiredAt || existente?.retiredReason)) {
+      campos.retiredAt = null;
+      campos.retiredReason = null;
+    }
+
     if (!existente) novos.push({ modelo, campos });
     else atualizados.push({ chave: existente.chave, modelo, campos, antes: existente });
   }

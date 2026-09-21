@@ -287,6 +287,57 @@ describe("aposentadoria por canário", () => {
     expect(aposentados[0].motivo).toBe("canário falhou 3 vezes: json_validate_failed");
   });
 
+  it("limpa o carimbo de aposentadoria ao reativar", () => {
+    const registros = noBanco([
+      {
+        modelId: "voltou",
+        isActive: false,
+        retiredAt: "2026-09-21T17:39:23.553Z",
+        retiredReason: "canário falhou: json_validate_failed",
+      },
+    ]);
+
+    const { atualizados } = calcularDiff(registros, [daGroq("voltou")], canarioOk(["voltou"]));
+
+    expect(atualizados[0].campos.isActive).toBe(true);
+    expect(atualizados[0].campos.retiredAt).toBeNull();
+    expect(atualizados[0].campos.retiredReason).toBeNull();
+  });
+
+  it("não escreve o carimbo em quem nunca foi aposentado", () => {
+    const registros = noBanco([{ modelId: "sempre-vivo", isActive: true }]);
+
+    const { atualizados } = calcularDiff(
+      registros,
+      [daGroq("sempre-vivo")],
+      canarioOk(["sempre-vivo"])
+    );
+
+    expect("retiredAt" in atualizados[0].campos).toBe(false);
+    expect("retiredReason" in atualizados[0].campos).toBe(false);
+  });
+
+  it("não encosta no carimbo de quem tem overrideIsActive declarado", () => {
+    const registros = noBanco([
+      {
+        modelId: "humano-decidiu",
+        isActive: false,
+        overrideIsActive: false,
+        retiredAt: "2026-09-21T17:39:23.553Z",
+        retiredReason: "canário falhou: json_validate_failed",
+      },
+    ]);
+
+    const { atualizados } = calcularDiff(
+      registros,
+      [daGroq("humano-decidiu")],
+      canarioOk(["humano-decidiu"])
+    );
+
+    expect("isActive" in atualizados[0].campos).toBe(false);
+    expect("retiredAt" in atualizados[0].campos).toBe(false);
+  });
+
   it("não inventa canário para quem foi aposentado por outro motivo", () => {
     const registros = noBanco([{ modelId: "sumiu", isActive: true }]);
 
