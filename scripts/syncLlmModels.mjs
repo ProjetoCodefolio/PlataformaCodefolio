@@ -78,12 +78,71 @@ const abortar = (mensagem) => {
 
 // ---------------------------------------------------------------- Groq
 
+/**
+ * Traduz o status HTTP da Groq no que quem lê o resumo do job precisa decidir:
+ * alguém tem de gerar uma chave nova, ou é só esperar a próxima execução.
+ * Sem isso, "devolveu 401" e "devolveu 503" pareciam a mesma notícia, e a
+ * suspeita caía sempre na Groq, que é a hipótese errada nos dois casos mais
+ * comuns (chave revogada e cota estourada).
+ */
+export const diagnosticarStatusDaGroq = (status) => {
+  if (status === 401 || status === 403) {
+    return {
+      causa: "chave inválida, revogada ou sem permissão para este recurso",
+      acao:
+        "gere outra em https://console.groq.com/keys e atualize o .env local e o " +
+        "secret VITE_GROQ_API_KEY do repositório",
+      transitorio: false,
+    };
+  }
+  if (status === 429) {
+    return {
+      causa: "cota ou limite de requisições estourado",
+      acao: "transitório: espere a janela virar; o agendamento de amanhã deve passar",
+      transitorio: true,
+    };
+  }
+  if (status >= 500) {
+    return {
+      causa: "falha do lado da Groq",
+      acao: "transitório: reexecute o job pelo workflow_dispatch ou espere o agendamento",
+      transitorio: true,
+    };
+  }
+  return {
+    causa: "resposta inesperada",
+    acao: "confira o corpo do erro acima e a documentação da Groq",
+    transitorio: false,
+  };
+};
+
+/**
+ * A mensagem de erro da Groq é mais específica que o status ("Invalid API Key"
+ * distingue chave errada de chave certa em projeto errado). Não vaza segredo:
+ * a Groq não devolve a chave enviada.
+ */
+const lerErroDaGroq = async (resposta) => {
+  const corpo = await resposta.text().catch(() => "");
+  if (!corpo) return "";
+  try {
+    return JSON.parse(corpo)?.error?.message || corpo.slice(0, 200);
+  } catch {
+    return corpo.slice(0, 200);
+  }
+};
+
 const listarModelosDaGroq = async (chave) => {
   const resposta = await fetch(`${GROQ_BASE}/models`, {
     headers: { Authorization: `Bearer ${chave}` },
   });
   if (!resposta.ok) {
-    abortar(`GET /models devolveu ${resposta.status}. Nada foi escrito.`);
+    const detalhe = await lerErroDaGroq(resposta);
+    const { causa, acao } = diagnosticarStatusDaGroq(resposta.status);
+    abortar(
+      `GET /models devolveu ${resposta.status}: ${causa}. Nada foi escrito.` +
+        (detalhe ? `\n  resposta da Groq: ${detalhe}` : "") +
+        `\n  o que fazer: ${acao}`
+    );
   }
   const corpo = await resposta.json();
   return Array.isArray(corpo?.data) ? corpo.data : [];
@@ -357,7 +416,16 @@ const main = async () => {
     // catálogo morto. Sem este portão, um problema de credencial aposentaria
     // o catálogo inteiro.
     if (aptos.length > 0 && [...canarios.values()].every((c) => !c.ok)) {
-      abortar("nenhum candidato passou no canário. Chave revogada ou Groq fora do ar.");
+      // O canário já guarda o status de cada falha; ele responde a pergunta
+      // que interessa aqui (chave ou Groq?) melhor que um palpite.
+      const statuses = [...new Set([...canarios.values()].map((c) => c.status))];
+      const vistos = statuses.map((s) => (s === 0 ? "erro de rede" : s)).join(", ");
+      const { causa, acao } = diagnosticarStatusDaGroq(statuses[0]);
+      const mesmaCausa = statuses.length === 1 && statuses[0] > 0;
+      abortar(
+        `nenhum candidato passou no canário (status ${vistos}).` +
+          (mesmaCausa ? `\n  causa: ${causa}\n  o que fazer: ${acao}` : "")
+      );
     }
   }
 

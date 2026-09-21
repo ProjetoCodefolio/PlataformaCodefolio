@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcularDiff } from "./syncLlmModels.mjs";
+import { calcularDiff, diagnosticarStatusDaGroq } from "./syncLlmModels.mjs";
 
 const daGroq = (modelId, extras = {}) => ({
   modelId,
@@ -157,5 +157,25 @@ describe("calcularDiff - campos gravados", () => {
 
   it("sem nenhum aprovado, não elege padrão nenhum", () => {
     expect(calcularDiff({}, [], new Map()).vencedor).toBeNull();
+  });
+});
+
+describe("diagnosticarStatusDaGroq", () => {
+  // A distinção que importa é uma só: alguém precisa agir agora (chave) ou a
+  // próxima execução resolve sozinha (Groq instável, cota estourada).
+  it.each([401, 403])("trata %i como problema de credencial, não transitório", (status) => {
+    const { causa, acao, transitorio } = diagnosticarStatusDaGroq(status);
+
+    expect(transitorio).toBe(false);
+    expect(causa).toMatch(/chave/i);
+    expect(acao).toMatch(/VITE_GROQ_API_KEY/);
+  });
+
+  it.each([429, 500, 503])("trata %i como transitório", (status) => {
+    expect(diagnosticarStatusDaGroq(status).transitorio).toBe(true);
+  });
+
+  it("não chama de transitório um status que não sabe explicar", () => {
+    expect(diagnosticarStatusDaGroq(418).transitorio).toBe(false);
   });
 });
