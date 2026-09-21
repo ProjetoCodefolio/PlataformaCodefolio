@@ -109,6 +109,15 @@ export const diagnosticarStatusDaGroq = (status) => {
       transitorio: true,
     };
   }
+  // O canário usa 0 para "a requisição não chegou a ter resposta" (DNS, TLS,
+  // timeout). Não é veredito sobre o modelo, é ruído de rede.
+  if (!status) {
+    return {
+      causa: "a requisição não chegou a ter resposta (rede)",
+      acao: "transitório: reexecute o job",
+      transitorio: true,
+    };
+  }
   return {
     causa: "resposta inesperada",
     acao: "confira o corpo do erro acima e a documentação da Groq",
@@ -231,6 +240,46 @@ const canario = async (chave, modelId) => {
   }
 };
 
+const TENTATIVAS_DO_CANARIO = 3;
+const PAUSA_ENTRE_TENTATIVAS_MS = 2000;
+
+// Erros que são azar da chamada, não perda de capacidade do modelo.
+// `json_validate_failed` é o caso que motivou isto: no JSON mode da Groq, é o
+// próprio modelo que erra a sintaxe, e isso varia de chamada para chamada.
+const CODIGOS_INSTAVEIS = new Set(["json_validate_failed"]);
+
+const valeRetentar = (resultado) =>
+  CODIGOS_INSTAVEIS.has(resultado.errorCode) ||
+  diagnosticarStatusDaGroq(resultado.status).transitorio;
+
+/**
+ * Aposenta só quem falha de forma consistente.
+ *
+ * Em 21/09/2026 o openai/gpt-oss-20b passou no canário em dois dry-runs e
+ * falhou com `json_validate_failed` no --apply minutos depois: uma chamada
+ * azarada tirou do seletor do professor um modelo que funcionava. Já uma
+ * recusa de verdade (modelo desligado, sem permissão na conta) repete em
+ * todas as tentativas, então a retentativa não esconde nada.
+ *
+ * Erro de credencial NÃO é retentado: a chave não melhora em 2 segundos, e o
+ * portão de "nenhum canário passou" é quem deve falar nesse caso.
+ */
+export const canarioComRetentativa = async (chave, modelId, pausaMs = PAUSA_ENTRE_TENTATIVAS_MS) => {
+  let resultado;
+  for (let tentativa = 1; tentativa <= TENTATIVAS_DO_CANARIO; tentativa += 1) {
+    resultado = { ...(await canario(chave, modelId)), tentativas: tentativa };
+    if (resultado.ok || !valeRetentar(resultado)) return resultado;
+    if (tentativa < TENTATIVAS_DO_CANARIO) {
+      console.log(
+        `  instavel ${modelId}  (${resultado.errorCode} na tentativa ${tentativa}` +
+          ` de ${TENTATIVAS_DO_CANARIO}, retentando)`
+      );
+      await dormir(pausaMs);
+    }
+  }
+  return resultado;
+};
+
 // ---------------------------------------------------------------- banco
 
 /** Dry-run lê pelo REST público; --apply usa o Admin SDK. */
@@ -340,11 +389,22 @@ export const calcularDiff = (registros, aptos, canarios, motivosDeExclusao = new
     const motivoDeMetadado = motivosDeExclusao.get(modelId);
 
     let motivo;
-    if (canarioFalho) motivo = `canário falhou: ${canarioFalho.errorCode}`;
-    else if (motivoDeMetadado) motivo = `não serve para gerar questões: ${motivoDeMetadado}`;
-    else motivo = "ausente na API da Groq";
+    if (canarioFalho) {
+      const vezes = canarioFalho.tentativas > 1 ? ` ${canarioFalho.tentativas} vezes` : "";
+      motivo = `canário falhou${vezes}: ${canarioFalho.errorCode}`;
+    } else if (motivoDeMetadado) {
+      motivo = `não serve para gerar questões: ${motivoDeMetadado}`;
+    } else {
+      motivo = "ausente na API da Groq";
+    }
 
-    aposentados.push({ chave: existente.chave, modelId, motivo });
+    // O canário que falhou vai junto: sem ele, o registro dizia
+    // `retiredReason: "canário falhou"` ao lado de um `canary: {ok: true}` de
+    // dias antes, e quem abrisse para entender por que o modelo saiu do
+    // seletor encontrava o registro se contradizendo. Quem é aposentado por
+    // outro motivo mantém o último canário, que continua sendo a última
+    // observação verdadeira.
+    aposentados.push({ chave: existente.chave, modelId, motivo, canario: canarioFalho || null });
   }
 
   return { novos, atualizados, aposentados, vencedor };
@@ -403,11 +463,12 @@ const main = async () => {
   } else {
     console.log("\n--- canário ---");
     for (const modelo of aptos) {
-      const resultado = await canario(chave, modelo.modelId);
+      const resultado = await canarioComRetentativa(chave, modelo.modelId);
       canarios.set(modelo.modelId, resultado);
       console.log(
         `  ${resultado.ok ? "ok     " : "FALHOU "} ${modelo.modelId}  ${resultado.latencyMs}ms` +
-          (resultado.ok ? "" : `  (${resultado.errorCode})`)
+          (resultado.ok ? "" : `  (${resultado.errorCode})`) +
+          (resultado.tentativas > 1 ? `  [${resultado.tentativas} tentativas]` : "")
       );
       await dormir(PAUSA_ENTRE_CANARIOS_MS);
     }
@@ -421,7 +482,7 @@ const main = async () => {
       const statuses = [...new Set([...canarios.values()].map((c) => c.status))];
       const vistos = statuses.map((s) => (s === 0 ? "erro de rede" : s)).join(", ");
       const { causa, acao } = diagnosticarStatusDaGroq(statuses[0]);
-      const mesmaCausa = statuses.length === 1 && statuses[0] > 0;
+      const mesmaCausa = statuses.length === 1;
       abortar(
         `nenhum candidato passou no canário (status ${vistos}).` +
           (mesmaCausa ? `\n  causa: ${causa}\n  o que fazer: ${acao}` : "")
@@ -496,11 +557,12 @@ const main = async () => {
       escritas[`${k}/${campo}`] = valor;
     }
   }
-  for (const { chave: k, motivo } of aposentados) {
+  for (const { chave: k, motivo, canario: canarioFalho } of aposentados) {
     escritas[`${k}/isActive`] = false;
     escritas[`${k}/isDefault`] = false;
     escritas[`${k}/retiredAt`] = agora();
     escritas[`${k}/retiredReason`] = motivo;
+    if (canarioFalho) escritas[`${k}/canary`] = canarioFalho;
   }
 
   await db.ref("llmModels").update(escritas);

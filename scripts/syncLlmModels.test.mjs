@@ -1,5 +1,9 @@
-import { describe, it, expect } from "vitest";
-import { calcularDiff, diagnosticarStatusDaGroq } from "./syncLlmModels.mjs";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import {
+  calcularDiff,
+  diagnosticarStatusDaGroq,
+  canarioComRetentativa,
+} from "./syncLlmModels.mjs";
 
 const daGroq = (modelId, extras = {}) => ({
   modelId,
@@ -177,5 +181,118 @@ describe("diagnosticarStatusDaGroq", () => {
 
   it("não chama de transitório um status que não sabe explicar", () => {
     expect(diagnosticarStatusDaGroq(418).transitorio).toBe(false);
+  });
+
+  it("trata 0 como rede, que é o que o canário usa quando não houve resposta", () => {
+    expect(diagnosticarStatusDaGroq(0).transitorio).toBe(true);
+  });
+});
+
+describe("canarioComRetentativa", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  // O canário só olha resposta.ok, status, headers, text() e json(), então a
+  // Response do Node serve de dublê sem precisar de biblioteca.
+  const respostaDeErro = (status, code) =>
+    new Response(JSON.stringify({ error: { code } }), { status });
+  const respostaOk = () =>
+    new Response(JSON.stringify({ choices: [{ message: { content: '{"ok":true}' } }] }), {
+      status: 200,
+    });
+
+  const comRespostas = (...respostas) => {
+    const fetchFalso = vi.fn(() => Promise.resolve(respostas.shift()));
+    vi.stubGlobal("fetch", fetchFalso);
+    return fetchFalso;
+  };
+
+  it("passa na segunda quando a primeira falha por instabilidade do JSON mode", async () => {
+    const fetchFalso = comRespostas(respostaDeErro(400, "json_validate_failed"), respostaOk());
+
+    const resultado = await canarioComRetentativa("chave", "modelo", 0);
+
+    expect(resultado.ok).toBe(true);
+    expect(resultado.tentativas).toBe(2);
+    expect(fetchFalso).toHaveBeenCalledTimes(2);
+  });
+
+  it("desiste depois de três tentativas quando a falha é consistente", async () => {
+    const instavel = "json_validate_failed";
+    const fetchFalso = comRespostas(
+      respostaDeErro(400, instavel),
+      respostaDeErro(400, instavel),
+      respostaDeErro(400, instavel)
+    );
+
+    const resultado = await canarioComRetentativa("chave", "modelo", 0);
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.tentativas).toBe(3);
+    expect(fetchFalso).toHaveBeenCalledTimes(3);
+  });
+
+  it("não retenta recusa definitiva: modelo desligado não volta em 2 segundos", async () => {
+    const fetchFalso = comRespostas(respostaDeErro(404, "model_not_found"));
+
+    const resultado = await canarioComRetentativa("chave", "modelo", 0);
+
+    expect(resultado.ok).toBe(false);
+    expect(resultado.tentativas).toBe(1);
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+  });
+
+  it("não retenta erro de credencial, que é assunto do portão do canário", async () => {
+    const fetchFalso = comRespostas(respostaDeErro(401, "invalid_api_key"));
+
+    await canarioComRetentativa("chave", "modelo", 0);
+
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("aposentadoria por canário", () => {
+  const canarioFalho = (extras = {}) => ({
+    ok: false,
+    at: "2026-09-21T17:39:23.553Z",
+    status: 400,
+    errorCode: "json_validate_failed",
+    latencyMs: 511,
+    ...extras,
+  });
+
+  it("guarda no registro o canário que causou a aposentadoria", () => {
+    const registros = noBanco([{ modelId: "caiu", isActive: true }]);
+    const canario = canarioFalho();
+
+    const { aposentados } = calcularDiff(
+      registros,
+      [daGroq("caiu")],
+      new Map([["caiu", canario]])
+    );
+
+    expect(aposentados[0].canario).toEqual(canario);
+  });
+
+  it("diz quantas tentativas falharam quando houve retentativa", () => {
+    const registros = noBanco([{ modelId: "caiu", isActive: true }]);
+
+    const { aposentados } = calcularDiff(
+      registros,
+      [daGroq("caiu")],
+      new Map([["caiu", canarioFalho({ tentativas: 3 })]])
+    );
+
+    expect(aposentados[0].motivo).toBe("canário falhou 3 vezes: json_validate_failed");
+  });
+
+  it("não inventa canário para quem foi aposentado por outro motivo", () => {
+    const registros = noBanco([{ modelId: "sumiu", isActive: true }]);
+
+    const { aposentados } = calcularDiff(registros, [], new Map());
+
+    expect(aposentados[0].motivo).toBe("ausente na API da Groq");
+    expect(aposentados[0].canario).toBeNull();
   });
 });
