@@ -30,9 +30,8 @@ import {
   isQuizLocked,
   getQuizWindowState,
   getQuizWindowMessage,
-  formatQuizDate,
 } from "$api/services/courses/quizWindow";
-import { formatTimeRemaining } from "$api/services/courses/assignments";
+import QuizDeadlineChip from "$components/courses/quiz/QuizDeadlineChip";
 
 const VideoList = ({
   videos,
@@ -305,25 +304,6 @@ const VideoList = ({
                           ? "Quiz bloqueado 🔒"
                           : "Quiz pendente"}
                       </Typography>
-                      {/* Prazo só interessa a quem ainda não passou: uma vez
-                          concluído ou bloqueado, a data de fechamento deixa de
-                          ser acionável. */}
-                      {!video.quizPassed &&
-                        !quizLocked &&
-                        quizWindowState === "open" &&
-                        quizConfig?.closeDate && (
-                          <Typography
-                            variant="caption"
-                            sx={{
-                              color: "#9041c1",
-                              fontWeight: 500,
-                              display: { xs: "none", sm: "block" },
-                            }}
-                          >
-                            Encerra {formatTimeRemaining(quizConfig.closeDate)}{" "}
-                            · {formatQuizDate(quizConfig.closeDate)}
-                          </Typography>
-                        )}
                       {onReviewQuiz &&
                         userQuizAttempts[getQuizKey(video.quizId)]
                           ?.attemptCount > 0 && (
@@ -348,6 +328,16 @@ const VideoList = ({
                           </Typography>
                         )}
                     </>
+                  )}
+                  {/* Prazo só interessa a quem ainda não passou. Vale também
+                      para o item atual, para slides, no celular e para quiz
+                      ainda não liberado pelo vídeo: assistir é o caminho até
+                      ele, então o prazo continua acionável. */}
+                  {video.quizId && !locked && !video.quizPassed && (
+                    <QuizDeadlineChip
+                      quizConfig={quizConfig}
+                      sx={{ mt: 0.5 }}
+                    />
                   )}
                 </Box>
                 {completed && (

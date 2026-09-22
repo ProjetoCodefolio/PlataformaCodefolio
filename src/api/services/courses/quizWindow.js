@@ -131,6 +131,30 @@ export const getQuizWindowMessage = (quiz, now = new Date()) => {
   return null;
 };
 
+// Limiares de urgência do prazo de fechamento, usados para colorir o aviso.
+const DEADLINE_URGENT_MS = 24 * 60 * 60 * 1000;
+const DEADLINE_SOON_MS = 3 * DEADLINE_URGENT_MS;
+
+/**
+ * Próximo marco da janela que interessa ao aluno, para o aviso de prazo:
+ * - quiz agendado → quando abre;
+ * - quiz aberto com data de fechamento → quando fecha, com a urgência;
+ * - sem fechamento ou já encerrado → null (não há prazo a avisar).
+ * @returns {{kind:'opens'|'closes', date:string, urgency:'normal'|'soon'|'urgent'|null}|null}
+ */
+export const getQuizDeadline = (quiz, now = new Date()) => {
+  const state = getQuizWindowState(quiz, now);
+  if (state === "scheduled") {
+    return { kind: "opens", date: normalizeQuizDate(quiz?.openDate), urgency: null };
+  }
+  const closeDate = normalizeQuizDate(quiz?.closeDate);
+  if (state !== "open" || !closeDate) return null;
+  const remaining = new Date(closeDate).getTime() - now.getTime();
+  const urgency =
+    remaining < DEADLINE_URGENT_MS ? "urgent" : remaining < DEADLINE_SOON_MS ? "soon" : "normal";
+  return { kind: "closes", date: closeDate, urgency };
+};
+
 /**
  * Verifica se o usuário atingiu o limite máximo de tentativas para um determinado quiz
  * @param {Object} userQuizAttempts - Tentativas de quiz do usuário

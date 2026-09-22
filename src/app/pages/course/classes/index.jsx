@@ -42,6 +42,7 @@ import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 import AssignmentList from "$components/courses/assignments/AssignmentList";
 import QuestionFormModal from "$components/courses/questions/QuestionFormModal";
 import QuizAnswersReview from "$components/courses/quiz/QuizAnswersReview";
+import QuizDeadlineChip from "$components/courses/quiz/QuizDeadlineChip";
 
 import { useCourseIdentity } from "./hooks/useCourseIdentity";
 import { useCourseAccess } from "./hooks/useCourseAccess";
@@ -181,6 +182,16 @@ const Classes = ({ alias = null, openQuestions = false }) => {
     slides: courseContent.slides,
     setShowQuiz: quizFlow.setShowQuiz,
   });
+
+  // Item cujo quiz está "em tela": o slide aberto no player de slides ou,
+  // fora dele, o conteúdo atual. Buscado em contentItems para ter quizPassed.
+  const playerQuizItem =
+    slideNav.shouldShowSlidePlayer && slideNav.activeSlide
+      ? contentItems.find((item) => item.id === slideNav.activeSlide.id) ||
+        slideNav.activeSlide
+      : currentVideo;
+  const getQuizKey = (quizId) =>
+    quizId?.includes("/") ? quizId.split("/")[1] : quizId;
 
   const studentQuestions = useStudentQuestions({
     openQuestions,
@@ -544,6 +555,15 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                     hasSlide={slideNav.hasSlide(currentVideo?.id)}
                     onOpenSlide={slideNav.handleOpenSlide}
                   />
+                )}
+                {/* Prazo do quiz do item em tela, junto do player: é para
+                    onde o aluno está olhando enquanto assiste. */}
+                {playerQuizItem?.quizId && !playerQuizItem.quizPassed && (
+                  <Box sx={{ px: { xs: 1, sm: 2 }, pt: 1 }}>
+                    <QuizDeadlineChip
+                      quizConfig={quizSettings[getQuizKey(playerQuizItem.quizId)]}
+                    />
+                  </Box>
                 )}
               </Box>
             ) : (

@@ -12,6 +12,7 @@ const {
   getQuizWindowState,
   getQuizWindowMessage,
   persistableQuizSettings,
+  getQuizDeadline,
 } = await import("./quizWindow.js");
 
 const NOW = new Date("2026-07-30T12:00:00.000Z");
@@ -95,5 +96,33 @@ describe("persistableQuizSettings preserva a janela", () => {
     const settings = persistableQuizSettings({ openDate: "", closeDate: "xx" });
     expect(settings).not.toHaveProperty("openDate");
     expect(settings).not.toHaveProperty("closeDate");
+  });
+});
+
+describe("getQuizDeadline", () => {
+  const inHours = (h) => new Date(NOW.getTime() + h * 3600000).toISOString();
+
+  it("não há prazo sem data de fechamento, nem depois de encerrado", () => {
+    expect(getQuizDeadline({}, NOW)).toBeNull();
+    expect(getQuizDeadline(null, NOW)).toBeNull();
+    expect(getQuizDeadline({ closeDate: PAST }, NOW)).toBeNull();
+  });
+
+  it("quiz agendado avisa quando abre, sem urgência", () => {
+    expect(getQuizDeadline({ openDate: FUTURE, closeDate: FUTURE }, NOW)).toEqual({
+      kind: "opens",
+      date: FUTURE,
+      urgency: null,
+    });
+  });
+
+  it("quiz aberto avisa o fechamento com urgência pelo tempo restante", () => {
+    expect(getQuizDeadline({ closeDate: inHours(100) }, NOW).urgency).toBe("normal");
+    expect(getQuizDeadline({ closeDate: inHours(48) }, NOW).urgency).toBe("soon");
+    expect(getQuizDeadline({ closeDate: inHours(5) }, NOW)).toEqual({
+      kind: "closes",
+      date: inHours(5),
+      urgency: "urgent",
+    });
   });
 });
