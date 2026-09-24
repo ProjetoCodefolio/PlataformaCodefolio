@@ -347,6 +347,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               contentSources.slidesState.map((slide) => ({
                 id: `slide_${slide.id}`,
                 title: slide.title,
+                publishAt: slide.publishAt || "",
               }))
         }
         existingQuizIds={(creationForm.activeTab === 0 ? catalog.quizzes : catalog.slideQuizzes).map(

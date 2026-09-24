@@ -16,6 +16,7 @@ import { fetchCourseContentItems } from "./content";
 import { fetchFlippedClassroomVideos } from "./submissions";
 import { fetchCourseQuizzes, fetchCourseVideosForQuiz } from "./quizFetch";
 import { normalizeDiagnosticFlag, persistableQuizSettings } from "./quizWindow";
+import { publishAtToPersist } from "./publication";
 
 /**
  * Monta o rótulo legível de cada alvo de quiz de um curso (vídeo, slide ou
@@ -139,6 +140,8 @@ export const buildImportedQuiz = ({
  * @param {string} params.targetCourseId - curso de destino
  * @param {string} params.targetContentId - vídeo/slide do destino que recebe o quiz
  * @param {boolean} [params.copySettings] - trazer nota mínima, tentativas e diagnóstico
+ * @param {string} [params.publishAt] - publicação programada do quiz no destino
+ *   (nunca vem da origem: data de outro semestre não serve aqui)
  * @returns {Promise<Object>} - quiz criado no destino
  */
 export const importQuizFromCourse = async ({
@@ -147,6 +150,7 @@ export const importQuizFromCourse = async ({
   targetCourseId,
   targetContentId,
   copySettings = true,
+  publishAt,
 }) => {
   if (!sourceCourseId || !sourceQuizId) {
     throw new Error("Selecione o curso e o questionário de origem");
@@ -177,6 +181,8 @@ export const importQuizFromCourse = async ({
     targetContentId,
     copySettings,
   });
+  const agenda = publishAtToPersist(publishAt);
+  if (agenda) novoQuiz.publishAt = agenda;
 
   await set(destinoRef, novoQuiz);
   return novoQuiz;
