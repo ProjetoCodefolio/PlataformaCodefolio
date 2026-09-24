@@ -1,6 +1,6 @@
 # Plano: notificar na hora da publicação programada
 
-Status: **não implementado**. Escrito em 24/09/2026. Continua o `plano_programar_publicacao.md` (substitui o esboço da seção 6 dele).
+Status: **parcial (24/09/2026)**. Feitos os commits 1, 2 e 4 da seção 8 (texto compartilhado, fila e cron), testados no emulador e com `wrangler dev`. Faltam a conta de serviço (seção 3, sem ela o cron de produção não roda), o script de preenchimento (seção 5) e o wizard. Escrito em 24/09/2026. Continua o `plano_programar_publicacao.md` (substitui o esboço da seção 6 dele).
 
 ## Por que
 
