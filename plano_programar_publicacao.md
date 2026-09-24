@@ -1,6 +1,6 @@
 # Plano: programar publicação de conteúdo, material e quiz
 
-Status: **não implementado**. Escrito em 24/09/2026.
+Status: **implementado em 24/09/2026** na branch `feat/programar-publicacao` (commits da seção 9). As três decisões da seção 7 foram aceitas como recomendado. A notificação na data (seção 6) continua fora. Escrito em 24/09/2026.
 
 ## Por que
 
