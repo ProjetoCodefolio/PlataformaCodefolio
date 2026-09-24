@@ -70,6 +70,9 @@ import { useAuth } from "$context/AuthContext";
 import { useScrollToForm } from "$utils/useScrollToForm";
 import ImportContentModal from "$components/courses/import/ImportContentModal";
 import { notifyNewContent } from "$api/services/notifications";
+import { isScheduled } from "$api/services/courses/publication";
+import PublishAtField from "$components/courses/publication/PublishAtField";
+import ScheduledChip from "$components/courses/publication/ScheduledChip";
 
 const PURPLE = "#9041c1";
 
@@ -200,6 +203,8 @@ const SortableContentItem = ({ item, index, onEdit, onDelete }) => {
         )
       )}
 
+      <ScheduledChip publishAt={item.publishAt} sx={{ mr: 1.5 }} />
+
       <ListItemText
         primary={`${index + 1}. ${item.title}`}
         primaryTypographyProps={{
@@ -225,6 +230,7 @@ const emptyForm = {
   url: "",
   description: "",
   requiresPrevious: false,
+  publishAt: "",
 };
 
 /**
@@ -290,6 +296,7 @@ const CourseContentTab = ({ courseId }) => {
           url: it.url,
           description: it.description || "",
           requiresPrevious: !!it.requiresPrevious,
+          publishAt: it.publishAt || "",
         };
       });
       legacyVideos.forEach((v) => {
@@ -299,6 +306,7 @@ const CourseContentTab = ({ courseId }) => {
           url: v.url || "",
           description: v.description || "",
           requiresPrevious: !!v.requiresPrevious,
+          publishAt: v.publishAt || "",
         };
       });
       legacySlides.forEach((s) => {
@@ -308,6 +316,7 @@ const CourseContentTab = ({ courseId }) => {
           url: s.url || "",
           description: s.description || "",
           requiresPrevious: false,
+          publishAt: s.publishAt || "",
         };
       });
       setFullById(map);
@@ -386,10 +395,16 @@ const CourseContentTab = ({ courseId }) => {
       } else {
         // Itens novos são sempre criados na nova collection unificada.
         const created = await addCourseContent(courseId, form);
-        toast.success("Conteúdo adicionado com sucesso!");
-        // Sem await de propósito: notifica os alunos matriculados em segundo
-        // plano (in-app) — notifyNewContent já engole os próprios erros.
-        notifyNewContent(courseId, created);
+        // Item programado não avisa ninguém: a notificação na hora revelaria o
+        // que o professor quis esconder até a data.
+        if (isScheduled(created.publishAt)) {
+          toast.success("Conteúdo programado! Os alunos só vão vê-lo na data escolhida.");
+        } else {
+          toast.success("Conteúdo adicionado com sucesso!");
+          // Sem await de propósito: notifica os alunos matriculados em segundo
+          // plano (in-app) — notifyNewContent já engole os próprios erros.
+          notifyNewContent(courseId, created);
+        }
       }
       resetForm();
       await loadContent();
@@ -410,6 +425,7 @@ const CourseContentTab = ({ courseId }) => {
       url: full.url,
       description: full.description || "",
       requiresPrevious: !!full.requiresPrevious,
+      publishAt: full.publishAt || "",
     });
     setIsEditing(true);
     setEditingId(item.id);
@@ -592,6 +608,13 @@ const CourseContentTab = ({ courseId }) => {
             }
             label="Exige conclusão do conteúdo anterior"
             sx={{ "& .MuiFormControlLabel-label": { color: "#666" } }}
+          />
+        </Grid>
+
+        <Grid item xs={12} sm={8} md={6}>
+          <PublishAtField
+            value={form.publishAt}
+            onChange={(publishAt) => setForm((f) => ({ ...f, publishAt }))}
           />
         </Grid>
       </Grid>
