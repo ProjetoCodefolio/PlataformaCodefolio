@@ -47,6 +47,7 @@ import { ref, get, push, set, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
 import { updateAllUsersCourseProgress } from "./courses";
 import { getNextContentOrder } from "./contentOrder";
+import { publishAtToPersist } from "./publication";
 
 /**
  * Valida se uma URL é uma URL válida do YouTube
@@ -224,7 +225,10 @@ export const updateCourseVideo = async (courseId, videoId, videoData) => {
       title: videoData.title.trim(),
       url: videoData.url.trim(),
       description: String(videoData.description || ""),
-      requiresPrevious: videoData.requiresPrevious
+      requiresPrevious: videoData.requiresPrevious,
+      ...(videoData.publishAt !== undefined && {
+        publishAt: publishAtToPersist(videoData.publishAt),
+      }),
     };
     
     await update(videoRef, video);

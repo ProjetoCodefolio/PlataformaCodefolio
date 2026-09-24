@@ -97,6 +97,11 @@ describe("persistableQuizSettings preserva a janela", () => {
     expect(settings).not.toHaveProperty("openDate");
     expect(settings).not.toHaveProperty("closeDate");
   });
+
+  it("preserva o publishAt, senão editar uma questão apagaria a agenda", () => {
+    expect(persistableQuizSettings({ publishAt: FUTURE }).publishAt).toBe(FUTURE);
+    expect(persistableQuizSettings({ publishAt: "" })).not.toHaveProperty("publishAt");
+  });
 });
 
 describe("getQuizDeadline", () => {

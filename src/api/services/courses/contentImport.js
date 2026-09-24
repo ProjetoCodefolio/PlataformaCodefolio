@@ -15,6 +15,7 @@
 // aluno de outra turma, não material do professor.
 
 import { ref, get, push, update } from "firebase/database";
+import { normalizePublishAt } from "./publication";
 import { database } from "../../config/firebase";
 import { validateContentUrl } from "./content";
 import { getNextContentOrder } from "./contentOrder";
@@ -64,6 +65,7 @@ const normalizarItem = (id, raw, categoriaPadrao) => {
     description: String(raw?.description || ""),
     requiresPrevious: !!raw?.requiresPrevious,
     order: typeof raw?.order === "number" ? raw.order : undefined,
+    publishAt: normalizePublishAt(raw?.publishAt),
   };
 };
 

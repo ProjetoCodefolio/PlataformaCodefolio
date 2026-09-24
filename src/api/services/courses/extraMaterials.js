@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 import { database } from "../../config/firebase";
 import { ref, get, set, push, remove } from "firebase/database";
+import { normalizePublishAt, publishAtToPersist } from "./publication";
 
 /**
  * Busca materiais extras de um curso específico
@@ -26,6 +27,7 @@ export const fetchCourseMaterials = async (courseId) => {
       name: material.name || "Material sem nome",
       url: material.url || "",
       courseId: material.courseId,
+      publishAt: normalizePublishAt(material.publishAt),
     }));
 
     return materialsArray;
@@ -54,7 +56,8 @@ export const addCourseMaterial = async (courseId, materialData) => {
     const material = {
       name: materialData.name.trim(),
       url: materialData.url.trim(),
-      courseId: courseId
+      courseId: courseId,
+      publishAt: publishAtToPersist(materialData.publishAt),
     };
 
     const courseMaterialsRef = ref(database, `courseMaterials/${courseId}`);
@@ -85,10 +88,13 @@ export const updateCourseMaterial = async (courseId, materialId, materialData) =
       throw new Error("Nome e URL do material são obrigatórios");
     }
     const materialRef = ref(database, `courseMaterials/${courseId}/${materialId}`);
+    // `set` reescreve o nó inteiro: o `publishAt` precisa estar no payload,
+    // senão editar o nome apaga a data de publicação.
     const updatedMaterial = {
       courseId: courseId,
       name: materialData.name.trim(),
-      url: materialData.url.trim()
+      url: materialData.url.trim(),
+      publishAt: publishAtToPersist(materialData.publishAt),
     };
     await set(materialRef, updatedMaterial);
     toast.success("Material atualizado com sucesso!");
@@ -155,10 +161,13 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
 
     // Adicionar ou atualizar materiais
     for (const material of materials) {
+      // `set` reescreve o nó inteiro, e isto roda a cada "Salvar Curso": sem o
+      // `publishAt` aqui, salvar o curso despublicaria a agenda de materiais.
       const materialData = {
         courseId: courseId,
         name: material.name,
         url: material.url,
+        publishAt: publishAtToPersist(material.publishAt),
       };
 
       if (material.id && existingMaterialIds.has(material.id)) {

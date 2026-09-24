@@ -3,6 +3,7 @@ import { ref, set, get, update, remove, push } from "firebase/database";
 
 import { database } from "../../config/firebase";
 import { getNextContentOrder } from "./contentOrder";
+import { publishAtToPersist } from "./publication";
 
 /**
  * Busca slides de um curso específico
@@ -130,6 +131,9 @@ export const updateCourseSlide = async (courseId, slideId, slideData) => {
       title: slideData.title.trim(),
       url: slideData.url.trim(),
       description: String(slideData.description || ""),
+      ...(slideData.publishAt !== undefined && {
+        publishAt: publishAtToPersist(slideData.publishAt),
+      }),
     };
 
     const slideRef = ref(database, `courseSlides/${courseId}/${slideId}`);
