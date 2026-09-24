@@ -1,6 +1,7 @@
 import { database } from '../../config/firebase';
 import { ref, get, set, update, remove } from 'firebase/database';
 import { isDiscipline, isCourseClosed } from './courseType';
+import { toStudentView } from './publication';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -82,8 +83,11 @@ export const updateCourseProgress = async (userId, courseId, videos = []) => {
 
   try {
     // Deduplica por id; em caso de duplicata, prevalece a versão "mais concluída".
+    // Item programado não conta (nem no total), e quiz programado não é
+    // exigido: o progresso é sempre o do que o aluno consegue ver, mesmo quando
+    // quem chama é o professor com a lista completa na tela.
     const contentById = new Map();
-    for (const item of videos) {
+    for (const item of toStudentView(videos)) {
       if (!item || item.isIndependent || item.id == null) continue;
       const prev = contentById.get(item.id);
       if (!prev || (isContentCompleted(item) && !isContentCompleted(prev))) {

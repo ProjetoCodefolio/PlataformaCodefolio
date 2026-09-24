@@ -14,6 +14,11 @@ import {
 import { updateCourseProgress } from "$api/services/courses/students";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import { loadFlippedClassroomForStudent } from "$api/services/courses/submissions";
+import {
+  annotatePublication,
+  toStudentView,
+  filterPublished,
+} from "$api/services/courses/publication";
 
 /**
  * Carregamento de conteúdo do curso (vídeos novos + legado + slides +
@@ -158,9 +163,31 @@ export function useCourseContent({
           return String(a?.id).localeCompare(String(b?.id));
         });
 
+        // Configuração dos quizzes (tentativas, janela e publicação). Vem antes
+        // de montar a lista porque a data de publicação do quiz decide se ele
+        // aparece para o aluno.
+        let quizzesMap = {};
+        try {
+          quizzesMap = (await fetchCourseQuizzes(courseId)) || {};
+          setQuizSettings(quizzesMap);
+        } catch (quizSettingsError) {
+          console.error(
+            "Erro ao carregar configurações de tentativas dos quizzes:",
+            quizSettingsError
+          );
+        }
+
+        // Publicação programada: o aluno não vê o item antes da data. Quem
+        // conduz a turma (dono, co-professor, admin) vê tudo, com o selo
+        // "Programado", para conferir o semestre sem conta de aluno. O
+        // progresso é sempre o do aluno, com ou sem os itens programados na tela.
+        const annotated = annotatePublication(combinedContent, quizzesMap);
+        const studentContent = toStudentView(annotated);
+        const visibleContent = canAccessArchived ? annotated : studentContent;
+
         setCourseTitle(courseData.courseTitle);
         setCourseOwnerUid(courseData.courseOwnerUid);
-        setVideos(combinedContent);
+        setVideos(visibleContent);
 
         // Recalcula o progresso do curso com a lista completa: todo o conteúdo
         // (vídeos novos/legados/entrega + slides), exceto itens independentes.
@@ -173,10 +200,10 @@ export function useCourseContent({
         // rebaixado (e poderia virar completed→in_progress). Neste caso pulamos a
         // gravação; o valor é reconciliado no próximo carregamento bem-sucedido.
         if (userDetails?.userId) {
-          const progressVideos = combinedContent.filter(
+          const progressVideos = studentContent.filter(
             (v) => v && !v.isIndependent
           );
-          const progressReliable = combinedContent.every(
+          const progressReliable = studentContent.every(
             (v) => !v?.progressError
           );
           if (progressReliable) {
@@ -185,23 +212,12 @@ export function useCourseContent({
         }
         setUserAttempts(courseData.userQuizzesResults);
 
-        // Carrega a configuração de tentativas de cada quiz do curso (usada para
-        // bloquear o início/repetição de quizzes que atingiram o limite).
-        try {
-          const quizzesMap = await fetchCourseQuizzes(courseId);
-          setQuizSettings(quizzesMap || {});
-        } catch (quizSettingsError) {
-          console.error(
-            "Erro ao carregar configurações de tentativas dos quizzes:",
-            quizSettingsError
-          );
-        }
-
         // Um `?videoId=` inexistente (link antigo, conteúdo excluído) não pode
         // deixar a sala presa numa tela vazia: nesse caso vale a escolha padrão.
+        // Vale também para link de notificação que aponta para item programado.
         const idAtualValido =
           currentVideoId &&
-          combinedContent.some((item) => item?.id === currentVideoId);
+          visibleContent.some((item) => item?.id === currentVideoId);
 
         if (!idAtualValido) {
           // O item inicial deve respeitar a ORDEM GLOBAL da lista combinada
@@ -209,14 +225,15 @@ export function useCourseContent({
           // vídeos legados — senão o aluno abre no vídeo que "antigamente" era o
           // primeiro, ignorando a reordenação. Escolhe o primeiro item ainda não
           // concluído; se todos estiverem concluídos, o primeiro da lista.
-          const firstUnfinished = combinedContent.find(
+          const firstUnfinished = visibleContent.find(
             (item) =>
               item &&
               !item.isIndependent &&
+              !item.scheduled &&
               (!item.watched || (item.quizId && !item.quizPassed))
           );
           setCurrentVideoId(
-            firstUnfinished?.id || combinedContent[0]?.id || null
+            firstUnfinished?.id || visibleContent[0]?.id || null
           );
         }
       } catch (error) {
@@ -331,7 +348,13 @@ export function useCourseContent({
             })
           );
 
-          setSlides(slidesWithQuizInfo);
+          // Mesmo critério da lista principal: o aluno não navega até slide
+          // programado; quem conduz a turma navega por todos.
+          setSlides(
+            canRunCourse(userDetails, courseOwnerUid, courseId)
+              ? slidesWithQuizInfo
+              : filterPublished(slidesWithQuizInfo)
+          );
         }
       } catch (error) {
         console.error("Erro ao carregar slides:", error);
@@ -339,7 +362,7 @@ export function useCourseContent({
     };
 
     loadSlides();
-  }, [courseId, accessGranted]);
+  }, [courseId, accessGranted, courseOwnerUid, userDetails?.userId]);
 
   // Verifica conclusão do curso quando os vídeos mudam
   useEffect(() => {

@@ -147,3 +147,44 @@ export const buildPublicationSchedule = (
   });
   return schedule;
 };
+
+/** Chave do quiz em `courseQuizzes/{courseId}` a partir do `quizId` do item. */
+const quizKeyOf = (quizId) =>
+  typeof quizId === "string" && quizId.includes("/")
+    ? quizId.split("/").slice(1).join("/")
+    : quizId || null;
+
+/**
+ * Marca cada item da página do curso com o estado de publicação, sem tirar
+ * nada da lista:
+ *  - `scheduled`: o próprio conteúdo ainda não foi publicado;
+ *  - `quizScheduled`: o conteúdo está no ar, mas o quiz dele ainda não.
+ *
+ * As marcas são calculadas UMA vez, na carga. Progresso e conclusão decidem
+ * por elas (`toStudentView`), sem consultar o relógio de novo.
+ *
+ * @param {Array} items - itens já montados para a lista (com `quizId`)
+ * @param {Object} quizzes - mapa de `courseQuizzes/{courseId}`
+ */
+export const annotatePublication = (items, quizzes = {}, now = serverNow()) =>
+  (items || []).map((item) => {
+    if (!item) return item;
+    const quiz = item.quizId ? quizzes?.[quizKeyOf(item.quizId)] : null;
+    return {
+      ...item,
+      scheduled: isScheduled(item.publishAt, now),
+      quizScheduled: !!quiz && isScheduled(effectiveQuizPublishAt(quiz, item), now),
+    };
+  });
+
+/**
+ * O que o ALUNO enxerga: sem os itens programados e, nos itens cujo quiz ainda
+ * não saiu, sem o quiz. Tirar o `quizId` esconde o botão e também tira o quiz
+ * da exigência de conclusão (`isContentCompleted`).
+ */
+export const toStudentView = (items) =>
+  (items || [])
+    .filter((item) => item && !item.scheduled)
+    .map((item) =>
+      item.quizScheduled ? { ...item, quizId: null, quizPassed: false } : item
+    );

@@ -12,6 +12,8 @@ const {
   effectiveQuizPublishAt,
   publishAtToPersist,
   buildPublicationSchedule,
+  annotatePublication,
+  toStudentView,
 } = await import("./publication.js");
 
 const NOW = new Date("2026-03-01T12:00:00.000Z");
@@ -110,5 +112,46 @@ describe("buildPublicationSchedule", () => {
     expect(buildPublicationSchedule(["a"], { start: "" })).toEqual({});
     const s = buildPublicationSchedule(["a", "b"], { start, perSlot: 0 });
     expect(s.a).not.toBe(s.b);
+  });
+});
+
+describe("annotatePublication / toStudentView", () => {
+  const quizzes = {
+    v2: { publishAt: FUTURE },
+    slide_s1: {},
+  };
+  const items = [
+    { id: "v1", quizId: null },
+    { id: "v2", quizId: "curso/v2", quizPassed: true, watched: true },
+    { id: "v3", publishAt: FUTURE },
+    { id: "s1", quizId: "curso/slide_s1", publishAt: PAST },
+  ];
+
+  it("marca conteúdo programado e quiz programado", () => {
+    const a = annotatePublication(items, quizzes, NOW);
+    expect(a.map((i) => [i.id, i.scheduled, i.quizScheduled])).toEqual([
+      ["v1", false, false],
+      ["v2", false, true],
+      ["v3", true, false],
+      ["s1", false, false],
+    ]);
+  });
+
+  it("o quiz herda a data do conteúdo", () => {
+    const a = annotatePublication(
+      [{ id: "v9", quizId: "curso/v9", publishAt: FUTURE }],
+      { v9: {} },
+      NOW
+    );
+    expect(a[0].quizScheduled).toBe(true);
+  });
+
+  it("aluno não vê o programado e perde o quiz ainda não publicado", () => {
+    const view = toStudentView(annotatePublication(items, quizzes, NOW));
+    expect(view.map((i) => i.id)).toEqual(["v1", "v2", "s1"]);
+    const v2 = view.find((i) => i.id === "v2");
+    expect(v2.quizId).toBeNull();
+    expect(v2.quizPassed).toBe(false);
+    expect(view.find((i) => i.id === "s1").quizId).toBe("curso/slide_s1");
   });
 });
