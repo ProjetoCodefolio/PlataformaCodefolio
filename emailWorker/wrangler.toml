@@ -16,6 +16,11 @@ max_retries = 3
 binding = "EMAIL_META"
 id = "3338a6a65e2a4af5925f892567c8d9ee"
 
+# Cron das publicações programadas: de 5 em 5 minutos avisa a turma do que
+# venceu (ver src/publications.js). Sem FIREBASE_DATABASE_URL não faz nada.
+[triggers]
+crons = ["*/5 * * * *"]
+
 [vars]
 FIREBASE_PROJECT_ID = "plataformacodefolio"
 BREVO_SENDER_EMAIL = "projetocodefolio@gmail.com"

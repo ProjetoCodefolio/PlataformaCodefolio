@@ -1,4 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
+import { dbFromEnv } from "./firebaseRest.js";
+import { processDuePublications } from "./publications.js";
 
 // JWKS público do Firebase Auth (tokens de ID assinados pelo secureToken).
 // Fica em cache pelo próprio `jose` entre invocações do mesmo Worker.
@@ -343,6 +345,27 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
+/** Mensagem da fila de e-mail, no formato que o consumidor (`queue`) espera. */
+const toQueueMessage = (job) => ({
+  to: job.to,
+  name: job.name || "",
+  type: job.type,
+  courseId: job.courseId || "",
+  courseTitle: job.courseTitle || "",
+  itemTitle: job.itemTitle || "",
+  link: job.link || "",
+  changes: Array.isArray(job.changes) ? job.changes : [],
+  fields: job.fields && typeof job.fields === "object" ? job.fields : {},
+});
+
+// Em teste local, só os endereços desta lista recebem e-mail de verdade (mesmo
+// papel do VITE_EMAIL_TEST_ALLOWLIST do app). Vazia = todos.
+const allowlistFrom = (env) =>
+  (env.EMAIL_TEST_ALLOWLIST || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
 function withCors(response) {
   for (const [key, value] of Object.entries(CORS_HEADERS)) {
     response.headers.set(key, value);
@@ -402,19 +425,32 @@ export default {
       return withCors(new Response("Missing fields", { status: 400 }));
     }
 
-    await env.EMAIL_QUEUE.send({
-      to: job.to,
-      name: job.name || "",
-      type: job.type,
-      courseId: job.courseId || "",
-      courseTitle: job.courseTitle || "",
-      itemTitle: job.itemTitle || "",
-      link: job.link || "",
-      changes: Array.isArray(job.changes) ? job.changes : [],
-      fields: job.fields && typeof job.fields === "object" ? job.fields : {},
-    });
+    await env.EMAIL_QUEUE.send(toQueueMessage(job));
 
     return withCors(new Response("queued", { status: 202 }));
+  },
+
+  // Cron (`[triggers]` no wrangler.toml): avisa a turma das publicações
+  // programadas que venceram, como se o professor tivesse cadastrado o item
+  // agora. Sem banco configurado (FIREBASE_DATABASE_URL), não faz nada.
+  async scheduled(event, env, ctx) {
+    const db = dbFromEnv(env);
+    if (!db) return;
+
+    const allowlist = allowlistFrom(env);
+    const enqueueEmail = async (job) => {
+      if (allowlist.length && !allowlist.includes(String(job.to).toLowerCase())) {
+        console.warn(`E-mail de teste bloqueado (fora da allowlist): ${job.to}`);
+        return;
+      }
+      await env.EMAIL_QUEUE.send(toQueueMessage(job));
+    };
+
+    ctx.waitUntil(
+      processDuePublications({ db, now: new Date(event.scheduledTime), enqueueEmail }).then(
+        (resumo) => console.log("Publicações programadas:", JSON.stringify(resumo))
+      )
+    );
   },
 
   // Disparado automaticamente pela Cloudflare Queue a cada novo lote — não é
