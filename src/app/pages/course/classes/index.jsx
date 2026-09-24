@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { VideoPlayer } from "$components/courses/videoPlayerClasses";
 import VideoList from "$components/courses/videoList";
 import MaterialExtra from "$components/courses/extraMaterials";
+import { canRunCourse } from "$api/utils/permissions";
 import Quiz from "$components/courses/quiz";
 import Loader from "$components/common/Loader";
 import {
@@ -641,7 +642,14 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                     advancedSettings={advancedSettingsPanel.advancedSettings} // Adicione esta linha
                   />
                 ) : selectedTab === 1 ? (
-                  <MaterialExtra courseId={courseId} />
+                  <MaterialExtra
+                    courseId={courseId}
+                    showScheduled={canRunCourse(
+                      userDetails,
+                      courseContent.courseOwnerUid,
+                      courseId
+                    )}
+                  />
                 ) : userDetails?.userId ? (
                   <AssignmentList courseId={courseId} userId={userDetails.userId} />
                 ) : (

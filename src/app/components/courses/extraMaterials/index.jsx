@@ -13,8 +13,16 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import { toast } from "react-toastify";
 import { useAuth } from "$context/AuthContext";
 import { fetchCourseMaterials } from "$api/services/courses/extraMaterials";
+import { filterPublished } from "$api/services/courses/publication";
+import ScheduledChip from "$components/courses/publication/ScheduledChip";
 
-const MaterialExtra = ({ courseId }) => {
+/**
+ * @param {Object} props
+ * @param {string} props.courseId
+ * @param {boolean} [props.showScheduled] - quem conduz a turma vê também os
+ *   materiais programados (com o selo); o aluno não os recebe.
+ */
+const MaterialExtra = ({ courseId, showScheduled = false }) => {
     const [materials, setMaterials] = useState([]);
     const [loading, setLoading] = useState(false);
     const { userDetails } = useAuth();
@@ -24,7 +32,7 @@ const MaterialExtra = ({ courseId }) => {
             setLoading(true);
             try {
                 const materialsData = await fetchCourseMaterials(courseId);
-                setMaterials(materialsData);
+                setMaterials(showScheduled ? materialsData : filterPublished(materialsData));
             } catch (error) {
                 console.error("Erro ao buscar materiais extras:", error);
                 toast.error("Erro ao carregar os materiais extras");
@@ -34,7 +42,7 @@ const MaterialExtra = ({ courseId }) => {
         };
 
         loadMaterials();
-    }, [courseId]);
+    }, [courseId, showScheduled]);
 
     return (
         <Box sx={{ p: { xs: 1, sm: 2 }, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
@@ -94,6 +102,7 @@ const MaterialExtra = ({ courseId }) => {
                             >
                                 {material.name}
                             </Typography>
+                            <ScheduledChip publishAt={material.publishAt} />
                         </CardContent>
                         <CardActions sx={{ px: { xs: 1, sm: 2 }, pb: 2 }}>
                             <Button
