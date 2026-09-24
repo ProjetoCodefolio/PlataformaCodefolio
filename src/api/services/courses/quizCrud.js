@@ -8,6 +8,7 @@ import {
   persistableQuizSettings,
 } from "./quizWindow";
 import { publishAtToPersist, normalizePublishAt } from "./publication";
+import { queueEntryKey, syncPublicationQueueForQuiz } from "./publicationQueue";
 
 /**
  * ==============================
@@ -64,6 +65,7 @@ export const addQuiz = async (
     };
 
     await set(quizRef, newQuiz);
+    await syncPublicationQueueForQuiz(courseId, videoId);
     return newQuiz;
   } catch (error) {
     console.error("Erro ao adicionar quiz:", error);
@@ -94,6 +96,8 @@ export const removeQuiz = async (courseId, videoId) => {
     updates[`liveQuizResults/${courseId}/${videoId}`] = null;
     updates[`openEndedAnswers/${courseId}/${videoId}`] = null;
     updates[`quizGigi/${courseId}/${videoId}`] = null;
+    // Quiz excluído não deve mais aviso nenhum.
+    updates[`publicationQueue/${queueEntryKey(courseId, "quiz", videoId)}`] = null;
 
     // Resultados por usuário: quizResults/{userId}/{courseId}/{quizId}
     const quizResultsSnapshot = await get(ref(database, `quizResults`));
@@ -303,6 +307,7 @@ export const updateQuizSchedule = async (
       closeDate: normalizedClose || null,
       ...publishUpdate,
     });
+    if (publishAt !== undefined) await syncPublicationQueueForQuiz(courseId, quiz.videoId);
 
     return updatedQuiz;
   } catch (error) {
@@ -326,6 +331,7 @@ export const updateQuizPublishAt = async (courseId, quizKey, publishAt) => {
   await update(ref(database, `courseQuizzes/${courseId}/${quizKey}`), {
     publishAt: publishAtToPersist(publishAt),
   });
+  await syncPublicationQueueForQuiz(courseId, quizKey);
 };
 
 /**

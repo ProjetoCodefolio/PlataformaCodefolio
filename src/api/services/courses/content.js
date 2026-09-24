@@ -16,6 +16,7 @@ import { getNextContentOrder } from "./contentOrder";
 import { isValidYouTubeUrl } from "./videos";
 import { prepareSlideUrl } from "./slides";
 import { publishAtToPersist, normalizePublishAt } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 
 export const CONTENT_CATEGORIES = ["video", "slide"];
 
@@ -140,6 +141,8 @@ export const addCourseContent = async (courseId, data) => {
   const item = { ...payload, order };
 
   await set(contentRef, item);
+  // Item programado entra na fila: a turma é avisada na hora da publicação.
+  await syncPublicationQueue(courseId, { contentId: contentRef.key });
   return { ...item, id: contentRef.key };
 };
 
@@ -163,6 +166,7 @@ export const updateCourseContent = async (courseId, contentId, data) => {
 
   // `update` preserva o campo `order` (não incluído no payload).
   await update(ref(database, `courseContent/${courseId}/${contentId}`), payload);
+  await syncPublicationQueue(courseId, { contentId });
   return { ...payload, id: contentId };
 };
 
@@ -192,6 +196,7 @@ export const deleteCourseContent = async (courseId, contentId) => {
   }
 
   await remove(ref(database, `courseContent/${courseId}/${contentId}`));
+  await syncPublicationQueue(courseId, { contentId });
   return true;
 };
 

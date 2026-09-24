@@ -16,6 +16,7 @@
 
 import { ref, get, push, update } from "firebase/database";
 import { normalizePublishAt, publishAtToPersist } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 import { database } from "../../config/firebase";
 import { validateContentUrl } from "./content";
 import { getNextContentOrder } from "./contentOrder";
@@ -226,6 +227,14 @@ export const importContentFromCourse = async ({
   }
 
   await update(ref(database), updates);
+
+  // Itens importados com data entram na fila (o quiz trazido junto também,
+  // na data do conteúdo). A importação em si não avisa ninguém.
+  await Promise.all(
+    imported
+      .filter((item) => item.publishAt)
+      .map((item) => syncPublicationQueue(targetCourseId, { contentId: item.id }))
+  );
 
   return { imported, skipped, quizzes };
 };

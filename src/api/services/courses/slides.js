@@ -4,6 +4,7 @@ import { ref, set, get, update, remove, push } from "firebase/database";
 import { database } from "../../config/firebase";
 import { getNextContentOrder } from "./contentOrder";
 import { publishAtToPersist } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 
 /**
  * Busca slides de um curso específico
@@ -138,6 +139,7 @@ export const updateCourseSlide = async (courseId, slideId, slideData) => {
 
     const slideRef = ref(database, `courseSlides/${courseId}/${slideId}`);
     await update(slideRef, slide);
+    await syncPublicationQueue(courseId, { contentId: slideId, source: "slide" });
 
     return { ...slide, id: slideId };
   } catch (error) {
@@ -160,6 +162,7 @@ export const deleteCourseSlide = async (courseId, slideId) => {
 
     const slideRef = ref(database, `courseSlides/${courseId}/${slideId}`);
     await remove(slideRef);
+    await syncPublicationQueue(courseId, { contentId: slideId, source: "slide" });
 
     return true;
   } catch (error) {

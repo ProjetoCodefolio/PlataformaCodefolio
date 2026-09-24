@@ -17,6 +17,7 @@ import { fetchFlippedClassroomVideos } from "./submissions";
 import { fetchCourseQuizzes, fetchCourseVideosForQuiz } from "./quizFetch";
 import { normalizeDiagnosticFlag, persistableQuizSettings } from "./quizWindow";
 import { publishAtToPersist } from "./publication";
+import { syncPublicationQueueForQuiz } from "./publicationQueue";
 
 /**
  * Monta o rótulo legível de cada alvo de quiz de um curso (vídeo, slide ou
@@ -185,5 +186,6 @@ export const importQuizFromCourse = async ({
   if (agenda) novoQuiz.publishAt = agenda;
 
   await set(destinoRef, novoQuiz);
+  await syncPublicationQueueForQuiz(targetCourseId, targetContentId);
   return novoQuiz;
 };
