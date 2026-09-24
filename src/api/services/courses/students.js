@@ -2,6 +2,7 @@ import { database } from '../../config/firebase';
 import { ref, get, set, update, remove } from 'firebase/database';
 import { isDiscipline, isCourseClosed } from './courseType';
 import { toStudentView } from './publication';
+import { recipientName } from '../../../shared/notificationText.js';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -361,18 +362,6 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
       const userData = usersData[userId];
       if (!userData) return;
 
-      // Derivar o nome de exibição a partir dos dados disponíveis
-      let displayName = "Usuário Desconhecido";
-      if (userData.displayName) {
-        displayName = userData.displayName;
-      } else if (userData.firstName) {
-        displayName = `${userData.firstName} ${userData.lastName || ""}`;
-      } else if (userData.name) {
-        displayName = userData.name;
-      } else if (userData.email) {
-        displayName = userData.email.split("@")[0];
-      }
-
       // Verificar se o usuário é professor deste curso específico
       const isTeacher = userData.coursesTeacher &&
         userData.coursesTeacher[courseId] === true;
@@ -381,7 +370,8 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
       studentsList.push({
         id: userId,
         userId: userId,
-        name: displayName.trim() || "Usuário " + userId.substring(0, 6),
+        // Mesmo critério do aviso de publicação programada (Worker).
+        name: recipientName(userId, userData),
         ...courses[courseId],  // Dados específicos do curso
         ...userData,          // Dados do perfil do usuário (nome, email, etc)
         role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
