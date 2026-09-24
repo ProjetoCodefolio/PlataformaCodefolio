@@ -3,23 +3,7 @@ import { Box, TextField, Typography, InputAdornment } from "@mui/material";
 import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import { formatQuizDate } from "$api/services/courses/quizWindow";
-
-// ISO <-> valor do input datetime-local (horário local do professor).
-const isoToLocalInput = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-};
-
-const localInputToIso = (local) => {
-  if (!local) return "";
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
-};
+import { isoToLocalInput, localInputToIso } from "$utils/dateInput";
 
 /**
  * Janela de disponibilidade de um quiz: data de abertura + data de encerramento,
