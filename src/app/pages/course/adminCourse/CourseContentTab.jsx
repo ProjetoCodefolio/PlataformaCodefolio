@@ -70,9 +70,12 @@ import { useAuth } from "$context/AuthContext";
 import { useScrollToForm } from "$utils/useScrollToForm";
 import ImportContentModal from "$components/courses/import/ImportContentModal";
 import { notifyNewContent } from "$api/services/notifications";
-import { isScheduled } from "$api/services/courses/publication";
+import { isScheduled, planQuizPublicationChange } from "$api/services/courses/publication";
+import { fetchCourseQuizzes } from "$api/services/courses/quizFetch";
+import { updateQuizPublishAt } from "$api/services/courses/quizCrud";
 import PublishAtField from "$components/courses/publication/PublishAtField";
 import ScheduledChip from "$components/courses/publication/ScheduledChip";
+import QuizPublicationChangeDialog from "$components/courses/publication/QuizPublicationChangeDialog";
 
 const PURPLE = "#9041c1";
 
@@ -242,6 +245,10 @@ const CourseContentTab = ({ courseId }) => {
   const { userDetails } = useAuth();
   const [items, setItems] = useState([]); // lista unificada ordenada (nova + legada)
   const [fullById, setFullById] = useState({}); // dados completos p/ edição (nova + legada)
+  // Quizzes do curso, para avisar quando mudar a data de um conteúdo mexe na
+  // data em que o quiz dele aparece.
+  const [quizzesByKey, setQuizzesByKey] = useState({});
+  const [quizPlan, setQuizPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -279,14 +286,16 @@ const CourseContentTab = ({ courseId }) => {
       // Além da lista unificada (para exibir/ordenar), carregamos os dados
       // completos das origens EDITÁVEIS (nova collection + vídeos/slides legados)
       // para popular o formulário de edição. Entregas de alunos não são editáveis.
-      const [unified, contentItems, legacyVideos, legacySlides] =
+      const [unified, contentItems, legacyVideos, legacySlides, quizzes] =
         await Promise.all([
           fetchCourseContent(courseId),
           fetchCourseContentItems(courseId),
           fetchCourseVideos(courseId),
           fetchCourseSlides(courseId),
+          fetchCourseQuizzes(courseId),
         ]);
       setItems(unified);
+      setQuizzesByKey(quizzes || {});
 
       const map = {};
       contentItems.forEach((it) => {
@@ -380,6 +389,32 @@ const CourseContentTab = ({ courseId }) => {
       return;
     }
 
+    // Mudar a data de um conteúdo com quiz pode mudar quando o quiz aparece:
+    // o professor confirma antes, vendo o antes e o depois.
+    if (isEditing && editingId) {
+      const plan = planQuizPublicationChange({
+        quiz: quizzesByKey[quizKeyOfEditing()],
+        oldContentPublishAt: fullById[editingId]?.publishAt || "",
+        newContentPublishAt: form.publishAt,
+      });
+      if (plan) {
+        setQuizPlan(plan);
+        return;
+      }
+    }
+
+    await saveContent();
+  };
+
+  // Chave do quiz do item em edição: slides legados usam o prefixo `slide_`.
+  const quizKeyOfEditing = () =>
+    editingSource === "slide" ? `slide_${editingId}` : editingId;
+
+  /**
+   * Grava o formulário. `keepQuizAt` vem do modal de confirmação quando o
+   * professor antecipou o conteúdo e escolheu manter o quiz na data anterior.
+   */
+  const saveContent = async ({ keepQuizAt = null } = {}) => {
     setSubmitting(true);
     try {
       if (isEditing && editingId) {
@@ -390,6 +425,9 @@ const CourseContentTab = ({ courseId }) => {
           await updateCourseSlide(courseId, editingId, form);
         } else {
           await updateCourseContent(courseId, editingId, form);
+        }
+        if (keepQuizAt) {
+          await updateQuizPublishAt(courseId, quizKeyOfEditing(), keepQuizAt);
         }
         toast.success("Conteúdo atualizado com sucesso!");
       } else {
@@ -413,6 +451,7 @@ const CourseContentTab = ({ courseId }) => {
       toast.error(error.message || "Erro ao salvar o conteúdo");
     } finally {
       setSubmitting(false);
+      setQuizPlan(null);
     }
   };
 
@@ -714,6 +753,17 @@ const CourseContentTab = ({ courseId }) => {
         courseId={courseId}
         existingContent={items}
         onImported={loadContent}
+      />
+
+      <QuizPublicationChangeDialog
+        plan={quizPlan}
+        oldContentPublishAt={
+          isScheduled(fullById[editingId]?.publishAt) ? fullById[editingId].publishAt : ""
+        }
+        newContentPublishAt={isScheduled(form.publishAt) ? form.publishAt : ""}
+        onConfirm={(keepQuizAt) => saveContent({ keepQuizAt })}
+        onCancel={() => setQuizPlan(null)}
+        submitting={submitting}
       />
 
       <Modal open={!!itemToDelete} onClose={() => setItemToDelete(null)}>

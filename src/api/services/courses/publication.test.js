@@ -14,6 +14,7 @@ const {
   buildPublicationSchedule,
   annotatePublication,
   toStudentView,
+  planQuizPublicationChange,
 } = await import("./publication.js");
 
 const NOW = new Date("2026-03-01T12:00:00.000Z");
@@ -153,5 +154,40 @@ describe("annotatePublication / toStudentView", () => {
     expect(v2.quizId).toBeNull();
     expect(v2.quizPassed).toBe(false);
     expect(view.find((i) => i.id === "s1").quizId).toBe("curso/slide_s1");
+  });
+});
+
+describe("planQuizPublicationChange", () => {
+  const plan = (quiz, oldAt, newAt) =>
+    planQuizPublicationChange(
+      { quiz, oldContentPublishAt: oldAt, newContentPublishAt: newAt },
+      NOW
+    );
+
+  it("sem quiz, ou sem mudança para o quiz, não pede confirmação", () => {
+    expect(plan(null, FUTURE, LATER)).toBeNull();
+    expect(plan({}, FUTURE, FUTURE)).toBeNull();
+    // Quiz com data própria mais tarde que as duas datas do conteúdo.
+    expect(plan({ publishAt: "2026-04-30T12:00:00.000Z" }, FUTURE, LATER)).toBeNull();
+    // Troca entre datas passadas: o aluno não percebe diferença.
+    expect(plan({}, PAST, "")).toBeNull();
+  });
+
+  it("adiar o conteúdo leva o quiz junto, sem opção de manter", () => {
+    expect(plan({}, FUTURE, LATER)).toEqual({ before: FUTURE, after: LATER, canKeep: false });
+    expect(plan({}, "", FUTURE)).toEqual({ before: "", after: FUTURE, canKeep: false });
+  });
+
+  it("antecipar o conteúdo permite manter o quiz na data anterior", () => {
+    expect(plan({}, LATER, FUTURE)).toEqual({ before: LATER, after: FUTURE, canKeep: true });
+    expect(plan({}, FUTURE, "")).toEqual({ before: FUTURE, after: "", canKeep: true });
+  });
+
+  it("quiz com data própria entre as duas só anda até a dele", () => {
+    expect(plan({ publishAt: FUTURE }, LATER, "")).toEqual({
+      before: LATER,
+      after: FUTURE,
+      canKeep: true,
+    });
   });
 });

@@ -312,6 +312,23 @@ export const updateQuizSchedule = async (
 };
 
 /**
+ * Grava só a data de publicação de um quiz, sem tocar no resto do nó. Usado
+ * quando o professor antecipa o conteúdo e escolhe manter o quiz na data que
+ * ele já tinha.
+ * @param {string} courseId
+ * @param {string} quizKey - chave em courseQuizzes/{courseId} (`slide_<id>` no slide legado)
+ * @param {string} publishAt - ISO; vazio ou passado limpa a data
+ */
+export const updateQuizPublishAt = async (courseId, quizKey, publishAt) => {
+  if (!courseId || !quizKey) {
+    throw new Error("Parâmetros inválidos para atualizar a publicação do quiz");
+  }
+  await update(ref(database, `courseQuizzes/${courseId}/${quizKey}`), {
+    publishAt: publishAtToPersist(publishAt),
+  });
+};
+
+/**
  * Salva todos os quizzes de um curso
  * @param {string} courseId - ID do curso
  * @param {Array} quizzes - Array de quizzes

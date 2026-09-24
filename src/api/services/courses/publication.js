@@ -188,3 +188,38 @@ export const toStudentView = (items) =>
     .map((item) =>
       item.quizScheduled ? { ...item, quizId: null, quizPassed: false } : item
     );
+
+/**
+ * O que acontece com o quiz de um conteúdo quando a data de publicação do
+ * conteúdo muda. Serve para o professor confirmar, antes de salvar, que o quiz
+ * vai junto (ele segue a data do conteúdo quando não tem data própria mais
+ * tarde).
+ *
+ * Datas já passadas contam como "publicado" (""), para não pedir confirmação
+ * de uma troca que o aluno não percebe.
+ *
+ * @param {Object} params
+ * @param {Object} params.quiz - quiz do conteúdo (com `publishAt` opcional)
+ * @param {string} params.oldContentPublishAt - data gravada hoje no conteúdo
+ * @param {string} params.newContentPublishAt - data do formulário
+ * @returns {null|{before: string, after: string, canKeep: boolean}}
+ *   null quando não há quiz ou quando o quiz continua aparecendo na mesma
+ *   hora. `canKeep` indica que dá para manter o quiz na data anterior (só
+ *   quando o conteúdo foi ANTECIPADO: o quiz nunca aparece antes do conteúdo).
+ */
+export const planQuizPublicationChange = (
+  { quiz, oldContentPublishAt, newContentPublishAt },
+  now = serverNow()
+) => {
+  if (!quiz) return null;
+  const visivel = (iso) => (isScheduled(iso, now) ? normalizePublishAt(iso) : "");
+
+  const before = visivel(effectiveQuizPublishAt(quiz, { publishAt: oldContentPublishAt }));
+  const after = visivel(
+    effectiveQuizPublishAt(quiz, { publishAt: publishAtToPersist(newContentPublishAt, now) })
+  );
+  if (before === after) return null;
+
+  const antecipou = after === "" || (before !== "" && after < before);
+  return { before, after, canKeep: before !== "" && antecipou };
+};
