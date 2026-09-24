@@ -92,7 +92,9 @@ describe.runIf(emuladorNoAr)("regras da fila de publicações", () => {
   });
 
   afterAll(async () => {
-    await comoAdmin("publicationQueue", { method: "DELETE" });
+    for (const key of [chave(CURSO), chave(OUTRO_CURSO)]) {
+      await comoAdmin(`publicationQueue/${key}`, { method: "DELETE" });
+    }
     for (const caminho of [
       `courses/${CURSO}`,
       `courses/${OUTRO_CURSO}`,

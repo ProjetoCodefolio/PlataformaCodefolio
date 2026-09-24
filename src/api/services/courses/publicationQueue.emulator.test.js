@@ -54,7 +54,10 @@ const entradaDe = async (kind, itemKey) => (await fila())[`${CURSO}__${kind}__${
 
 describe.runIf(emuladorNoAr)("fila de publicações", () => {
   beforeEach(async () => {
-    await set(ref(database, "publicationQueue"), null);
+    const atual = (await get(ref(database, "publicationQueue"))).val() || {};
+    for (const key of Object.keys(atual).filter((k) => k.startsWith(`${CURSO}__`))) {
+      await set(ref(database, `publicationQueue/${key}`), null);
+    }
     await set(ref(database, `courseContent/${CURSO}`), null);
     await set(ref(database, `courseQuizzes/${CURSO}`), null);
   });
