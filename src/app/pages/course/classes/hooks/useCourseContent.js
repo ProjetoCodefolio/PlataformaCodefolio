@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { canRunCourse } from "$api/utils/permissions";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
@@ -35,6 +35,10 @@ import {
  * cruzamento de dados de quiz, que depende de `videos` — o próprio estado
  * deste hook): os efeitos daqui só precisam do `.id`, então derivam seu
  * próprio `currentVideo` localmente a partir do `videos` que já possuem.
+ *
+ * `viewAsStudent` ("Ver como aluno"): quem conduz a turma continua com a lista
+ * completa no estado, mas recebe a lista do aluno, sem os programados. O
+ * estado não muda, então desligar o botão devolve tudo sem recarregar.
  */
 export function useCourseContent({
   courseId,
@@ -47,21 +51,46 @@ export function useCourseContent({
   setQuizSettings,
   setShowCompletionModal,
   navigate,
+  viewAsStudent = false,
 }) {
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
   const [courseOwnerUid, setCourseOwnerUid] = useState("");
   const [slides, setSlides] = useState([]);
+  // Quem conduz a turma (dono, co-professor, admin) recebe os itens programados.
+  const [canSeeScheduled, setCanSeeScheduled] = useState(false);
+
+  const verComoAluno = viewAsStudent || !canSeeScheduled;
+  const visibleVideos = useMemo(
+    () => (verComoAluno ? toStudentView(videos) : videos),
+    [videos, verComoAluno]
+  );
+  const visibleSlides = useMemo(
+    () => (verComoAluno ? filterPublished(slides) : slides),
+    [slides, verComoAluno]
+  );
+
+  // Ao ligar "Ver como aluno" com um item programado aberto, ele some da
+  // lista: vai para o primeiro item que o aluno veria.
+  useEffect(() => {
+    if (!currentVideoId || visibleVideos.length === 0) return;
+    if (visibleVideos.some((item) => item?.id === currentVideoId)) return;
+    const firstUnfinished = visibleVideos.find(
+      (item) => item && !item.isIndependent && (!item.watched || (item.quizId && !item.quizPassed))
+    );
+    setCurrentVideoId(firstUnfinished?.id || visibleVideos[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleVideos]);
 
   const currentVideo = videos.find((video) => video.id === currentVideoId);
 
   // Seleciona um vídeo padrão assim que a lista carrega, se nada foi escolhido.
   useEffect(() => {
-    if (!currentVideoId && videos.length > 0) {
-      setCurrentVideoId(videos[0].id);
+    if (!currentVideoId && visibleVideos.length > 0) {
+      setCurrentVideoId(visibleVideos[0].id);
     }
-  }, [videos, currentVideoId]);
+  }, [visibleVideos, currentVideoId]);
 
   // Carrega os dados iniciais do curso
   useEffect(() => {
@@ -187,6 +216,7 @@ export function useCourseContent({
 
         setCourseTitle(courseData.courseTitle);
         setCourseOwnerUid(courseData.courseOwnerUid);
+        setCanSeeScheduled(canAccessArchived);
         setVideos(visibleContent);
 
         // Recalcula o progresso do curso com a lista completa: todo o conteúdo
@@ -383,11 +413,12 @@ export function useCourseContent({
   }, [videos]);
 
   return {
-    videos,
+    videos: visibleVideos,
     setVideos,
     loadingVideos,
     courseTitle,
     courseOwnerUid,
-    slides,
+    slides: visibleSlides,
+    canSeeScheduled,
   };
 }
