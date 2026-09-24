@@ -18,15 +18,15 @@
 
 import { ref, onValue } from "firebase/database";
 import { database } from "../../config/firebase";
+import {
+  normalizePublishAt,
+  isScheduledAt,
+  effectiveQuizPublishAt,
+} from "../../../shared/publicationDates.js";
 
-/**
- * Normaliza um `publishAt` para ISO. Devolve "" quando ausente ou inválido.
- */
-export const normalizePublishAt = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
-};
+// As regras de data vivem num módulo puro, compartilhado com o Worker que
+// avisa a turma na hora da publicação.
+export { normalizePublishAt, effectiveQuizPublishAt };
 
 // Diferença entre o relógio do servidor do Firebase e o do navegador. Sem ela,
 // adiantar o relógio do computador liberaria o vídeo antes da hora.
@@ -60,11 +60,7 @@ export const serverNow = () => {
 /**
  * Indica se o `publishAt` ainda está no futuro (item programado).
  */
-export const isScheduled = (publishAt, now = serverNow()) => {
-  const iso = normalizePublishAt(publishAt);
-  if (!iso) return false;
-  return now.getTime() < new Date(iso).getTime();
-};
+export const isScheduled = (publishAt, now = serverNow()) => isScheduledAt(publishAt, now);
 
 /**
  * Indica se o item já está publicado (sem data ou data já passou).
@@ -78,18 +74,6 @@ export const isPublished = (item, now = serverNow()) =>
  */
 export const filterPublished = (items, now = serverNow()) =>
   (items || []).filter((item) => isPublished(item, now));
-
-/**
- * Data de publicação EFETIVA de um quiz: ele só aparece quando ele e o
- * conteúdo ao qual está preso estiverem publicados, então vale a maior das
- * duas datas. Devolve "" quando nenhuma das duas tem data.
- */
-export const effectiveQuizPublishAt = (quiz, content) => {
-  const datas = [normalizePublishAt(quiz?.publishAt), normalizePublishAt(content?.publishAt)]
-    .filter(Boolean)
-    .sort();
-  return datas.length ? datas[datas.length - 1] : "";
-};
 
 /**
  * Valor a GRAVAR no banco: ISO quando a data está no futuro, `null` quando

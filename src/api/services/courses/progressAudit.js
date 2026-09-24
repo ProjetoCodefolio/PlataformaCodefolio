@@ -10,6 +10,8 @@
 // progresso do aluno fica "órfão": seu id não corresponde a nenhum conteúdo
 // atual do curso, e o item recriado aparece sem o check de assistido.
 
+import { isScheduledAt } from "../../../shared/publicationDates.js";
+
 /**
  * Extrai o id de um vídeo do YouTube de uma URL (watch?v=, youtu.be/, /embed/).
  * @param {string} url
@@ -121,13 +123,6 @@ export const findOrphanProgress = (userCourseProgress = {}, currentIds = new Set
   return orphans;
 };
 
-/** Data válida e ainda no futuro (item programado). Vazio/inválido = publicado. */
-const isFutureDate = (value, now) => {
-  if (!value) return false;
-  const time = new Date(value).getTime();
-  return !Number.isNaN(time) && now.getTime() < time;
-};
-
 /**
  * Recalcula o progresso agregado de um aluno com a MESMA definição do app
  * (updateCourseProgress): considera todo o conteúdo atual exceto slides fora do
@@ -157,13 +152,13 @@ export const recomputeAggregate = (
   for (const item of currentItems) {
     if (!item || item.id == null || seen.has(item.id)) continue;
     seen.add(item.id);
-    if (isFutureDate(item.publishAt, now)) continue;
+    if (isScheduledAt(item.publishAt, now)) continue;
     total += 1;
     const node = userCourseProgress?.[item.id];
     const watched = item.isSlide ? true : isWatchedNode(node);
     const quizPassed =
       quizPassedById[item.id] === true || (node && node.quizPassed === true);
-    const hasQuiz = item.hasQuiz && !isFutureDate(item.quizPublishAt, now);
+    const hasQuiz = item.hasQuiz && !isScheduledAt(item.quizPublishAt, now);
     if (isItemCompleted({ watched, hasQuiz, quizPassed })) {
       completed += 1;
     }
