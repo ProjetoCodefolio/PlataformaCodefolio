@@ -192,6 +192,8 @@ const main = async () => {
               id,
               isSlide: isSlide || item.category === "slide",
               hasQuiz: Object.prototype.hasOwnProperty.call(quizzes, id),
+              publishAt: item.publishAt,
+              quizPublishAt: quizzes[id]?.publishAt,
             });
           }
         });

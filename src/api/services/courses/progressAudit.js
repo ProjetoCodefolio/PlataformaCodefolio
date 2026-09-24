@@ -121,21 +121,35 @@ export const findOrphanProgress = (userCourseProgress = {}, currentIds = new Set
   return orphans;
 };
 
+/** Data válida e ainda no futuro (item programado). Vazio/inválido = publicado. */
+const isFutureDate = (value, now) => {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return !Number.isNaN(time) && now.getTime() < time;
+};
+
 /**
  * Recalcula o progresso agregado de um aluno com a MESMA definição do app
  * (updateCourseProgress): considera todo o conteúdo atual exceto slides fora do
  * denominador? Não — o app conta slides como concluídos e no denominador. Aqui
  * replicamos isso: cada item atual conta; concluído = assistido e (sem quiz ou
  * quiz aprovado). Slides entram como sempre assistidos.
- * @param {Array<{id:string, isSlide:boolean, hasQuiz:boolean}>} currentItems
+ *
+ * Publicação programada, igual ao app (`toStudentView`): item com `publishAt`
+ * no futuro fica fora do total, e quiz com `quizPublishAt` no futuro não é
+ * exigido. Sem isso o script "corrigiria" o progresso de volta para o
+ * denominador cheio.
+ * @param {Array<{id:string, isSlide:boolean, hasQuiz:boolean, publishAt?:string, quizPublishAt?:string}>} currentItems
  * @param {Object} userCourseProgress - id→nó de videoProgress do aluno
  * @param {Object} quizPassedById - id→boolean (aprovação, de quizResults/videoProgress)
+ * @param {Date} [now]
  * @returns {{completed:number, total:number, progress:number}}
  */
 export const recomputeAggregate = (
   currentItems = [],
   userCourseProgress = {},
-  quizPassedById = {}
+  quizPassedById = {},
+  now = new Date()
 ) => {
   const seen = new Set();
   let total = 0;
@@ -143,12 +157,14 @@ export const recomputeAggregate = (
   for (const item of currentItems) {
     if (!item || item.id == null || seen.has(item.id)) continue;
     seen.add(item.id);
+    if (isFutureDate(item.publishAt, now)) continue;
     total += 1;
     const node = userCourseProgress?.[item.id];
     const watched = item.isSlide ? true : isWatchedNode(node);
     const quizPassed =
       quizPassedById[item.id] === true || (node && node.quizPassed === true);
-    if (isItemCompleted({ watched, hasQuiz: item.hasQuiz, quizPassed })) {
+    const hasQuiz = item.hasQuiz && !isFutureDate(item.quizPublishAt, now);
+    if (isItemCompleted({ watched, hasQuiz, quizPassed })) {
       completed += 1;
     }
   }
