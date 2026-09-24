@@ -29,6 +29,7 @@ const PublishAtField = ({
   size = "medium",
   disabled = false,
   helperText,
+  clearable = true,
   sx,
 }) => {
   const agendado = isScheduled(value);
@@ -62,7 +63,7 @@ const PublishAtField = ({
         helperText={hint}
         sx={fieldSx}
       />
-      {value && !disabled && (
+      {clearable && value && !disabled && (
         <Button
           size="small"
           onClick={() => {

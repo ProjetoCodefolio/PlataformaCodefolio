@@ -201,7 +201,8 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
  *
  * @param {string} sourceCourseId - curso de origem
  * @param {string} targetCourseId - curso de destino
- * @param {Array<string>} materialIds - ids dos materiais a importar
+ * @param {Array<string|{materialId: string, publishAt?: string}>} materialIds -
+ *   materiais a importar; na forma de objeto, com a data de publicação programada
  * @returns {Promise<Array>} - materiais criados no destino (com id novo)
  */
 export const importMaterialsFromCourse = async (
@@ -226,7 +227,8 @@ export const importMaterialsFromCourse = async (
     const targetRef = ref(database, `courseMaterials/${targetCourseId}`);
     const importados = [];
 
-    for (const materialId of materialIds) {
+    for (const selecao of materialIds) {
+      const materialId = typeof selecao === "string" ? selecao : selecao?.materialId;
       const material = sourceMaterials[materialId];
       if (!material) continue;
 
@@ -236,6 +238,8 @@ export const importMaterialsFromCourse = async (
         url: (material.url || "").trim(),
       };
       if (!novo.url) continue;
+      const agenda = publishAtToPersist(selecao?.publishAt);
+      if (agenda) novo.publishAt = agenda;
 
       const novoRef = push(targetRef);
       await set(novoRef, novo);
