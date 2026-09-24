@@ -16,10 +16,15 @@ const fieldSx = {
  * Campo "Programar publicação": data a partir da qual o item aparece para o
  * aluno. Vazio = publicado agora. Recebe e devolve ISO; a conversão para o
  * input local é interna.
+ *
+ * `onBlur(iso)` recebe o valor já convertido, também no "Publicar agora" —
+ * quem salva ao perder o foco não pode depender do estado, que ainda não
+ * atualizou quando o botão dispara.
  */
 const PublishAtField = ({
   value,
   onChange,
+  onBlur,
   label = "Programar publicação (opcional)",
   size = "medium",
   disabled = false,
@@ -45,6 +50,7 @@ const PublishAtField = ({
         disabled={disabled}
         value={isoToLocalInput(value)}
         onChange={(e) => onChange(localInputToIso(e.target.value))}
+        onBlur={(e) => onBlur?.(localInputToIso(e.target.value))}
         InputLabelProps={{ shrink: true }}
         InputProps={{
           startAdornment: (
@@ -59,7 +65,10 @@ const PublishAtField = ({
       {value && !disabled && (
         <Button
           size="small"
-          onClick={() => onChange("")}
+          onClick={() => {
+            onChange("");
+            onBlur?.("");
+          }}
           sx={{ mt: size === "small" ? 0.5 : 1, whiteSpace: "nowrap", color: "primary.main" }}
         >
           Publicar agora

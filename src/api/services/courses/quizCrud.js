@@ -7,6 +7,7 @@ import {
   normalizeQuizDate,
   persistableQuizSettings,
 } from "./quizWindow";
+import { publishAtToPersist, normalizePublishAt } from "./publication";
 
 /**
  * ==============================
@@ -19,8 +20,9 @@ import {
  * @param {string} courseId - ID do curso
  * @param {string} videoId - ID do vídeo
  * @param {number} minPercentage - Porcentagem mínima para aprovação
- * @param {{ openDate?: string, closeDate?: string }} [schedule] - Janela de
- *   disponibilidade (datas ISO; vazio = sem restrição)
+ * @param {{ openDate?: string, closeDate?: string, publishAt?: string }} [schedule] -
+ *   Janela de disponibilidade (datas ISO; vazio = sem restrição) e data de
+ *   publicação (vazio = aparece para o aluno junto com o conteúdo)
  * @returns {Promise<Object>} - Novo quiz criado
  */
 export const addQuiz = async (
@@ -55,6 +57,7 @@ export const addQuiz = async (
         maxAttempts,
         openDate: schedule?.openDate,
         closeDate: schedule?.closeDate,
+        publishAt: publishAtToPersist(schedule?.publishAt),
       }),
       questions: [],
       courseId,
@@ -254,13 +257,14 @@ export const updateQuizRetrySettings = async (
  * Atualiza a janela de disponibilidade de um quiz (abertura e encerramento).
  * @param {string} courseId - ID do curso
  * @param {Object} quiz - Quiz a atualizar
- * @param {{ openDate: (string|null), closeDate: (string|null) }} schedule
+ * @param {{ openDate: (string|null), closeDate: (string|null), publishAt?: (string|null) }} schedule
+ *   `publishAt` ausente não mexe na data de publicação gravada.
  * @returns {Promise<Object>} - Quiz atualizado
  */
 export const updateQuizSchedule = async (
   courseId,
   quiz,
-  { openDate, closeDate } = {}
+  { openDate, closeDate, publishAt } = {}
 ) => {
   try {
     if (!courseId || !quiz) {
@@ -280,10 +284,16 @@ export const updateQuizSchedule = async (
       );
     }
 
+    const publishUpdate =
+      publishAt === undefined ? {} : { publishAt: publishAtToPersist(publishAt) };
+
     const updatedQuiz = {
       ...quiz,
       openDate: normalizedOpen,
       closeDate: normalizedClose,
+      ...(publishAt !== undefined && {
+        publishAt: normalizePublishAt(publishUpdate.publishAt),
+      }),
     };
 
     // `null` remove a chave no RTDB, o que representa "sem restrição".
@@ -291,6 +301,7 @@ export const updateQuizSchedule = async (
     await update(quizRef, {
       openDate: normalizedOpen || null,
       closeDate: normalizedClose || null,
+      ...publishUpdate,
     });
 
     return updatedQuiz;

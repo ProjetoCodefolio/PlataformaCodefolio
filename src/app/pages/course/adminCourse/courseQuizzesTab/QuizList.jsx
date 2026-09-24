@@ -25,6 +25,8 @@ import {
   getQuizWindowState,
   formatQuizDate,
 } from "$api/services/courses/quizWindow";
+import { effectiveQuizPublishAt } from "$api/services/courses/publication";
+import ScheduledChip from "$components/courses/publication/ScheduledChip";
 
 // Chip da janela de disponibilidade: só aparece quando o professor definiu
 // alguma data. Cores: azul = agendado, verde = aberto, cinza = encerrado.
@@ -94,6 +96,11 @@ const QuizList = ({
       <List ref={quizzesListEndRef}>
         {quizzes.map((quiz) => {
           const windowChip = windowChipProps(quiz);
+          const conteudo =
+            entityType === "slide"
+              ? entityItems.find((item) => item.id === quiz.slideId)
+              : videos.find((v) => v.id === quiz.videoId);
+          const publicacao = effectiveQuizPublishAt(quiz, conteudo);
           const editingQuestions = editQuiz?.videoId === quiz.videoId;
           return (
           <Card
@@ -150,6 +157,7 @@ const QuizList = ({
                       }}
                     />
                   )}
+                  <ScheduledChip publishAt={publicacao} />
                   {windowChip && (
                     <Chip
                       label={windowChip.label}

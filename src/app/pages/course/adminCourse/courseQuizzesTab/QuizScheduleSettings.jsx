@@ -4,6 +4,12 @@ import EventAvailableIcon from "@mui/icons-material/EventAvailable";
 import EventBusyIcon from "@mui/icons-material/EventBusy";
 import { formatQuizDate } from "$api/services/courses/quizWindow";
 import { isoToLocalInput, localInputToIso } from "$utils/dateInput";
+import {
+  effectiveQuizPublishAt,
+  formatPublishAt,
+  isScheduled,
+} from "$api/services/courses/publication";
+import PublishAtField from "$components/courses/publication/PublishAtField";
 
 /**
  * Janela de disponibilidade de um quiz: data de abertura + data de encerramento,
@@ -15,6 +21,10 @@ import { isoToLocalInput, localInputToIso } from "$utils/dateInput";
  * - Encerramento definido → depois dele o quiz não aceita novas tentativas.
  *
  * Recebe e devolve datas em ISO; a conversão para o input local é interna.
+ *
+ * Com `setPublishAt`, mostra também "Publicar o quiz em": diferente da
+ * abertura, que exibe o quiz como agendado, a publicação esconde o quiz do
+ * aluno até a data. Vale a maior entre ela e a do conteúdo (`contentPublishAt`).
  */
 const QuizScheduleSettings = ({
   openDate,
@@ -22,8 +32,32 @@ const QuizScheduleSettings = ({
   setOpenDate,
   setCloseDate,
   onBlurSave,
+  publishAt,
+  setPublishAt,
+  contentPublishAt,
+  onBlurPublishAt,
 }) => {
   const hasWindow = Boolean(openDate || closeDate);
+
+  const efetiva = effectiveQuizPublishAt({ publishAt }, { publishAt: contentPublishAt });
+  const quizOculto = isScheduled(efetiva);
+  const avisosPublicacao = [];
+  if (setPublishAt && quizOculto) {
+    if (efetiva !== publishAt) {
+      avisosPublicacao.push(
+        `O conteúdo deste quiz só é publicado em ${formatPublishAt(
+          efetiva
+        )}; o quiz aparece junto com ele.`
+      );
+    }
+    if (openDate && new Date(openDate).getTime() < new Date(efetiva).getTime()) {
+      avisosPublicacao.push(
+        `A abertura é anterior à publicação: o quiz só aparece para a turma em ${formatPublishAt(
+          efetiva
+        )}.`
+      );
+    }
+  }
 
   const hint = !hasWindow
     ? "Sem datas: o quiz fica disponível assim que o conteúdo é liberado."
@@ -59,6 +93,32 @@ const QuizScheduleSettings = ({
         transition: "all 0.3s ease",
       }}
     >
+      {setPublishAt && (
+        <Box sx={{ mb: 2.5 }}>
+          <Typography sx={{ fontWeight: 500, mb: 1.5 }}>Publicação</Typography>
+          <PublishAtField
+            label="Publicar o quiz em (opcional)"
+            value={publishAt}
+            onChange={setPublishAt}
+            onBlur={onBlurPublishAt}
+            helperText={
+              quizOculto
+                ? `Oculto para os alunos até ${formatPublishAt(efetiva)}.`
+                : "Vazio = o quiz aparece junto com o conteúdo."
+            }
+          />
+          {avisosPublicacao.map((aviso) => (
+            <Typography
+              key={aviso}
+              variant="caption"
+              sx={{ display: "block", mt: 0.5, color: "#b26a00" }}
+            >
+              {aviso}
+            </Typography>
+          ))}
+        </Box>
+      )}
+
       <Typography sx={{ fontWeight: 500, mb: 2 }}>
         Janela de disponibilidade
       </Typography>
