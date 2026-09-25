@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 
 /**
  * A fila de publicações pelas funções REAIS do app, sob as REGRAS do banco,
- * autenticado como um professor dono do curso que NÃO é admin.
+ * autenticado como um professor (`teacher`) dono do curso que NÃO é admin.
  *
  * Os outros testes da fila rodam num namespace sem regras (o SDK sem login) ou
  * batem no REST na mão. Foi assim que dois bugs de regra passaram: a leitura
@@ -53,8 +53,7 @@ const comoAdmin = (caminho, init = {}) =>
 const lerComoAdmin = async (caminho) => (await comoAdmin(caminho)).json();
 
 const { addCourseContent, updateCourseContent, deleteCourseContent } = await import("./content");
-const { addQuiz } = await import("./quizCrud");
-const { syncPublicationQueueForQuiz } = await import("./publicationQueue");
+const { addQuiz, removeQuiz } = await import("./quizCrud");
 const { importContentFromCourse } = await import("./contentImport");
 
 const emDias = (dias) => new Date(Date.now() + dias * 24 * 3600 * 1000).toISOString();
@@ -90,7 +89,8 @@ const limpar = async () => {
 describe.runIf(emuladorNoAr)("fila de publicações como professor comum, sob as regras", () => {
   beforeAll(async () => {
     await limpar();
-    await comoAdmin(`users/${DONO}`, { method: "PUT", body: JSON.stringify({ role: "user" }) });
+    // Só `teacher` ou admin criam curso: o dono real é sempre um deles.
+    await comoAdmin(`users/${DONO}`, { method: "PUT", body: JSON.stringify({ role: "teacher" }) });
     await comoAdmin(`courses/${CURSO}`, {
       method: "PUT",
       body: JSON.stringify({ title: "Curso", userId: DONO }),
@@ -103,7 +103,7 @@ describe.runIf(emuladorNoAr)("fila de publicações como professor comum, sob as
 
   afterAll(limpar);
 
-  it("programar, adiar, criar quiz, tirar o quiz, excluir conteúdo", async () => {
+  it("programar, adiar, criar e excluir quiz, excluir conteúdo", async () => {
     const semana = emDias(7);
     const aula = await addCourseContent(CURSO, video({ publishAt: semana }));
     expect((await filaDoCurso())[`${CURSO}__content__${aula.id}`]?.publishAt).toBe(semana);
@@ -115,11 +115,7 @@ describe.runIf(emuladorNoAr)("fila de publicações como professor comum, sob as
     expect(fila[`${CURSO}__content__${aula.id}`].publishAt).toBe(duas);
     expect(fila[`${CURSO}__quiz__${aula.id}`].publishAt).toBe(duas);
 
-    // Excluir o quiz pelo `removeQuiz` esbarra numa limitação ANTERIOR à fila:
-    // ele lê o nó `quizResults` inteiro, que professor comum não lê. Aqui o
-    // quiz sai por fora e o que se verifica é a fila acompanhando.
-    await comoAdmin(`courseQuizzes/${CURSO}/${aula.id}`, { method: "DELETE" });
-    await syncPublicationQueueForQuiz(CURSO, aula.id);
+    await removeQuiz(CURSO, aula.id);
     expect((await filaDoCurso())[`${CURSO}__quiz__${aula.id}`]).toBeUndefined();
 
     await deleteCourseContent(CURSO, aula.id);
