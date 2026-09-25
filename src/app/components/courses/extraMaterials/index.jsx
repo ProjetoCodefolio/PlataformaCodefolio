@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Loader from "$components/common/Loader";
 import {
     Box,
@@ -32,7 +32,7 @@ const MaterialExtra = ({ courseId, showScheduled = false }) => {
             setLoading(true);
             try {
                 const materialsData = await fetchCourseMaterials(courseId);
-                setMaterials(showScheduled ? materialsData : filterPublished(materialsData));
+                setMaterials(materialsData);
             } catch (error) {
                 console.error("Erro ao buscar materiais extras:", error);
                 toast.error("Erro ao carregar os materiais extras");
@@ -42,7 +42,14 @@ const MaterialExtra = ({ courseId, showScheduled = false }) => {
         };
 
         loadMaterials();
-    }, [courseId, showScheduled]);
+    }, [courseId]);
+
+    // Filtra na hora de mostrar: ligar "Ver como aluno" (ou a permissão chegar
+    // depois da carga) não precisa buscar tudo de novo.
+    const visiveis = useMemo(
+        () => (showScheduled ? materials : filterPublished(materials)),
+        [materials, showScheduled]
+    );
 
     return (
         <Box sx={{ p: { xs: 1, sm: 2 }, backgroundColor: "#F5F5FA", minHeight: "100%" }}>
@@ -75,8 +82,8 @@ const MaterialExtra = ({ courseId, showScheduled = false }) => {
                         Você deve fazer login para ver os materiais extras deste curso
                     </Typography>
                 </Box>
-            ) : materials.length > 0 ? (
-                materials.map((material) => (
+            ) : visiveis.length > 0 ? (
+                visiveis.map((material) => (
                     <Card
                         key={material.id}
                         sx={{
