@@ -252,6 +252,37 @@ describe.runIf(emuladorNoAr)("regras do papel de professor de um curso", () => {
     });
   });
 
+  // Aviso no sino ao cadastrar trabalho, quiz ou conteúdo: quem cadastra
+  // grava na caixa de cada aluno. Antes só o dono conseguia; o co-professor
+  // cadastrava e a turma não era avisada.
+  describe("aviso na caixa do aluno", () => {
+    const aviso = (courseId) => ({
+      type: "new_content",
+      courseId,
+      title: "Novo vídeo publicado",
+      message: "Aula",
+      link: "/classes",
+      read: false,
+      createdAt: "2026-09-24T12:00:00.000Z",
+    });
+    const cria = (uid, id, corpo) =>
+      comoUsuario(`notifications/${ALUNO}/${id}`, uid, { method: "PUT", body: JSON.stringify(corpo) });
+
+    it("o professor daquele curso cria o aviso", async () => {
+      expect((await cria(COPROFESSOR, "aviso_coprof", aviso(CURSO))).status).toBe(200);
+    });
+
+    it("mas não reescreve um aviso que já existe", async () => {
+      const outro = { ...aviso(CURSO), title: "trocado" };
+      expect((await cria(COPROFESSOR, "aviso_coprof", outro)).status).not.toBe(200);
+    });
+
+    it("professor de outro curso não cria aviso em nome deste curso", async () => {
+      expect((await cria(PROF_DE_OUTRO, "aviso_alheio", aviso(CURSO))).status).not.toBe(200);
+      await comoAdmin(`notifications/${ALUNO}`, { method: "DELETE" });
+    });
+  });
+
   describe("o que continua fora do papel", () => {
     it("o professor não mexe no cadastro do curso — apelido, PIN e arquivar são do dono", async () => {
       const curso = { title: "Renomeado pelo professor", userId: DONO };

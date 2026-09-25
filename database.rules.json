@@ -64,7 +64,9 @@
         ".write": "auth != null && auth.uid === $userId",
         ".indexOn": ["createdAt"],
         "$notificationId": {
-          ".write": "auth != null && (auth.uid === $userId || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid) || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === $userId) || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+          // Quem conduz a turma (dono ou co-professor do curso da notificação)
+          // cria o aviso na caixa do aluno; só criar, nunca editar a de outro.
+          ".write": "auth != null && (auth.uid === $userId || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid) || (!data.exists() && root.child('courses').child(newData.child('courseId').val()).child('userId').val() === $userId) || (!data.exists() && root.child('users').child(auth.uid).child('coursesTeacher').child(newData.child('courseId').val()).exists()) || root.child('users').child(auth.uid).child('role').val() === 'admin')"
         }
       }
     },
