@@ -31,6 +31,7 @@ export const fetchCourseVideosForQuiz = async (courseId) => {
     return Object.entries(courseVideos).map(([key, video]) => ({
       id: key,
       title: video.title,
+      publishAt: video.publishAt || "",
     }));
   } catch (error) {
     console.error("Erro ao buscar vídeos do curso:", error);

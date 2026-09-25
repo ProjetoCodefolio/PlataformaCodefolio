@@ -15,6 +15,8 @@ import { database } from "../../config/firebase";
 import { getNextContentOrder } from "./contentOrder";
 import { isValidYouTubeUrl } from "./videos";
 import { prepareSlideUrl } from "./slides";
+import { publishAtToPersist, normalizePublishAt } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 
 export const CONTENT_CATEGORIES = ["video", "slide"];
 
@@ -59,6 +61,11 @@ const buildContentPayload = (data) => {
     url: category === "slide" ? prepareSlideUrl({ url }) : url,
     description: String(data.description || ""),
     requiresPrevious: !!data.requiresPrevious,
+    // Só entra quando o chamador mandou o campo: `update` com `null` limpa a
+    // data (publicar agora), e ausência preserva o que estava gravado.
+    ...(data.publishAt !== undefined && {
+      publishAt: publishAtToPersist(data.publishAt),
+    }),
   };
 };
 
@@ -103,6 +110,7 @@ export const fetchCourseContentItems = async (courseId) => {
       description: item.description || "",
       order: typeof item.order === "number" ? item.order : undefined,
       requiresPrevious: !!item.requiresPrevious,
+      publishAt: normalizePublishAt(item.publishAt),
     }));
 
   return items.sort((a, b) => {
@@ -133,6 +141,8 @@ export const addCourseContent = async (courseId, data) => {
   const item = { ...payload, order };
 
   await set(contentRef, item);
+  // Item programado entra na fila: a turma é avisada na hora da publicação.
+  await syncPublicationQueue(courseId, { contentId: contentRef.key });
   return { ...item, id: contentRef.key };
 };
 
@@ -156,6 +166,7 @@ export const updateCourseContent = async (courseId, contentId, data) => {
 
   // `update` preserva o campo `order` (não incluído no payload).
   await update(ref(database, `courseContent/${courseId}/${contentId}`), payload);
+  await syncPublicationQueue(courseId, { contentId });
   return { ...payload, id: contentId };
 };
 
@@ -185,6 +196,7 @@ export const deleteCourseContent = async (courseId, contentId) => {
   }
 
   await remove(ref(database, `courseContent/${courseId}/${contentId}`));
+  await syncPublicationQueue(courseId, { contentId });
   return true;
 };
 

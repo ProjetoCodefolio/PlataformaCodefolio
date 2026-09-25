@@ -19,6 +19,8 @@ import {
   DialogActions,
   useMediaQuery,
   useTheme,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
@@ -75,6 +77,9 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   const contentTopRef = useRef(null);
 
   const [selectedTab, setSelectedTab] = useState(0);
+  // "Ver como aluno": quem conduz a turma esconde os itens programados para
+  // conferir a página como a turma vê, sem trocar de conta.
+  const [viewAsStudent, setViewAsStudent] = useState(false);
 
   const { courseId } = useCourseIdentity({
     alias,
@@ -106,6 +111,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
     setQuizSettings,
     setShowCompletionModal: auxModals.setShowCompletionModal,
     navigate,
+    viewAsStudent,
   });
 
   // Conteúdo com a situação da janela do quiz anexada (`quizClosed`). A trava
@@ -621,6 +627,44 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                 <Tab label="Trabalhos" />
               </Tabs>
               <Divider />
+              {courseContent.hasScheduled && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    px: 2,
+                    py: 0.5,
+                    backgroundColor: viewAsStudent ? "rgba(144, 65, 193, 0.08)" : "#fff",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: "#666" }}>
+                    {viewAsStudent
+                      ? "Você está vendo como a turma vê: itens programados ocultos."
+                      : "Você vê os itens programados porque conduz esta turma."}
+                  </Typography>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        size="small"
+                        checked={viewAsStudent}
+                        onChange={(e) => setViewAsStudent(e.target.checked)}
+                        sx={{
+                          "& .MuiSwitch-switchBase.Mui-checked": { color: "#9041c1" },
+                          "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                            backgroundColor: "#9041c1",
+                          },
+                        }}
+                      />
+                    }
+                    label={<Typography variant="caption" sx={{ fontWeight: 600 }}>Ver como aluno</Typography>}
+                    labelPlacement="start"
+                    sx={{ m: 0, whiteSpace: "nowrap" }}
+                  />
+                </Box>
+              )}
               <Box
                 sx={{
                   flex: 1,
@@ -641,7 +685,10 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                     advancedSettings={advancedSettingsPanel.advancedSettings} // Adicione esta linha
                   />
                 ) : selectedTab === 1 ? (
-                  <MaterialExtra courseId={courseId} />
+                  <MaterialExtra
+                    courseId={courseId}
+                    showScheduled={courseContent.canSeeScheduled && !viewAsStudent}
+                  />
                 ) : userDetails?.userId ? (
                   <AssignmentList courseId={courseId} userId={userDetails.userId} />
                 ) : (

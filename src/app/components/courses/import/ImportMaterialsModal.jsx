@@ -26,11 +26,19 @@ import {
   markAlreadyImportedMaterials,
 } from "$api/services/courses/extraMaterials";
 
+import PublishAtField from "$components/courses/publication/PublishAtField";
+import PublicationScheduler, {
+  usePublicationSchedule,
+} from "$components/courses/publication/PublicationScheduler";
+
 /**
  * Importa materiais extras de outro curso para o curso atual.
  *
  * Materiais cuja URL já existe aqui vêm marcados como repetidos e desmarcados:
  * importar de novo criaria uma segunda linha idêntica na lista do aluno.
+ *
+ * "Programar publicação" funciona como na importação de conteúdo: datas em
+ * série, ajustáveis item a item.
  */
 export default function ImportMaterialsModal({
   open,
@@ -44,6 +52,7 @@ export default function ImportMaterialsModal({
   const [selectedIds, setSelectedIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const agenda = usePublicationSchedule();
 
   // Reabrir o modal recomeça a escolha do zero.
   useEffect(() => {
@@ -51,7 +60,9 @@ export default function ImportMaterialsModal({
       setSourceCourseId("");
       setMaterials([]);
       setSelectedIds([]);
+      agenda.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -99,13 +110,21 @@ export default function ImportMaterialsModal({
     setSelectedIds(todosMarcados ? [] : materials.map((m) => m.id));
   };
 
+  // Selecionados na ordem da lista de origem, que é a ordem de publicação.
+  const selecionadosEmOrdem = materials
+    .filter((m) => selectedIds.includes(m.id))
+    .map((m) => m.id);
+
   const importar = async () => {
     setImporting(true);
     try {
       const importados = await importMaterialsFromCourse(
         sourceCourseId,
         courseId,
-        selectedIds
+        selecionadosEmOrdem.map((materialId) => ({
+          materialId,
+          publishAt: agenda.publishAtFor(materialId),
+        }))
       );
       toast.success(
         importados.length === 1
@@ -166,6 +185,12 @@ export default function ImportMaterialsModal({
               </Alert>
             )}
 
+            <PublicationScheduler
+              schedule={agenda}
+              orderedIds={selecionadosEmOrdem}
+              disabled={importing}
+            />
+
             <FormControlLabel
               sx={{ mt: 1 }}
               control={
@@ -181,39 +206,54 @@ export default function ImportMaterialsModal({
 
             <List dense>
               {materials.map((material) => (
-                <ListItem key={material.id} disableGutters>
-                  <Checkbox
-                    checked={selectedIds.includes(material.id)}
-                    onChange={() => alternar(material.id)}
-                    sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" } }}
-                  />
-                  <ListItemText
-                    primary={
-                      <Typography sx={{ fontWeight: 500 }}>
-                        {material.name}
-                        {material.alreadyImported && (
-                          <Typography
-                            component="span"
-                            variant="caption"
-                            sx={{ ml: 1, color: "#b26a00" }}
-                          >
-                            já existe aqui
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Link
-                        href={material.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="caption"
-                        sx={{ color: "#666", wordBreak: "break-all" }}
-                      >
-                        {material.url}
-                      </Link>
-                    }
-                  />
+                <ListItem
+                  key={material.id}
+                  disableGutters
+                  sx={{ flexDirection: "column", alignItems: "stretch", py: 0.5 }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <Checkbox
+                      checked={selectedIds.includes(material.id)}
+                      onChange={() => alternar(material.id)}
+                      sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" } }}
+                    />
+                    <ListItemText
+                      primary={
+                        <Typography sx={{ fontWeight: 500 }}>
+                          {material.name}
+                          {material.alreadyImported && (
+                            <Typography
+                              component="span"
+                              variant="caption"
+                              sx={{ ml: 1, color: "#b26a00" }}
+                            >
+                              já existe aqui
+                            </Typography>
+                          )}
+                        </Typography>
+                      }
+                      secondary={
+                        <Link
+                          href={material.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="caption"
+                          sx={{ color: "#666", wordBreak: "break-all" }}
+                        >
+                          {material.url}
+                        </Link>
+                      }
+                    />
+                  </Box>
+                  {agenda.enabled && selectedIds.includes(material.id) && (
+                    <PublishAtField
+                      label="Publicar em"
+                      size="small"
+                      value={agenda.datesById[material.id] || ""}
+                      onChange={(iso) => agenda.setDateFor(material.id, iso)}
+                      sx={{ ml: 5, mt: 1, mb: 0.5 }}
+                    />
+                  )}
                 </ListItem>
               ))}
             </List>

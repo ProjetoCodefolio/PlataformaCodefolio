@@ -15,6 +15,7 @@
 import { ref, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
 import { fetchFlippedClassroomVideos } from "./submissions";
+import { normalizePublishAt } from "./publication";
 
 // Caminho no banco para cada origem de conteúdo "inline" (order no próprio item).
 const SOURCE_NODES = {
@@ -67,6 +68,7 @@ const readSource = async (courseId, source) => {
           (category === "slide" ? "Slide sem título" : "Vídeo sem título"),
         url: item.url || "",
         order: typeof item.order === "number" ? item.order : undefined,
+        publishAt: normalizePublishAt(item.publishAt),
       };
     });
 };

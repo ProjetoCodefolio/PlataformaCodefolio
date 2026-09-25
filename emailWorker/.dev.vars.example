@@ -1,0 +1,8 @@
+# Copie para .dev.vars para rodar o Worker local (`npx wrangler dev --test-scheduled`)
+# contra o emulador do Firebase. Dispare o cron com:
+#   curl "http://localhost:8787/__scheduled?cron=*/5+*+*+*+*"
+FIREBASE_DATABASE_URL=http://127.0.0.1:9000?ns=plataformacodefolio-default-rtdb
+FIREBASE_AUTH=emulator
+# Só estes endereços recebem e-mail de verdade no teste local.
+EMAIL_TEST_ALLOWLIST=seu.email@unipampa.edu.br
+BREVO_API_KEY=

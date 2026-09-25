@@ -2,6 +2,7 @@ import { fetchCourseVideos } from "./videos";
 import { fetchCourseDetails } from "./courses";
 import { fetchCourseSlides } from "./slides";
 import { updateCourseProgress } from "./students";
+import { toStudentView } from "./publication";
 import {
   fetchQuizQuestions,
   fetchUserQuizResults,
@@ -237,8 +238,9 @@ export const checkCourseCompletion = async (videos, userId, courseId) => {
   try {
     if (!videos || videos.length === 0) return false;
 
-    // Filtrar apenas conteúdos reais do curso (não independentes, a menos que tenham quiz)
-    const courseContent = videos.filter(
+    // Filtrar apenas conteúdos reais do curso (não independentes, a menos que
+    // tenham quiz), do jeito que o ALUNO os vê: sem os programados.
+    const courseContent = toStudentView(videos).filter(
       (v) => !v.isIndependent || (v.isIndependent && v.quizId)
     );
 

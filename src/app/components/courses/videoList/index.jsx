@@ -32,6 +32,7 @@ import {
   getQuizWindowMessage,
 } from "$api/services/courses/quizWindow";
 import QuizDeadlineChip from "$components/courses/quiz/QuizDeadlineChip";
+import ScheduledChip from "$components/courses/publication/ScheduledChip";
 
 const VideoList = ({
   videos,
@@ -265,6 +266,11 @@ const VideoList = ({
                   >
                     {video.title} {/* Nome do vídeo ou slide */}
                   </Typography>
+                  {/* Só chega aqui para quem conduz a turma: o aluno nem
+                      recebe o item programado na lista. */}
+                  {video.scheduled && (
+                    <ScheduledChip publishAt={video.publishAt} sx={{ mt: 0.5 }} />
+                  )}
                   {isCurrent && (
                     <Typography
                       variant="body2"

@@ -34,3 +34,6 @@ conversation-log.md
 skills-lock.json
 # Estado local do wrangler (miniflare) no worker de e-mail
 .wrangler
+
+# Segredos locais do Worker (wrangler dev)
+emailWorker/.dev.vars

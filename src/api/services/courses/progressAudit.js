@@ -10,6 +10,8 @@
 // progresso do aluno fica "órfão": seu id não corresponde a nenhum conteúdo
 // atual do curso, e o item recriado aparece sem o check de assistido.
 
+import { isScheduledAt } from "../../../shared/publicationDates.js";
+
 /**
  * Extrai o id de um vídeo do YouTube de uma URL (watch?v=, youtu.be/, /embed/).
  * @param {string} url
@@ -127,15 +129,22 @@ export const findOrphanProgress = (userCourseProgress = {}, currentIds = new Set
  * denominador? Não — o app conta slides como concluídos e no denominador. Aqui
  * replicamos isso: cada item atual conta; concluído = assistido e (sem quiz ou
  * quiz aprovado). Slides entram como sempre assistidos.
- * @param {Array<{id:string, isSlide:boolean, hasQuiz:boolean}>} currentItems
+ *
+ * Publicação programada, igual ao app (`toStudentView`): item com `publishAt`
+ * no futuro fica fora do total, e quiz com `quizPublishAt` no futuro não é
+ * exigido. Sem isso o script "corrigiria" o progresso de volta para o
+ * denominador cheio.
+ * @param {Array<{id:string, isSlide:boolean, hasQuiz:boolean, publishAt?:string, quizPublishAt?:string}>} currentItems
  * @param {Object} userCourseProgress - id→nó de videoProgress do aluno
  * @param {Object} quizPassedById - id→boolean (aprovação, de quizResults/videoProgress)
+ * @param {Date} [now]
  * @returns {{completed:number, total:number, progress:number}}
  */
 export const recomputeAggregate = (
   currentItems = [],
   userCourseProgress = {},
-  quizPassedById = {}
+  quizPassedById = {},
+  now = new Date()
 ) => {
   const seen = new Set();
   let total = 0;
@@ -143,12 +152,14 @@ export const recomputeAggregate = (
   for (const item of currentItems) {
     if (!item || item.id == null || seen.has(item.id)) continue;
     seen.add(item.id);
+    if (isScheduledAt(item.publishAt, now)) continue;
     total += 1;
     const node = userCourseProgress?.[item.id];
     const watched = item.isSlide ? true : isWatchedNode(node);
     const quizPassed =
       quizPassedById[item.id] === true || (node && node.quizPassed === true);
-    if (isItemCompleted({ watched, hasQuiz: item.hasQuiz, quizPassed })) {
+    const hasQuiz = item.hasQuiz && !isScheduledAt(item.quizPublishAt, now);
+    if (isItemCompleted({ watched, hasQuiz, quizPassed })) {
       completed += 1;
     }
   }

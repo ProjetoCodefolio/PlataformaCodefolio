@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { addQuiz } from "$api/services/courses/quizCrud";
 import { notifyNewQuiz } from "$api/services/notifications";
+import { effectiveQuizPublishAt, isScheduled } from "$api/services/courses/publication";
 
 /**
  * Formulário de CRIAÇÃO de um novo quiz (aba de vídeo/conteúdo OU aba de
@@ -29,6 +30,13 @@ export function useQuizCreationForm({
   // Janela de disponibilidade do novo quiz (datas ISO; "" = sem restrição).
   const [newQuizOpenDate, setNewQuizOpenDate] = useState("");
   const [newQuizCloseDate, setNewQuizCloseDate] = useState("");
+  // Publicação do quiz ("" = aparece junto com o conteúdo).
+  const [newQuizPublishAt, setNewQuizPublishAt] = useState("");
+
+  // Quiz que nasce oculto (ele ou o conteúdo programado) não avisa a turma: o
+  // aviso revelaria antes da data o que o professor programou.
+  const nasceOculto = (target) =>
+    isScheduled(effectiveQuizPublishAt({ publishAt: newQuizPublishAt }, target));
 
   // A abertura precisa vir antes do encerramento — senão o quiz nasceria
   // impossível de responder.
@@ -70,13 +78,18 @@ export function useQuizCreationForm({
           newQuizIsDiagnostic,
           newQuizAllowRetry,
           newQuizMaxAttempts,
-          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
+          {
+            openDate: newQuizOpenDate,
+            closeDate: newQuizCloseDate,
+            publishAt: newQuizPublishAt,
+          }
         );
 
         // Avisa a turma. Com a janela de disponibilidade, criar o quiz é o
         // momento do lançamento: sem data de abertura ele já está no ar; com
         // data, o aviso diz quando abre.
-        notifyNewQuiz(
+        const target = videosState.find((v) => v.id === newQuizVideoId);
+        if (!nasceOculto(target)) notifyNewQuiz(
           courseId,
           {
             id: newQuizVideoId,
@@ -101,6 +114,7 @@ export function useQuizCreationForm({
         setNewQuizMaxAttempts("");
         setNewQuizOpenDate("");
         setNewQuizCloseDate("");
+        setNewQuizPublishAt("");
         onQuizAdded();
         toast.success("Quiz adicionado com sucesso!");
       } catch (error) {
@@ -130,13 +144,18 @@ export function useQuizCreationForm({
           newQuizIsDiagnostic,
           newQuizAllowRetry,
           newQuizMaxAttempts,
-          { openDate: newQuizOpenDate, closeDate: newQuizCloseDate }
+          {
+            openDate: newQuizOpenDate,
+            closeDate: newQuizCloseDate,
+            publishAt: newQuizPublishAt,
+          }
         );
 
         newQuiz.isSlideQuiz = true;
         newQuiz.slideId = newQuizSlideId;
 
-        notifyNewQuiz(
+        const slide = slidesState.find((s) => s.id === newQuizSlideId);
+        if (!nasceOculto(slide)) notifyNewQuiz(
           courseId,
           {
             id: slidePrefix,
@@ -161,6 +180,7 @@ export function useQuizCreationForm({
         setNewQuizMaxAttempts("");
         setNewQuizOpenDate("");
         setNewQuizCloseDate("");
+        setNewQuizPublishAt("");
         onQuizAdded();
         toast.success("Quiz do slide adicionado com sucesso!");
       } catch (error) {
@@ -200,6 +220,8 @@ export function useQuizCreationForm({
     setNewQuizOpenDate,
     newQuizCloseDate,
     setNewQuizCloseDate,
+    newQuizPublishAt,
+    setNewQuizPublishAt,
     isScheduleValid,
     handleAddQuiz,
     handleTabChanged,

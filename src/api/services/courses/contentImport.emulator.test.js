@@ -216,6 +216,30 @@ describe.runIf(emuladorNoAr)("importação de conteúdo entre cursos", () => {
       expect(importado.category).toBe("video");
     });
 
+    it("grava a data de publicação de cada item; sem data, sai publicado", async () => {
+      const futuro = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+      const { imported } = await importContentFromCourse({
+        sourceCourseId: ORIGEM,
+        targetCourseId: DESTINO,
+        selections: [
+          { contentId: "aula1", withQuiz: true, publishAt: futuro },
+          { contentId: "slide1", publishAt: "" },
+        ],
+      });
+
+      const itens = await conteudoDoDestino();
+      const aula = itens.find((i) => i.id === imported[0].id);
+      const slide = itens.find((i) => i.id === imported[1].id);
+      expect(aula.publishAt).toBe(futuro);
+      expect(slide).not.toHaveProperty("publishAt");
+
+      // O quiz não ganha data própria: aparece quando o conteúdo aparece.
+      const quiz = (
+        await get(ref(database, `courseQuizzes/${DESTINO}/${imported[0].id}`))
+      ).val();
+      expect(quiz).not.toHaveProperty("publishAt");
+    });
+
     it("traz o quiz preso ao ID NOVO quando o professor pede", async () => {
       const { imported, quizzes } = await importContentFromCourse({
         sourceCourseId: ORIGEM,

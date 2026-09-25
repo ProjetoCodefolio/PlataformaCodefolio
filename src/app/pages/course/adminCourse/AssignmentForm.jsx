@@ -36,6 +36,7 @@ import * as assessmentService from "$api/services/courses/assessments";
 import { compressImageToBase64 } from "$api/services/storageService";
 import MarkdownEditor from "$components/common/MarkdownEditor";
 import { markdownToHtml, htmlToMarkdown } from "$utils/markdown";
+import { isoToLocalInput, localInputToIso } from "$utils/dateInput";
 import { toast } from "react-toastify";
 
 const purpleField = {
@@ -58,22 +59,6 @@ const sectionLabel = {
   textTransform: "uppercase",
   mb: 1.5,
   mt: 1,
-};
-
-// ISO <-> valor do input datetime-local (horário local)
-const isoToLocalInput = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-};
-const localInputToIso = (local) => {
-  if (!local) return "";
-  const d = new Date(local);
-  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 };
 
 // Data já formatada para o e-mail de notificação. Formatar aqui, e não no

@@ -3,6 +3,7 @@ import { database } from "../../config/firebase";
 import { recalcCourseProgressFromWatched } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
 import { isAliasAvailable, isAliasFormatValid } from "./alias";
+import { isPublished } from "./publication";
 
 /** PIN de 7 dígitos, o mesmo formato aceito pelo campo do formulário. */
 const gerarPinAleatorio = () =>
@@ -185,10 +186,15 @@ const loadAnonymousCourses = async (coursesArray) => {
         // Vídeos da nova collection unificada também contam no total
         // (slides ficam fora do denominador, como no formato legado).
         const contentData = contentSnapshot.val() || {};
+        // Vídeo programado ainda não existe para o aluno: fora do total.
         const contentVideosCount = Object.values(contentData).filter(
-          (item) => item && typeof item === "object" && item.category !== "slide"
+          (item) =>
+            item && typeof item === "object" && item.category !== "slide" && isPublished(item)
         ).length;
-        const totalVideos = Object.keys(videosData).length + contentVideosCount;
+        const legacyVideosCount = Object.values(videosData).filter(
+          (item) => !item || typeof item !== "object" || isPublished(item)
+        ).length;
+        const totalVideos = legacyVideosCount + contentVideosCount;
         const progressData = localProgress[course.courseId] || { totalVideos: 0, completedVideos: 0 };
         const effectiveTotal = Math.max(totalVideos, progressData.totalVideos);
         const progress = effectiveTotal > 0 ? (progressData.completedVideos / effectiveTotal) * 100 : 0;

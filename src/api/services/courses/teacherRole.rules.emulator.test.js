@@ -227,6 +227,62 @@ describe.runIf(emuladorNoAr)("regras do papel de professor de um curso", () => {
     });
   });
 
+  // Excluir um quiz limpa o resultado de cada aluno (removeQuiz). O
+  // co-professor apaga esse resultado, mas não cria nem altera nota.
+  describe("resultado de quiz do aluno", () => {
+    const resultado = `quizResults/${ALUNO}/${CURSO}/quizExcluido`;
+    const semear = () =>
+      comoAdmin(resultado, { method: "PUT", body: JSON.stringify({ isPassed: true, attemptCount: 1 }) });
+    const apaga = (uid) => comoUsuario(resultado, uid, { method: "DELETE" });
+
+    it("o professor daquele curso apaga, como parte da exclusão do quiz", async () => {
+      await semear();
+      expect((await apaga(COPROFESSOR)).status).toBe(200);
+    });
+
+    it("o professor daquele curso não cria nem altera resultado", async () => {
+      expect((await escreve(resultado, COPROFESSOR, { isPassed: true })).status).not.toBe(200);
+    });
+
+    it("professor de outro curso e estranho não apagam", async () => {
+      await semear();
+      expect((await apaga(PROF_DE_OUTRO)).status).not.toBe(200);
+      expect((await apaga(ESTRANHO)).status).not.toBe(200);
+      await comoAdmin(resultado, { method: "DELETE" });
+    });
+  });
+
+  // Aviso no sino ao cadastrar trabalho, quiz ou conteúdo: quem cadastra
+  // grava na caixa de cada aluno. Antes só o dono conseguia; o co-professor
+  // cadastrava e a turma não era avisada.
+  describe("aviso na caixa do aluno", () => {
+    const aviso = (courseId) => ({
+      type: "new_content",
+      courseId,
+      title: "Novo vídeo publicado",
+      message: "Aula",
+      link: "/classes",
+      read: false,
+      createdAt: "2026-09-24T12:00:00.000Z",
+    });
+    const cria = (uid, id, corpo) =>
+      comoUsuario(`notifications/${ALUNO}/${id}`, uid, { method: "PUT", body: JSON.stringify(corpo) });
+
+    it("o professor daquele curso cria o aviso", async () => {
+      expect((await cria(COPROFESSOR, "aviso_coprof", aviso(CURSO))).status).toBe(200);
+    });
+
+    it("mas não reescreve um aviso que já existe", async () => {
+      const outro = { ...aviso(CURSO), title: "trocado" };
+      expect((await cria(COPROFESSOR, "aviso_coprof", outro)).status).not.toBe(200);
+    });
+
+    it("professor de outro curso não cria aviso em nome deste curso", async () => {
+      expect((await cria(PROF_DE_OUTRO, "aviso_alheio", aviso(CURSO))).status).not.toBe(200);
+      await comoAdmin(`notifications/${ALUNO}`, { method: "DELETE" });
+    });
+  });
+
   describe("o que continua fora do papel", () => {
     it("o professor não mexe no cadastro do curso — apelido, PIN e arquivar são do dono", async () => {
       const curso = { title: "Renomeado pelo professor", userId: DONO };

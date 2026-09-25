@@ -3,6 +3,8 @@ import { ref, set, get, update, remove, push } from "firebase/database";
 
 import { database } from "../../config/firebase";
 import { getNextContentOrder } from "./contentOrder";
+import { publishAtToPersist } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 
 /**
  * Busca slides de um curso específico
@@ -130,10 +132,14 @@ export const updateCourseSlide = async (courseId, slideId, slideData) => {
       title: slideData.title.trim(),
       url: slideData.url.trim(),
       description: String(slideData.description || ""),
+      ...(slideData.publishAt !== undefined && {
+        publishAt: publishAtToPersist(slideData.publishAt),
+      }),
     };
 
     const slideRef = ref(database, `courseSlides/${courseId}/${slideId}`);
     await update(slideRef, slide);
+    await syncPublicationQueue(courseId, { contentId: slideId, source: "slide" });
 
     return { ...slide, id: slideId };
   } catch (error) {
@@ -156,6 +162,7 @@ export const deleteCourseSlide = async (courseId, slideId) => {
 
     const slideRef = ref(database, `courseSlides/${courseId}/${slideId}`);
     await remove(slideRef);
+    await syncPublicationQueue(courseId, { contentId: slideId, source: "slide" });
 
     return true;
   } catch (error) {
@@ -217,6 +224,9 @@ export const saveAllCourseSlides = async (
       // pelo `set` caso o slide os possua.
       if (slide.quizId) slideData.quizId = slide.quizId;
       if (slide.videoId) slideData.videoId = slide.videoId;
+      // Mesma coisa com a publicação programada.
+      const agenda = publishAtToPersist(slide.publishAt);
+      if (agenda) slideData.publishAt = agenda;
 
       if (slide.id && existingSlideIds.has(slide.id)) {
         await set(
