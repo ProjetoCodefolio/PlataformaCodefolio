@@ -1,6 +1,6 @@
 # Plano: notificar na hora da publicação programada
 
-Status: **parcial (24/09/2026)**. Feitos os commits 1, 2 e 4 da seção 8 (texto compartilhado, fila e cron), testados no emulador e com `wrangler dev`. Faltam a conta de serviço (seção 3, sem ela o cron de produção não roda), o script de preenchimento (seção 5) e o wizard. Escrito em 24/09/2026. Continua o `plano_programar_publicacao.md` (substitui o esboço da seção 6 dele).
+Status: **código completo (24/09/2026)**. Todos os commits da seção 8 feitos, testados no emulador e com `wrangler dev`. O que falta é operação, guiada por `emailWorker/publication-cron-wizard.sh`: criar a chave da conta de serviço, cadastrá-la no Worker, publicar as regras do banco, rodar `scripts/backfillPublicationQueue.mjs` e publicar o Worker. Escrito em 24/09/2026.
 
 ## Por que
 
