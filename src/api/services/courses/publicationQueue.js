@@ -24,7 +24,12 @@
 
 import { ref, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
-import { effectiveQuizPublishAt, isScheduled, normalizePublishAt, serverNow } from "./publication";
+import { effectiveQuizPublishAt, serverNow } from "./publication";
+import {
+  queueEntryKey,
+  quizKeyFor,
+  nextQueueEntry,
+} from "../../../shared/publicationQueueEntries.js";
 
 const SOURCE_NODES = {
   content: "courseContent",
@@ -32,30 +37,9 @@ const SOURCE_NODES = {
   slide: "courseSlides",
 };
 
-/** Chave da entrada na fila. */
-export const queueEntryKey = (courseId, kind, itemKey) => `${courseId}__${kind}__${itemKey}`;
-
-/** Chave do quiz de um conteúdo em courseQuizzes (slide legado usa `slide_`). */
-export const quizKeyFor = (contentId, source) =>
-  source === "slide" ? `slide_${contentId}` : contentId;
-
-/**
- * Valor da entrada da fila, ou null para removê-la. Puro: recebe o estado do
- * item e da entrada atual.
- *
- * @param {Object} params
- * @param {boolean} params.exists - o item existe
- * @param {string} params.publishAt - data efetiva do item
- * @param {Object|null} params.current - entrada que já está na fila
- * @param {Object} params.base - campos fixos da entrada
- * @param {Date} params.now
- */
-export const nextQueueEntry = ({ exists, publishAt, current, base, now }) => {
-  if (!exists) return null;
-  if (isScheduled(publishAt, now)) return { ...base, publishAt: normalizePublishAt(publishAt) };
-  // Publicado. Se ainda devia o aviso, o aviso vence agora.
-  return current ? { ...base, publishAt: now.toISOString() } : null;
-};
+// A forma das entradas vive num módulo puro, compartilhado com o script que
+// preenche a fila com o que já estava programado.
+export { queueEntryKey, quizKeyFor, nextQueueEntry };
 
 /**
  * Acerta as entradas do conteúdo e do quiz dele depois de uma gravação.
