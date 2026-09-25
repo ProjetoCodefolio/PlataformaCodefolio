@@ -92,7 +92,8 @@ describe.runIf(emuladorNoAr)("regras da fila de publicações", () => {
   });
 
   afterAll(async () => {
-    for (const key of [chave(CURSO), chave(OUTRO_CURSO)]) {
+    await comoAdmin(`courseQuizzes/${CURSO}`, { method: "DELETE" });
+    for (const key of [chave(CURSO), chave(CURSO, "novo"), chave(OUTRO_CURSO)]) {
       await comoAdmin(`publicationQueue/${key}`, { method: "DELETE" });
     }
     for (const caminho of [
@@ -114,6 +115,54 @@ describe.runIf(emuladorNoAr)("regras da fila de publicações", () => {
     expect((await grava(uid, chave(CURSO), entrada(CURSO))).status).toBe(200);
     const apagou = await comoUsuario(`publicationQueue/${chave(CURSO)}`, uid, { method: "DELETE" });
     expect(apagou.status).toBe(200);
+  });
+
+  // As gravações abaixo são as que o app faz de verdade (syncPublicationQueue
+  // e removeQuiz), por quem conduz a turma SEM ser admin. Foi aqui que a
+  // primeira versão da regra falhou: ler antes de gravar e apagar entrada
+  // inexistente eram negados, e a negação derrubava a atualização inteira.
+  it.each([
+    ["dono", DONO],
+    ["co-professor", COPROFESSOR],
+  ])("%s faz o ciclo do app: lê, grava junto com um null e apaga", async (_, uid) => {
+    // Lê a entrada antes de regravar, exista ou não.
+    expect((await comoUsuario(`publicationQueue/${chave(CURSO, "novo")}`, uid)).status).toBe(200);
+
+    // Multi-path na raiz: entrada do conteúdo + null na do quiz, que não existe.
+    const sync = await comoUsuario("", uid, {
+      method: "PATCH",
+      body: JSON.stringify({
+        [`publicationQueue/${chave(CURSO, "novo")}`]: entrada(CURSO, "novo"),
+        [`publicationQueue/${CURSO}__quiz__novo`]: null,
+      }),
+    });
+    expect(sync.status).toBe(200);
+    expect((await comoUsuario(`publicationQueue/${chave(CURSO, "novo")}`, uid)).status).toBe(200);
+
+    // removeQuiz: apaga o quiz e a entrada (inexistente) dele de uma vez.
+    await comoAdmin(`courseQuizzes/${CURSO}/novo`, {
+      method: "PUT",
+      body: JSON.stringify({ videoId: "novo", questions: [] }),
+    });
+    const remocao = await comoUsuario("", uid, {
+      method: "PATCH",
+      body: JSON.stringify({
+        [`courseQuizzes/${CURSO}/novo`]: null,
+        [`publicationQueue/${CURSO}__quiz__novo`]: null,
+      }),
+    });
+    expect(remocao.status).toBe(200);
+
+    await comoUsuario(`publicationQueue/${chave(CURSO, "novo")}`, uid, { method: "DELETE" });
+  });
+
+  it("aluno não lê entrada que existe", async () => {
+    await comoAdmin(`publicationQueue/${chave(CURSO)}`, {
+      method: "PUT",
+      body: JSON.stringify(entrada(CURSO)),
+    });
+    expect((await comoUsuario(`publicationQueue/${chave(CURSO)}`, ALUNO)).status).toBe(401);
+    await comoAdmin(`publicationQueue/${chave(CURSO)}`, { method: "DELETE" });
   });
 
   it("aluno não escreve nem lê a fila", async () => {

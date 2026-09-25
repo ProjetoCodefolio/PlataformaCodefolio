@@ -122,13 +122,17 @@
     // Fila de publicações programadas: índice do que ainda vai sair, lido pelo
     // cron do Worker (conta de serviço, que passa por cima destas regras) para
     // avisar a turma na hora. Quem conduz a turma escreve; ninguém lê pelo app.
+    // Quem conduz a turma lê as entradas do próprio curso.
     // A chave começa com o courseId da entrada, para não dar para gravar
     // entrada em nome de outro curso.
     "publicationQueue": {
       ".read": "auth != null && root.child('users').child(auth.uid).child('role').val() === 'admin'",
       ".indexOn": ["publishAt"],
       "$entryId": {
-        ".write": "auth != null && ((newData.exists() && $entryId.beginsWith(newData.child('courseId').val() + '__') && (root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child(newData.child('courseId').val()).exists())) || (!newData.exists() && (root.child('courses').child(data.child('courseId').val()).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child(data.child('courseId').val()).exists())))",
+        // O app lê a entrada antes de regravar (para saber se o item ainda
+        // devia aviso). Entrada inexistente não revela nada.
+        ".read": "auth != null && (!data.exists() || (root.child('courses').child(data.child('courseId').val()).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child(data.child('courseId').val()).exists()))",
+        ".write": "auth != null && ((newData.exists() && $entryId.beginsWith(newData.child('courseId').val() + '__') && (root.child('courses').child(newData.child('courseId').val()).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child(newData.child('courseId').val()).exists())) || (!newData.exists() && !data.exists()) || (!newData.exists() && (root.child('courses').child(data.child('courseId').val()).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('coursesTeacher').child(data.child('courseId').val()).exists())))",
         ".validate": "newData.hasChildren(['courseId', 'kind', 'itemKey', 'publishAt'])"
       }
     },

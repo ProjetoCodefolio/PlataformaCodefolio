@@ -84,22 +84,36 @@ export const syncPublicationQueue = async (courseId, { contentId, source = "cont
     const now = serverNow();
     const base = { courseId, contentId, source };
 
-    await update(ref(database), {
-      [`publicationQueue/${contentEntry}`]: nextQueueEntry({
+    const updates = {};
+    const agendar = (entryKey, current, next) => {
+      // Apagar o que não existe não é mudança: fica de fora, para não virar
+      // uma gravação vazia que a regra precisa julgar.
+      if (next === null && current === null) return;
+      updates[`publicationQueue/${entryKey}`] = next;
+    };
+    agendar(
+      contentEntry,
+      contentQueued.val(),
+      nextQueueEntry({
         exists: !!content,
         publishAt: content?.publishAt,
         current: contentQueued.val(),
         base: { ...base, kind: "content", itemKey: contentId },
         now,
-      }),
-      [`publicationQueue/${quizEntry}`]: nextQueueEntry({
+      })
+    );
+    agendar(
+      quizEntry,
+      quizQueued.val(),
+      nextQueueEntry({
         exists: !!content && !!quiz,
         publishAt: effectiveQuizPublishAt(quiz, content),
         current: quizQueued.val(),
         base: { ...base, kind: "quiz", itemKey: quizKey },
         now,
-      }),
-    });
+      })
+    );
+    if (Object.keys(updates).length > 0) await update(ref(database), updates);
   } catch (error) {
     console.error("Erro ao atualizar a fila de publicações:", error);
   }
