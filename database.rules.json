@@ -313,7 +313,10 @@
           ".read": "auth != null && (auth.uid === $userId || root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin') && !newData.exists()",
           "$quizId": {
-            ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin')"
+            // O co-professor da turma só APAGA (excluir o quiz limpa os
+            // resultados dos alunos); criar ou mudar resultado continua do dono
+            // e do admin. Sem isso, excluir quiz falhava para o co-professor.
+            ".write": "auth != null && (root.child('courses').child($courseId).child('userId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || (!newData.exists() && root.child('users').child(auth.uid).child('coursesTeacher').child($courseId).exists()))"
           }
         }
       }
