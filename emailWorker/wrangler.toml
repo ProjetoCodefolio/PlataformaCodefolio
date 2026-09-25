@@ -25,4 +25,8 @@ crons = ["*/5 * * * *"]
 FIREBASE_PROJECT_ID = "plataformacodefolio"
 BREVO_SENDER_EMAIL = "projetocodefolio@gmail.com"
 BREVO_DAILY_LIMIT = "290"
+# Banco que o cron das publicações programadas lê e grava. A credencial é o
+# secret FIREBASE_SERVICE_ACCOUNT (JSON da conta de serviço), cadastrado com
+# `npx wrangler secret put FIREBASE_SERVICE_ACCOUNT`. Sem ele o cron não faz nada.
+FIREBASE_DATABASE_URL = "https://plataformacodefolio-default-rtdb.firebaseio.com"
 
