@@ -66,8 +66,9 @@ export const createDb = ({ databaseUrl, getAuthHeader, fetchImpl = fetch }) => {
     async post(path, value) {
       return (await request("POST", path, { body: value })).json();
     },
-    async remove(path) {
-      await request("DELETE", path);
+    /** Apaga; com `ifMatch`, falha com PreconditionFailed se o valor mudou. */
+    async remove(path, { ifMatch } = {}) {
+      await request("DELETE", path, ifMatch ? { headers: { "if-match": ifMatch } } : {});
     },
   };
 };

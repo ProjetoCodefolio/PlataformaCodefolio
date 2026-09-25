@@ -191,6 +191,34 @@ describe.runIf(emuladorNoAr)("cron de publicações programadas", () => {
     expect(await db.get(`publicationQueue/${CURSO}__content__aula1`)).not.toBeNull();
   });
 
+  it("se o professor regrava a data durante o aviso, a entrada nova fica", async () => {
+    const chaveFila = `publicationQueue/${CURSO}__content__aula1`;
+    await db.put(chaveFila, entrada("content", "aula1"));
+
+    // Simula o app regravando a entrada no meio do processamento: logo que o
+    // cron lê o conteúdo, o professor volta a programar o item.
+    const dbComCorrida = {
+      ...db,
+      async get(path, params) {
+        if (path === `courseContent/${CURSO}/aula1`) {
+          await db.put(chaveFila, entrada("content", "aula1", FUTURO));
+        }
+        return db.get(path, params);
+      },
+    };
+
+    await processDuePublications({
+      db: dbComCorrida,
+      now: NOW,
+      enqueueEmail: async () => {},
+      only: (key) => key.startsWith(`${CURSO}__`),
+    });
+
+    const depois = await db.get(chaveFila);
+    expect(depois).not.toBeNull();
+    expect(depois.publishAt).toBe(FUTURO);
+  });
+
   it("duas execuções ao mesmo tempo avisam uma vez só", async () => {
     await db.put(`publicationQueue/${CURSO}__content__aula1`, entrada("content", "aula1"));
 

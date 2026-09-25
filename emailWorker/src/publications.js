@@ -15,6 +15,10 @@
 // entrada é reservada com gravação condicional (ETag). Quem perde a corrida
 // pula. Uma reserva que ficou para trás (execução que morreu no meio) vale de
 // novo depois de `staleMs`.
+//
+// Toda mexida final na entrada (apagar, reagendar) também é condicional à
+// reserva: se o professor regravou a data enquanto o aviso saía, a entrada
+// nova é dele e fica.
 
 import { PreconditionFailed } from "./firebaseRest.js";
 import {
@@ -137,6 +141,8 @@ export const processDuePublications = async ({
         continue;
       }
       await db.put(caminho, { ...entrada, sendingAt: now.toISOString() }, { ifMatch: etag });
+      const { etag: reservada } = await db.getWithEtag(caminho);
+      const soltar = () => db.remove(caminho, { ifMatch: reservada });
 
       const { courseId, kind, itemKey, contentId, source } = entrada;
       const content = SOURCE_NODES[source]
@@ -145,7 +151,7 @@ export const processDuePublications = async ({
       const quiz = kind === "quiz" ? await db.get(`courseQuizzes/${courseId}/${itemKey}`) : null;
 
       if (!content || (kind === "quiz" && !quiz)) {
-        await db.remove(caminho);
+        await soltar();
         resumo.dropped += 1;
         continue;
       }
@@ -155,7 +161,7 @@ export const processDuePublications = async ({
       if (isScheduledAt(dataEfetiva, now)) {
         // Adiado depois de entrar na fila: volta para a data nova.
         const { sendingAt: _sendingAt, ...semReserva } = entrada;
-        await db.put(caminho, { ...semReserva, publishAt: dataEfetiva });
+        await db.put(caminho, { ...semReserva, publishAt: dataEfetiva }, { ifMatch: reservada });
         resumo.rescheduled += 1;
         continue;
       }
@@ -201,8 +207,14 @@ export const processDuePublications = async ({
         }
       }
 
-      await db.remove(caminho);
       resumo.notified += 1;
+      try {
+        await soltar();
+      } catch (error) {
+        // O professor regravou a data enquanto o aviso saía: a entrada nova é
+        // dele (o item voltou a ser programado) e fica na fila.
+        if (!(error instanceof PreconditionFailed)) throw error;
+      }
     } catch (error) {
       if (error instanceof PreconditionFailed) {
         // Outra execução reservou ou o app mexeu na entrada: fica para ela.
