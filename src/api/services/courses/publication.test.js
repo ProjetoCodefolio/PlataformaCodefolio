@@ -15,6 +15,7 @@ const {
   annotatePublication,
   toStudentView,
   planQuizPublicationChange,
+  mergeProgressUpdates,
 } = await import("./publication.js");
 
 const NOW = new Date("2026-03-01T12:00:00.000Z");
@@ -189,5 +190,23 @@ describe("planQuizPublicationChange", () => {
       after: FUTURE,
       canKeep: true,
     });
+  });
+});
+
+describe("mergeProgressUpdates", () => {
+  it("devolve o progresso para a lista completa sem perder o que estava oculto", () => {
+    const full = [
+      { id: "a", watched: false, quizId: "c/a", scheduled: false, quizScheduled: true },
+      { id: "b", watched: false, scheduled: true },
+    ];
+    const visivel = toStudentView(full).map((i) =>
+      i.id === "a" ? { ...i, watched: true, progress: 95 } : i
+    );
+
+    const resultado = mergeProgressUpdates(full, visivel);
+
+    expect(resultado).toHaveLength(2);
+    expect(resultado[0]).toMatchObject({ id: "a", watched: true, progress: 95, quizId: "c/a" });
+    expect(resultado[1]).toBe(full[1]);
   });
 });

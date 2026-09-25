@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { canRunCourse } from "$api/utils/permissions";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
@@ -18,6 +18,8 @@ import {
   annotatePublication,
   toStudentView,
   filterPublished,
+  mergeProgressUpdates,
+  isScheduled,
 } from "$api/services/courses/publication";
 
 /**
@@ -65,6 +67,24 @@ export function useCourseContent({
   const visibleVideos = useMemo(
     () => (verComoAluno ? toStudentView(videos) : videos),
     [videos, verComoAluno]
+  );
+  // Quem está fora do hook recebe a lista visível e devolve uma versão dela
+  // com progresso novo. O estado guarda a lista completa: só o progresso volta.
+  const setVisibleVideos = useCallback(
+    (updated) =>
+      setVideos((full) =>
+        mergeProgressUpdates(
+          full,
+          typeof updated === "function" ? updated(verComoAluno ? toStudentView(full) : full) : updated
+        )
+      ),
+    [verComoAluno]
+  );
+  // Há algo programado nesta turma? Sem nada, a faixa "Ver como aluno" não
+  // aparece, para não ocupar espaço à toa.
+  const hasScheduled = useMemo(
+    () => canSeeScheduled && (videos.some((v) => v?.scheduled || v?.quizScheduled) || slides.some((s) => isScheduled(s?.publishAt))),
+    [canSeeScheduled, videos, slides]
   );
   const visibleSlides = useMemo(
     () => (verComoAluno ? filterPublished(slides) : slides),
@@ -378,13 +398,9 @@ export function useCourseContent({
             })
           );
 
-          // Mesmo critério da lista principal: o aluno não navega até slide
-          // programado; quem conduz a turma navega por todos.
-          setSlides(
-            canRunCourse(userDetails, courseOwnerUid, courseId)
-              ? slidesWithQuizInfo
-              : filterPublished(slidesWithQuizInfo)
-          );
+          // Guarda todos; quem filtra os programados é `visibleSlides`, pelo
+          // mesmo critério da lista principal.
+          setSlides(slidesWithQuizInfo);
         }
       } catch (error) {
         console.error("Erro ao carregar slides:", error);
@@ -392,7 +408,7 @@ export function useCourseContent({
     };
 
     loadSlides();
-  }, [courseId, accessGranted, courseOwnerUid, userDetails?.userId]);
+  }, [courseId, accessGranted]);
 
   // Verifica conclusão do curso quando os vídeos mudam
   useEffect(() => {
@@ -414,11 +430,12 @@ export function useCourseContent({
 
   return {
     videos: visibleVideos,
-    setVideos,
+    setVideos: setVisibleVideos,
     loadingVideos,
     courseTitle,
     courseOwnerUid,
     slides: visibleSlides,
     canSeeScheduled,
+    hasScheduled,
   };
 }

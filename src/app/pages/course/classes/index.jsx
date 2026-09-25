@@ -627,7 +627,7 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                 <Tab label="Trabalhos" />
               </Tabs>
               <Divider />
-              {courseContent.canSeeScheduled && (
+              {courseContent.hasScheduled && (
                 <Box
                   sx={{
                     display: "flex",

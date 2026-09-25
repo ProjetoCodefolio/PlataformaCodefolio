@@ -207,3 +207,28 @@ export const planQuizPublicationChange = (
   const antecipou = after === "" || (before !== "" && after < before);
   return { before, after, canKeep: before !== "" && antecipou };
 };
+
+// Campos de progresso que a página do curso atualiza em memória (vídeo a 90%,
+// quiz aprovado). É só isso que volta da lista visível para a lista completa.
+const PROGRESS_FIELDS = ["watched", "progress", "watchedTime", "quizPassed"];
+
+/**
+ * Aplica na lista COMPLETA as mudanças de progresso feitas numa lista
+ * derivada dela (a do aluno, sem os programados e com quiz escondido).
+ * Gravar a lista derivada direto no estado perderia os itens programados e
+ * deixaria `quizId: null` onde o quiz só estava oculto.
+ *
+ * @param {Array} full - estado completo
+ * @param {Array} updatedVisible - lista derivada, já com as mudanças
+ */
+export const mergeProgressUpdates = (full, updatedVisible) => {
+  const porId = new Map((updatedVisible || []).filter(Boolean).map((item) => [item.id, item]));
+  return (full || []).map((item) => {
+    const novo = item && porId.get(item.id);
+    if (!novo) return item;
+    const campos = Object.fromEntries(
+      PROGRESS_FIELDS.filter((campo) => campo in novo).map((campo) => [campo, novo[campo]])
+    );
+    return { ...item, ...campos };
+  });
+};
