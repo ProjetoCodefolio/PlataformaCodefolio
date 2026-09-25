@@ -224,6 +224,9 @@ export const saveAllCourseSlides = async (
       // pelo `set` caso o slide os possua.
       if (slide.quizId) slideData.quizId = slide.quizId;
       if (slide.videoId) slideData.videoId = slide.videoId;
+      // Mesma coisa com a publicação programada.
+      const agenda = publishAtToPersist(slide.publishAt);
+      if (agenda) slideData.publishAt = agenda;
 
       if (slide.id && existingSlideIds.has(slide.id)) {
         await set(
