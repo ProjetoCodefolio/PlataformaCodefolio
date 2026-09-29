@@ -5,23 +5,20 @@ import { test as base, expect } from "@playwright/test";
 // Duas garantias valem para todo teste, sem o teste precisar pedir:
 //  - nada sai para a internet: só localhost e 127.0.0.1 respondem, o resto é
 //    abortado (Groq, Worker de e-mail, YouTube, Google Fonts...). Um teste não
-//    pode depender de serviço externo, e muito menos acionar um. A única
-//    exceção é pedida pelo próprio teste, com
-//    `test.use({ allowedExternalHosts: [...] })`, e hoje só o teste do botão
-//    "Entrar com Google" a usa (ver login.spec.js);
+//    pode depender de serviço externo, e muito menos acionar um. Por isso não
+//    há teste do botão "Entrar com Google": o popup precisa de apis.google.com
+//    e unpkg.com (ver plano_testes_e2e.md), e o login entra pelo atalho de
+//    support/auth.js;
 //  - erro de JavaScript não tratado na página reprova o teste, mesmo que a
 //    tela pareça certa. É o tipo de quebra que um teste de tela deixa passar.
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export const test = base.extend({
-  allowedExternalHosts: [[], { option: true }],
-
-  page: async ({ page, allowedExternalHosts }, use) => {
-    const allowed = new Set([...LOCAL_HOSTS, ...allowedExternalHosts]);
+  page: async ({ page }, use) => {
     await page.context().route("**/*", (route) => {
       const { hostname, protocol } = new URL(route.request().url());
-      const local = allowed.has(hostname) || protocol === "data:" || protocol === "blob:";
+      const local = LOCAL_HOSTS.has(hostname) || protocol === "data:" || protocol === "blob:";
       return local ? route.continue() : route.abort("blockedbyclient");
     });
 

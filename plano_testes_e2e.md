@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 e 1 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 2 a 6 pendentes. Escrito em 29/09/2026.
+Status: **etapas 0 a 2 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 3 a 6 pendentes. Escrito em 29/09/2026.
 
 ## Por que
 
@@ -12,7 +12,7 @@ Hoje o CI roda 910 testes (lint, build, unitários, fluxos no emulador e regras 
 
 Há quatro obstáculos, todos contornáveis:
 
-1. **Login só com Google (popup).** `src/api/services/auth.js` usa `signInWithPopup`, e `src/api/config/firebase.js` conecta só o Database ao emulador, deixando o Auth de fora de propósito (para o login local continuar sendo o Google real). Solução: um modo novo, `VITE_MODE=e2e`, que conecta **também** o Auth ao emulador. No emulador de Auth, o popup do Google vira uma tela falsa que o Playwright consegue preencher, e o Database emulator aceita os tokens emitidos por ele, então as regras de segurança (`auth.uid`) valem de verdade. O modo de desenvolvimento local continua como está.
+1. **Login só com Google (popup).** `src/api/services/auth.js` usa `signInWithPopup`, e `src/api/config/firebase.js` conectava só o Database ao emulador, deixando o Auth de fora de propósito (para o login local continuar sendo o Google real). Solução: o modo `VITE_MODE=e2e` conecta **também** o Auth ao emulador, que aceita os tokens emitidos por ele no Database emulator, então as regras de segurança (`auth.uid`) valem de verdade. O modo local continua como está. O popup em si ficou **fora do E2E** (ver etapa 2): o teste loga por um atalho, sem popup.
 2. **Dados.** Cada teste precisa de um banco conhecido (curso, vídeos, quiz, usuários com papel `admin`/professor/aluno). Solução: fixtures em JSON gravadas direto no emulador via REST com `Authorization: Bearer owner` (o mesmo truque que `src/app/dev/localPublicationCron.js` já usa), e banco zerado entre os testes.
 3. **Player do YouTube.** O progresso depende de `player.getCurrentTime()` da API do YouTube (`react-youtube`, em `VideoPlayer.jsx`), que carrega um iframe externo: lento, instável e sem controle do tempo. Solução: o Playwright intercepta `youtube.com/iframe_api` com `page.route` e serve um stub mínimo do `YT.Player` que deixa o teste dizer "o vídeo está em 95%". O resto do caminho (hooks de progresso, gravação no banco, cadeado sequencial) roda de verdade.
 4. **Serviços externos.** Groq (gerador de quiz), Worker de e-mail e Analytics não podem ser chamados. Analytics e e-mail já ficam desligados fora do build de produção. Por garantia, o Playwright bloqueia qualquer requisição que não seja `localhost` (exceto as fontes do Google Fonts, se necessário).
@@ -32,7 +32,7 @@ O E2E roda num job separado do `test`, em paralelo, para não somar o tempo dos 
 Prioridade 1 (primeira entrega):
 
 1. **Visitante**: a página inicial e o `/cursos` carregam, e o curso de exemplo aparece no catálogo.
-2. **Login**: o aluno entra pelo botão "Entrar com Google" (tela falsa do emulador), cai no `/dashboard` e o registro em `users/{uid}` é criado.
+2. **Login**: ~~o aluno entra pelo botão "Entrar com Google"~~. Fora do E2E por decisão de 29/09/2026 (ver etapa 2); o botão é conferido à mão.
 3. **Acesso ao curso**: entra num curso aberto direto; num curso fechado, o PIN errado é recusado e o certo libera (gate único do `Classes`).
 4. **Assistir vídeo**: com o stub do YouTube em 95%, o vídeo aparece como assistido, o progresso do curso sobe e o próximo vídeo destrava.
 5. **Quiz**: o aluno responde, vê a nota, e a tentativa é contada uma vez só (fechar o quiz sem enviar não conta).
@@ -73,7 +73,11 @@ playwright.config.js
 
 O E2E já achou um bug: a página inicial monta a `Topbar` duas vezes (em `pages/dashboard/index.jsx` e dentro de `components/post/Post.jsx`), uma em cima da outra, cada uma com a sua busca. O teste clica na de cima, que é a que o usuário vê.
 
-**Etapa 2: login e acesso.** Fluxos 2 e 3. Aqui se valida que as regras do banco aceitam o token do Auth emulator. Commit: `test(e2e): login e acesso ao curso`.
+**Etapa 2: login e acesso. Feita.** Os testes logam por um atalho que só existe no build e2e: `e2e/support/auth.js` cria a conta (e-mail e senha) direto no emulador de Auth, e a página entra por `window.__codefolioE2E.signIn`. Essa conta só existe no emulador, que é recriado a cada execução, então não há credencial nenhuma a proteger (nem motivo para GitHub Secrets). Os 4 testes de `e2e/acesso.spec.js`: curso aberto entra direto; curso fechado recusa o PIN errado e libera com o certo; aluno já matriculado entra sem PIN; fechar o pedido de PIN volta ao catálogo. O fixture do curso fechado grava o `pinHash` com a mesma regra de `pin.js` (SHA-256 do PIN seguido do id do curso).
+
+**O botão "Entrar com Google" não tem teste E2E**, por decisão de 29/09/2026: é fácil de conferir à mão e não precisa rodar a cada deploy. Tentar testá-lo mostrou por que não compensa: o SDK do Firebase carrega um script de `apis.google.com` para abrir o popup mesmo com o emulador, e a tela falsa do emulador carrega o Material Components do `unpkg.com`, então o teste dependeria de internet. Mesmo liberando os dois, o popup abria e preenchia, mas o resultado não voltava ao app (o emulador devolve pelo iframe que o SDK injeta na página, e a falha ficou sem diagnóstico). Com isso, o trecho de `handleGoogleSignIn` que cria `users/{uid}` no primeiro acesso também fica sem E2E.
+
+Um tropeço desta etapa: o segundo commit da etapa 0 tinha feito o código do e2e (emulador e trava de localhost) voltar para o build de produção, sem rodar lá, mas presente. O Vite só apaga esse código enquanto consegue calcular o modo na hora do build, e deixou de conseguir quando `resolveRuntimeMode` passou a ser chamado de dois lugares. A regra do e-mail virou uma função própria, e o `npm run check:build` (`scripts/checkProductionBuild.mjs`) agora reprova o build de produção que tiver qualquer resto do e2e; o CI roda depois de cada build, inclusive no deploy.
 
 **Etapa 3: vídeo e quiz.** Stub do YouTube e fluxos 4 e 5. É a etapa de maior risco (o stub precisa imitar o suficiente da API do `YT.Player`). Commit: `test(e2e): progresso de video e quiz`.
 

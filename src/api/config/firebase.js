@@ -54,10 +54,10 @@ if (runtimeMode.useAuthEmulator) {
 }
 
 // Só no build e2e: deixa o Playwright logar sem o popup do Google, com um
-// usuário de e-mail e senha criado direto no emulador de Auth. O popup
-// continua coberto por um teste próprio; os outros testes usam este atalho
-// porque o popup depende de um script externo (apis.google.com). Fora do e2e
-// este bloco não existe: o Vite o remove do build.
+// usuário de e-mail e senha criado direto no emulador de Auth. O popup em si
+// não é testado no E2E, porque depende de apis.google.com e unpkg.com (ver
+// plano_testes_e2e.md); o botão é conferido à mão. Fora do e2e este bloco não
+// existe: o Vite o remove do build, e o `npm run check:build` confere.
 if (runtimeMode.e2e) {
   window.__codefolioE2E = {
     signIn: async (email, password) => {
