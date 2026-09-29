@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 a 2 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 3 a 6 pendentes. Escrito em 29/09/2026.
+Status: **etapas 0 a 3 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 4 a 6 pendentes. Escrito em 29/09/2026.
 
 ## Por que
 
@@ -79,7 +79,11 @@ O E2E já achou um bug: a página inicial monta a `Topbar` duas vezes (em `pages
 
 Um tropeço desta etapa: o segundo commit da etapa 0 tinha feito o código do e2e (emulador e trava de localhost) voltar para o build de produção, sem rodar lá, mas presente. O Vite só apaga esse código enquanto consegue calcular o modo na hora do build, e deixou de conseguir quando `resolveRuntimeMode` passou a ser chamado de dois lugares. A regra do e-mail virou uma função própria, e o `npm run check:build` (`scripts/checkProductionBuild.mjs`) agora reprova o build de produção que tiver qualquer resto do e2e; o CI roda depois de cada build, inclusive no deploy.
 
-**Etapa 3: vídeo e quiz.** Stub do YouTube e fluxos 4 e 5. É a etapa de maior risco (o stub precisa imitar o suficiente da API do `YT.Player`). Commit: `test(e2e): progresso de video e quiz`.
+**Etapa 3: vídeo e quiz. Feita.** `e2e/support/youtubeStub.js` troca o script `www.youtube.com/iframe_api` por um `YT.Player` mínimo (a rota da página vence o bloqueio de rede geral, que continua barrando o resto do YouTube). O player falso implementa só o que o `react-youtube` e o `VideoWatcher` usam, inclusive `getVideoData()`, com que o app confere se o evento é do vídeo atual; `watchVideo(page, { percent })` leva o vídeo ao ponto pedido e dispara a troca de estado, então o app mede na hora, sem esperar o ciclo de 5 s. Salvar o progresso, marcar assistido e destravar o próximo rodam de verdade.
+
+Testes de `e2e/video.spec.js` (curso com dois vídeos, o segundo com `requiresPrevious`): 95% marca assistido, leva o curso a 50% e destrava o segundo; o destravamento sobrevive a recarregar a página; 50% salva o progresso e mantém o segundo bloqueado. Testes de `e2e/quiz.spec.js` (quiz no primeiro vídeo, 2 questões, nota mínima de 70%, 2 tentativas): aprovado vê "Pontuação: 2/2 (100.00%)" e destrava o seguinte; reprovado gasta uma tentativa e o seguinte segue bloqueado; sair antes de enviar não grava nada em `quizResults` e o aviso segue dizendo "já usou 0"; com as tentativas esgotadas, o clique em "Fazer Quiz" mostra o aviso de limite e o quiz não abre.
+
+Uma inconsistência de tela que apareceu (não corrigida): para o aluno **aprovado** que gastou as tentativas, a lista mostra "Limite Atingido"; para o **reprovado** nas mesmas condições, continua mostrando "Fazer Quiz", e o limite só aparece como aviso depois do clique.
 
 **Etapa 4: CI.** Hoje os segredos `VITE_*` estão no `env:` do workflow inteiro, e variável de ambiente vence o `.env.e2e`. Antes de criar o job, esse `env:` desce para os jobs `test` e `deploy`, para o `e2e` não receber segredo nenhum (e funcionar também em PR vindo de fork). Job `e2e` em `.github/workflows/ci-cd.yml`, paralelo ao `test`, com cache do navegador e upload do relatório em falha; `deploy` passa a ter `needs: [test, e2e]`. Commit: `ci: rodar testes e2e em PR e antes do deploy`.
 
