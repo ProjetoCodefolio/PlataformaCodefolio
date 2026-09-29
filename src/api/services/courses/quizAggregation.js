@@ -4,6 +4,7 @@ import { normalizeDiagnosticFlag, getQuizAttemptLimit } from "./quizWindow";
 import { fetchFlippedClassroomVideos } from "./submissions";
 import { gradedQuestions, isOpinionQuiz } from "./quizGrading";
 import { ensureQuestionIds } from "./quizQuestions";
+import { effectiveQuizPublishAt, isPublished, serverNow } from "./publication";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -33,6 +34,7 @@ export const fetchAllCourseQuizzes = async (courseId) => {
         // Limite efetivo de tentativas (Infinity quando ilimitado), para a tela
         // de notas mostrar quantas o aluno ainda tem.
         attemptLimit: getQuizAttemptLimit(quizData),
+        publishAt: quizData.publishAt || "",
       });
     });
 
@@ -287,6 +289,23 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
 };
 
 /**
+ * Tira da agregação os quizzes que o aluno ainda não enxerga: o próprio quiz
+ * programado ou preso a um conteúdo programado. Sem isso, quiz que nem saiu
+ * entra na média como zero e derruba a taxa de conclusão.
+ *
+ * @param {Array} quizzes - de `fetchAllCourseQuizzes`
+ * @param {Object<string, string>} contentPublishAt - chave do quiz → publishAt
+ *   do conteúdo (`slide_<id>` para slides legados)
+ */
+export const filterPublishedQuizzes = (quizzes, contentPublishAt = {}, now = serverNow()) =>
+  (quizzes || []).filter((quiz) =>
+    isPublished(
+      { publishAt: effectiveQuizPublishAt(quiz, { publishAt: contentPublishAt[quiz.id] }) },
+      now
+    )
+  );
+
+/**
  * Busca notas agregadas de todos os quizzes de um curso para todos os estudantes
  * @param {string} courseId - ID do curso
  * @returns {Promise<Object>} - Dados agregados por estudante
@@ -294,9 +313,9 @@ const calculateQuizGrade = async (quiz, userId, courseId) => {
 export const fetchAggregatedQuizGrades = async (courseId) => {
   try {
     // Buscar todos os quizzes do curso
-    const quizzes = await fetchAllCourseQuizzes(courseId);
+    const allQuizzes = await fetchAllCourseQuizzes(courseId);
 
-    if (quizzes.length === 0) {
+    if (allQuizzes.length === 0) {
       return { students: [], quizzes: [], summary: {}, videoNames: {}, slideNames: {} };
     }
 
@@ -347,6 +366,23 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
       Object.entries(slidesData).forEach(([slideId, slideData]) => {
         slideNames[slideId] = slideData.title || `Slide ${slideId.substring(0, 8)}`;
       });
+    }
+
+    // Data de publicação do conteúdo, na chave em que o quiz dele é gravado.
+    const contentPublishAt = {};
+    Object.entries(videosSnapshot.val() || {}).forEach(([id, item]) => {
+      contentPublishAt[id] = item?.publishAt;
+    });
+    Object.entries(contentSnapshot.val() || {}).forEach(([id, item]) => {
+      contentPublishAt[id] = item?.publishAt;
+    });
+    Object.entries(slidesSnapshot.val() || {}).forEach(([id, item]) => {
+      contentPublishAt[`slide_${id}`] = item?.publishAt;
+    });
+    const quizzes = filterPublishedQuizzes(allQuizzes, contentPublishAt);
+
+    if (quizzes.length === 0) {
+      return { students: [], quizzes: [], summary: {}, videoNames, slideNames };
     }
 
     // Buscar estudantes matriculados

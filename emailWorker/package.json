@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "secrets": "echo 'wrangler secret put BREVO_API_KEY'"
+    "secrets": "echo 'wrangler secret put BREVO_API_KEY && wrangler secret put FIREBASE_SERVICE_ACCOUNT < conta-de-servico.json'"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

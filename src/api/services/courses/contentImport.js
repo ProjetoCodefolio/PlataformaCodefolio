@@ -15,6 +15,8 @@
 // aluno de outra turma, não material do professor.
 
 import { ref, get, push, update } from "firebase/database";
+import { normalizePublishAt, publishAtToPersist } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 import { database } from "../../config/firebase";
 import { validateContentUrl } from "./content";
 import { getNextContentOrder } from "./contentOrder";
@@ -64,6 +66,7 @@ const normalizarItem = (id, raw, categoriaPadrao) => {
     description: String(raw?.description || ""),
     requiresPrevious: !!raw?.requiresPrevious,
     order: typeof raw?.order === "number" ? raw.order : undefined,
+    publishAt: normalizePublishAt(raw?.publishAt),
   };
 };
 
@@ -122,7 +125,9 @@ export const fetchImportableContent = async (courseId) => {
  * @param {Object} params
  * @param {string} params.sourceCourseId
  * @param {string} params.targetCourseId
- * @param {Array<{contentId: string, withQuiz?: boolean}>} params.selections
+ * @param {Array<{contentId: string, withQuiz?: boolean, publishAt?: string}>} params.selections
+ *   `publishAt` programa a publicação do item; o quiz trazido junto não ganha
+ *   data própria, porque já aparece só quando o conteúdo aparece.
  * @returns {Promise<{imported: Array, skipped: Array, quizzes: number}>}
  */
 export const importContentFromCourse = async ({
@@ -148,7 +153,9 @@ export const importContentFromCourse = async ({
   const escolhidos = disponiveis
     .map((item) => {
       const escolha = selections.find((s) => s?.contentId === item.id);
-      return escolha ? { item, withQuiz: !!escolha.withQuiz } : null;
+      return escolha
+        ? { item, withQuiz: !!escolha.withQuiz, publishAt: escolha.publishAt }
+        : null;
     })
     .filter(Boolean);
 
@@ -169,7 +176,7 @@ export const importContentFromCourse = async ({
   const skipped = [];
   let quizzes = 0;
 
-  escolhidos.forEach(({ item, withQuiz }) => {
+  escolhidos.forEach(({ item, withQuiz, publishAt }) => {
     const validacao = validateContentUrl(item.url, item.category);
     if (!validacao.isValid) {
       skipped.push({ title: item.title, reason: validacao.message });
@@ -185,6 +192,8 @@ export const importContentFromCourse = async ({
       requiresPrevious: item.requiresPrevious,
       order: base + imported.length,
     };
+    const agenda = publishAtToPersist(publishAt);
+    if (agenda) novo.publishAt = agenda;
 
     updates[`courseContent/${targetCourseId}/${novoId}`] = novo;
     imported.push({ ...novo, id: novoId, sourceId: item.id });
@@ -218,6 +227,14 @@ export const importContentFromCourse = async ({
   }
 
   await update(ref(database), updates);
+
+  // Itens importados com data entram na fila (o quiz trazido junto também,
+  // na data do conteúdo). A importação em si não avisa ninguém.
+  await Promise.all(
+    imported
+      .filter((item) => item.publishAt)
+      .map((item) => syncPublicationQueue(targetCourseId, { contentId: item.id }))
+  );
 
   return { imported, skipped, quizzes };
 };

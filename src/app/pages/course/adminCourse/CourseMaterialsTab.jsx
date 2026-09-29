@@ -19,11 +19,14 @@ import { toast } from "react-toastify";
 import * as extraMaterialsService from "$api/services/courses/extraMaterials";
 import ImportMaterialsModal from "$components/courses/import/ImportMaterialsModal";
 import { useScrollToForm } from "$utils/useScrollToForm";
+import PublishAtField from "$components/courses/publication/PublishAtField";
+import ScheduledChip from "$components/courses/publication/ScheduledChip";
 
 const CourseMaterialsTab = forwardRef((props, ref) => {
     const [materials, setMaterials] = useState([]);
     const [materialName, setMaterialName] = useState("");
     const [materialUrl, setMaterialUrl] = useState("");
+    const [materialPublishAt, setMaterialPublishAt] = useState("");
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editingMaterialId, setEditingMaterialId] = useState(null);
@@ -59,7 +62,8 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
         try {
             const materialData = {
                 name: materialName,
-                url: materialUrl
+                url: materialUrl,
+                publishAt: materialPublishAt,
             };
 
             const newMaterial = await extraMaterialsService.addCourseMaterial(courseId, materialData);
@@ -67,6 +71,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             setMaterials((prev) => [...prev, newMaterial]);
             setMaterialName("");
             setMaterialUrl("");
+            setMaterialPublishAt("");
             setShowSuccessModal(true);
         } catch (error) {
             console.error("Erro ao adicionar material:", error);
@@ -81,6 +86,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
         if (material) {
             setMaterialName(material.name);
             setMaterialUrl(material.url);
+            setMaterialPublishAt(material.publishAt || "");
             setEditingMaterialId(id);
             scrollToForm();
         }
@@ -94,7 +100,8 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
         try {
             const updatedMaterialData = {
                 name: materialName,
-                url: materialUrl
+                url: materialUrl,
+                publishAt: materialPublishAt,
             };
             const updatedMaterial = await extraMaterialsService.updateCourseMaterial(courseId, editingMaterialId, updatedMaterialData);
             setMaterials((prev) =>
@@ -104,6 +111,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
             );
             setMaterialName("");
             setMaterialUrl("");
+            setMaterialPublishAt("");
             setIsEditing(false);
             toast.success("Material atualizado com sucesso!");
         } catch (error) {
@@ -229,6 +237,9 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                         {isEditing ? "Editar Material" : "Adicionar Material"}
                     </Button>
                 </Grid>
+                <Grid item xs={12} sm={8}>
+                    <PublishAtField value={materialPublishAt} onChange={setMaterialPublishAt} />
+                </Grid>
             </Grid>
 
             <Box
@@ -295,6 +306,7 @@ const CourseMaterialsTab = forwardRef((props, ref) => {
                             </Box>
                         }
                     >
+                        <ScheduledChip publishAt={material.publishAt} sx={{ mr: 1.5, mt: 0.5 }} />
                         <ListItemText
                             primary={material.name}
                             secondary={`URL: ${material.url}`}

@@ -27,6 +27,10 @@ import {
   importContentFromCourse,
   markAlreadyImportedContent,
 } from "$api/services/courses/contentImport";
+import PublishAtField from "$components/courses/publication/PublishAtField";
+import PublicationScheduler, {
+  usePublicationSchedule,
+} from "$components/courses/publication/PublicationScheduler";
 
 const ROXO = "#9041c1";
 
@@ -40,6 +44,10 @@ const ROXO = "#9041c1";
  *
  * Conteúdo cuja URL já existe aqui vem marcado como repetido e desmarcado:
  * importar de novo criaria um item duplicado que conta duas vezes no progresso.
+ *
+ * "Programar publicação" deixa o semestre inteiro importado de uma vez, com
+ * cada item aparecendo para a turma na sua data. O quiz trazido junto aparece
+ * quando o conteúdo aparece.
  */
 export default function ImportContentModal({
   open,
@@ -54,6 +62,7 @@ export default function ImportContentModal({
   const [comQuizIds, setComQuizIds] = useState([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const agenda = usePublicationSchedule();
 
   // Reabrir o modal recomeça a escolha do zero.
   useEffect(() => {
@@ -62,7 +71,9 @@ export default function ImportContentModal({
       setItems([]);
       setSelectedIds([]);
       setComQuizIds([]);
+      agenda.reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -142,6 +153,7 @@ export default function ImportContentModal({
         selections: selectedIds.map((contentId) => ({
           contentId,
           withQuiz: comQuizIds.includes(contentId),
+          publishAt: agenda.publishAtFor(contentId),
         })),
       });
 
@@ -169,6 +181,8 @@ export default function ImportContentModal({
   };
 
   const repetidos = items.filter((i) => i.alreadyImported).length;
+  // Selecionados na ordem da origem, que é a ordem em que entram e são publicados.
+  const selecionadosEmOrdem = items.filter((i) => selectedIds.includes(i.id)).map((i) => i.id);
   const quizzesMarcados = comQuizIds.filter((id) => selectedIds.includes(id)).length;
 
   return (
@@ -213,6 +227,12 @@ export default function ImportContentModal({
                   : `${repetidos} conteúdos já existem neste curso e vieram desmarcados.`}
               </Alert>
             )}
+
+            <PublicationScheduler
+              schedule={agenda}
+              orderedIds={selecionadosEmOrdem}
+              disabled={importing}
+            />
 
             <FormControlLabel
               sx={{ mt: 1 }}
@@ -302,6 +322,16 @@ export default function ImportContentModal({
                             Trazer o questionário junto
                           </Typography>
                         }
+                      />
+                    )}
+
+                    {agenda.enabled && marcado && (
+                      <PublishAtField
+                        label="Publicar em"
+                        size="small"
+                        value={agenda.datesById[item.id] || ""}
+                        onChange={(iso) => agenda.setDateFor(item.id, iso)}
+                        sx={{ ml: 5, mt: 1, mb: 0.5 }}
                       />
                     )}
                   </ListItem>

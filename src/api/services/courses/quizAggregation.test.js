@@ -5,9 +5,8 @@ import { describe, it, expect, vi } from "vitest";
 // sem emulador). Mockamos o config: nenhuma das duas toca o banco.
 vi.mock("../../config/firebase", () => ({ database: {} }));
 
-const { computeQuizGradeFromResults, exportQuizGradesToCSV } = await import(
-  "./quizAggregation.js"
-);
+const { computeQuizGradeFromResults, exportQuizGradesToCSV, filterPublishedQuizzes } =
+  await import("./quizAggregation.js");
 
 const gradedQuestion = (id) => ({ id, questionType: "multiple-choice" });
 
@@ -225,5 +224,27 @@ describe("exportQuizGradesToCSV", () => {
     expect(summaryRow).toContain("RESUMO DA TURMA");
     expect(summaryRow).toContain('"7.00"'); // média de 8 e 6
     expect(summaryRow).toContain('"75"'); // média de 100 e 50
+  });
+});
+
+describe("filterPublishedQuizzes", () => {
+  const NOW = new Date("2026-03-01T12:00:00.000Z");
+  const FUTURE = "2026-03-10T12:00:00.000Z";
+  const PAST = "2026-02-01T12:00:00.000Z";
+
+  it("tira quiz programado e quiz de conteúdo programado", () => {
+    const quizzes = [
+      { id: "a" },
+      { id: "b", publishAt: FUTURE },
+      { id: "c" },
+      { id: "slide_d" },
+      { id: "e", publishAt: PAST },
+    ];
+    const contentPublishAt = { c: FUTURE, slide_d: PAST };
+    expect(filterPublishedQuizzes(quizzes, contentPublishAt, NOW).map((q) => q.id)).toEqual([
+      "a",
+      "slide_d",
+      "e",
+    ]);
   });
 });

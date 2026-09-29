@@ -137,6 +137,17 @@ describe("recomputeAggregate", () => {
     const r = recomputeAggregate(items, { v1: { watched: true, quizPassed: true } }, {});
     expect(r.progress).toBe(100);
   });
+  it("ignora item programado e não exige quiz programado", () => {
+    const now = new Date("2026-03-01T12:00:00.000Z");
+    const future = "2026-03-10T12:00:00.000Z";
+    const items = [
+      { id: "v1", isSlide: false, hasQuiz: true, quizPublishAt: future },
+      { id: "v2", isSlide: false, hasQuiz: false, publishAt: future },
+    ];
+    const r = recomputeAggregate(items, { v1: { watched: true } }, {}, now);
+    expect(r.total).toBe(1);
+    expect(r.progress).toBe(100);
+  });
 });
 
 describe("isQuizPassedResult / normalizeQuizResultId", () => {

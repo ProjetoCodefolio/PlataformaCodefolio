@@ -47,7 +47,7 @@ export const normalizeQuizDate = (value) => {
 /**
  * Monta os campos de configuração de tentativas e janela para persistência.
  * Como vários pontos reescrevem o nó do quiz inteiro com `set`, este helper
- * garante que `allowRetry`/`maxAttempts`/`openDate`/`closeDate` sejam sempre
+ * garante que `allowRetry`/`maxAttempts`/`openDate`/`closeDate`/`publishAt` sejam sempre
  * preservados. Campos ausentes não são incluídos (ausência = sem limite/janela).
  */
 export const persistableQuizSettings = (quiz) => {
@@ -58,6 +58,8 @@ export const persistableQuizSettings = (quiz) => {
   if (openDate) settings.openDate = openDate;
   const closeDate = normalizeQuizDate(quiz?.closeDate);
   if (closeDate) settings.closeDate = closeDate;
+  const publishAt = normalizeQuizDate(quiz?.publishAt);
+  if (publishAt) settings.publishAt = publishAt;
   return settings;
 };
 

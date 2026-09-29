@@ -39,6 +39,8 @@ const QuizForm = ({
   setNewQuizOpenDate,
   newQuizCloseDate,
   setNewQuizCloseDate,
+  newQuizPublishAt,
+  setNewQuizPublishAt,
   questionFormRef,
   entityType,
   additionalButtons,
@@ -207,6 +209,9 @@ const QuizForm = ({
             closeDate={newQuizCloseDate}
             setOpenDate={setNewQuizOpenDate}
             setCloseDate={setNewQuizCloseDate}
+            publishAt={newQuizPublishAt}
+            setPublishAt={setNewQuizPublishAt}
+            contentPublishAt={videos?.find((v) => v.id === newQuizVideoId)?.publishAt}
           />
         </Grid>
 

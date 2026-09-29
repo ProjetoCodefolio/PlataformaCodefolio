@@ -7,17 +7,23 @@ import { database } from "../../config/firebase";
 import { ref, get, update } from "firebase/database";
 import { fetchCourseContent } from "./contentOrder";
 import { DEFAULT_PRESENCES_PER_VIDEO } from "./attendance";
+import { isPublished } from "./publication";
 
 /**
  * Vídeos-aula que contam para presença: itens de categoria "video" que NÃO são
- * entregas de sala invertida (source "flipped"). Slides e entregas ficam de fora.
+ * entregas de sala invertida (source "flipped"). Slides e entregas ficam de fora,
+ * e também vídeo ainda não publicado: cobrar presença de aula que não saiu
+ * derrubaria a porcentagem da turma inteira no começo do semestre.
  * @param {string} courseId
  * @returns {Promise<Array<{id:string, title:string}>>}
  */
 export const fetchAttendanceVideos = async (courseId) => {
   const content = await fetchCourseContent(courseId);
   return content
-    .filter((item) => item.category === "video" && item.source !== "flipped")
+    .filter(
+      (item) =>
+        item.category === "video" && item.source !== "flipped" && isPublished(item)
+    )
     .map((item) => ({ id: item.id, title: item.title }));
 };
 

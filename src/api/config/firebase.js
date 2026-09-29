@@ -23,6 +23,11 @@ const firebaseConfig = {
 const useEmulators =
   import.meta.env.VITE_MODE === "production" ? false : import.meta.env.DEV;
 
+// Exposto para o que só existe no ambiente local (o cron simulado das
+// publicações programadas, em src/app/dev/).
+export const USING_EMULATOR = useEmulators;
+export const EMULATOR_DATABASE_URL = `http://localhost:9000?ns=${firebaseConfig.projectId}-default-rtdb`;
+
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const database = getDatabase(app);

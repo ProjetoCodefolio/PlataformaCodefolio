@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 import { database } from "../../config/firebase";
 import { ref, get, set, push, remove } from "firebase/database";
+import { normalizePublishAt, publishAtToPersist } from "./publication";
 
 /**
  * Busca materiais extras de um curso específico
@@ -26,6 +27,7 @@ export const fetchCourseMaterials = async (courseId) => {
       name: material.name || "Material sem nome",
       url: material.url || "",
       courseId: material.courseId,
+      publishAt: normalizePublishAt(material.publishAt),
     }));
 
     return materialsArray;
@@ -54,7 +56,8 @@ export const addCourseMaterial = async (courseId, materialData) => {
     const material = {
       name: materialData.name.trim(),
       url: materialData.url.trim(),
-      courseId: courseId
+      courseId: courseId,
+      publishAt: publishAtToPersist(materialData.publishAt),
     };
 
     const courseMaterialsRef = ref(database, `courseMaterials/${courseId}`);
@@ -85,10 +88,13 @@ export const updateCourseMaterial = async (courseId, materialId, materialData) =
       throw new Error("Nome e URL do material são obrigatórios");
     }
     const materialRef = ref(database, `courseMaterials/${courseId}/${materialId}`);
+    // `set` reescreve o nó inteiro: o `publishAt` precisa estar no payload,
+    // senão editar o nome apaga a data de publicação.
     const updatedMaterial = {
       courseId: courseId,
       name: materialData.name.trim(),
-      url: materialData.url.trim()
+      url: materialData.url.trim(),
+      publishAt: publishAtToPersist(materialData.publishAt),
     };
     await set(materialRef, updatedMaterial);
     toast.success("Material atualizado com sucesso!");
@@ -155,10 +161,13 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
 
     // Adicionar ou atualizar materiais
     for (const material of materials) {
+      // `set` reescreve o nó inteiro, e isto roda a cada "Salvar Curso": sem o
+      // `publishAt` aqui, salvar o curso despublicaria a agenda de materiais.
       const materialData = {
         courseId: courseId,
         name: material.name,
         url: material.url,
+        publishAt: publishAtToPersist(material.publishAt),
       };
 
       if (material.id && existingMaterialIds.has(material.id)) {
@@ -192,7 +201,8 @@ export const saveAllCourseMaterials = async (courseId, materials) => {
  *
  * @param {string} sourceCourseId - curso de origem
  * @param {string} targetCourseId - curso de destino
- * @param {Array<string>} materialIds - ids dos materiais a importar
+ * @param {Array<string|{materialId: string, publishAt?: string}>} materialIds -
+ *   materiais a importar; na forma de objeto, com a data de publicação programada
  * @returns {Promise<Array>} - materiais criados no destino (com id novo)
  */
 export const importMaterialsFromCourse = async (
@@ -217,7 +227,8 @@ export const importMaterialsFromCourse = async (
     const targetRef = ref(database, `courseMaterials/${targetCourseId}`);
     const importados = [];
 
-    for (const materialId of materialIds) {
+    for (const selecao of materialIds) {
+      const materialId = typeof selecao === "string" ? selecao : selecao?.materialId;
       const material = sourceMaterials[materialId];
       if (!material) continue;
 
@@ -227,6 +238,8 @@ export const importMaterialsFromCourse = async (
         url: (material.url || "").trim(),
       };
       if (!novo.url) continue;
+      const agenda = publishAtToPersist(selecao?.publishAt);
+      if (agenda) novo.publishAt = agenda;
 
       const novoRef = push(targetRef);
       await set(novoRef, novo);

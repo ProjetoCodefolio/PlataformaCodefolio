@@ -3,10 +3,9 @@ import { ref, push, set, get, update, query, orderByChild, onValue } from "fireb
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
 import {
-  formatQuizDate,
-  normalizeAllowRetry,
-  normalizeMaxAttempts,
-} from "$api/services/courses/quizWindow";
+  buildContentNotification,
+  buildQuizNotification,
+} from "../../shared/notificationText.js";
 import { enqueueNotificationEmail } from "$api/services/emailService";
 
 /**
@@ -139,59 +138,6 @@ const sendNotificationEmail = async (params) => {
 };
 
 /**
- * Link que abre a sala já no conteúdo certo. Sem o `videoId` o aluno cai no
- * primeiro item do curso e tem que caçar o que mudou.
- */
-const contentLink = (courseId, contentId) =>
-  contentId
-    ? `/classes?courseId=${courseId}&videoId=${contentId}`
-    : `/classes?courseId=${courseId}`;
-
-/**
- * O id que chega em notifyNewQuiz/notifyQuizUpdated para quiz de slide vem com
- * o prefixo `slide_` (chave em courseQuizzes), mas o deep link precisa do id do
- * CONTEÚDO. Um id inexistente não quebra a tela — ela cai na escolha padrão —,
- * mas aí o link perde a graça.
- */
-const contentIdFromQuizId = (quizId) =>
-  String(quizId || "").replace(/^slide_/, "");
-
-/**
- * Campos do quiz que o e-mail mostra, já formatados. Tudo que estiver vazio
- * some do e-mail em vez de virar bloco em branco.
- */
-const quizEmailFields = (quiz) => {
-  const opensAt = formatQuizDate(quiz?.openDate);
-  const closesAt = formatQuizDate(quiz?.closeDate);
-  const janela = [
-    opensAt ? `Abre ${opensAt}` : "",
-    closesAt ? `Encerra ${closesAt}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const maxAttempts = normalizeMaxAttempts(quiz?.maxAttempts);
-  const tentativas = !normalizeAllowRetry(quiz?.allowRetry)
-    ? "1 (sem nova tentativa)"
-    : maxAttempts != null
-      ? String(maxAttempts)
-      : "Ilimitadas";
-
-  // Em quiz diagnóstico a nota mínima fica de fora: anunciar "mínima de 40%"
-  // logo acima de "não entra na média" confunde mais do que informa.
-  const isDiagnostic = Boolean(quiz?.isDiagnostic);
-
-  return {
-    videoTitle: quiz?.title || "",
-    window: janela || "Já está disponível",
-    minPercentage:
-      !isDiagnostic && quiz?.minPercentage ? `${quiz.minPercentage}%` : "",
-    attempts: tentativas,
-    graded: isDiagnostic ? "Não — quiz diagnóstico" : "Sim",
-  };
-};
-
-/**
  * Campos de um item de avaliação (nome + peso na média do curso).
  */
 const assessmentEmailFields = (assessment) => ({
@@ -288,24 +234,6 @@ export const notifyNewAssignment = async (
 };
 
 /**
- * Monta a segunda linha da notificação de quiz a partir da janela de
- * disponibilidade: quando abre e até quando dá para responder.
- */
-const quizWindowSummary = (quiz) => {
-  const opensAt = formatQuizDate(quiz?.openDate);
-  const closesAt = formatQuizDate(quiz?.closeDate);
-  // Só anuncia a abertura quando ela ainda está por vir — uma data já passada
-  // significa que o quiz está disponível agora.
-  const opensLater =
-    opensAt && new Date(quiz.openDate).getTime() > Date.now();
-
-  if (opensLater && closesAt) return ` Abre em ${opensAt} e encerra em ${closesAt}.`;
-  if (opensLater) return ` Abre em ${opensAt}.`;
-  if (closesAt) return ` Disponível até ${closesAt}.`;
-  return " Já está disponível.";
-};
-
-/**
  * Notifica todos os alunos matriculados sobre um quiz novo ou alterado,
  * respeitando as preferências individuais por curso — mesmo caminho dos
  * enunciados.
@@ -327,14 +255,14 @@ export const notifyNewQuiz = async (
   changes = []
 ) => {
   if (!courseId || !quiz?.id) return;
-  const isUpdate = changes.length > 0;
-  const title = isUpdate ? "Quiz atualizado" : "Novo quiz publicado";
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
-    const message = `${courseTitle ? courseTitle + ": " : ""}${
-      quiz.title || "Novo quiz"
-    }.${quizWindowSummary(quiz)}`;
-    const link = contentLink(courseId, contentIdFromQuizId(quiz.id));
+    const { email, ...notification } = buildQuizNotification({
+      courseId,
+      quiz,
+      courseTitle,
+      changes,
+    });
 
     await Promise.all(
       students
@@ -342,24 +270,14 @@ export const notifyNewQuiz = async (
         .map(async (student) => {
           const prefs = await fetchPrefs(student.userId, courseId);
           if (!acceptsInApp(prefs, "newQuiz")) return;
-          await createNotification(student.userId, {
-            type: "new_quiz",
-            courseId,
-            quizId: quiz.id,
-            title,
-            message,
-            link,
-          });
+          await createNotification(student.userId, notification);
           await sendNotificationEmail({
             to: student.email,
             name: student.name,
-            type: isUpdate ? "quiz_updated" : "new_quiz",
             courseId,
             courseTitle,
-            itemTitle: quiz.title,
-            link,
-            changes,
-            fields: quizEmailFields(quiz),
+            link: notification.link,
+            ...email,
           });
         })
     );
@@ -441,11 +359,7 @@ export const notifyNewContent = async (courseId, content, courseTitle = "") => {
   if (!courseId || !content?.id) return;
   try {
     const students = await fetchCourseStudentsEnriched(courseId);
-    const isSlide = content.category === "slide";
-    const title = isSlide ? "Novo slide publicado" : "Novo vídeo publicado";
-    const message = `${courseTitle ? courseTitle + ": " : ""}${
-      content.title || (isSlide ? "Slide" : "Vídeo")
-    }`;
+    const notification = buildContentNotification({ courseId, content, courseTitle });
 
     await Promise.all(
       students
@@ -453,13 +367,7 @@ export const notifyNewContent = async (courseId, content, courseTitle = "") => {
         .map(async (student) => {
           const prefs = await fetchPrefs(student.userId, courseId);
           if (!acceptsInApp(prefs, "newContent")) return;
-          await createNotification(student.userId, {
-            type: "new_content",
-            courseId,
-            title,
-            message,
-            link: contentLink(courseId, content.id),
-          });
+          await createNotification(student.userId, notification);
         })
     );
   } catch (error) {

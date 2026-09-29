@@ -7,6 +7,8 @@ import {
   normalizeQuizDate,
   persistableQuizSettings,
 } from "./quizWindow";
+import { publishAtToPersist, normalizePublishAt } from "./publication";
+import { queueEntryKey, syncPublicationQueueForQuiz } from "./publicationQueue";
 
 /**
  * ==============================
@@ -19,8 +21,9 @@ import {
  * @param {string} courseId - ID do curso
  * @param {string} videoId - ID do vídeo
  * @param {number} minPercentage - Porcentagem mínima para aprovação
- * @param {{ openDate?: string, closeDate?: string }} [schedule] - Janela de
- *   disponibilidade (datas ISO; vazio = sem restrição)
+ * @param {{ openDate?: string, closeDate?: string, publishAt?: string }} [schedule] -
+ *   Janela de disponibilidade (datas ISO; vazio = sem restrição) e data de
+ *   publicação (vazio = aparece para o aluno junto com o conteúdo)
  * @returns {Promise<Object>} - Novo quiz criado
  */
 export const addQuiz = async (
@@ -55,12 +58,14 @@ export const addQuiz = async (
         maxAttempts,
         openDate: schedule?.openDate,
         closeDate: schedule?.closeDate,
+        publishAt: publishAtToPersist(schedule?.publishAt),
       }),
       questions: [],
       courseId,
     };
 
     await set(quizRef, newQuiz);
+    await syncPublicationQueueForQuiz(courseId, videoId);
     return newQuiz;
   } catch (error) {
     console.error("Erro ao adicionar quiz:", error);
@@ -91,6 +96,8 @@ export const removeQuiz = async (courseId, videoId) => {
     updates[`liveQuizResults/${courseId}/${videoId}`] = null;
     updates[`openEndedAnswers/${courseId}/${videoId}`] = null;
     updates[`quizGigi/${courseId}/${videoId}`] = null;
+    // Quiz excluído não deve mais aviso nenhum.
+    updates[`publicationQueue/${queueEntryKey(courseId, "quiz", videoId)}`] = null;
 
     // Resultados por usuário: quizResults/{userId}/{courseId}/{quizId}
     const quizResultsSnapshot = await get(ref(database, `quizResults`));
@@ -254,13 +261,14 @@ export const updateQuizRetrySettings = async (
  * Atualiza a janela de disponibilidade de um quiz (abertura e encerramento).
  * @param {string} courseId - ID do curso
  * @param {Object} quiz - Quiz a atualizar
- * @param {{ openDate: (string|null), closeDate: (string|null) }} schedule
+ * @param {{ openDate: (string|null), closeDate: (string|null), publishAt?: (string|null) }} schedule
+ *   `publishAt` ausente não mexe na data de publicação gravada.
  * @returns {Promise<Object>} - Quiz atualizado
  */
 export const updateQuizSchedule = async (
   courseId,
   quiz,
-  { openDate, closeDate } = {}
+  { openDate, closeDate, publishAt } = {}
 ) => {
   try {
     if (!courseId || !quiz) {
@@ -280,10 +288,16 @@ export const updateQuizSchedule = async (
       );
     }
 
+    const publishUpdate =
+      publishAt === undefined ? {} : { publishAt: publishAtToPersist(publishAt) };
+
     const updatedQuiz = {
       ...quiz,
       openDate: normalizedOpen,
       closeDate: normalizedClose,
+      ...(publishAt !== undefined && {
+        publishAt: normalizePublishAt(publishUpdate.publishAt),
+      }),
     };
 
     // `null` remove a chave no RTDB, o que representa "sem restrição".
@@ -291,13 +305,33 @@ export const updateQuizSchedule = async (
     await update(quizRef, {
       openDate: normalizedOpen || null,
       closeDate: normalizedClose || null,
+      ...publishUpdate,
     });
+    if (publishAt !== undefined) await syncPublicationQueueForQuiz(courseId, quiz.videoId);
 
     return updatedQuiz;
   } catch (error) {
     console.error("Erro ao atualizar a janela do quiz:", error);
     throw error;
   }
+};
+
+/**
+ * Grava só a data de publicação de um quiz, sem tocar no resto do nó. Usado
+ * quando o professor antecipa o conteúdo e escolhe manter o quiz na data que
+ * ele já tinha.
+ * @param {string} courseId
+ * @param {string} quizKey - chave em courseQuizzes/{courseId} (`slide_<id>` no slide legado)
+ * @param {string} publishAt - ISO; vazio ou passado limpa a data
+ */
+export const updateQuizPublishAt = async (courseId, quizKey, publishAt) => {
+  if (!courseId || !quizKey) {
+    throw new Error("Parâmetros inválidos para atualizar a publicação do quiz");
+  }
+  await update(ref(database, `courseQuizzes/${courseId}/${quizKey}`), {
+    publishAt: publishAtToPersist(publishAt),
+  });
+  await syncPublicationQueueForQuiz(courseId, quizKey);
 };
 
 /**

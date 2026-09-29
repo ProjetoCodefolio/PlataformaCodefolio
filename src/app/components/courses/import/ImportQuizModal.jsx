@@ -24,6 +24,12 @@ import {
   fetchImportableQuizzes,
   importQuizFromCourse,
 } from "$api/services/courses/quizImport";
+import {
+  effectiveQuizPublishAt,
+  formatPublishAt,
+  isScheduled,
+} from "$api/services/courses/publication";
+import PublishAtField from "$components/courses/publication/PublishAtField";
 
 /**
  * Importa um questionário pronto de outro curso para um conteúdo deste.
@@ -44,6 +50,7 @@ export default function ImportQuizModal({
   const [sourceQuizId, setSourceQuizId] = useState("");
   const [targetContentId, setTargetContentId] = useState("");
   const [copySettings, setCopySettings] = useState(true);
+  const [publishAt, setPublishAt] = useState("");
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
@@ -58,6 +65,7 @@ export default function ImportQuizModal({
       setSourceQuizId("");
       setTargetContentId("");
       setCopySettings(true);
+      setPublishAt("");
     }
   }, [open]);
 
@@ -99,6 +107,7 @@ export default function ImportQuizModal({
         targetCourseId: courseId,
         targetContentId,
         copySettings,
+        publishAt,
       });
       toast.success("Questionário importado com sucesso!");
       if (onImported) await onImported();
@@ -111,6 +120,11 @@ export default function ImportQuizModal({
   };
 
   const quizEscolhido = quizzes.find((q) => q.quizId === sourceQuizId);
+  // O quiz só aparece quando o conteúdo de destino aparece.
+  const publicacaoEfetiva = effectiveQuizPublishAt(
+    { publishAt },
+    targets.find((t) => t.id === targetContentId)
+  );
   const podeImportar = Boolean(sourceQuizId && targetContentId) && !importing;
 
   return (
@@ -214,6 +228,20 @@ export default function ImportQuizModal({
                 junto: o questionário nasce aberto aqui.
               </Typography>
             </Box>
+          )}
+
+          {sourceQuizId && (
+            <PublishAtField
+              label="Publicar o quiz em (opcional)"
+              value={publishAt}
+              onChange={setPublishAt}
+              disabled={importing}
+              helperText={
+                isScheduled(publicacaoEfetiva)
+                  ? `Oculto para os alunos até ${formatPublishAt(publicacaoEfetiva)}.`
+                  : "Vazio = o quiz aparece junto com o conteúdo."
+              }
+            />
           )}
 
           <Alert severity="info" sx={{ mt: 0.5 }}>

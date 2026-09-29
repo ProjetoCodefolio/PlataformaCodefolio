@@ -116,6 +116,11 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
     navigate(`/quiz-grades-overview?courseId=${courseId}`);
   };
 
+  // Conteúdo (vídeo/slide) do quiz aberto no modal de configuração.
+  const settingsContent = modals.settingsQuiz?.isSlideQuiz
+    ? contentSources.slidesState.find((s) => s.id === modals.settingsQuiz?.slideId)
+    : contentSources.videosState.find((v) => v.id === modals.settingsQuiz?.videoId);
+
   // Botões extras do cabeçalho do formulário de criação.
   const gradesOverviewButton = (
     <>
@@ -202,6 +207,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
             setNewQuizOpenDate={creationForm.setNewQuizOpenDate}
             newQuizCloseDate={creationForm.newQuizCloseDate}
             setNewQuizCloseDate={creationForm.setNewQuizCloseDate}
+            newQuizPublishAt={creationForm.newQuizPublishAt}
+            setNewQuizPublishAt={creationForm.setNewQuizPublishAt}
             questionFormRef={questionFormRef}
             entityType="conteúdo"
             additionalButtons={gradesOverviewButton}
@@ -264,6 +271,8 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
                 setNewQuizOpenDate={creationForm.setNewQuizOpenDate}
                 newQuizCloseDate={creationForm.newQuizCloseDate}
                 setNewQuizCloseDate={creationForm.setNewQuizCloseDate}
+                newQuizPublishAt={creationForm.newQuizPublishAt}
+                setNewQuizPublishAt={creationForm.setNewQuizPublishAt}
                 questionFormRef={questionFormRef}
                 entityType="slide"
                 additionalButtons={gradesOverviewButton}
@@ -304,12 +313,12 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
         courseTitle={courseTitle}
         quiz={modals.settingsQuiz}
         contentTitle={
-          modals.settingsQuiz?.isSlideQuiz
-            ? contentSources.slidesState.find((s) => s.id === modals.settingsQuiz?.slideId)?.title ||
-              modals.settingsQuiz?.slideId
-            : contentSources.videosState.find((v) => v.id === modals.settingsQuiz?.videoId)?.title ||
-              modals.settingsQuiz?.videoId
+          settingsContent?.title ||
+          (modals.settingsQuiz?.isSlideQuiz
+            ? modals.settingsQuiz?.slideId
+            : modals.settingsQuiz?.videoId)
         }
+        contentPublishAt={settingsContent?.publishAt || ""}
         onSaved={questionEditor.handleQuizSettingsSaved}
       />
 
@@ -338,6 +347,7 @@ const CourseQuizzesTab = forwardRef(({ courseId, courseTitle = "", videos, slide
               contentSources.slidesState.map((slide) => ({
                 id: `slide_${slide.id}`,
                 title: slide.title,
+                publishAt: slide.publishAt || "",
               }))
         }
         existingQuizIds={(creationForm.activeTab === 0 ? catalog.quizzes : catalog.slideQuizzes).map(

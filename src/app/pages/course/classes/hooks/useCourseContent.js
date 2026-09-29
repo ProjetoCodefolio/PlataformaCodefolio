@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { canRunCourse } from "$api/utils/permissions";
 import { saveVideoProgress, fetchVideoProgress } from "$api/services/courses/videoProgress";
@@ -14,6 +14,13 @@ import {
 import { updateCourseProgress } from "$api/services/courses/students";
 import { checkSlideHasQuiz } from "$api/services/courses/slides";
 import { loadFlippedClassroomForStudent } from "$api/services/courses/submissions";
+import {
+  annotatePublication,
+  toStudentView,
+  filterPublished,
+  mergeProgressUpdates,
+  isScheduled,
+} from "$api/services/courses/publication";
 
 /**
  * Carregamento de conteúdo do curso (vídeos novos + legado + slides +
@@ -30,6 +37,10 @@ import { loadFlippedClassroomForStudent } from "$api/services/courses/submission
  * cruzamento de dados de quiz, que depende de `videos` — o próprio estado
  * deste hook): os efeitos daqui só precisam do `.id`, então derivam seu
  * próprio `currentVideo` localmente a partir do `videos` que já possuem.
+ *
+ * `viewAsStudent` ("Ver como aluno"): quem conduz a turma continua com a lista
+ * completa no estado, mas recebe a lista do aluno, sem os programados. O
+ * estado não muda, então desligar o botão devolve tudo sem recarregar.
  */
 export function useCourseContent({
   courseId,
@@ -42,21 +53,64 @@ export function useCourseContent({
   setQuizSettings,
   setShowCompletionModal,
   navigate,
+  viewAsStudent = false,
 }) {
   const [videos, setVideos] = useState([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
   const [courseTitle, setCourseTitle] = useState("");
   const [courseOwnerUid, setCourseOwnerUid] = useState("");
   const [slides, setSlides] = useState([]);
+  // Quem conduz a turma (dono, co-professor, admin) recebe os itens programados.
+  const [canSeeScheduled, setCanSeeScheduled] = useState(false);
+
+  const verComoAluno = viewAsStudent || !canSeeScheduled;
+  const visibleVideos = useMemo(
+    () => (verComoAluno ? toStudentView(videos) : videos),
+    [videos, verComoAluno]
+  );
+  // Quem está fora do hook recebe a lista visível e devolve uma versão dela
+  // com progresso novo. O estado guarda a lista completa: só o progresso volta.
+  const setVisibleVideos = useCallback(
+    (updated) =>
+      setVideos((full) =>
+        mergeProgressUpdates(
+          full,
+          typeof updated === "function" ? updated(verComoAluno ? toStudentView(full) : full) : updated
+        )
+      ),
+    [verComoAluno]
+  );
+  // Há algo programado nesta turma? Sem nada, a faixa "Ver como aluno" não
+  // aparece, para não ocupar espaço à toa.
+  const hasScheduled = useMemo(
+    () => canSeeScheduled && (videos.some((v) => v?.scheduled || v?.quizScheduled) || slides.some((s) => isScheduled(s?.publishAt))),
+    [canSeeScheduled, videos, slides]
+  );
+  const visibleSlides = useMemo(
+    () => (verComoAluno ? filterPublished(slides) : slides),
+    [slides, verComoAluno]
+  );
+
+  // Ao ligar "Ver como aluno" com um item programado aberto, ele some da
+  // lista: vai para o primeiro item que o aluno veria.
+  useEffect(() => {
+    if (!currentVideoId || visibleVideos.length === 0) return;
+    if (visibleVideos.some((item) => item?.id === currentVideoId)) return;
+    const firstUnfinished = visibleVideos.find(
+      (item) => item && !item.isIndependent && (!item.watched || (item.quizId && !item.quizPassed))
+    );
+    setCurrentVideoId(firstUnfinished?.id || visibleVideos[0].id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleVideos]);
 
   const currentVideo = videos.find((video) => video.id === currentVideoId);
 
   // Seleciona um vídeo padrão assim que a lista carrega, se nada foi escolhido.
   useEffect(() => {
-    if (!currentVideoId && videos.length > 0) {
-      setCurrentVideoId(videos[0].id);
+    if (!currentVideoId && visibleVideos.length > 0) {
+      setCurrentVideoId(visibleVideos[0].id);
     }
-  }, [videos, currentVideoId]);
+  }, [visibleVideos, currentVideoId]);
 
   // Carrega os dados iniciais do curso
   useEffect(() => {
@@ -158,9 +212,32 @@ export function useCourseContent({
           return String(a?.id).localeCompare(String(b?.id));
         });
 
+        // Configuração dos quizzes (tentativas, janela e publicação). Vem antes
+        // de montar a lista porque a data de publicação do quiz decide se ele
+        // aparece para o aluno.
+        let quizzesMap = {};
+        try {
+          quizzesMap = (await fetchCourseQuizzes(courseId)) || {};
+          setQuizSettings(quizzesMap);
+        } catch (quizSettingsError) {
+          console.error(
+            "Erro ao carregar configurações de tentativas dos quizzes:",
+            quizSettingsError
+          );
+        }
+
+        // Publicação programada: o aluno não vê o item antes da data. Quem
+        // conduz a turma (dono, co-professor, admin) vê tudo, com o selo
+        // "Programado", para conferir o semestre sem conta de aluno. O
+        // progresso é sempre o do aluno, com ou sem os itens programados na tela.
+        const annotated = annotatePublication(combinedContent, quizzesMap);
+        const studentContent = toStudentView(annotated);
+        const visibleContent = canAccessArchived ? annotated : studentContent;
+
         setCourseTitle(courseData.courseTitle);
         setCourseOwnerUid(courseData.courseOwnerUid);
-        setVideos(combinedContent);
+        setCanSeeScheduled(canAccessArchived);
+        setVideos(visibleContent);
 
         // Recalcula o progresso do curso com a lista completa: todo o conteúdo
         // (vídeos novos/legados/entrega + slides), exceto itens independentes.
@@ -173,10 +250,10 @@ export function useCourseContent({
         // rebaixado (e poderia virar completed→in_progress). Neste caso pulamos a
         // gravação; o valor é reconciliado no próximo carregamento bem-sucedido.
         if (userDetails?.userId) {
-          const progressVideos = combinedContent.filter(
+          const progressVideos = studentContent.filter(
             (v) => v && !v.isIndependent
           );
-          const progressReliable = combinedContent.every(
+          const progressReliable = studentContent.every(
             (v) => !v?.progressError
           );
           if (progressReliable) {
@@ -185,23 +262,12 @@ export function useCourseContent({
         }
         setUserAttempts(courseData.userQuizzesResults);
 
-        // Carrega a configuração de tentativas de cada quiz do curso (usada para
-        // bloquear o início/repetição de quizzes que atingiram o limite).
-        try {
-          const quizzesMap = await fetchCourseQuizzes(courseId);
-          setQuizSettings(quizzesMap || {});
-        } catch (quizSettingsError) {
-          console.error(
-            "Erro ao carregar configurações de tentativas dos quizzes:",
-            quizSettingsError
-          );
-        }
-
         // Um `?videoId=` inexistente (link antigo, conteúdo excluído) não pode
         // deixar a sala presa numa tela vazia: nesse caso vale a escolha padrão.
+        // Vale também para link de notificação que aponta para item programado.
         const idAtualValido =
           currentVideoId &&
-          combinedContent.some((item) => item?.id === currentVideoId);
+          visibleContent.some((item) => item?.id === currentVideoId);
 
         if (!idAtualValido) {
           // O item inicial deve respeitar a ORDEM GLOBAL da lista combinada
@@ -209,14 +275,15 @@ export function useCourseContent({
           // vídeos legados — senão o aluno abre no vídeo que "antigamente" era o
           // primeiro, ignorando a reordenação. Escolhe o primeiro item ainda não
           // concluído; se todos estiverem concluídos, o primeiro da lista.
-          const firstUnfinished = combinedContent.find(
+          const firstUnfinished = visibleContent.find(
             (item) =>
               item &&
               !item.isIndependent &&
+              !item.scheduled &&
               (!item.watched || (item.quizId && !item.quizPassed))
           );
           setCurrentVideoId(
-            firstUnfinished?.id || combinedContent[0]?.id || null
+            firstUnfinished?.id || visibleContent[0]?.id || null
           );
         }
       } catch (error) {
@@ -331,6 +398,8 @@ export function useCourseContent({
             })
           );
 
+          // Guarda todos; quem filtra os programados é `visibleSlides`, pelo
+          // mesmo critério da lista principal.
           setSlides(slidesWithQuizInfo);
         }
       } catch (error) {
@@ -360,11 +429,13 @@ export function useCourseContent({
   }, [videos]);
 
   return {
-    videos,
-    setVideos,
+    videos: visibleVideos,
+    setVideos: setVisibleVideos,
     loadingVideos,
     courseTitle,
     courseOwnerUid,
-    slides,
+    slides: visibleSlides,
+    canSeeScheduled,
+    hasScheduled,
   };
 }

@@ -47,6 +47,8 @@ import { ref, get, push, set, update, remove } from "firebase/database";
 import { database } from "../../config/firebase";
 import { updateAllUsersCourseProgress } from "./courses";
 import { getNextContentOrder } from "./contentOrder";
+import { publishAtToPersist } from "./publication";
+import { syncPublicationQueue } from "./publicationQueue";
 
 /**
  * Valida se uma URL é uma URL válida do YouTube
@@ -224,11 +226,15 @@ export const updateCourseVideo = async (courseId, videoId, videoData) => {
       title: videoData.title.trim(),
       url: videoData.url.trim(),
       description: String(videoData.description || ""),
-      requiresPrevious: videoData.requiresPrevious
+      requiresPrevious: videoData.requiresPrevious,
+      ...(videoData.publishAt !== undefined && {
+        publishAt: publishAtToPersist(videoData.publishAt),
+      }),
     };
     
     await update(videoRef, video);
-    
+    await syncPublicationQueue(courseId, { contentId: videoId, source: "video" });
+
     return { ...video, id: videoId };
   } catch (error) {
     console.error("Erro ao atualizar vídeo:", error);
@@ -285,6 +291,7 @@ export const deleteCourseVideo = async (courseId, videoId, userId) => {
     }
 
     await remove(videoRef);
+    await syncPublicationQueue(courseId, { contentId: videoId, source: "video" });
 
     // NÃO reindexamos a ordem dos vídeos remanescentes. O `order` é uma
     // sequência GLOBAL, compartilhada com courseContent, courseSlides e os

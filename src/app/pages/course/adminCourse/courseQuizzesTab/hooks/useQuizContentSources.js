@@ -33,6 +33,9 @@ export function useQuizContentSources(courseId, initialVideos, initialSlides) {
         id: item.id,
         title:
           item.category === "slide" ? `${item.title} (Slide)` : item.title,
+        // O quiz só aparece quando o conteúdo aparece: a tela precisa da data
+        // do conteúdo para mostrar a publicação efetiva.
+        publishAt: item.publishAt || "",
       }));
 
       // Vídeos de entrega (sala de aula invertida): quiz chaveado pelo id `flip_...`.

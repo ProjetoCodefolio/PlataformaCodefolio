@@ -159,6 +159,44 @@ describe.runIf(emuladorNoAr)("importQuizFromCourse", () => {
     expect(destino.closeDate).toBeUndefined();
   });
 
+  it("grava a publicação escolhida no destino, nunca a da origem", async () => {
+    await set(
+      ref(database, `courseQuizzes/${ORIGEM}/${QUIZ_ORIGEM}/publishAt`),
+      "2025-03-01T12:00:00.000Z"
+    );
+    const futuro = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+
+    await importQuizFromCourse({
+      sourceCourseId: ORIGEM,
+      sourceQuizId: QUIZ_ORIGEM,
+      targetCourseId: DESTINO,
+      targetContentId: CONTEUDO_DESTINO,
+      publishAt: futuro,
+    });
+    const destino = (
+      await get(ref(database, `courseQuizzes/${DESTINO}/${CONTEUDO_DESTINO}`))
+    ).val();
+    expect(destino.publishAt).toBe(futuro);
+  });
+
+  it("sem data escolhida, o quiz importado não herda a publicação da origem", async () => {
+    await set(
+      ref(database, `courseQuizzes/${ORIGEM}/${QUIZ_ORIGEM}/publishAt`),
+      new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString()
+    );
+
+    await importQuizFromCourse({
+      sourceCourseId: ORIGEM,
+      sourceQuizId: QUIZ_ORIGEM,
+      targetCourseId: DESTINO,
+      targetContentId: CONTEUDO_DESTINO,
+    });
+    const destino = (
+      await get(ref(database, `courseQuizzes/${DESTINO}/${CONTEUDO_DESTINO}`))
+    ).val();
+    expect(destino.publishAt).toBeUndefined();
+  });
+
   it("sem copiar configurações, o quiz nasce no padrão", async () => {
     await importQuizFromCourse({
       sourceCourseId: ORIGEM,

@@ -29,6 +29,11 @@ import {
   normalizeQuizDate,
 } from "$api/services/courses/quizWindow";
 import { notifyNewQuiz } from "$api/services/notifications";
+import {
+  effectiveQuizPublishAt,
+  isScheduled,
+  normalizePublishAt,
+} from "$api/services/courses/publication";
 
 /**
  * Mudanças que valem um aviso para a turma. Marcar/desmarcar "diagnóstico"
@@ -61,6 +66,7 @@ const QuizSettingsModal = ({
   courseTitle = "",
   quiz,
   contentTitle = "",
+  contentPublishAt = "",
   onSaved,
 }) => {
   // `current` é o quiz mais recente conhecido — cada gravação devolve uma versão
@@ -72,6 +78,7 @@ const QuizSettingsModal = ({
   const [maxAttempts, setMaxAttempts] = useState("");
   const [openDate, setOpenDate] = useState("");
   const [closeDate, setCloseDate] = useState("");
+  const [publishAt, setPublishAt] = useState("");
   const [saving, setSaving] = useState(false);
   const [notifyClass, setNotifyClass] = useState(false);
   // Campos materiais mexidos nesta sessão de edição, acumulados até o fechamento.
@@ -93,6 +100,7 @@ const QuizSettingsModal = ({
     setMaxAttempts(max == null ? "" : max);
     setOpenDate(normalizeQuizDate(quiz.openDate));
     setCloseDate(normalizeQuizDate(quiz.closeDate));
+    setPublishAt(normalizePublishAt(quiz.publishAt));
     setNotifyClass(false);
     setChanged([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,6 +187,24 @@ const QuizSettingsModal = ({
     );
   };
 
+  // Recebe o valor do campo porque o "Publicar agora" dispara antes de o
+  // estado atualizar.
+  const handleBlurPublishAt = async (value) => {
+    if (normalizePublishAt(current?.publishAt) === normalizePublishAt(value)) return;
+    const updated = await persist(
+      (q) => updateQuizSchedule(courseId, q, { openDate, closeDate, publishAt: value }),
+      isScheduled(value) ? "Publicação do quiz programada!" : "Quiz publicado!"
+    );
+    // Data no passado vira "publicado agora": o campo reflete o que foi gravado.
+    if (updated) setPublishAt(normalizePublishAt(updated.publishAt));
+  };
+
+  // Enquanto o quiz estiver oculto, avisar a turma revelaria o que o professor
+  // programou para depois.
+  const quizOculto = isScheduled(
+    effectiveQuizPublishAt({ publishAt }, { publishAt: contentPublishAt })
+  );
+
   /**
    * União entre o que os blurs já marcaram e o que ainda está só no formulário
    * (quem clica direto em "Salvar" não dispara blur). Calculado na hora porque
@@ -207,7 +233,7 @@ const QuizSettingsModal = ({
    * mudança material ou sem a caixinha marcada, não sai nada.
    */
   const notifyIfRequested = (finalQuiz, changeKeys) => {
-    if (!notifyClass || changeKeys.length === 0) return;
+    if (!notifyClass || changeKeys.length === 0 || quizOculto) return;
     const changeLabels = changeKeys.map((key) => CHANGE_LABELS[key]).filter(Boolean);
     if (changeLabels.length === 0) return;
 
@@ -252,6 +278,7 @@ const QuizSettingsModal = ({
       working = await updateQuizSchedule(courseId, working, {
         openDate,
         closeDate,
+        publishAt,
       });
 
       setCurrent(working);
@@ -356,13 +383,18 @@ const QuizSettingsModal = ({
             setOpenDate={setOpenDate}
             setCloseDate={setCloseDate}
             onBlurSave={handleBlurSchedule}
+            publishAt={publishAt}
+            setPublishAt={setPublishAt}
+            contentPublishAt={contentPublishAt}
+            onBlurPublishAt={handleBlurPublishAt}
           />
 
           <Box sx={{ p: 2, borderRadius: 1, border: "1px solid #e0e0e0" }}>
             <FormControlLabel
               control={
                 <Checkbox
-                  checked={notifyClass}
+                  checked={notifyClass && !quizOculto}
+                  disabled={quizOculto}
                   onChange={(e) => setNotifyClass(e.target.checked)}
                   sx={{ color: "#9041c1", "&.Mui-checked": { color: "#9041c1" } }}
                 />
@@ -373,8 +405,9 @@ const QuizSettingsModal = ({
               variant="caption"
               sx={{ display: "block", ml: 4, color: "#666", mt: 0.5 }}
             >
-              Manda um e-mail para todos os alunos matriculados ao fechar, com o
-              resumo do que mudou. Só vale para prazo, nota mínima e tentativas.
+              {quizOculto
+                ? "Indisponível enquanto o quiz estiver programado: o aviso revelaria o quiz antes da data."
+                : "Manda um e-mail para todos os alunos matriculados ao fechar, com o resumo do que mudou. Só vale para prazo, nota mínima e tentativas."}
             </Typography>
           </Box>
         </Box>
