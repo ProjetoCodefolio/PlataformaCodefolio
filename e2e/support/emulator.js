@@ -25,3 +25,6 @@ const databaseRequest = async (method, path, body) => {
 export const resetDatabase = (data = null) => databaseRequest("PUT", "", data);
 
 export const readDatabase = (path = "") => databaseRequest("GET", path);
+
+/** Grava `value` em `path`, substituindo o que houver lá. */
+export const writeDatabase = (path, value) => databaseRequest("PUT", path, value);

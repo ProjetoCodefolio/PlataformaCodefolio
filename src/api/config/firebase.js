@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
+import { getAuth, connectAuthEmulator, signInWithEmailAndPassword } from "firebase/auth";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
 import { getAnalytics } from "firebase/analytics";
 import { resolveRuntimeMode, isLocalHostname } from "./runtimeMode";
@@ -51,4 +51,18 @@ if (useEmulators) {
 }
 if (runtimeMode.useAuthEmulator) {
   connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+}
+
+// Só no build e2e: deixa o Playwright logar sem o popup do Google, com um
+// usuário de e-mail e senha criado direto no emulador de Auth. O popup
+// continua coberto por um teste próprio; os outros testes usam este atalho
+// porque o popup depende de um script externo (apis.google.com). Fora do e2e
+// este bloco não existe: o Vite o remove do build.
+if (runtimeMode.e2e) {
+  window.__codefolioE2E = {
+    signIn: async (email, password) => {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      return credential.user.uid;
+    },
+  };
 }
