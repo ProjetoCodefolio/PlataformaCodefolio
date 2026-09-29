@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **proposto, não implementado**. Escrito em 29/09/2026.
+Status: **etapa 0 implementada em 29/09/2026** na branch `test/e2e-playwright`; etapas 1 a 6 pendentes. Escrito em 29/09/2026.
 
 ## Por que
 
@@ -67,7 +67,7 @@ playwright.config.js
 
 ## Etapas
 
-**Etapa 0: modo E2E no app.** Em `src/api/config/firebase.js`, aceitar `VITE_MODE=e2e`: liga os emuladores mesmo em `vite build` (hoje o `import.meta.env.DEV` é falso no build) e chama `connectAuthEmulator`. Testar contra o build, e não contra o dev server, deixa o teste mais perto do que vai para produção. Commit: `feat(e2e): modo e2e conectando auth e database ao emulador`.
+**Etapa 0: modo E2E no app. Feita.** A escolha do modo saiu de `firebase.js` para `src/api/config/runtimeMode.js`, que é puro e tem teste. Com `VITE_MODE=e2e`, banco e login vão para o emulador mesmo num `vite build`, e o e-mail de notificação fica desligado mesmo quando forçado (antes ele ligava em qualquer build, e o de E2E também é um build). `npm run build:e2e` gera o build em `dist-e2e/`, com a configuração do `.env.e2e` (commitado, sem nenhum segredo). Travas para esse build nunca ir ao ar: o deploy só publica `dist/`; o `VITE_MODE=e2e` vai na linha de comando do script, que vence qualquer `VITE_MODE` herdado do ambiente; e o app se recusa a abrir fora de `localhost`. Conferido no código compilado: o build de produção não tem nenhum resto do emulador nem da trava. Commits: `feat(e2e): modo e2e conectando auth e database ao emulador` e `fix(notificacoes): nunca enviar e-mail a partir do build de testes e2e`.
 
 **Etapa 1: infraestrutura.** Instalar `@playwright/test`, criar `playwright.config.js` (servidor `vite preview` do build E2E, `baseURL`, bloqueio de rede externa, trace em falha), os helpers de `e2e/support/` e o script `npm run test:e2e` rodando dentro de `firebase emulators:exec`. Primeiro teste: o fluxo 1 (visitante). Commit: `test(e2e): infraestrutura do playwright com emulador`.
 
@@ -75,7 +75,7 @@ playwright.config.js
 
 **Etapa 3: vídeo e quiz.** Stub do YouTube e fluxos 4 e 5. É a etapa de maior risco (o stub precisa imitar o suficiente da API do `YT.Player`). Commit: `test(e2e): progresso de video e quiz`.
 
-**Etapa 4: CI.** Job `e2e` em `.github/workflows/ci-cd.yml`, paralelo ao `test`, com cache do navegador e upload do relatório em falha; `deploy` passa a ter `needs: [test, e2e]`. Commit: `ci: rodar testes e2e em PR e antes do deploy`.
+**Etapa 4: CI.** Hoje os segredos `VITE_*` estão no `env:` do workflow inteiro, e variável de ambiente vence o `.env.e2e`. Antes de criar o job, esse `env:` desce para os jobs `test` e `deploy`, para o `e2e` não receber segredo nenhum (e funcionar também em PR vindo de fork). Job `e2e` em `.github/workflows/ci-cd.yml`, paralelo ao `test`, com cache do navegador e upload do relatório em falha; `deploy` passa a ter `needs: [test, e2e]`. Commit: `ci: rodar testes e2e em PR e antes do deploy`.
 
 **Etapa 5: prioridade 2.** Fluxos 6, 7 e 8, um commit por fluxo.
 
