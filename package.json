@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:e2e": "VITE_MODE=e2e vite build --mode e2e --outDir dist-e2e",
+    "check:build": "node scripts/checkProductionBuild.mjs",
     "firebase-emulate": "firebase emulators:start",
     "lint": "eslint . --ext js,jsx,mjs,cjs --report-unused-disable-directives",
     "preview": "vite preview",

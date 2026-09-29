@@ -37,6 +37,10 @@ jobs:
       - name: Build
         run: npm run build
 
+      # O build de produção não pode carregar nada do build de testes E2E
+      # (emulador, atalho de login). Ver scripts/checkProductionBuild.mjs.
+      - run: npm run check:build
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -60,6 +64,8 @@ jobs:
       - run: npm ci
 
       - run: npm run build
+
+      - run: npm run check:build
 
       - id: auth
         uses: google-github-actions/auth@v2

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveRuntimeMode, isLocalHostname } from "./runtimeMode";
+import { resolveRuntimeMode, resolveEmailNotificationsEnabled, isLocalHostname } from "./runtimeMode";
 
 // `DEV` é true só no dev server (`npm run dev`); qualquer `vite build` tem
 // DEV false e PROD true, inclusive o build de e2e.
@@ -12,7 +12,6 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: true,
       useAuthEmulator: false,
-      emailNotificationsEnabled: false,
     });
   });
 
@@ -25,7 +24,6 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: false,
       useAuthEmulator: false,
-      emailNotificationsEnabled: false,
     });
   });
 
@@ -34,7 +32,6 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: false,
       useAuthEmulator: false,
-      emailNotificationsEnabled: true,
     });
   });
 
@@ -49,7 +46,6 @@ describe("resolveRuntimeMode", () => {
       e2e: true,
       useDatabaseEmulator: true,
       useAuthEmulator: true,
-      emailNotificationsEnabled: false,
     });
   });
 
@@ -63,7 +59,7 @@ describe("resolveRuntimeMode", () => {
 });
 
 describe("e-mail de notificação", () => {
-  const email = (env) => resolveRuntimeMode(env).emailNotificationsEnabled;
+  const email = resolveEmailNotificationsEnabled;
 
   it("sai do build de produção", () => {
     expect(email({ ...build, VITE_MODE: "production" })).toBe(true);

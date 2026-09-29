@@ -1,5 +1,5 @@
 import { database } from "$api/config/firebase";
-import { resolveRuntimeMode } from "$api/config/runtimeMode";
+import { resolveEmailNotificationsEnabled } from "$api/config/runtimeMode";
 import { ref, push, set, get, update, query, orderByChild, onValue } from "firebase/database";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
@@ -34,7 +34,7 @@ import { enqueueNotificationEmail } from "$api/services/emailService";
 // VITE_EMAIL_TEST_ALLOWLIST (ver emailService.js), que restringe quem
 // realmente recebe o e-mail.
 export const EMAIL_NOTIFICATIONS_ENABLED =
-  resolveRuntimeMode(import.meta.env).emailNotificationsEnabled;
+  resolveEmailNotificationsEnabled(import.meta.env);
 
 /**
  * Cria uma notificação in-app para um usuário.
