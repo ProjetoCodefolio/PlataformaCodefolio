@@ -6,22 +6,25 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
-  VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
-  VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
-  VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
-  VITE_MESSAGING_SENDER: ${{ secrets.VITE_MESSAGING_SENDER }}
-  VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
-  VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
-  VITE_MODE: ${{ secrets.VITE_MODE }}
-  VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
-  VITE_PIN_SECRET_KEY: ${{ secrets.VITE_PIN_SECRET_KEY }}
-  VITE_EMAIL_WORKER_URL: ${{ secrets.VITE_EMAIL_WORKER_URL }}
+# Os segredos VITE_* ficam em cada job que faz o build de produção, e não no
+# workflow inteiro: o job e2e não pode recebê-los, porque variável de ambiente
+# vence o .env.e2e e levaria a configuração real para o build de testes.
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+      VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
+      VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
+      VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
+      VITE_MESSAGING_SENDER: ${{ secrets.VITE_MESSAGING_SENDER }}
+      VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
+      VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
+      VITE_MODE: ${{ secrets.VITE_MODE }}
+      VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+      VITE_PIN_SECRET_KEY: ${{ secrets.VITE_PIN_SECRET_KEY }}
+      VITE_EMAIL_WORKER_URL: ${{ secrets.VITE_EMAIL_WORKER_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,10 +52,60 @@ jobs:
       - name: Testes (com emulador do Firebase)
         run: npx firebase emulators:exec --project plataformacodefolio "npm run test -- --run"
 
+  # Testes de ponta a ponta (ver plano_testes_e2e.md): o Playwright abre o
+  # build de e2e num Chromium, com banco e login no emulador. Sem nenhum
+  # segredo, de propósito, então roda também em PR vindo de fork.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Instalar o Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes E2E (build e2e + emuladores + Playwright)
+        run: npm run test:e2e
+
+      # Em falha, o relatório traz trace, screenshot e vídeo de cada teste
+      # (abrir o trace com `npx playwright show-trace <arquivo>`).
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
   deploy:
-    needs: test
+    needs: [test, e2e]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      VITE_API_KEY: ${{ secrets.VITE_API_KEY }}
+      VITE_AUTH_DOMAIN: ${{ secrets.VITE_AUTH_DOMAIN }}
+      VITE_PROJECT_ID: ${{ secrets.VITE_PROJECT_ID }}
+      VITE_STORAGE_BUCKET: ${{ secrets.VITE_STORAGE_BUCKET }}
+      VITE_MESSAGING_SENDER: ${{ secrets.VITE_MESSAGING_SENDER }}
+      VITE_APP_ID: ${{ secrets.VITE_APP_ID }}
+      VITE_MEASUREMENT_ID: ${{ secrets.VITE_MEASUREMENT_ID }}
+      VITE_MODE: ${{ secrets.VITE_MODE }}
+      VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+      VITE_PIN_SECRET_KEY: ${{ secrets.VITE_PIN_SECRET_KEY }}
+      VITE_EMAIL_WORKER_URL: ${{ secrets.VITE_EMAIL_WORKER_URL }}
     steps:
       - uses: actions/checkout@v4
 
