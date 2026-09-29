@@ -8,6 +8,9 @@ certs/*.key
 dist
 # Build dos testes E2E (npm run build:e2e); nunca vai para o deploy, que só publica dist/
 dist-e2e
+# Relatórios e artefatos do Playwright
+playwright-report
+test-results
 
 # Created by "Local History" extension
 .history
