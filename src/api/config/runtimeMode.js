@@ -16,10 +16,18 @@ export const resolveRuntimeMode = (env) => {
   // o dev server vai para o emulador; VITE_MODE=production tira o emulador da
   // jogada mesmo em dev, para testar o dev server contra o Firebase real.
   const useDatabaseEmulator = e2e || (env.VITE_MODE !== "production" && Boolean(env.DEV));
+  // E-mail de notificação só sai de um build de verdade (`env.PROD`), nunca
+  // do dev server, para teste local contra o Firebase real não mandar e-mail
+  // para aluno de verdade. VITE_FORCE_EMAIL_NOTIFICATIONS liga em dev para
+  // teste pontual (ver notifications.js). O build e2e também é um build, mas
+  // não manda e-mail em hipótese nenhuma, nem forçado.
+  const emailNotificationsEnabled =
+    !e2e && (Boolean(env.PROD) || env.VITE_FORCE_EMAIL_NOTIFICATIONS === "true");
   return {
     e2e,
     useDatabaseEmulator,
     useAuthEmulator: e2e,
+    emailNotificationsEnabled,
   };
 };
 

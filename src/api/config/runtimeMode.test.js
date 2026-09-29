@@ -12,6 +12,7 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: true,
       useAuthEmulator: false,
+      emailNotificationsEnabled: false,
     });
   });
 
@@ -24,6 +25,7 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: false,
       useAuthEmulator: false,
+      emailNotificationsEnabled: false,
     });
   });
 
@@ -32,6 +34,7 @@ describe("resolveRuntimeMode", () => {
       e2e: false,
       useDatabaseEmulator: false,
       useAuthEmulator: false,
+      emailNotificationsEnabled: true,
     });
   });
 
@@ -46,6 +49,7 @@ describe("resolveRuntimeMode", () => {
       e2e: true,
       useDatabaseEmulator: true,
       useAuthEmulator: true,
+      emailNotificationsEnabled: false,
     });
   });
 
@@ -55,6 +59,28 @@ describe("resolveRuntimeMode", () => {
         expect(resolveRuntimeMode({ ...env, VITE_MODE }).useAuthEmulator).toBe(false);
       }
     }
+  });
+});
+
+describe("e-mail de notificação", () => {
+  const email = (env) => resolveRuntimeMode(env).emailNotificationsEnabled;
+
+  it("sai do build de produção", () => {
+    expect(email({ ...build, VITE_MODE: "production" })).toBe(true);
+  });
+
+  it("não sai do dev server, nem apontando para o Firebase real", () => {
+    expect(email({ ...devServer, VITE_MODE: "" })).toBe(false);
+    expect(email({ ...devServer, VITE_MODE: "production" })).toBe(false);
+  });
+
+  it("sai do dev server só quando forçado", () => {
+    expect(email({ ...devServer, VITE_MODE: "", VITE_FORCE_EMAIL_NOTIFICATIONS: "true" })).toBe(true);
+  });
+
+  it("nunca sai do build e2e, mesmo sendo um build e mesmo forçado", () => {
+    expect(email({ ...build, VITE_MODE: "e2e" })).toBe(false);
+    expect(email({ ...build, VITE_MODE: "e2e", VITE_FORCE_EMAIL_NOTIFICATIONS: "true" })).toBe(false);
   });
 });
 
