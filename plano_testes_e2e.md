@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapa 0 implementada em 29/09/2026** na branch `test/e2e-playwright`; etapas 1 a 6 pendentes. Escrito em 29/09/2026.
+Status: **etapas 0 e 1 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 2 a 6 pendentes. Escrito em 29/09/2026.
 
 ## Por que
 
@@ -69,7 +69,9 @@ playwright.config.js
 
 **Etapa 0: modo E2E no app. Feita.** A escolha do modo saiu de `firebase.js` para `src/api/config/runtimeMode.js`, que é puro e tem teste. Com `VITE_MODE=e2e`, banco e login vão para o emulador mesmo num `vite build`, e o e-mail de notificação fica desligado mesmo quando forçado (antes ele ligava em qualquer build, e o de E2E também é um build). `npm run build:e2e` gera o build em `dist-e2e/`, com a configuração do `.env.e2e` (commitado, sem nenhum segredo). Travas para esse build nunca ir ao ar: o deploy só publica `dist/`; o `VITE_MODE=e2e` vai na linha de comando do script, que vence qualquer `VITE_MODE` herdado do ambiente; e o app se recusa a abrir fora de `localhost`. Conferido no código compilado: o build de produção não tem nenhum resto do emulador nem da trava. Commits: `feat(e2e): modo e2e conectando auth e database ao emulador` e `fix(notificacoes): nunca enviar e-mail a partir do build de testes e2e`.
 
-**Etapa 1: infraestrutura.** Instalar `@playwright/test`, criar `playwright.config.js` (servidor `vite preview` do build E2E, `baseURL`, bloqueio de rede externa, trace em falha), os helpers de `e2e/support/` e o script `npm run test:e2e` rodando dentro de `firebase emulators:exec`. Primeiro teste: o fluxo 1 (visitante). Commit: `test(e2e): infraestrutura do playwright com emulador`.
+**Etapa 1: infraestrutura. Feita.** `@playwright/test` 1.63 instalado, com o `playwright.config.js` (um worker só, porque todos os testes usam o mesmo banco; `retries: 1` só no CI; trace, screenshot e vídeo guardados em falha) servindo `dist-e2e/` pelo `vite preview` na porta 4173. `npm run test:e2e` faz o build e roda o Playwright dentro de `firebase emulators:exec --only database,auth`. Todo teste importa `test` de `e2e/support/test.js`, que bloqueia tudo fora de `localhost` e reprova o teste se a página lançar erro de JavaScript não tratado. `e2e/support/emulator.js` zera e semeia o banco com `Bearer owner`; o app usa o namespace `plataformacodefolio-default-rtdb` (não o `plataformacodefolio` dos testes do Vitest), e as regras valem nele (visitante lendo `/users` recebe 401). Primeiros testes, em `e2e/visitante.spec.js`: o curso aparece em "Disponíveis" para o visitante, e o menu da página inicial leva ao catálogo. Conferido que o primeiro falha com o banco vazio.
+
+O E2E já achou um bug: a página inicial monta a `Topbar` duas vezes (em `pages/dashboard/index.jsx` e dentro de `components/post/Post.jsx`), uma em cima da outra, cada uma com a sua busca. O teste clica na de cima, que é a que o usuário vê.
 
 **Etapa 2: login e acesso.** Fluxos 2 e 3. Aqui se valida que as regras do banco aceitam o token do Auth emulator. Commit: `test(e2e): login e acesso ao curso`.
 
