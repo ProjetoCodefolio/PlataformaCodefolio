@@ -42,3 +42,8 @@ skills-lock.json
 
 # Segredos locais do Worker (wrangler dev)
 emailWorker/.dev.vars
+
+# O gerenciador de pacotes do projeto é o npm (package-lock.json); lockfile de
+# outro gerenciador não entra, para não haver duas versões das dependências.
+pnpm-lock.yaml
+yarn.lock
