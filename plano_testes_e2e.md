@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 a 3 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 4 a 6 pendentes. Escrito em 29/09/2026.
+Status: **etapas 0 a 4 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 5 e 6 pendentes. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
 
 ## Por que
 
@@ -85,11 +85,11 @@ Testes de `e2e/video.spec.js` (curso com dois vídeos, o segundo com `requiresPr
 
 Uma inconsistência de tela que apareceu (não corrigida): para o aluno **aprovado** que gastou as tentativas, a lista mostra "Limite Atingido"; para o **reprovado** nas mesmas condições, continua mostrando "Fazer Quiz", e o limite só aparece como aviso depois do clique.
 
-**Etapa 4: CI.** Hoje os segredos `VITE_*` estão no `env:` do workflow inteiro, e variável de ambiente vence o `.env.e2e`. Antes de criar o job, esse `env:` desce para os jobs `test` e `deploy`, para o `e2e` não receber segredo nenhum (e funcionar também em PR vindo de fork). Job `e2e` em `.github/workflows/ci-cd.yml`, paralelo ao `test`, com cache do navegador e upload do relatório em falha; `deploy` passa a ter `needs: [test, e2e]`. Commit: `ci: rodar testes e2e em PR e antes do deploy`.
+**Etapa 4: CI. Feita.** Os segredos `VITE_*` saíram do `env:` do workflow inteiro (lá eles chegavam ao job de E2E e venciam o `.env.e2e`) e desceram para os jobs `test` e `deploy`; o `e2e` não recebe segredo nenhum e roda também em PR vindo de fork. O job `e2e` em `.github/workflows/ci-cd.yml` roda em paralelo ao `test`: instala só o Chromium (`npx playwright install --with-deps chromium`), roda `npm run test:e2e` e, em falha, guarda `playwright-report/` e `test-results/` (trace, screenshot e vídeo) por 7 dias. O `deploy` passou a ter `needs: [test, e2e]`. Ficou sem cache do navegador por enquanto: só entra se o tempo do job incomodar. **Ainda não rodou no GitHub**, porque o workflow só dispara em PR para a `main` ou push nela; a primeira execução de verdade é a do PR desta branch. Commit: `ci: rodar os testes e2e em PR e antes do deploy`.
 
 **Etapa 5: prioridade 2.** Fluxos 6, 7 e 8, um commit por fluxo.
 
-**Etapa 6 (opcional): smoke pós-deploy.** Job depois do `deploy`, só leitura, contra `https://plataformacodefolio.web.app`.
+**Etapa 6: smoke pós-deploy.** Decidido fazer (ver o fim do documento). Job depois do `deploy`, só leitura, contra `https://plataformacodefolio.web.app`.
 
 ## Riscos
 
@@ -97,8 +97,8 @@ Uma inconsistência de tela que apareceu (não corrigida): para o aluno **aprova
 - **Stub do YouTube divergir da API real.** Se o YouTube mudar algo, o E2E não vai perceber. O smoke pós-deploy e o uso real cobrem essa parte.
 - **Tempo do CI.** Se passar de uns 5 minutos, os testes são divididos em shards do Playwright.
 
-## Decisões em aberto
+## Decisões (resolvidas em 02/10/2026)
 
-1. O E2E deve **barrar o merge** do PR (check obrigatório na proteção da `main`) ou só avisar no começo, até os testes se mostrarem estáveis? Recomendação: só avisar nas primeiras semanas, depois tornar obrigatório.
-2. Fazer o smoke pós-deploy (etapa 6)? Recomendação: sim, é barato e é a única verificação que olha a produção de verdade.
-3. Só Chromium por enquanto? Recomendação: sim.
+1. O E2E **barra o merge**: vira check obrigatório na proteção da `main`, desde já (a recomendação era só avisar nas primeiras semanas). Falta configurar na proteção da branch, no GitHub, depois que o job rodar pela primeira vez (o check só aparece na lista depois de uma execução).
+2. O smoke pós-deploy (etapa 6) **entra**.
+3. **Só Chromium**.
