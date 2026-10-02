@@ -45,6 +45,8 @@ Prioridade 2:
 
 Mais fluxos entram depois pela mesma regra do resto da suíte: **toda funcionalidade nova ou bug de tela corrigido traz o seu teste E2E no mesmo PR**.
 
+Primeiro fluxo que entrou por essa regra (02/10/2026): **importação avisa a turma** (`e2e/importacao.spec.js`), do bug do quiz do STRIDE importado sem sino nem e-mail (PR #60). Importar conteúdo com quiz gera o aviso do conteúdo e o do quiz; importar só o quiz para uma aula existente gera só o do quiz. Conferido que os dois reprovam sem a correção.
+
 ## Estrutura
 
 ```
