@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 a 4 implementadas em 29/09/2026** na branch `test/e2e-playwright`; etapas 5 e 6 pendentes. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
+Status: **etapas 0 a 4 implementadas em 29/09/2026 e etapa 5 em 02/10/2026** na branch `test/e2e-playwright`; etapa 6 pendente. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
 
 ## Por que
 
@@ -17,7 +17,7 @@ Há quatro obstáculos, todos contornáveis:
 3. **Player do YouTube.** O progresso depende de `player.getCurrentTime()` da API do YouTube (`react-youtube`, em `VideoPlayer.jsx`), que carrega um iframe externo: lento, instável e sem controle do tempo. Solução: o Playwright intercepta `youtube.com/iframe_api` com `page.route` e serve um stub mínimo do `YT.Player` que deixa o teste dizer "o vídeo está em 95%". O resto do caminho (hooks de progresso, gravação no banco, cadeado sequencial) roda de verdade.
 4. **Serviços externos.** Groq (gerador de quiz), Worker de e-mail e Analytics não podem ser chamados. Analytics e e-mail já ficam desligados fora do build de produção. Por garantia, o Playwright bloqueia qualquer requisição que não seja `localhost` (exceto as fontes do Google Fonts, se necessário).
 
-Um ponto a favor: `publication.js` calcula a hora como `Date.now()` + `.info/serverTimeOffset`, então `page.clock` do Playwright consegue avançar o relógio e testar a publicação programada sem esperar.
+~~Um ponto a favor: `publication.js` calcula a hora como `Date.now()` + `.info/serverTimeOffset`, então `page.clock` do Playwright consegue avançar o relógio e testar a publicação programada sem esperar.~~ Errado, visto na etapa 5: o offset existe justamente para anular o relógio do navegador (o aluno não libera o item adiantando o relógio do computador), e por isso também anula o `page.clock`. O teste usa uma data poucos segundos à frente.
 
 ## Quando roda
 
@@ -39,7 +39,7 @@ Prioridade 1 (primeira entrega):
 
 Prioridade 2:
 
-6. **Publicação programada**: o professor programa um vídeo para amanhã; o aluno não vê o vídeo; com `page.clock` avançado um dia, o vídeo aparece.
+6. **Publicação programada**: o professor programa um vídeo pelo formulário; o aluno não vê o vídeo; quando a data chega, o vídeo aparece (com data real poucos segundos à frente, não `page.clock`; ver Viabilidade).
 7. **Professor edita quiz**: cria uma questão, edita outra inline e confere que só a editada mudou (regressão da identidade por `question.id`).
 8. **Painel admin**: `/admin-panel` e `/adm-cursos` carregam para o admin e redirecionam o aluno.
 
@@ -87,7 +87,11 @@ Uma inconsistência de tela que apareceu (não corrigida): para o aluno **aprova
 
 **Etapa 4: CI. Feita.** Os segredos `VITE_*` saíram do `env:` do workflow inteiro (lá eles chegavam ao job de E2E e venciam o `.env.e2e`) e desceram para os jobs `test` e `deploy`; o `e2e` não recebe segredo nenhum e roda também em PR vindo de fork. O job `e2e` em `.github/workflows/ci-cd.yml` roda em paralelo ao `test`: instala só o Chromium (`npx playwright install --with-deps chromium`), roda `npm run test:e2e` e, em falha, guarda `playwright-report/` e `test-results/` (trace, screenshot e vídeo) por 7 dias. O `deploy` passou a ter `needs: [test, e2e]`. Ficou sem cache do navegador por enquanto: só entra se o tempo do job incomodar. **Ainda não rodou no GitHub**, porque o workflow só dispara em PR para a `main` ou push nela; a primeira execução de verdade é a do PR desta branch. Commit: `ci: rodar os testes e2e em PR e antes do deploy`.
 
-**Etapa 5: prioridade 2.** Fluxos 6, 7 e 8, um commit por fluxo.
+**Etapa 5: prioridade 2. Feita em 02/10/2026.** Um commit por fluxo; a suíte ficou com 20 testes (cerca de 50 s). Cada teste novo foi conferido quebrando de propósito o código que ele protege (e voltando o código depois): todos reprovaram.
+
+- Fluxo 6, `e2e/publicacao.spec.js`: com o segundo vídeo programado para 8 s à frente, o aluno não o vê e ele aparece ao recarregar depois da data; o professor programa pelo formulário de edição (o banco recebe a data em UTC), vê o vídeo na sala com o selo "Programado", e o aluno não vê nem o vídeo nem o selo. A ocultação tem duas camadas no `useCourseContent` (a lista montada e o `visibleVideos`), e o teste só reprova quando as duas falham; quem ele protege de fato é o `toStudentView`. `e2e/fixtures/teacher.js` (`asTeacher`) troca a professora fixa dos cenários por uma conta de verdade, dona do curso.
+- Fluxo 7, `e2e/quiz-professor.spec.js`: adicionar uma questão mantém as duas que já existiam iguais, gera id novo e mantém nota mínima e tentativas; editar a segunda questão na própria lista (salvamento automático) muda só ela, pelo id, e sobrevive a recarregar a página. Reprova tanto se a gravação perder a configuração do quiz (`persistableQuizSettings`) quanto se a edição valer para todas as questões. Para achar os botões pelo nome, os dois botões só de ícone do card do quiz ganharam rótulo ("Ver questões", com `aria-expanded`, e "Excluir quiz"), em commit próprio.
+- Fluxo 8, `e2e/admin.spec.js`: o admin abre `/admin-panel` e `/adm-cursos`; a professora abre `/adm-cursos` e vai para o `/dashboard` no painel de administração; o aluno vai para o `/dashboard` nas duas.
 
 **Etapa 6: smoke pós-deploy.** Decidido fazer (ver o fim do documento). Job depois do `deploy`, só leitura, contra `https://plataformacodefolio.web.app`.
 
