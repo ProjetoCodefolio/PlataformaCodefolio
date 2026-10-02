@@ -129,6 +129,7 @@ export const fetchImportableContent = async (courseId) => {
  *   `publishAt` programa a publicação do item; o quiz trazido junto não ganha
  *   data própria, porque já aparece só quando o conteúdo aparece.
  * @returns {Promise<{imported: Array, skipped: Array, quizzes: number}>}
+ *   cada item de `imported` traz `quiz` (o quiz gravado junto, ou null)
  */
 export const importContentFromCourse = async ({
   sourceCourseId,
@@ -196,7 +197,8 @@ export const importContentFromCourse = async ({
     if (agenda) novo.publishAt = agenda;
 
     updates[`courseContent/${targetCourseId}/${novoId}`] = novo;
-    imported.push({ ...novo, id: novoId, sourceId: item.id });
+    const importado = { ...novo, id: novoId, sourceId: item.id, quiz: null };
+    imported.push(importado);
 
     if (!withQuiz) return;
 
@@ -210,11 +212,13 @@ export const importContentFromCourse = async ({
     }
 
     try {
-      updates[`courseQuizzes/${targetCourseId}/${novoId}`] = buildImportedQuiz({
+      const quiz = buildImportedQuiz({
         origem: origemQuiz,
         targetCourseId,
         targetContentId: novoId,
       });
+      updates[`courseQuizzes/${targetCourseId}/${novoId}`] = quiz;
+      importado.quiz = quiz;
       quizzes += 1;
     } catch (error) {
       // Quiz sem questões: o conteúdo entra assim mesmo, sem o questionário.
@@ -229,7 +233,8 @@ export const importContentFromCourse = async ({
   await update(ref(database), updates);
 
   // Itens importados com data entram na fila (o quiz trazido junto também,
-  // na data do conteúdo). A importação em si não avisa ninguém.
+  // na data do conteúdo), e o cron avisa a turma quando chegarem. O que entra
+  // publicado é anunciado por quem chamou (`announceImportedContent`).
   await Promise.all(
     imported
       .filter((item) => item.publishAt)
