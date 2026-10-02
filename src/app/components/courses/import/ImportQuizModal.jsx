@@ -24,6 +24,7 @@ import {
   fetchImportableQuizzes,
   importQuizFromCourse,
 } from "$api/services/courses/quizImport";
+import { announceImportedQuiz } from "$api/services/courses/importAnnouncements";
 import {
   effectiveQuizPublishAt,
   formatPublishAt,
@@ -101,7 +102,7 @@ export default function ImportQuizModal({
   const importar = async () => {
     setImporting(true);
     try {
-      await importQuizFromCourse({
+      const novoQuiz = await importQuizFromCourse({
         sourceCourseId,
         sourceQuizId,
         targetCourseId: courseId,
@@ -110,6 +111,12 @@ export default function ImportQuizModal({
         publishAt,
       });
       toast.success("Questionário importado com sucesso!");
+      // Sem await de propósito, como na criação pelo formulário.
+      announceImportedQuiz(
+        courseId,
+        novoQuiz,
+        targets.find((t) => t.id === targetContentId)
+      );
       if (onImported) await onImported();
       onClose();
     } catch (error) {
