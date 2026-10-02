@@ -262,6 +262,8 @@ describe.runIf(emuladorNoAr)("importação de conteúdo entre cursos", () => {
       // Id novo: reaproveitar o da origem faria as respostas de lá casarem aqui.
       expect(quiz.questions[0].id).not.toBe("questao-original-1");
       expect(quiz.questions[0].question).toBe("O que é recursão?");
+      // Quem chama recebe o quiz gravado, para anunciar à turma.
+      expect(imported[0].quiz).toEqual(quiz);
     });
 
     it("não traz o quiz de quem não pediu", async () => {
@@ -272,6 +274,7 @@ describe.runIf(emuladorNoAr)("importação de conteúdo entre cursos", () => {
       });
 
       expect(quizzes).toBe(0);
+      expect(imported[0].quiz).toBeNull();
       const quiz = (
         await get(ref(database, `courseQuizzes/${DESTINO}/${imported[0].id}`))
       ).val();

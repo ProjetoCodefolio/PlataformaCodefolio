@@ -27,6 +27,7 @@ import {
   importContentFromCourse,
   markAlreadyImportedContent,
 } from "$api/services/courses/contentImport";
+import { announceImportedContent } from "$api/services/courses/importAnnouncements";
 import PublishAtField from "$components/courses/publication/PublishAtField";
 import PublicationScheduler, {
   usePublicationSchedule,
@@ -162,6 +163,9 @@ export default function ImportContentModal({
       const comQuiz =
         quizzes === 0 ? "" : quizzes === 1 ? ", 1 com questionário" : `, ${quizzes} com questionário`;
       toast.success(`${conteudo}${comQuiz}.`);
+      // Sem await de propósito, como no cadastro à mão: a turma é avisada em
+      // segundo plano e os avisos engolem os próprios erros.
+      announceImportedContent(courseId, imported);
 
       if (skipped.length > 0) {
         toast.warning(
@@ -225,6 +229,15 @@ export default function ImportContentModal({
                 {repetidos === 1
                   ? "1 conteúdo já existe neste curso e veio desmarcado."
                   : `${repetidos} conteúdos já existem neste curso e vieram desmarcados.`}
+              </Alert>
+            )}
+
+            {quizzesMarcados > 0 && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                O que entra publicado é avisado à turma na hora, e os questionários
+                (sino e e-mail) chegam sem prazo de encerramento. Para avisar já com
+                o prazo, programe a publicação e configure as datas dos quizzes
+                antes dela.
               </Alert>
             )}
 

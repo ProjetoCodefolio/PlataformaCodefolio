@@ -24,6 +24,7 @@ import {
   fetchImportableQuizzes,
   importQuizFromCourse,
 } from "$api/services/courses/quizImport";
+import { announceImportedQuiz } from "$api/services/courses/importAnnouncements";
 import {
   effectiveQuizPublishAt,
   formatPublishAt,
@@ -101,7 +102,7 @@ export default function ImportQuizModal({
   const importar = async () => {
     setImporting(true);
     try {
-      await importQuizFromCourse({
+      const novoQuiz = await importQuizFromCourse({
         sourceCourseId,
         sourceQuizId,
         targetCourseId: courseId,
@@ -110,6 +111,12 @@ export default function ImportQuizModal({
         publishAt,
       });
       toast.success("Questionário importado com sucesso!");
+      // Sem await de propósito, como na criação pelo formulário.
+      announceImportedQuiz(
+        courseId,
+        novoQuiz,
+        targets.find((t) => t.id === targetContentId)
+      );
       if (onImported) await onImported();
       onClose();
     } catch (error) {
@@ -225,7 +232,7 @@ export default function ImportQuizModal({
                 Nota mínima
                 {quizEscolhido ? ` (${quizEscolhido.minPercentage}%)` : ""}, limite de
                 tentativas e a marcação de diagnóstico. A janela de datas nunca vem
-                junto: o questionário nasce aberto aqui.
+                junto: o questionário nasce aberto aqui, sem prazo de encerramento.
               </Typography>
             </Box>
           )}
@@ -242,6 +249,14 @@ export default function ImportQuizModal({
                   : "Vazio = o quiz aparece junto com o conteúdo."
               }
             />
+          )}
+
+          {sourceQuizId && !isScheduled(publicacaoEfetiva) && (
+            <Alert severity="warning">
+              A turma é avisada (sino e e-mail) assim que você importar, e o aviso
+              sai sem prazo de encerramento. Para avisar já com o prazo, programe
+              a publicação e configure as datas do quiz antes dela.
+            </Alert>
           )}
 
           <Alert severity="info" sx={{ mt: 0.5 }}>
