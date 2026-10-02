@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Alert,
@@ -47,6 +47,7 @@ export default function ImportMaterialsModal({
   existingMaterials = [],
   onImported,
 }) {
+  const titleId = useId();
   const [sourceCourseId, setSourceCourseId] = useState("");
   const [materials, setMaterials] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -143,8 +144,8 @@ export default function ImportMaterialsModal({
   const repetidos = materials.filter((m) => m.alreadyImported).length;
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby={titleId}>
+      <DialogTitle id={titleId} sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
         Importar materiais de outro curso
       </DialogTitle>
       <IconButton

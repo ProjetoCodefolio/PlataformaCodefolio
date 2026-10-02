@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Alert,
@@ -24,6 +24,7 @@ export default function CourseSourcePicker({
   disabled = false,
 }) {
   const { userDetails } = useAuth();
+  const labelId = useId();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -69,8 +70,9 @@ export default function CourseSourcePicker({
 
   return (
     <FormControl fullWidth disabled={disabled}>
-      <InputLabel sx={{ "&.Mui-focused": { color: "#9041c1" } }}>{label}</InputLabel>
+      <InputLabel id={labelId} sx={{ "&.Mui-focused": { color: "#9041c1" } }}>{label}</InputLabel>
       <Select
+        labelId={labelId}
         value={value || ""}
         label={label}
         onChange={(e) => onChange(e.target.value)}
