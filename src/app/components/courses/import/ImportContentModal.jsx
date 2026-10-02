@@ -232,6 +232,15 @@ export default function ImportContentModal({
               </Alert>
             )}
 
+            {quizzesMarcados > 0 && (
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                O que entra publicado é avisado à turma na hora, e os questionários
+                (sino e e-mail) chegam sem prazo de encerramento. Para avisar já com
+                o prazo, programe a publicação e configure as datas dos quizzes
+                antes dela.
+              </Alert>
+            )}
+
             <PublicationScheduler
               schedule={agenda}
               orderedIds={selecionadosEmOrdem}
