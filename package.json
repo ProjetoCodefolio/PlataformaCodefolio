@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:e2e": "VITE_MODE=e2e vite build --mode e2e --outDir dist-e2e",
+    "check:build": "node scripts/checkProductionBuild.mjs",
     "firebase-emulate": "firebase emulators:start",
     "lint": "eslint . --ext js,jsx,mjs,cjs --report-unused-disable-directives",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "npm run build:e2e && firebase emulators:exec --only database,auth --project plataformacodefolio \"playwright test\""
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -58,6 +61,7 @@
     "yup": "^1.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@vitejs/plugin-react-swc": "^3.5.0",
@@ -69,6 +73,5 @@
     "jsdom": "^30.0.1",
     "vite": "^5.2.0",
     "vitest": "^2.1.9"
-  },
-  "packageManager": "pnpm@10.28.0+sha512.05df71d1421f21399e053fde567cea34d446fa02c76571441bfc1c7956e98e363088982d940465fd34480d4d90a0668bc12362f8aa88000a64e83d0b0e47be48"
+  }
 }

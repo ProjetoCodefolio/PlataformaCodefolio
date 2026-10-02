@@ -181,6 +181,8 @@ const QuizList = ({
                   }
                   sx={{ color: "#9041c1", p: { xs: 0.5, sm: 1 } }}
                   size="small"
+                  title="Ver questões"
+                  aria-expanded={expandedQuiz === quiz.videoId}
                 >
                   <ExpandMoreIcon fontSize="small" />
                 </IconButton>
@@ -218,6 +220,7 @@ const QuizList = ({
                   onClick={() => handleRemoveQuiz(quiz)}
                   sx={{ color: "#d32f2f", p: { xs: 0.5, sm: 1 } }}
                   size="small"
+                  title="Excluir quiz"
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>

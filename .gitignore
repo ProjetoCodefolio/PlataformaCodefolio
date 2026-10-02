@@ -6,6 +6,11 @@ node_modules
 certs/*.crt
 certs/*.key
 dist
+# Build dos testes E2E (npm run build:e2e); nunca vai para o deploy, que só publica dist/
+dist-e2e
+# Relatórios e artefatos do Playwright
+playwright-report
+test-results
 
 # Created by "Local History" extension
 .history
@@ -37,3 +42,8 @@ skills-lock.json
 
 # Segredos locais do Worker (wrangler dev)
 emailWorker/.dev.vars
+
+# O gerenciador de pacotes do projeto é o npm (package-lock.json); lockfile de
+# outro gerenciador não entra, para não haver duas versões das dependências.
+pnpm-lock.yaml
+yarn.lock
