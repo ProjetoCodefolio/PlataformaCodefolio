@@ -129,3 +129,35 @@ jobs:
 
       - name: Deploy no Firebase (hosting + database rules)
         run: npx firebase deploy --only hosting,database --project plataformacodefolio
+
+  # Smoke pós-deploy (etapa 6 do plano_testes_e2e.md): abre o site no ar como
+  # visitante e confere que a página inicial e o catálogo funcionam, sem erro
+  # de JavaScript. Só leitura, sem login e sem segredo nenhum.
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Instalar o Chromium do Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke contra a produção
+        run: npm run test:smoke
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: smoke-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
