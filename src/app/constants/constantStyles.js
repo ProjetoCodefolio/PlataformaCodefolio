@@ -1,4 +1,3 @@
-import { IconBackground } from "@tabler/icons-react";
 
 export const colorConstants = {
     white : "#ffffff",

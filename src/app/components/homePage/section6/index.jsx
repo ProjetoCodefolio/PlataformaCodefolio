@@ -1,7 +1,5 @@
-import React from 'react';
 import Box from "@mui/material/Box";
 import Typography from '@mui/material/Typography';
-import { colorConstants } from "../../../constants/constantStyles";
 import youtubeFrame from "$assets/img/youtubeframe.svg";
 import youtubeIcon from "$assets/img/icons8-youtube-100.svg";
 import instagramIcon from "$assets/img/icons8-instagram-100.svg";

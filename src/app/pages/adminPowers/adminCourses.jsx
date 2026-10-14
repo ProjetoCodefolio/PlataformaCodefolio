@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Loader from "$components/common/Loader";
-import { 
-  Box, 
-  Typography, 
-  TextField, 
-  Button, 
-  Paper, 
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  Paper,
   Table,
   TableBody,
   TableCell,
@@ -15,41 +15,36 @@ import {
   TablePagination,
   Alert,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
   IconButton,
   Chip,
   Avatar,
   Tooltip,
-  InputAdornment
+  InputAdornment,
 } from "@mui/material";
-import { 
-  Search, 
-  Delete, 
-  Edit, 
-  Visibility, 
-  Check, 
-  Close,
+import {
+  Search,
+  Delete,
+  Edit,
+  Visibility,
   School,
   FilterList,
   Sort,
   Archive,
-  Unarchive
+  Unarchive,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import Topbar from "../../components/topbar/Topbar";
 import MyConfirm from "$components/post/components/confirm/Confirm";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useAuth } from "$context/AuthContext";
 import { fetchCourses, deleteCourse, setCourseArchived } from "$api/services/courses/courses";
 import { fetchAllUsers } from "$api/services/users";
 import { fetchCourseStudentCounts } from "$api/services/courses/students";
 
 const AdminCourses = () => {
   const navigate = useNavigate();
-  const { userDetails } = useAuth();
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [loading, setLoading] = useState(true);

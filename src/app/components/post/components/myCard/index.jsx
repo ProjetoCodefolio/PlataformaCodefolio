@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import * as S from './styles';
-import { Avatar, TextField, InputAdornment, Button } from "@mui/material";
-import { Search } from "@mui/icons-material";
 import { PhotoCamera, Share, Article } from '@mui/icons-material';
 import CreatePostModal from "../createPost/CreatePost";
 import MyAlert from '../alert/Alert';
 import { useIsMobileHook } from '../../../useIsMobileHook';
 
-export const MyCards = ({ userPhoto, setIsPostCreated }) => {
+export const MyCards = ({ setIsPostCreated }) => {
     const [isMediaModalOpen, setIsEditModalOpen] = useState(false);
     const [alertOpen, setAlertOpen] = useState(false);
     const [alertMessage, setAlertMessage] = useState('');

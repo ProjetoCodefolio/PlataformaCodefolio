@@ -1,5 +1,4 @@
 import * as S from "./styles";
-import React from "react";
 import astronautaHeader from "$assets/img/astronautaheader.svg";
 
 const SectionOne = () => {

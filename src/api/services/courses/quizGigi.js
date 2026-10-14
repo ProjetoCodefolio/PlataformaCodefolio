@@ -4,7 +4,6 @@ import {
   set,
   update,
   serverTimestamp,
-  push,
   increment,
 } from "firebase/database";
 import { database } from "../../config/firebase";
@@ -409,7 +408,7 @@ export const generateQuizRanking = (quizResults, customQuestionResults) => {
 
   // Processar resultados do Live Quiz (questões normais)
   if (quizResults) {
-    Object.entries(quizResults).forEach(([questionId, questionData]) => {
+    Object.entries(quizResults).forEach(([, questionData]) => {
       if (questionData && questionData.correctAnswers) {
         Object.entries(questionData.correctAnswers).forEach(
           ([userId, answerData]) => {
@@ -550,7 +549,7 @@ export const processCustomQuizRanking = (
 
     if (isQuestionFormat) {
       // Formato organizado por questionId (estrutura do QuizGigi)
-      Object.entries(liveQuizResults).forEach(([questionId, questionData]) => {
+      Object.entries(liveQuizResults).forEach(([, questionData]) => {
         if (questionData && questionData.correctAnswers) {
           Object.entries(questionData.correctAnswers).forEach(
             ([userId, answerData]) => {

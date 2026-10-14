@@ -1,5 +1,5 @@
-import { auth, database } from "../config/firebase";
-import { ref, get, query, orderByChild, equalTo, set } from "firebase/database";
+import { database } from "../config/firebase";
+import { ref, get, set } from "firebase/database";
 
 /**
  * Verifica se um curso possui vídeos

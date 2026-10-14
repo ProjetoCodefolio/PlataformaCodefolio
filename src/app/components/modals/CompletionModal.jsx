@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Modal, Button } from "@mui/material";
 import Confetti from "react-confetti";
 

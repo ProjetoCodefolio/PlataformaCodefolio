@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -83,10 +83,7 @@ const SortableQuestionRow = ({ id, children }) => {
 
 const QuestionList = ({
   quiz,
-  handleEditQuestion,
   handleRemoveQuestion,
-  questionFormRef,
-  courseId,
   onAutoSaveQuestion,
   onReorderQuestions,
 }) => {

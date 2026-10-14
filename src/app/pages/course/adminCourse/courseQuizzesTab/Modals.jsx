@@ -1,4 +1,3 @@
-import React from "react";
 import { Modal, Box, Typography, Button } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 

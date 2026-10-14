@@ -1,5 +1,4 @@
-import React from "react";
-import { Box, Typography, Paper } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import QuestionResultDisplay from "./QuestionResultDisplay";
 import StudentSelector from "./StudentSelector";
 import AnswerOptions from "./AnswerOptions";
@@ -8,7 +7,6 @@ import QuestionImage from "../../../common/QuestionImage";
 const QuestionDisplay = ({
   currentQuestion,
   currentQuestionIndex,
-  totalQuestions,
   quizResults,
   courseTitle,
   quizTitle,

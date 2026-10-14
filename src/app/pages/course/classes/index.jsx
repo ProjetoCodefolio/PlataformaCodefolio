@@ -27,7 +27,6 @@ import { useAuth } from "$context/AuthContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import LoginModal from "$components/modals/LoginModal";
-import CompletionModal from "$components/modals/CompletionModal";
 import QuizGigi from "$components/courses/quizGigi";
 import SlidePlayer from "$components/courses/slidePlayer";
 import { saveVideoProgress } from "$api/services/courses/videoProgress";

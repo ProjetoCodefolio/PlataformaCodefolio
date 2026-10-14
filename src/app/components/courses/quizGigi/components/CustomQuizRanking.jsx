@@ -49,7 +49,6 @@ const CustomQuizRanking = ({ onBack, customResults, liveQuizResults = {} }) => {
     liveQuizResults
   );
   const podio = participantesOrdenados.slice(0, 3);
-  const demaisParticipantes = participantesOrdenados.slice(3);
 
   useEffect(() => {
     if (podio.length > 1) setTimeout(() => setShowSecondPlace(true), 1000);

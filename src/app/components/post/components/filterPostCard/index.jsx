@@ -12,7 +12,6 @@ import {
 } from "$api/services/posts/";
 
 export const FilterPost = ({ onFilter }) => {
-    const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(false);
     const [tags, setTags] = useState([]);
     const [selectedFilterTags, setSelectedFilterTags] = useState([]);
@@ -48,7 +47,6 @@ export const FilterPost = ({ onFilter }) => {
         const result = await filterPostsByTags(selectedCategory);
 
         if (result.success) {
-            setPosts(result.posts);
             onFilter(result.posts);
         } else {
             abrirAlert(
@@ -77,7 +75,6 @@ export const FilterPost = ({ onFilter }) => {
             const fetchInitialPosts = async () => {
                 setLoading(true);
                 const initialPosts = await fetchAllPosts();
-                setPosts(initialPosts);
                 setLoading(false);
 
                 // Determine disabled tags on initial load
@@ -107,7 +104,6 @@ export const FilterPost = ({ onFilter }) => {
         const unsubscribePosts = listenToPostsAndGetDisabledTags(
             tags,
             (postsList, disabledTagsList) => {
-                setPosts(postsList);
                 setDisabledTags(disabledTagsList);
             }
         );

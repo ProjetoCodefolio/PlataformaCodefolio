@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import "@fontsource-variable/inter";
 import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -16,7 +16,6 @@ import {
 import { AuthProvider, useAuth } from "./app/context/AuthContext";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import SentimentVeryDissatisfiedIcon from "@mui/icons-material/SentimentVeryDissatisfied";
 
 // Cada página vira o próprio chunk (code splitting por rota) em vez de tudo
 // entrar num único módulo de entrada — antes, abrir qualquer rota dependia do

@@ -36,14 +36,14 @@ const roundGrade = (value) => {
  * @param {number} finalGrade - Nota final do estudante
  * @param {boolean} hasMissingGrades - Se tem notas faltando
  * @param {boolean} hasAnyGradeRecorded - Se tem alguma nota lançada
- * @param {boolean} allGradesAreZero - Se todas as notas lançadas são 0
+ * @param {boolean} _allGradesAreZero - Se todas as notas lançadas são 0 (não usado hoje)
  * @returns {string} - Status (pending, approved, failed)
  */
 export const determineStudentStatus = (
   finalGrade,
   hasMissingGrades,
   hasAnyGradeRecorded = false,
-  allGradesAreZero = true
+  _allGradesAreZero = true
 ) => {
   // Se não tem nenhuma nota lançada (nem parcial), é pendente
   if (!hasAnyGradeRecorded) {

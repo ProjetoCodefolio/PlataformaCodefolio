@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -360,7 +360,7 @@ const TeacherAssessmentsPage = () => {
               }
             }}
           >
-            {filteredCourses.map((course, index) => (
+            {filteredCourses.map((course) => (
               <Tab
                 key={course.courseId}
                 label={course.title}

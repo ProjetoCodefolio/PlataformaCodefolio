@@ -1,4 +1,3 @@
-import React from "react";
 import {
   List,
   Card,
@@ -59,7 +58,6 @@ const QuizList = ({
   setExpandedQuiz,
   handleEditQuiz,
   handleRemoveQuiz,
-  handleViewStudents,
   questionFormRef,
   handleEditQuestion,
   handleRemoveQuestion,

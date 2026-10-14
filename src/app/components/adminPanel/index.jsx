@@ -1,5 +1,3 @@
-import React, { useState, useEffect } from "react";
-import Loader from "$components/common/Loader";
 import {
     Box,
     Typography,
@@ -17,7 +15,6 @@ import Topbar from "$components/topbar/Topbar";
 
 const AdminPanelComponent = ({ options }) => {
 
-    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     
     // const [users, setUsers] = useState([]);
@@ -65,106 +62,97 @@ const AdminPanelComponent = ({ options }) => {
                 }}
             >
 
-                {loading ? (
-                    <Box sx={{ p: 4, textAlign: "center" }}>
-                        <Loader />
-                        <Typography variant="body1" sx={{ mt: 2, color: "#888" }}>
-                            Carregando...
-                        </Typography>
-                    </Box>
-                ) : (
-                    <>
-                        <Box sx={{ p: { xs: 1, sm: 2 } }}>
-                            <Grid container spacing={2}>
-                                {options.map((option) => (
-                                    <Grid item xs={12} sm={6} md={4} key={option.id}>
-                                        <Card
-                                            sx={{
-                                                backgroundColor: "#ffffff",
-                                                boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
-                                                borderRadius: "16px",
-                                                height: "100%",
-                                                display: "flex",
-                                                flexDirection: "column",
-                                                transition: "transform 0.2s ease-in-out",
-                                                "&:hover": {
-                                                    transform: "scale(1.02)",
-                                                    boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
-                                                },
-                                            }}
-                                        >
-                                            <CardContent sx={{ flex: 1 }}>
-                                                <Box
-                                                    sx={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        mb: 1,
-                                                    }}
-                                                >
-                                                    <Typography
-                                                        variant="subtitle1"
-                                                        sx={{
-                                                            fontWeight: "bold",
-                                                            textAlign: "center",
-                                                            color: "#333",
-                                                            fontSize: { xs: "0.9rem", sm: "1rem" },
-                                                        }}
-                                                    >
-                                                        {option.name || "Nome da Opção"}
-                                                    </Typography>
-                                                </Box>
+                <>
+                    <Box sx={{ p: { xs: 1, sm: 2 } }}>
+                        <Grid container spacing={2}>
+                            {options.map((option) => (
+                                <Grid item xs={12} sm={6} md={4} key={option.id}>
+                                    <Card
+                                        sx={{
+                                            backgroundColor: "#ffffff",
+                                            boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.1)",
+                                            borderRadius: "16px",
+                                            height: "100%",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            transition: "transform 0.2s ease-in-out",
+                                            "&:hover": {
+                                                transform: "scale(1.02)",
+                                                boxShadow: "0px 4px 12px rgba(0, 0, 0, 0.2)",
+                                            },
+                                        }}
+                                    >
+                                        <CardContent sx={{ flex: 1 }}>
+                                            <Box
+                                                sx={{
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    mb: 1,
+                                                }}
+                                            >
                                                 <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
+                                                    variant="subtitle1"
                                                     sx={{
-                                                        mb: 1,
-                                                        fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                                                        overflow: "hidden",
-                                                        textOverflow: "ellipsis",
-                                                        display: "-webkit-box",
-                                                        WebkitLineClamp: 3,
-                                                        WebkitBoxOrient: "vertical",
-                                                    }}
-                                                >
-                                                    {option.description || "Descrição da Opção"}
-                                                </Typography>
-                                                <Typography
-                                                    variant="body2"
-                                                    color="textSecondary"
-                                                    sx={{
-                                                        mt: 1,
-                                                        fontSize: { xs: "0.8rem", sm: "0.875rem" },
-                                                    }}
-                                                >
-                                                </Typography>
-                                            </CardContent>
-                                            <CardActions sx={{ p: 2, justifyContent: "center", mt: "auto" }}>
-                                                <Button
-                                                    variant="contained"
-                                                    sx={{
-                                                        backgroundColor: "#9041c1",
-                                                        color: "white",
-                                                        borderRadius: "8px",
-                                                        "&:hover": { backgroundColor: "#7d37a7" },
-                                                        textTransform: "none",
                                                         fontWeight: "bold",
-                                                        fontSize: { xs: "12px", sm: "14px" },
-                                                        padding: "6px 10px",
-                                                        width: "calc(100% - 16px)",
+                                                        textAlign: "center",
+                                                        color: "#333",
+                                                        fontSize: { xs: "0.9rem", sm: "1rem" },
                                                     }}
-                                                    onClick={() => navigate(option.path)}
                                                 >
-                                                    Ir
-                                                </Button>
-                                            </CardActions>
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </Box>
-                    </>
-                )}
+                                                    {option.name || "Nome da Opção"}
+                                                </Typography>
+                                            </Box>
+                                            <Typography
+                                                variant="body2"
+                                                color="textSecondary"
+                                                sx={{
+                                                    mb: 1,
+                                                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    display: "-webkit-box",
+                                                    WebkitLineClamp: 3,
+                                                    WebkitBoxOrient: "vertical",
+                                                }}
+                                            >
+                                                {option.description || "Descrição da Opção"}
+                                            </Typography>
+                                            <Typography
+                                                variant="body2"
+                                                color="textSecondary"
+                                                sx={{
+                                                    mt: 1,
+                                                    fontSize: { xs: "0.8rem", sm: "0.875rem" },
+                                                }}
+                                            >
+                                            </Typography>
+                                        </CardContent>
+                                        <CardActions sx={{ p: 2, justifyContent: "center", mt: "auto" }}>
+                                            <Button
+                                                variant="contained"
+                                                sx={{
+                                                    backgroundColor: "#9041c1",
+                                                    color: "white",
+                                                    borderRadius: "8px",
+                                                    "&:hover": { backgroundColor: "#7d37a7" },
+                                                    textTransform: "none",
+                                                    fontWeight: "bold",
+                                                    fontSize: { xs: "12px", sm: "14px" },
+                                                    padding: "6px 10px",
+                                                    width: "calc(100% - 16px)",
+                                                }}
+                                                onClick={() => navigate(option.path)}
+                                            >
+                                                Ir
+                                            </Button>
+                                        </CardActions>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                </>
             </Paper>
             {/* {users.length > 0 && (
                 <Box sx={{ mt: 4, width: "100%", maxWidth: "1200px" }}>

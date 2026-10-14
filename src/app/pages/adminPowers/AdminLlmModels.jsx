@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -28,7 +28,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Alert,
 } from "@mui/material";
 import {
   Add,
@@ -79,8 +78,6 @@ const AdminLlmModels = () => {
   
 
   // confirmação
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [modelToChangeStatus, setModelToChangeStatus] = useState(null);
 
   useEffect(() => {
     loadModels();

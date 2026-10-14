@@ -15,7 +15,6 @@ import {
   Stack,
   Avatar,
   InputAdornment,
-  Tooltip,
   FormControl,
   InputLabel,
   Select,

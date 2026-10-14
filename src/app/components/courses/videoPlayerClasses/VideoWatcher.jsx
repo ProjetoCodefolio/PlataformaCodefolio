@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Box, Typography, IconButton, LinearProgress } from "@mui/material";
 import { toast } from "react-toastify";
 import { debounce } from "lodash";
@@ -7,12 +7,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useAuth } from "$context/AuthContext";
 
 // Importar funções da API
-import {
-  saveVideoProgress,
-  fetchVideoProgress,
-  markVideoAsCompleted,
-  processPlayerState,
-} from "$api/services/courses/videoProgress";
+import { saveVideoProgress, markVideoAsCompleted, processPlayerState } from "$api/services/courses/videoProgress";
 import { formatTime, isVideoLocked, isNearEnd } from "$api/utils/videoUtils";
 import { getYouTubeID } from "../../../utils/postUtils";
 
@@ -21,7 +16,6 @@ export function VideoWatcher({
   videoId,
   courseId,
   onProgress,
-  hasNotifiedRef,
   watchTime,
   setWatchTime,
   percentageWatched,

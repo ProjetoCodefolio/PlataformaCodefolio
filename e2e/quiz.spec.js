@@ -60,7 +60,7 @@ test("aluno aprovado no quiz vê a nota e destrava o vídeo seguinte", async ({ 
   await expect(page.getByRole("heading", { name: "Parabéns, você passou!" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Bloqueado" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Assistir" })).toBeVisible();
-  expect(await quizResult()).toMatchObject({ attemptCount: 1, isPassed: true, scorePercentage: 100 });
+  await expect.poll(quizResult).toMatchObject({ attemptCount: 1, isPassed: true, scorePercentage: 100 });
 });
 
 test("aluno reprovado gasta uma tentativa e o vídeo seguinte continua bloqueado", async ({ page }) => {
@@ -72,7 +72,7 @@ test("aluno reprovado gasta uma tentativa e o vídeo seguinte continua bloqueado
     page.getByRole("heading", { name: `Você não atingiu a nota mínima de ${QUIZ.minPercentage}%` })
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Bloqueado" })).toBeVisible();
-  expect(await quizResult()).toMatchObject({ attemptCount: 1, isPassed: false });
+  await expect.poll(quizResult).toMatchObject({ attemptCount: 1, isPassed: false });
 });
 
 test("sair do quiz antes de enviar não gasta tentativa", async ({ page }) => {
@@ -105,5 +105,5 @@ test("depois de gastar todas as tentativas o quiz não abre mais", async ({ page
   ).toBeVisible();
   await expect(page.getByRole("dialog", { name: "Este quiz tem tentativas limitadas" })).toBeHidden();
   await expect(page.getByRole("heading", { name: /^Questão 1 de/ })).toBeHidden();
-  expect(await quizResult()).toMatchObject({ attemptCount: QUIZ.maxAttempts, isPassed: false });
+  await expect.poll(quizResult).toMatchObject({ attemptCount: QUIZ.maxAttempts, isPassed: false });
 });

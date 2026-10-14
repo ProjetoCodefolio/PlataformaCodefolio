@@ -1,5 +1,4 @@
 import React from 'react';
-import styled from 'styled-components';
 import Box from "@mui/material/Box";
 import Typography from '@mui/material/Typography';
 import quatroTelas from "$assets/img/4telas.svg";

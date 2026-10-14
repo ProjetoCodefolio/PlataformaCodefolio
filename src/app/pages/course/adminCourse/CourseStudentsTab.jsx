@@ -1,50 +1,37 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SearchField from "$components/common/SearchField";
-import React, { useEffect, useState, forwardRef } from "react";
+import { useEffect, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
-    Box,
-    Button,
-    IconButton,
-    List,
-    ListItem,
-    ListItemText,
-    Grid,
-    Modal,
-    Typography,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Divider,
-    Card,
-    CardContent,
-    Avatar,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Stack,
-    Chip,
-    Tooltip,
-    TablePagination
+  Box,
+  Button,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider,
+  Card,
+  CardContent,
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  Chip,
+  Tooltip,
+  TablePagination,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SortIcon from "@mui/icons-material/Sort";
 import FilterListIcon from '@mui/icons-material/FilterList';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
 import MyConfirm from "$components/post/components/confirm/Confirm";
-import {
-    fetchCourseStudentsEnriched,
-    updateStudentCourseRole,
-    removeStudentFromCourse,
-    checkUserCourseRole
-} from "$api/services/courses/students";
+import { fetchCourseStudentsEnriched, updateStudentCourseRole, removeStudentFromCourse } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { isDiscipline } from "$api/services/courses/courseType";
 import { useAuth } from "$context/AuthContext";
@@ -62,7 +49,7 @@ const capitalizeWords = (name) => {
         .join(" ");
 };
 
-const CourseStudentsTab = forwardRef((props, ref) => {
+const CourseStudentsTab = () => {
     const [students, setStudents] = useState([]);
     const [courseDetails, setCourseDetails] = useState({})
     const [loading, setLoading] = useState(true);
@@ -249,6 +236,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     };
 
     // Function to handle delete icon click
+    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
+    // eslint-disable-next-line no-unused-vars
     const handleDeleteClick = (student) => {
         setStudentToDelete(student);
         setShowDeleteAlert(true);
@@ -271,6 +260,8 @@ const CourseStudentsTab = forwardRef((props, ref) => {
     };
 
     // Função para remover estudante do curso
+    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
+    // eslint-disable-next-line no-unused-vars
     const handleRemoveStudent = async (userId, studentName) => {
         // Aqui você pode adicionar uma confirmação antes de remover
         try {
@@ -817,7 +808,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             />
         </Box>
     );
-});
+};
 
 // Cor da barra de progresso: binária, sem nível intermediário. Verde só ao
 // concluir (100%); qualquer coisa abaixo disso é vermelho.

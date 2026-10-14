@@ -1,4 +1,3 @@
-import React from 'react'
 import './Section4.css' // Adicione um arquivo CSS para estilização
 import equipeCodefolio1 from '$assets/img/equipecodefolio1.svg'
 import equipeCodefolio2 from '$assets/img/equipecodefolio2.svg'

@@ -6,10 +6,6 @@ export const Wrapper = styled.div`
   overflow-x: hidden;
 `;
 
-export const WrapperModal = styled.div`
-  width: 100%;
-`;
-
 export const WrapperContent = styled.div`
   width: 100%;
   padding: 0 16px;

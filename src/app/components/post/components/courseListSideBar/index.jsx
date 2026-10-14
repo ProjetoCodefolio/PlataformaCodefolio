@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,14 +7,12 @@ import {
   Button,
   Grid,
 } from "@mui/material";
-import { ref, get } from "firebase/database";
-import { database } from "$api/config/firebase";
 import { useNavigate } from "react-router-dom";
 import LockIcon from "@mui/icons-material/Lock";
 import { fetchCourses } from "$api/services/courses/courses";
 import CourseDescription from "$components/courses/CourseDescription";
 
-const CourseListSidebar = ({ onSelectCourse }) => {
+const CourseListSidebar = () => {
   const [courses, setCourses] = useState([]);
   const navigate = useNavigate();
 

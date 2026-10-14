@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -42,7 +42,6 @@ import {
   Refresh,
 } from "@mui/icons-material";
 import Topbar from "$components/topbar/Topbar";
-import BreadcrumbsComponent from "$components/common/BreadcrumbsComponent";
 import { fetchAllReports, updateReportStatus } from "$api/services/courses/report";
 import { toast } from "react-toastify";
 import { useAuth } from "$context/AuthContext";

@@ -147,7 +147,6 @@ export const importContentFromCourse = async ({
   }
 
   const disponiveis = await fetchImportableContent(sourceCourseId);
-  const porId = new Map(disponiveis.map((item) => [item.id, item]));
 
   // Respeita a ordem em que os itens aparecem na ORIGEM, não a ordem em que o
   // professor foi clicando nas caixas.

@@ -1,6 +1,6 @@
 import { ref, push, child, set, onValue, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
-import { fetchYouTubeComments, getYouTubeID } from "../../utils/postUtils";
+import { fetchYouTubeComments } from "../../utils/postUtils";
 
 // Create a new post
 export const createPost = async (postData, currentUser) => {

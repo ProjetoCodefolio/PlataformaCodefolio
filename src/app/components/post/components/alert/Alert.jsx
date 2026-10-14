@@ -1,4 +1,3 @@
-import React from 'react';
 import { Snackbar, Alert, Typography } from '@mui/material';
 
 export default function MyAlert({ open, onClose, message, severity }) {

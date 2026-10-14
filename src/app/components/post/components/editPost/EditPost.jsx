@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Typography, Modal, Button, TextField, MenuItem } from "@mui/material";
 import { editPost, fetchTags, generateEmbedURL } from "$api/services/posts/";
 import "../../post.css";

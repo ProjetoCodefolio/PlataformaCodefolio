@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -15,10 +15,6 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import {
-  fetchCustomQuizResults,
-  processCustomQuizResults,
-} from "$api/services/courses/quizGigi";
 
 const AnswerButton = ({
   onClick,
@@ -179,31 +175,11 @@ const CustomQuestion = ({
   customResults,
   eyeOpen,
   onEyeToggle,
-  courseId,
-  quizId,
 }) => {
   const showFeedback = correctFeedback || incorrectFeedback;
   const [selectedOption, setSelectedOption] = useState(null);
-  const [results, setResults] = useState(null);
   const containerRef = useRef(null);
 
-  useEffect(() => {
-    // Usando o serviço
-    const loadResults = async () => {
-      if (!courseId || !quizId) return;
-
-      try {
-        const data = await fetchCustomQuizResults(courseId, quizId);
-        setResults(data);
-      } catch (error) {
-        console.error("Erro ao carregar resultados:", error);
-      }
-    };
-
-    loadResults();
-  }, [courseId, quizId]);
-
-  const canUseControls = selectedStudent && !showFeedback && !buttonsDisabled;
 
   const handleCorrectClick = () => {
     setSelectedOption("correct");
