@@ -7,7 +7,6 @@ import { MyCards } from './components/myCard';
 import MyAlert from './components/alert/Alert';
 import MyConfirm from './components/confirm/Confirm';
 import Pagination from './components/pagination/Pagination';
-import CreatePostModal from './components/createPost/CreatePost';
 import { fetchPosts, abrirAlert } from '../../utils/postUtils';
 import { useAuth } from '$context/AuthContext';
 import { Box } from '@mui/material';
@@ -26,7 +25,6 @@ export default function Post({ member }) {
   const [loading, setLoading] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [userRole, setUserRole] = useState('');
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [filteredVideos, setFilteredVideos] = useState([]);
   const [isPostCreated, setIsPostCreated] = useState(false);
@@ -144,20 +142,6 @@ export default function Post({ member }) {
   return (
     <S.Wrapper>
       <Topbar onSearch={updateSearchTerm} />
-      <S.WrapperModal>
-        <CreatePostModal
-          open={isCreateModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onPostCreated={() => {
-            setIsPostCreated(true);
-            loadPosts();
-          }}
-          abrirAlert={(message, severity) => 
-            abrirAlert(setAlertMessage, setAlertSeverity, setAlertOpen, message, severity)
-          }
-          modalTitle="Editar post de mídia"
-        />
-      </S.WrapperModal>
 
       <br />
 
