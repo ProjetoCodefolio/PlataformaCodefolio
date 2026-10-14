@@ -37,7 +37,7 @@ module.exports = {
     // erro capturado sem uso são idiomáticos.
     "no-unused-vars": [
       "warn",
-      { argsIgnorePattern: "^_", caughtErrors: "none" },
+      { argsIgnorePattern: "^_", caughtErrors: "none", ignoreRestSiblings: true },
     ],
 
     // Dependência faltando em hook costuma ser bug de verdade, mas rever cada
