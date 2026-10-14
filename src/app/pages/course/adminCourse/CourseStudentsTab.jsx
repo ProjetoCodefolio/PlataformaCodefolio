@@ -236,6 +236,8 @@ const CourseStudentsTab = () => {
     };
 
     // Function to handle delete icon click
+    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
+    // eslint-disable-next-line no-unused-vars
     const handleDeleteClick = (student) => {
         setStudentToDelete(student);
         setShowDeleteAlert(true);
@@ -258,6 +260,8 @@ const CourseStudentsTab = () => {
     };
 
     // Função para remover estudante do curso
+    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
+    // eslint-disable-next-line no-unused-vars
     const handleRemoveStudent = async (userId, studentName) => {
         // Aqui você pode adicionar uma confirmação antes de remover
         try {
