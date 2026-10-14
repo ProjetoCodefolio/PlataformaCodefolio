@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Alert,
@@ -57,6 +57,7 @@ export default function ImportContentModal({
   existingContent = [],
   onImported,
 }) {
+  const titleId = useId();
   const [sourceCourseId, setSourceCourseId] = useState("");
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState([]);
@@ -190,8 +191,8 @@ export default function ImportContentModal({
   const quizzesMarcados = comQuizIds.filter((id) => selectedIds.includes(id)).length;
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby={titleId}>
+      <DialogTitle id={titleId} sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
         Importar conteúdo de outro curso
       </DialogTitle>
       <IconButton

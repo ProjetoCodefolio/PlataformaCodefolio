@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Alert,
@@ -46,6 +46,9 @@ export default function ImportQuizModal({
   existingQuizIds = [],
   onImported,
 }) {
+  const titleId = useId();
+  const quizLabelId = useId();
+  const targetLabelId = useId();
   const [sourceCourseId, setSourceCourseId] = useState("");
   const [quizzes, setQuizzes] = useState([]);
   const [sourceQuizId, setSourceQuizId] = useState("");
@@ -135,8 +138,8 @@ export default function ImportQuizModal({
   const podeImportar = Boolean(sourceQuizId && targetContentId) && !importing;
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" aria-labelledby={titleId}>
+      <DialogTitle id={titleId} sx={{ fontWeight: "bold", color: "#333", pr: 6 }}>
         Importar questionário de outro curso
       </DialogTitle>
       <IconButton
@@ -170,10 +173,11 @@ export default function ImportQuizModal({
 
           {!loading && quizzes.length > 0 && (
             <FormControl fullWidth disabled={importing}>
-              <InputLabel sx={{ "&.Mui-focused": { color: "#9041c1" } }}>
+              <InputLabel id={quizLabelId} sx={{ "&.Mui-focused": { color: "#9041c1" } }}>
                 Questionário
               </InputLabel>
               <Select
+                labelId={quizLabelId}
                 value={sourceQuizId}
                 label="Questionário"
                 onChange={(e) => setSourceQuizId(e.target.value)}
@@ -191,10 +195,11 @@ export default function ImportQuizModal({
 
           {sourceQuizId && (
             <FormControl fullWidth disabled={importing}>
-              <InputLabel sx={{ "&.Mui-focused": { color: "#9041c1" } }}>
+              <InputLabel id={targetLabelId} sx={{ "&.Mui-focused": { color: "#9041c1" } }}>
                 Prender ao conteúdo
               </InputLabel>
               <Select
+                labelId={targetLabelId}
                 value={targetContentId}
                 label="Prender ao conteúdo"
                 onChange={(e) => setTargetContentId(e.target.value)}

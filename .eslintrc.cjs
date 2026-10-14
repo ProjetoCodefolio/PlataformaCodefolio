@@ -17,7 +17,7 @@ module.exports = {
     "plugin:react/jsx-runtime",
     "plugin:react-hooks/recommended",
   ],
-  ignorePatterns: ["dist", "node_modules", ".firebase", "public"],
+  ignorePatterns: ["dist", "dist-e2e", "playwright-report", "test-results", "node_modules", ".firebase", "public"],
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",

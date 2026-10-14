@@ -1,4 +1,5 @@
 import { database } from "$api/config/firebase";
+import { resolveEmailNotificationsEnabled } from "$api/config/runtimeMode";
 import { ref, push, set, get, update, query, orderByChild, onValue } from "firebase/database";
 import { fetchCourseStudentsEnriched } from "$api/services/courses/students";
 import { fetchPrefs, acceptsInApp } from "$api/services/notificationPrefs";
@@ -25,14 +26,15 @@ import { enqueueNotificationEmail } from "$api/services/emailService";
 // mesmo com VITE_MODE=production no .env (que só controla o emulador do
 // banco). De propósito: sem essa separação, testar localmente contra o
 // Firebase real já dispararia e-mail de verdade para alunos matriculados de
-// verdade.
+// verdade. O build de testes E2E (VITE_MODE=e2e) é a exceção: é um build, mas
+// nunca manda e-mail. A regra completa está em runtimeMode.js.
 //
 // VITE_FORCE_EMAIL_NOTIFICATIONS=true é a única forma de ligar isso em `npm
 // run dev`, pra teste local pontual — deve vir sempre acompanhado de
 // VITE_EMAIL_TEST_ALLOWLIST (ver emailService.js), que restringe quem
 // realmente recebe o e-mail.
 export const EMAIL_NOTIFICATIONS_ENABLED =
-  import.meta.env.PROD || import.meta.env.VITE_FORCE_EMAIL_NOTIFICATIONS === "true";
+  resolveEmailNotificationsEnabled(import.meta.env);
 
 /**
  * Cria uma notificação in-app para um usuário.

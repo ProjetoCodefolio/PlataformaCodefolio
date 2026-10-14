@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator, signInWithEmailAndPassword } from "firebase/auth";
 import { getDatabase, connectDatabaseEmulator } from "firebase/database";
 import { getAnalytics } from "firebase/analytics";
+import { resolveRuntimeMode, isLocalHostname } from "./runtimeMode";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_API_KEY,
@@ -13,15 +14,20 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_MEASUREMENT_ID,
 };
 
-// import.meta.env.DEV é definido automaticamente pelo Vite: true apenas ao
-// rodar o dev server (`vite`), sempre false em `vite build`. Sem VITE_MODE,
-// dev server sempre caía no emulador — mesmo com o .env configurado para
-// produção, sem nenhum jeito de testar o dev server contra o Firebase real
-// sem editar código. VITE_MODE=production no .env agora tira o emulador da
-// jogada mesmo em dev; qualquer outro valor (ou ausente) mantém o
-// comportamento de sempre (emulador em dev, real em build de produção).
-const useEmulators =
-  import.meta.env.VITE_MODE === "production" ? false : import.meta.env.DEV;
+// Qual modo (local, produção ou e2e) e o que vai para o emulador: ver
+// runtimeMode.js.
+const runtimeMode = resolveRuntimeMode(import.meta.env);
+const useEmulators = runtimeMode.useDatabaseEmulator;
+
+// Um build e2e aponta para emuladores em localhost. Aberto em qualquer outro
+// endereço, ele é um build no lugar errado: para aqui, com o motivo na tela,
+// em vez de subir um app que não conversa com banco nenhum.
+if (runtimeMode.e2e && !isLocalHostname(window.location.hostname)) {
+  const motivo =
+    "Este é um build de testes E2E (VITE_MODE=e2e) e só funciona em localhost.";
+  document.body.textContent = motivo;
+  throw new Error(motivo);
+}
 
 // Exposto para o que só existe no ambiente local (o cron simulado das
 // publicações programadas, em src/app/dev/).
@@ -35,10 +41,28 @@ export const database = getDatabase(app);
 // métricas de produção nem depender de rede externa (GA/GTM) só pra abrir o app.
 export const analytics = useEmulators ? null : getAnalytics(app);
 
-// Conectar ao emulador apenas em ambiente local. O Auth fica de fora de
-// propósito: login com Google usa o OAuth real (o emulador de Auth troca o
-// popup do Google pela UI fake dele, que não é o que se quer aqui).
+// Conectar ao emulador apenas em ambiente local. Fora do modo e2e o Auth fica
+// de fora de propósito: login com Google usa o OAuth real (o emulador de Auth
+// troca o popup do Google pela UI fake dele, que não é o que se quer no dia a
+// dia). No e2e essa UI fake é justamente o que o Playwright preenche.
 if (useEmulators) {
   console.log("🔥 Conectando ao Firebase Emulator...");
   connectDatabaseEmulator(database, "localhost", 9000);
+}
+if (runtimeMode.useAuthEmulator) {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+}
+
+// Só no build e2e: deixa o Playwright logar sem o popup do Google, com um
+// usuário de e-mail e senha criado direto no emulador de Auth. O popup em si
+// não é testado no E2E, porque depende de apis.google.com e unpkg.com (ver
+// plano_testes_e2e.md); o botão é conferido à mão. Fora do e2e este bloco não
+// existe: o Vite o remove do build, e o `npm run check:build` confere.
+if (runtimeMode.e2e) {
+  window.__codefolioE2E = {
+    signIn: async (email, password) => {
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      return credential.user.uid;
+    },
+  };
 }
