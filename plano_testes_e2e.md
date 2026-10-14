@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 a 4 implementadas em 29/09/2026 e etapa 5 em 02/10/2026** na branch `test/e2e-playwright` (PR #61), com os ajustes da revisão em 14/10/2026, e mergeadas na `main` no mesmo dia; etapa 6 feita em 14/10/2026 na branch `test/e2e-smoke`. A suíte tem 22 testes, e o smoke, 2. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
+Status: **etapas 0 a 4 implementadas em 29/09/2026 e etapa 5 em 02/10/2026** na branch `test/e2e-playwright` (PR #61), com os ajustes da revisão em 14/10/2026, e mergeadas na `main` no mesmo dia; etapa 6 feita em 14/10/2026 na branch `test/e2e-smoke`. A suíte tem 24 testes (2 da exportação das dúvidas, em 14/10/2026), e o smoke, 2. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
 
 ## Por que
 

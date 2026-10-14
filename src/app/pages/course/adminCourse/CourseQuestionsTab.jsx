@@ -29,12 +29,15 @@ import {
   CardContent,
   Divider,
   Stack,
+  Checkbox,
 } from "@mui/material";
 import SlideshowIcon from "@mui/icons-material/Slideshow";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
+import TableViewIcon from "@mui/icons-material/TableView";
+import ListAltIcon from "@mui/icons-material/ListAlt";
 import { toast } from "react-toastify";
 import SearchField from "../../../components/common/SearchField";
 import SortableHeader from "../../../components/common/SortableHeader";
@@ -47,6 +50,14 @@ import {
   deleteCourseQuestion,
   buildStudentQuestionLink,
 } from "../../../../api/services/courses/questions";
+import {
+  buildQuestionsCsv,
+  questionsCsvFilename,
+  createExerciseListDraft,
+} from "../../../../api/services/courses/questionExport";
+import { fetchCourseContent } from "../../../../api/services/courses/contentOrder";
+import { downloadBlob } from "./questionsExport/downloadBlob";
+import ExerciseListDialog from "./questionsExport/ExerciseListDialog";
 
 const PURPLE = "#9041c1";
 
@@ -122,8 +133,13 @@ AcoesDaDuvida.propTypes = {
  * horizontal para ler cada dúvida e outra para alcançar os botões. No cartão a
  * dúvida vem inteira, e a autoria — que é o motivo desta aba existir — fica
  * visível sem arrastar nada.
+ *
+ * EXPORTAÇÃO (plano_exportacao_duvidas.md): o professor marca as dúvidas na
+ * tabela e baixa a planilha de dúvidas (com autor, para ele) ou monta a lista
+ * de exercícios (sem autor, para a turma). A escolha vive só nesta tela: não é
+ * gravada no banco e some ao sair da aba.
  */
-const CourseQuestionsTab = ({ courseId, alias }) => {
+const CourseQuestionsTab = ({ courseId, alias, courseTitle }) => {
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +148,9 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
   const [onlyPending, setOnlyPending] = useState(false);
   const [sort, setSort] = useState({ sortField: "createdAt", sortOrder: "desc" });
   const [questionToDelete, setQuestionToDelete] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [listDraft, setListDraft] = useState(null);
+  const [preparingList, setPreparingList] = useState(false);
 
   // Observa o nó das dúvidas: a lista se mantém sozinha enquanto a aba está
   // aberta. Por isso nenhuma ação daqui (marcar/excluir) mexe no estado local —
@@ -175,6 +194,71 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
   }, [questions, contentId, searchTerm, onlyPending, sort]);
 
   const handleSort = (field) => setSort((prev) => getNextSort(prev, field));
+
+  // As escolhidas saem da lista observada, não do conjunto de ids: uma dúvida
+  // escolhida e depois excluída some daqui sozinha. Ficam na ordenação ativa
+  // da tabela, que é a ordem da planilha. Uma dúvida escolhida que o filtro
+  // esconde continua escolhida: o filtro serve para achar, não para desmarcar.
+  const selectedQuestions = useMemo(
+    () =>
+      sortRows(
+        questions.filter((question) => selectedIds.has(question.id)),
+        sort.sortField,
+        sort.sortOrder
+      ),
+    [questions, selectedIds, sort]
+  );
+
+  const visibleSelected = filtered.filter((question) => selectedIds.has(question.id)).length;
+  const allVisibleSelected = filtered.length > 0 && visibleSelected === filtered.length;
+
+  const toggleSelected = (questionId) =>
+    setSelectedIds((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(questionId)) novo.delete(questionId);
+      else novo.add(questionId);
+      return novo;
+    });
+
+  // "Marcar todas as visíveis": respeita os filtros. Se todas as visíveis já
+  // estão marcadas, desmarca só elas, e as escolhidas fora do filtro ficam.
+  const toggleAllVisible = () =>
+    setSelectedIds((atual) => {
+      const novo = new Set(atual);
+      filtered.forEach((question) =>
+        allVisibleSelected ? novo.delete(question.id) : novo.add(question.id)
+      );
+      return novo;
+    });
+
+  const handleExportCsv = () => {
+    const csv = buildQuestionsCsv(selectedQuestions);
+    downloadBlob(
+      questionsCsvFilename(courseId),
+      new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
+    );
+  };
+
+  // A ordem inicial da lista é a dos conteúdos no curso, que esta aba não tem
+  // carregada: busca na hora de abrir a prévia.
+  const handleOpenList = async () => {
+    setPreparingList(true);
+    try {
+      const conteudo = await fetchCourseContent(courseId);
+      setListDraft(
+        createExerciseListDraft({
+          courseTitle,
+          questions: selectedQuestions,
+          contentOrder: conteudo.map((item) => item.id),
+        })
+      );
+    } catch (error) {
+      console.error("Erro ao montar a lista de exercícios:", error);
+      toast.error("Não foi possível montar a lista de exercícios");
+    } finally {
+      setPreparingList(false);
+    }
+  };
 
   const handleToggleDiscussed = async (question) => {
     try {
@@ -399,6 +483,54 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
         </Tooltip>
       </Box>
 
+      <Box
+        sx={{
+          display: "flex",
+          gap: 1.5,
+          mb: 2,
+          flexWrap: "wrap",
+          alignItems: "center",
+          p: 1.5,
+          borderRadius: "8px",
+          backgroundColor: "#f7f2fb",
+        }}
+      >
+        <Typography variant="body2" sx={{ color: "#555", flex: { xs: "1 1 100%", sm: 1 } }}>
+          {selectedQuestions.length === 0
+            ? "Marque as dúvidas que quer exportar."
+            : `${selectedQuestions.length} ${
+                selectedQuestions.length === 1 ? "dúvida escolhida" : "dúvidas escolhidas"
+              } para exportar.`}
+          {selectedQuestions.length > visibleSelected &&
+            ` ${selectedQuestions.length - visibleSelected} fora do filtro atual.`}
+        </Typography>
+        {selectedQuestions.length > 0 && (
+          <Button size="small" onClick={() => setSelectedIds(new Set())} sx={{ color: "#666" }}>
+            Limpar escolha
+          </Button>
+        )}
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<TableViewIcon />}
+          onClick={handleExportCsv}
+          disabled={selectedQuestions.length === 0}
+          sx={{ color: PURPLE, borderColor: PURPLE }}
+        >
+          Planilha
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<ListAltIcon />}
+          onClick={handleOpenList}
+          disabled={selectedQuestions.length === 0 || preparingList}
+          sx={{ backgroundColor: PURPLE, "&:hover": { backgroundColor: "#7d37a7" } }}
+        >
+          Lista de exercícios
+        </Button>
+      </Box>
+
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
           <Loader />
@@ -417,6 +549,16 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
             <Table stickyHeader size="small">
               <TableHead>
                 <TableRow>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={allVisibleSelected}
+                      indeterminate={visibleSelected > 0 && !allVisibleSelected}
+                      onChange={toggleAllVisible}
+                      disabled={filtered.length === 0}
+                      inputProps={{ "aria-label": "Marcar todas as dúvidas visíveis" }}
+                      sx={{ "&.Mui-checked, &.MuiCheckbox-indeterminate": { color: PURPLE } }}
+                    />
+                  </TableCell>
                   <SortableHeader
                     label="Data"
                     field="createdAt"
@@ -458,7 +600,15 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
               </TableHead>
               <TableBody>
                 {filtered.map((question) => (
-                  <TableRow key={question.id} hover>
+                  <TableRow key={question.id} hover selected={selectedIds.has(question.id)}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedIds.has(question.id)}
+                        onChange={() => toggleSelected(question.id)}
+                        inputProps={{ "aria-label": `Escolher a dúvida de ${question.userName}` }}
+                        sx={{ "&.Mui-checked": { color: PURPLE } }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Typography variant="caption" sx={{ color: "#333" }}>
                         {formatarData(question.createdAt)}
@@ -497,7 +647,7 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
 
                 {filtered.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: "#999" }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4, color: "#999" }}>
                       {vazioTexto}
                     </TableCell>
                   </TableRow>
@@ -526,7 +676,13 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
                       justifyContent="space-between"
                       spacing={1}
                     >
-                      <Box sx={{ minWidth: 0 }}>
+                      <Checkbox
+                        checked={selectedIds.has(question.id)}
+                        onChange={() => toggleSelected(question.id)}
+                        inputProps={{ "aria-label": `Escolher a dúvida de ${question.userName}` }}
+                        sx={{ p: 0.5, mt: -0.5, ml: -0.5, "&.Mui-checked": { color: PURPLE } }}
+                      />
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
                         <Typography
                           variant="subtitle2"
                           sx={{ fontWeight: 700, color: "#333", wordBreak: "break-word" }}
@@ -588,6 +744,12 @@ const CourseQuestionsTab = ({ courseId, alias }) => {
         </>
       )}
 
+      <ExerciseListDialog
+        open={!!listDraft}
+        draft={listDraft}
+        onClose={() => setListDraft(null)}
+      />
+
       <Modal open={!!questionToDelete} onClose={() => setQuestionToDelete(null)}>
         <Box
           sx={{
@@ -627,10 +789,13 @@ CourseQuestionsTab.propTypes = {
   courseId: PropTypes.string,
   /** Apelido do curso, quando houver: deixa o link divulgado mais curto. */
   alias: PropTypes.string,
+  /** Título do curso: vem como nome do curso no cabeçalho da lista de exercícios. */
+  courseTitle: PropTypes.string,
 };
 
 CourseQuestionsTab.defaultProps = {
   alias: "",
+  courseTitle: "",
 };
 
 export default CourseQuestionsTab;
