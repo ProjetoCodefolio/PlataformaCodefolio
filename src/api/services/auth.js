@@ -57,6 +57,12 @@ export const handleSignOut = async (navigate) => {
   }
 };
 
+// Fechar o popup do Google (ou abrir outro por cima) é desistência do
+// usuário, não erro: não há o que avisar.
+const SIGN_IN_CANCELLED_CODES = new Set(["auth/popup-closed-by-user", "auth/cancelled-popup-request"]);
+
+export const isSignInCancelled = (error) => SIGN_IN_CANCELLED_CODES.has(error?.code);
+
 export const getFirebaseErrorMessage = (error) => {
   let erroTipo = error.code ? error.code : error;
   switch (erroTipo) {
@@ -72,6 +78,8 @@ export const getFirebaseErrorMessage = (error) => {
       return "A senha está incorreta.";
     case "auth/invalid-credential":
       return "Credencial inválida.";
+    case "auth/popup-blocked":
+      return "O navegador bloqueou a janela de login. Permita pop-ups para este site e tente de novo.";
     default:
       return "Ocorreu um erro desconhecido. Tente novamente.";
   }

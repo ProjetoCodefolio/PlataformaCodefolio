@@ -4,10 +4,10 @@ import * as S from "./styles";
 import logo2 from "$assets/img/logo2.gif";
 import hamburgerIcon from "$assets/img/hamburger-icon.svg";
 import { useAuth } from "$context/AuthContext";
-import { handleGoogleSignIn, getFirebaseErrorMessage } from "$api/services/auth";
+import { toast } from "react-toastify";
+import { handleGoogleSignIn, getFirebaseErrorMessage, isSignInCancelled } from "$api/services/auth";
 
 const Header = () => {
-    const [error, setError] = useState("");
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const navigate = useNavigate();
@@ -18,8 +18,7 @@ const Header = () => {
         handleGoogleSignIn(navigate, async () => {
             await refreshUserDetails();
         }, (error) => {
-            const message = getFirebaseErrorMessage(error);
-            setError(message);
+            if (!isSignInCancelled(error)) toast.error(getFirebaseErrorMessage(error));
         }, refreshUserDetails);
     };
 

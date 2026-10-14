@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Button from "@mui/material/Button";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
@@ -8,19 +7,18 @@ import { useNavigate } from "react-router-dom";
 import Logo from "$assets/img/logo2.gif";
 import CodeImage from "$assets/img/undraw_code-thinking_0vf2.svg";
 import GoogleIcon from "$assets/img/googleicon.svg";
-import { handleGoogleSignIn, getFirebaseErrorMessage } from "$api/services/auth";
+import { toast } from "react-toastify";
+import { handleGoogleSignIn, getFirebaseErrorMessage, isSignInCancelled } from "$api/services/auth";
 import { useAuth } from "$context/AuthContext";
 
 
 export default function SignInSide() {
   const navigate = useNavigate();
-  const [error, setError] = useState("");
   const { refreshUserDetails } = useAuth();
 
   const handleLogin = () => {
     handleGoogleSignIn(navigate, null, (error) => {
-      const message = getFirebaseErrorMessage(error);
-      setError(message);
+      if (!isSignInCancelled(error)) toast.error(getFirebaseErrorMessage(error));
     }, refreshUserDetails);
   };
 
