@@ -28,8 +28,11 @@ test.beforeEach(async () => {
 const contentCard = (page, title) => page.getByRole("heading", { name: title, exact: true });
 
 test("o aluno não vê o vídeo programado, e ele aparece quando a data chega", async ({ page }) => {
-  const publishAt = new Date(Date.now() + 8_000).toISOString();
-  await writeDatabase(`courseContent/${VIDEO_COURSE_ID}/${VIDEO_2.id}/publishAt`, publishAt);
+  const publishAtPath = `courseContent/${VIDEO_COURSE_ID}/${VIDEO_2.id}/publishAt`;
+  const inSeconds = (s) => new Date(Date.now() + s * 1000).toISOString();
+  // Data longe o bastante para o login e a abertura da sala nunca a alcançarem,
+  // por mais lento que esteja o CI.
+  await writeDatabase(publishAtPath, inSeconds(3600));
 
   await loginAs(page, aluno);
   await page.goto(`/classes?courseId=${VIDEO_COURSE_ID}`);
@@ -37,7 +40,10 @@ test("o aluno não vê o vídeo programado, e ele aparece quando a data chega", 
   await expect(contentCard(page, VIDEO_1.title)).toBeVisible();
   await expect(contentCard(page, VIDEO_2.title)).toHaveCount(0);
 
-  // Passada a data, o vídeo aparece ao abrir a sala de novo.
+  // A data passa a ser daqui a poucos segundos, ainda no futuro: quem libera o
+  // vídeo é o relógio, não a escrita. Passada a data, ele aparece ao abrir a
+  // sala de novo.
+  await writeDatabase(publishAtPath, inSeconds(3));
   await expect(async () => {
     await page.reload();
     await expect(contentCard(page, VIDEO_2.title)).toBeVisible({ timeout: 2_000 });
