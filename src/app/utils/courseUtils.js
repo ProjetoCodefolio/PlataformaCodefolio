@@ -1,5 +1,5 @@
-import { ref, get, query, orderByChild, equalTo, set } from "firebase/database";
-import { auth, database } from "$api/config/firebase";
+import { ref, get, set } from "firebase/database";
+import { database } from "$api/config/firebase";
 
 export async function hasCourseVideos(courseId) {
   try {

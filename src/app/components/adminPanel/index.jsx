@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import Loader from "$components/common/Loader";
 import {
     Box,

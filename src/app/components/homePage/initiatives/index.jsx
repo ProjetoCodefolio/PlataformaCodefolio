@@ -1,5 +1,3 @@
-import * as S from './styles';
-import React from 'react';
 import iniciativas1 from '$assets/img/iniciativas1.svg';
 import iniciativas2 from '$assets/img/iniciativas2.svg';
 import iniciativas3 from '$assets/img/iniciativas3.svg';

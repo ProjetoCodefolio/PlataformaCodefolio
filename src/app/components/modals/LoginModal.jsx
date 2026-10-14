@@ -1,4 +1,3 @@
-import React from 'react';
 import { Box, Typography, Modal, Button } from "@mui/material";
 import { useAuth } from "$context/AuthContext";
 import { handleGoogleSignIn } from "$api/services/auth";

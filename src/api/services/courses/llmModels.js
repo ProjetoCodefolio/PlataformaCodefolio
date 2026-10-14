@@ -1,6 +1,5 @@
 import { database } from '$api/config/firebase';
-import { ref, push, set, get, update, remove } from 'firebase/database';
-import { toast } from "react-toastify";
+import { ref, push, set, get, update } from 'firebase/database';
 
 export const fetchAllLlmModels = async () => {
     const llmModelsRef = ref(database, 'llmModels');

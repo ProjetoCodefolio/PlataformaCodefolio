@@ -1,50 +1,37 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SearchField from "$components/common/SearchField";
-import React, { useEffect, useState, forwardRef } from "react";
+import { useEffect, useState, forwardRef } from "react";
 import Loader from "$components/common/Loader";
 import {
-    Box,
-    Button,
-    IconButton,
-    List,
-    ListItem,
-    ListItemText,
-    Grid,
-    Modal,
-    Typography,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Divider,
-    Card,
-    CardContent,
-    Avatar,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Stack,
-    Chip,
-    Tooltip,
-    TablePagination
+  Box,
+  Button,
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Divider,
+  Card,
+  CardContent,
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Stack,
+  Chip,
+  Tooltip,
+  TablePagination,
 } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SortIcon from "@mui/icons-material/Sort";
 import FilterListIcon from '@mui/icons-material/FilterList';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { toast } from "react-toastify";
 import MyConfirm from "$components/post/components/confirm/Confirm";
-import {
-    fetchCourseStudentsEnriched,
-    updateStudentCourseRole,
-    removeStudentFromCourse,
-    checkUserCourseRole
-} from "$api/services/courses/students";
+import { fetchCourseStudentsEnriched, updateStudentCourseRole, removeStudentFromCourse } from "$api/services/courses/students";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { isDiscipline } from "$api/services/courses/courseType";
 import { useAuth } from "$context/AuthContext";

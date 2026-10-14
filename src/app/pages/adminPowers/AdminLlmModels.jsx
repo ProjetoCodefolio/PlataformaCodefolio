@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -28,7 +28,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  Alert,
 } from "@mui/material";
 import {
   Add,

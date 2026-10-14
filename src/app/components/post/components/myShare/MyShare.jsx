@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { Button } from '@mui/material';
+import { useState } from 'react';
 import { Share } from '@mui/icons-material';
 import MyAlert from '../alert/Alert';
 import { abrirAlert } from '../../../../utils/postUtils';

@@ -4,7 +4,6 @@ import {
   set,
   update,
   serverTimestamp,
-  push,
   increment,
 } from "firebase/database";
 import { database } from "../../config/firebase";

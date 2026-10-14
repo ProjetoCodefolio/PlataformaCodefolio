@@ -8,7 +8,7 @@ import {
   fetchUserQuizResults,
   fetchCourseQuizzes,
 } from "./quizFetch";
-import { validateQuizAnswers, markQuizAsCompleted } from "./quizSubmission";
+import { markQuizAsCompleted } from "./quizSubmission";
 import {
   saveVideoProgress,
   markVideoAsCompleted,

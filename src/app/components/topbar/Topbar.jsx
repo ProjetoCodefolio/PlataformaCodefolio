@@ -19,7 +19,6 @@ import IconButton from "@mui/material/IconButton";
 import VideoSettingsIcon from "@mui/icons-material/VideoSettings";
 import Person from "@mui/icons-material/Person";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import Settings from "@mui/icons-material/Settings";
 import Help from "@mui/icons-material/Help";
 import Tooltip from "@mui/material/Tooltip";
 import Avatar from "@mui/material/Avatar";

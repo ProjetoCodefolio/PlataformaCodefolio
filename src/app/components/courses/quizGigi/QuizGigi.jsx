@@ -1,5 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
-import { ref, get, set, serverTimestamp } from "firebase/database";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   IconButton,
@@ -8,12 +7,6 @@ import {
   Grid,
   Chip,
   Avatar,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
@@ -22,17 +15,13 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
-import { toast } from "react-toastify";
 import logo from "$assets/img/codefolio.png";
-import { database } from "$api/config/firebase";
-import { sendReport } from "$api/services/courses/report";
 
 import ErrorBoundary from "./components/ErrorBoundary";
 import QuestionDisplay from "./components/QuestionDisplay";
 import NavigationButtons from "./components/NavigationButtons";
 import QuizSummary from "./components/QuizSummary";
 import StudentSelector from "./components/StudentSelector";
-import CustomQuestion from "./components/CustomQuestion";
 import CustomQuizRanking from "./components/CustomQuizRanking";
 import { useQuizData } from "./hooks/useQuizData";
 import { useStudentData } from "./hooks/useStudentData";

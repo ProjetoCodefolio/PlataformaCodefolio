@@ -1,7 +1,6 @@
-import React from 'react';
 import Box from "@mui/material/Box";
 import Typography from '@mui/material/Typography';
-import { colorConstants, textStyles } from "../../../constants/constantStyles";
+import { colorConstants } from "../../../constants/constantStyles";
 import section2img from "$assets/img/section2.svg";
 import engSvg from "$assets/img/eng.svg";
 

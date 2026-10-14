@@ -1,7 +1,5 @@
 import { useState } from 'react';
 import * as S from './styles';
-import { Avatar, TextField, InputAdornment, Button } from "@mui/material";
-import { Search } from "@mui/icons-material";
 import { PhotoCamera, Share, Article } from '@mui/icons-material';
 import CreatePostModal from "../createPost/CreatePost";
 import MyAlert from '../alert/Alert';

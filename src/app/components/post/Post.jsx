@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ref, get, remove, onValue } from 'firebase/database';
 import { database } from '$api/config/firebase';
 import { listenToPostInteractions } from '$api/services/posts/';
@@ -10,7 +10,7 @@ import Pagination from './components/pagination/Pagination';
 import CreatePostModal from './components/createPost/CreatePost';
 import { fetchPosts, abrirAlert } from '../../utils/postUtils';
 import { useAuth } from '$context/AuthContext';
-import { Box, Grid } from '@mui/material';
+import { Box } from '@mui/material';
 import { FilterPost } from './components/filterPostCard';
 import PostCards from './components/postCard';
 import CourseListSideBar from './components/courseListSideBar';

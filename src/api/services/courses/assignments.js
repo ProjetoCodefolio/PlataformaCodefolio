@@ -1,5 +1,5 @@
 import { database } from "$api/config/firebase";
-import { ref, push, set, get, update, remove } from "firebase/database";
+import { ref, push, set, get, update } from "firebase/database";
 
 /**
  * Serviço de Enunciados (Trabalhos/Atividades) de um curso.

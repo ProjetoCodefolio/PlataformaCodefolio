@@ -1,5 +1,5 @@
 import { database } from '../../config/firebase';
-import { ref, get, set, update, remove } from 'firebase/database';
+import { ref, get, set, update } from 'firebase/database';
 import { isDiscipline, isCourseClosed } from './courseType';
 import { toStudentView } from './publication';
 import { recipientName } from '../../../shared/notificationText.js';

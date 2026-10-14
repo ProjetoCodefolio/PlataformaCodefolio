@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   Button,
@@ -15,10 +15,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import {
-  fetchCustomQuizResults,
-  processCustomQuizResults,
-} from "$api/services/courses/quizGigi";
+import { fetchCustomQuizResults } from "$api/services/courses/quizGigi";
 
 const AnswerButton = ({
   onClick,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Typography, Divider, Avatar, Chip, Box } from '@mui/material';
 import PostMenu from '../menu/Menu';
 import EditPostModal from '../editPost/EditPost';

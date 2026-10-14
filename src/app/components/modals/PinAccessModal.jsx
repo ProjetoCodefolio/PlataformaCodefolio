@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { Box, Typography, Modal, TextField, Button } from "@mui/material";
 import { keyframes } from "@emotion/react";
 import { validateCoursePin } from "$api/services/courses/pin";

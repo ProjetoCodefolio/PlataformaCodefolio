@@ -1,4 +1,3 @@
-import React from 'react'
 import Section7 from '$components/homePage/section7'
 import Footer from '$components/homePage/footer'
 const SectionSeven = () => {

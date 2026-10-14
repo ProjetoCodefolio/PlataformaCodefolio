@@ -1,4 +1,3 @@
-import React from "react";
 import { ThumbUp } from "@mui/icons-material";
 
 export default function Portifolios() {

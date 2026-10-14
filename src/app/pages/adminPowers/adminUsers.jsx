@@ -20,7 +20,7 @@ import {
   Autocomplete,
   IconButton,
 } from "@mui/material";
-import { Search, Person, Close } from "@mui/icons-material";
+import { Search, Close } from "@mui/icons-material";
 import Topbar from "../../components/topbar/Topbar";
 import MyConfirm from "$components/post/components/confirm/Confirm";
 import { updateUserRole, filterUsersBySearchTerm, sortUsers } from "$api/services/admin";
