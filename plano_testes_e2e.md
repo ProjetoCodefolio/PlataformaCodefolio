@@ -1,6 +1,6 @@
 # Plano: testes de ponta a ponta (E2E) com Playwright
 
-Status: **etapas 0 a 4 implementadas em 29/09/2026 e etapa 5 em 02/10/2026** na branch `test/e2e-playwright` (PR #61), com os ajustes da revisão em 14/10/2026; etapa 6 pendente. A suíte tem 22 testes. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
+Status: **etapas 0 a 4 implementadas em 29/09/2026 e etapa 5 em 02/10/2026** na branch `test/e2e-playwright` (PR #61), com os ajustes da revisão em 14/10/2026, e mergeadas na `main` no mesmo dia; etapa 6 feita em 14/10/2026 na branch `test/e2e-smoke`. A suíte tem 22 testes, e o smoke, 2. Decisões em aberto resolvidas em 02/10/2026 (ver o fim do documento). Escrito em 29/09/2026.
 
 ## Por que
 
@@ -95,7 +95,9 @@ Uma inconsistência de tela que apareceu (não corrigida): para o aluno **aprova
 - Fluxo 7, `e2e/quiz-professor.spec.js`: adicionar uma questão mantém as duas que já existiam iguais, gera id novo e mantém nota mínima e tentativas; editar a segunda questão na própria lista (salvamento automático) muda só ela, pelo id, e sobrevive a recarregar a página. Reprova tanto se a gravação perder a configuração do quiz (`persistableQuizSettings`) quanto se a edição valer para todas as questões. Para achar os botões pelo nome, os dois botões só de ícone do card do quiz ganharam rótulo ("Ver questões", com `aria-expanded`, e "Excluir quiz"), em commit próprio.
 - Fluxo 8, `e2e/admin.spec.js`: o admin abre `/admin-panel` e `/adm-cursos`; a professora abre `/adm-cursos` e vai para o `/dashboard` no painel de administração; o aluno vai para o `/dashboard` nas duas.
 
-**Etapa 6: smoke pós-deploy.** Decidido fazer (ver o fim do documento). Job depois do `deploy`, só leitura, contra `https://plataformacodefolio.web.app`.
+**Etapa 6: smoke pós-deploy. Feita em 14/10/2026.** Job `smoke` em `.github/workflows/ci-cd.yml`, com `needs: deploy` (então só roda em push na `main`, depois de publicar), sem segredo nenhum. Roda `npm run test:smoke`, que usa um config próprio (`playwright.smoke.config.js`, testes em `smoke/`, fora do `testDir` do E2E) contra `https://plataformacodefolio.web.app` (ou `SMOKE_URL`), com `retries: 2` no CI por depender da rede de verdade. Dois testes, como visitante e só de leitura: a página inicial abre e leva ao catálogo pelo menu; `/cursos` aberto direto pelo endereço (o que confere também o rewrite do hosting) lista ao menos um curso com "Começar", sem depender de qual curso existe. `smoke/test.js` reprova o teste em erro de JavaScript não tratado ou erro no console (aviso não reprova: o YouTube e o navegador soltam vários) e responde vazio (204) ao envio do Google Analytics, para o CI não contar como visita; abortar o envio não serve, porque requisição abortada vira erro no console. O relatório sobe sempre, como no E2E.
+
+Junto com a etapa 6, a sugestão da revisão do PR #61 sobre o `scripts/checkProductionBuild.mjs`: as marcas que ele procura são textos copiados do código do e2e, e reescrever uma mensagem tornaria a checagem cega sem ninguém perceber. Agora o script roda também ao contrário (`npm run check:build:e2e`, chamado pelo `npm run test:e2e`): no build e2e todas as marcas têm que aparecer, e a que sumiu reprova pedindo para atualizar a lista. Conferido trocando uma marca de propósito. Observação: um `npm run build` local reprova o `check:build` se o `.env` tiver `VITE_MODE=development` (o log do emulador fica no bundle); é esperado, porque o deploy usa `VITE_MODE=production`, com que o build sai limpo.
 
 ## Riscos
 
