@@ -28,7 +28,7 @@ test("assistir 90% do vídeo marca assistido, sobe o progresso do curso e destra
 }) => {
   await expect(page.getByRole("button", { name: "Bloqueado" })).toBeVisible();
 
-  await watchVideo(page, { percent: 95 });
+  await watchVideo(page, { percent: 90 });
 
   await expect(page.getByText("Progresso do vídeo salvo com sucesso!")).toBeVisible();
   await expect(page.getByRole("button", { name: "Bloqueado" })).toBeHidden();
@@ -54,10 +54,12 @@ test("o vídeo destravado continua destravado depois de recarregar a página", a
 });
 
 test("assistir menos de 90% salva o progresso mas não destrava o próximo", async ({ page }) => {
-  await watchVideo(page, { percent: 50 });
+  // Logo abaixo do limite. O banco guarda o último marco de 10% passado, então
+  // 89% fica salvo como 80%.
+  await watchVideo(page, { percent: 89 });
 
   await expect.poll(() => videoProgress(VIDEO_1.id)).toMatchObject({
-    percentageWatched: 50,
+    percentageWatched: 80,
     watched: false,
   });
   await expect(page.getByRole("button", { name: "Bloqueado" })).toBeVisible();
