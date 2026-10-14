@@ -12,7 +12,7 @@ import LockIcon from "@mui/icons-material/Lock";
 import { fetchCourses } from "$api/services/courses/courses";
 import CourseDescription from "$components/courses/CourseDescription";
 
-const CourseListSidebar = ({ onSelectCourse }) => {
+const CourseListSidebar = () => {
   const [courses, setCourses] = useState([]);
   const navigate = useNavigate();
 

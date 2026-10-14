@@ -61,7 +61,6 @@ const QuizGigi = ({ onClose, quizData, courseId }) => {
 
   const {
     quizResults,
-    customQuestionResults,
     courseTitle,
     quizTitle,
     selectedAnswer,

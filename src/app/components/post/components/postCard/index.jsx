@@ -35,7 +35,6 @@ export default function PostCards({
     const { likes = {}, dislikes = {}, comments = [] } = interactions || {};
     const [isPostEdited, setIsPostEdited] = useState(false);
     const [showAddComment, setShowAddComment] = useState(false);
-    const [playerInstance, setPlayerInstance] = useState(null);
 
     useEffect(() => {
         if (isPostEdited) {
@@ -43,14 +42,6 @@ export default function PostCards({
             setIsPostEdited(false);
         }
     }, [isPostEdited, onPostEdited]);
-
-    const handlePlayerReady = (event) => {
-        setPlayerInstance(event.target);
-    };
-
-    const handleStateChange = (event) => {
-        
-    };
 
     return (
         <S.Wrapper>
@@ -167,8 +158,6 @@ export default function PostCards({
                                 rel: 0
                             },
                         }}
-                        onReady={handlePlayerReady}
-                        onStateChange={handleStateChange}
                         style={{
                             position: 'absolute',
                             top: 0,

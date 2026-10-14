@@ -39,7 +39,6 @@ const AdminPowers = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [allUsers, setAllUsers] = useState([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [autocompleteOptions, setAutocompleteOptions] = useState([]);
@@ -302,7 +301,6 @@ const AdminPowers = () => {
               <Button
                 variant="contained"
                 onClick={handleSearch}
-                disabled={loading}
                 sx={{
                   backgroundColor: "#9041c1",
                   "&:hover": { backgroundColor: "#7d37a7" },
@@ -310,7 +308,7 @@ const AdminPowers = () => {
                   height: 56, // Altura para alinhar com o Autocomplete
                 }}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : "Buscar"}
+                Buscar
               </Button>
             </Box>
             

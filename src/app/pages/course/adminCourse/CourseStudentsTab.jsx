@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import HowToRegIcon from "@mui/icons-material/HowToReg";
 import SearchField from "$components/common/SearchField";
-import { useEffect, useState, forwardRef } from "react";
+import { useEffect, useState } from "react";
 import Loader from "$components/common/Loader";
 import {
   Box,
@@ -49,7 +49,7 @@ const capitalizeWords = (name) => {
         .join(" ");
 };
 
-const CourseStudentsTab = forwardRef((props, ref) => {
+const CourseStudentsTab = () => {
     const [students, setStudents] = useState([]);
     const [courseDetails, setCourseDetails] = useState({})
     const [loading, setLoading] = useState(true);
@@ -804,7 +804,7 @@ const CourseStudentsTab = forwardRef((props, ref) => {
             />
         </Box>
     );
-});
+};
 
 // Cor da barra de progresso: binária, sem nível intermediário. Verde só ao
 // concluir (100%); qualquer coisa abaixo disso é vermelho.

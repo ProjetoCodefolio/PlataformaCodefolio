@@ -7,7 +7,6 @@ import QuestionImage from "../../../common/QuestionImage";
 const QuestionDisplay = ({
   currentQuestion,
   currentQuestionIndex,
-  totalQuestions,
   quizResults,
   courseTitle,
   quizTitle,

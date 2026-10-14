@@ -285,7 +285,7 @@ export function useQuestionEditor({
   );
 
   // Adicione esta função ao componente CourseQuizzesTab (antes do return)
-  const handleBlurSave = async (field) => {
+  const handleBlurSave = async () => {
     if (!editQuiz || !editQuestion) return;
 
     try {

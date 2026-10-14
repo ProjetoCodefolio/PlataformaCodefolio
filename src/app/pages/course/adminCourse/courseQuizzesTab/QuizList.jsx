@@ -58,7 +58,6 @@ const QuizList = ({
   setExpandedQuiz,
   handleEditQuiz,
   handleRemoveQuiz,
-  handleViewStudents,
   questionFormRef,
   handleEditQuestion,
   handleRemoveQuestion,

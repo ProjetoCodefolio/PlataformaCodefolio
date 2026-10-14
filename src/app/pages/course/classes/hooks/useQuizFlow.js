@@ -99,13 +99,10 @@ export function useQuizFlow({
     }
   };
 
-  const handleQuizComplete = async (isPassed, action, videoId, quizResultId = null, isSlide = false) => {
+  const handleQuizComplete = async (isPassed, action, videoId, _quizResultId = null, _isSlide = false) => {
     try {
       // Garantir que isPassed seja um booleano
       const wasApproved = Boolean(isPassed);
-
-      // Identifica se é um slide ou um vídeo que estamos atualizando
-      const contentId = videoId || currentVideoId;
 
       // As tentativas exibidas vêm do banco (refreshUserAttempts). Não somamos
       // +1 aqui: uma única submissão passa por este handler até três vezes

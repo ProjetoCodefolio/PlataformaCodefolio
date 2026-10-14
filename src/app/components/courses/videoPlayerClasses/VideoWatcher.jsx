@@ -16,7 +16,6 @@ export function VideoWatcher({
   videoId,
   courseId,
   onProgress,
-  hasNotifiedRef,
   watchTime,
   setWatchTime,
   percentageWatched,

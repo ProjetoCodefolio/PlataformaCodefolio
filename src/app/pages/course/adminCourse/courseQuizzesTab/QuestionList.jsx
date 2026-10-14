@@ -83,10 +83,7 @@ const SortableQuestionRow = ({ id, children }) => {
 
 const QuestionList = ({
   quiz,
-  handleEditQuestion,
   handleRemoveQuestion,
-  questionFormRef,
-  courseId,
   onAutoSaveQuestion,
   onReorderQuestions,
 }) => {

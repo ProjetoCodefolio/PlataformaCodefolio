@@ -43,7 +43,6 @@ const QuestionForm = ({
   setNewQuizImageWidth,
   newQuizImageHeight,
   setNewQuizImageHeight,
-  handleBlurSave,
   handleKeyDown,
   questionRef,
   optionsRefs,

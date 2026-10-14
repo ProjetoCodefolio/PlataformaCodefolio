@@ -78,8 +78,6 @@ const AdminLlmModels = () => {
   
 
   // confirmação
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [modelToChangeStatus, setModelToChangeStatus] = useState(null);
 
   useEffect(() => {
     loadModels();

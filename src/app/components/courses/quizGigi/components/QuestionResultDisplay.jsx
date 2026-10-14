@@ -4,8 +4,6 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 const QuestionResultDisplay = ({
   currentQuestion,
   quizResults,
-  courseTitle,
-  quizTitle,
   currentQuestionIndex,
   eyeOpen,
 }) => {

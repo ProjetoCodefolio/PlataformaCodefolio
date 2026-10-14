@@ -360,7 +360,7 @@ const TeacherAssessmentsPage = () => {
               }
             }}
           >
-            {filteredCourses.map((course, index) => (
+            {filteredCourses.map((course) => (
               <Tab
                 key={course.courseId}
                 label={course.title}

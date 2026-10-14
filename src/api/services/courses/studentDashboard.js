@@ -37,7 +37,6 @@ export const fetchQuizData = async (quizId) => {
     let foundQuiz = null;
     let foundCourse = null;
     let foundVideo = null;
-    let foundCourseId = null;
 
     const quizzesPromises = [];
     const courseIds = [];
@@ -57,7 +56,6 @@ export const fetchQuizData = async (quizId) => {
       if (quizzesResults[i].exists()) {
         foundQuiz = quizzesResults[i].val();
         foundQuiz.videoId = quizId;
-        foundCourseId = courseIds[i];
 
         // Buscar dados do curso
         const courseRef = ref(database, `courses/${courseIds[i]}`);

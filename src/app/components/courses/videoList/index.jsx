@@ -231,7 +231,6 @@ const VideoList = ({
 
         // Determinar se é um slide
         const isSlide = video.isSlide || video.type === "slide";
-        const hasQuiz = isSlide ? video.quizId : video.hasQuiz; // Verifica se o slide tem um quiz associado
 
         return (
           <Card

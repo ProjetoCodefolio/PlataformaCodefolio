@@ -249,7 +249,7 @@ export const updateCourseVideo = async (courseId, videoId, videoData) => {
  * @param {string} userId - ID do usuário atual
  * @returns {Promise<boolean>} - Verdadeiro se a exclusão foi bem-sucedida
  */
-export const deleteCourseVideo = async (courseId, videoId, userId) => {
+export const deleteCourseVideo = async (courseId, videoId, _userId) => {
   try {
     // Verificar se o vídeo possui quizzes
     const courseQuizzes = await hasVideoQuizzes(courseId, videoId);
