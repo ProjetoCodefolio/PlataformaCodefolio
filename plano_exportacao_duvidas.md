@@ -25,7 +25,7 @@ O professor quer levar as dúvidas que os alunos registram para fora da platafor
 2. **Seleção e planilha** na aba "Dúvidas": coluna de caixas na tabela, caixa nos cartões do celular, "marcar todas as visíveis", contador e os botões "Planilha" e "Lista de exercícios".
 3. **Prévia da lista:** diálogo com cabeçalho, opções, itens editáveis e arrastáveis.
 4. **Geradores** `.docx` e PDF a partir do modelo.
-5. **E2E:** o professor escolhe dúvidas, baixa a planilha (confere colunas e que respeitou a escolha) e abre a prévia (confere que não há autor). O conteúdo binário do `.docx` e do PDF não é conferido no E2E, só que o download acontece.
+5. **E2E:** o professor escolhe dúvidas, baixa a planilha (confere colunas e que respeitou a escolha) e monta a lista (confere a ordem, que não há autor na prévia nem no arquivo e que a edição e a reordenação chegam ao `.docx`). Do PDF, só que o arquivo é um PDF; o visual dele foi conferido à mão.
 
 ## Registro da implementação
 
