@@ -79,10 +79,12 @@ jobs:
       - name: Testes E2E (build e2e + emuladores + Playwright)
         run: npm run test:e2e
 
-      # Em falha, o relatório traz trace, screenshot e vídeo de cada teste
-      # (abrir o trace com `npx playwright show-trace <arquivo>`).
+      # O relatório traz trace, screenshot e vídeo de cada tentativa que falhou
+      # (abrir o trace com `npx playwright show-trace <arquivo>`). Sobe sempre,
+      # e não só quando o job falha: um teste que falha e passa na segunda
+      # tentativa (flaky) deixa o job verde, e é esse trace que mostra o porquê.
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: |
