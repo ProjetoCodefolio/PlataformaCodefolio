@@ -1,6 +1,6 @@
 # Plano: exportar as dúvidas dos alunos
 
-Status: **em implementação** na branch `feat/exportar-duvidas`. Escrito em 14/10/2026, a partir de uma rodada de perguntas (`/grill-with-docs`) com o Matheus. Os termos estão no `CONTEXT.md`.
+Status: **implementado em 14/10/2026** na branch `feat/exportar-duvidas` (etapas 1 a 5). Escrito em 14/10/2026, a partir de uma rodada de perguntas (`/grill-with-docs`) com o Matheus. Os termos estão no `CONTEXT.md`.
 
 ## Por que
 
@@ -26,6 +26,15 @@ O professor quer levar as dúvidas que os alunos registram para fora da platafor
 3. **Prévia da lista:** diálogo com cabeçalho, opções, itens editáveis e arrastáveis.
 4. **Geradores** `.docx` e PDF a partir do modelo.
 5. **E2E:** o professor escolhe dúvidas, baixa a planilha (confere colunas e que respeitou a escolha) e abre a prévia (confere que não há autor). O conteúdo binário do `.docx` e do PDF não é conferido no E2E, só que o download acontece.
+
+## Registro da implementação
+
+- Lógica pura e testes: `src/api/services/courses/questionExport.js` (13 testes).
+- Geradores: `src/app/pages/course/adminCourse/questionsExport/` (`exerciseListDocx.js`, `exerciseListPdf.js`, `downloadBlob.js`) e a prévia `ExerciseListDialog.jsx`. No build, o `pdfmake` e as fontes ficam num pedaço separado de cerca de 1 MB (360 kB comprimido), baixado só no clique.
+- Aba: `CourseQuestionsTab.jsx` ganhou a coluna de caixas, "marcar todas as visíveis" e a barra de exportação. Uma dúvida escolhida que o filtro esconde continua escolhida, e a barra avisa quantas estão fora do filtro.
+- Além das alças de arrastar, cada exercício tem botões de subir e descer, para teclado e celular.
+- Dois cuidados que só apareceram olhando os arquivos gerados: no PDF, cada linha de resposta precisa ser um objeto novo (o `pdfmake` anota posições no objeto, e repetir o mesmo fazia as linhas sumirem); no `.docx`, as linhas são tabulações com preenchimento de sublinhado, porque o Word junta a borda de parágrafos vizinhos iguais numa linha só.
+- E2E: `e2e/duvidas-exportacao.spec.js` (2 testes). A suíte passou a ter 24.
 
 ## Fora do escopo
 
