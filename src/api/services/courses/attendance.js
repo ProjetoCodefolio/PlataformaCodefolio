@@ -12,6 +12,8 @@
 // mantém estas funções testáveis sem emulador.
 
 /** Limiar padrão (%) para considerar um vídeo assistido. */
+import { enrollmentEndedLabel } from "../../../shared/enrollmentStatus.js";
+
 export const DEFAULT_WATCHED_THRESHOLD = 90;
 
 /** Valor padrão de presenças que cada vídeo assistido concede. */
@@ -141,6 +143,9 @@ export const computeCoursePresence = (students = [], videos = [], opts = {}) =>
       userId: student.userId,
       name: student.name || "",
       email: student.email || "",
+      enrollmentEnded: Boolean(student.enrollmentEnded),
+      endReason: student.endReason || null,
+      endedAt: student.endedAt || null,
       ...presence,
     };
   });
@@ -190,6 +195,7 @@ export const exportPresenceToCSV = (
     "Vídeos Assistidos",
     `Presenças (x${presencesPerVideo})`,
     "Presença (%)",
+    "Situação na turma",
   ];
 
   const rows = studentsPresence.map((student) => {
@@ -213,6 +219,7 @@ export const exportPresenceToCSV = (
       `${student.watchedCount}/${student.totalVideos}`,
       `${student.presences}/${student.maxPresences}`,
       student.presencePercent.toFixed(2),
+      enrollmentEndedLabel(student),
     ];
   });
 

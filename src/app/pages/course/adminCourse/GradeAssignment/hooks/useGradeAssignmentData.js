@@ -47,7 +47,8 @@ export function useGradeAssignmentData({ courseId, assessmentId }) {
 
         // Carregar estudantes do curso usando o método enriquecido
         const courseStudents = await studentService.fetchCourseStudentsEnriched(
-          courseId
+          courseId,
+          { includeEnded: true }
         );
         setStudents(courseStudents);
 

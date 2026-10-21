@@ -53,6 +53,7 @@ import { useStudentSearchSort } from "../grades/hooks/useStudentSearchSort";
 import { useQuizGradesData } from "./hooks/useQuizGradesData";
 import { useRestoreAttempt } from "./hooks/useRestoreAttempt";
 import { useQuizGradesCsvExport } from "./hooks/useQuizGradesCsvExport";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
 
 // Ordenação genérica por qualquer campo do estudante (nota/contadores/nome).
 // Não muta a lista recebida — diferente do array original de `data.students`.
@@ -488,6 +489,7 @@ export default function QuizGradesOverview() {
                           <Box>
                             <Typography variant="body1" sx={{ fontWeight: 500 }}>
                               {student.name}
+                              <EnrollmentEndedChip student={student} />
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                               {student.email}

@@ -171,7 +171,7 @@ const CourseStudentsTab = () => {
     const loadCourseStudents = async () => {
         try {
             // Usar a função da API para buscar estudantes
-            const studentsData = await fetchCourseStudentsEnriched(courseId);
+            const studentsData = await fetchCourseStudentsEnriched(courseId, { includeEnded: true });
             setStudents(studentsData);
 
         } catch (error) {

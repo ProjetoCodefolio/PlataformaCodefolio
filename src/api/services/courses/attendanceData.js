@@ -8,6 +8,7 @@ import { ref, get, update } from "firebase/database";
 import { fetchCourseContent } from "./contentOrder";
 import { DEFAULT_PRESENCES_PER_VIDEO } from "./attendance";
 import { isPublished } from "./publication";
+import { enrollmentRowFlags } from "../../../shared/enrollmentStatus.js";
 
 /**
  * Vídeos-aula que contam para presença: itens de categoria "video" que NÃO são
@@ -112,12 +113,15 @@ export const fetchCoursePresenceData = async (courseId) => {
         photoURL: userData.photoURL || "",
         isTeacher,
         progressById,
+        ...enrollmentRowFlags(studentCourses[uid][courseId]),
       };
     })
   );
 
-  // Ordena por nome; professores do curso ficam ao final (informativo).
+  // Ordena por nome; professores do curso ficam ao final (informativo), e quem
+  // saiu ou foi removido depois deles.
   students.sort((a, b) => {
+    if (a.enrollmentEnded !== b.enrollmentEnded) return a.enrollmentEnded ? 1 : -1;
     if (a.isTeacher !== b.isTeacher) return a.isTeacher ? 1 : -1;
     return a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" });
   });

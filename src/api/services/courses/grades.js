@@ -1,6 +1,7 @@
 import { database } from '$api/config/firebase';
 import { ref, get } from 'firebase/database';
 import { computeStudentGradeSummary } from './gradeSummary';
+import { enrollmentRowFlags } from '../../../shared/enrollmentStatus.js';
 
 // O cálculo (`gradeSummary.js`) e o formato CSV (`gradesCsv.js`) não dependem do
 // Firebase. Reexportados aqui para que os consumidores continuem importando tudo
@@ -118,6 +119,9 @@ export const fetchAllCourseGrades = async (courseId) => {
             email: userData.email || "Email não disponível",
             photoURL: userData.photoURL || "",
             ...computeStudentGradeSummary(studentGrades, assessments),
+            // Quem saiu ou foi removido continua na lista, marcado; a tela o
+            // põe no fim e as estatísticas da turma o deixam de fora.
+            ...enrollmentRowFlags(courses[courseId]),
           });
         }
       }

@@ -219,3 +219,28 @@ describe("exportPresenceToCSV", () => {
     expect(csv).toContain('"Ana ""A"""');
   });
 });
+
+describe("quem está fora da turma no CSV de presença", () => {
+  it("ganha a situação na última coluna; quem está na turma fica com ela vazia", () => {
+    const videos = [{ id: "v1", title: "Aula 1" }];
+    const students = [
+      { userId: "u1", name: "Ana", email: "ana@x.com", progressById: {} },
+      {
+        userId: "u2",
+        name: "Bia",
+        email: "bia@x.com",
+        progressById: {},
+        enrollmentEnded: true,
+        endReason: "left",
+        endedAt: "2026-10-12T15:00:00.000Z",
+      },
+    ];
+    const presence = computeCoursePresence(students, videos);
+    expect(presence[1]).toMatchObject({ enrollmentEnded: true, endReason: "left" });
+
+    const [cabecalho, ana, bia] = exportPresenceToCSV(presence, videos).split("\n");
+    expect(cabecalho.endsWith('"Situação na turma"')).toBe(true);
+    expect(ana.endsWith('""')).toBe(true);
+    expect(bia).toMatch(/"Saiu da turma em \d{2}\/\d{2}\/2026"$/);
+  });
+});

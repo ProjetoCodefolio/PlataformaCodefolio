@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { computeStudentGradeSummary, getGradeColor } from "./gradeSummary";
+import {
+  calculateGradeStatistics,
+  computeStudentGradeSummary,
+  getGradeColor,
+} from "./gradeSummary";
 import {
   GRADE_STATUS,
   GRADE_COLORS,
@@ -236,5 +240,28 @@ describe("getGradeColor", () => {
   it("trata a nota final 0 de aluno sem nenhuma nota como pendente, não reprovado", () => {
     expect(getGradeColor(0, false)).toBe(GRADE_COLORS.PENDING);
     expect(getGradeColor(0, true)).toBe(GRADE_COLORS.FAILED);
+  });
+});
+
+describe("calculateGradeStatistics", () => {
+  const aluno = (grades, extra = {}) => ({
+    ...computeStudentGradeSummary(grades, assessments),
+    ...extra,
+  });
+
+  it("os números da turma deixam de fora quem saiu ou foi removido", () => {
+    const turma = [
+      aluno({ a1: { grade: 8 }, a2: { grade: 8 } }),
+      aluno({ a1: { grade: 0 }, a2: { grade: 0 } }, { enrollmentEnded: true }),
+    ];
+    const stats = calculateGradeStatistics(turma);
+    expect(stats.totalStudents).toBe(1);
+    expect(stats.average).toBe(8);
+    expect(stats.failedCount).toBe(0);
+  });
+
+  it("turma só de quem saiu tem números zerados", () => {
+    const stats = calculateGradeStatistics([aluno({ a1: { grade: 5 } }, { enrollmentEnded: true })]);
+    expect(stats.totalStudents).toBe(0);
   });
 });

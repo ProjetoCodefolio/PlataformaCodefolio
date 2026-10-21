@@ -47,8 +47,9 @@ export default function GroupSubmissions({
   const groupedUserIds = new Set(
     groups.flatMap((g) => Object.keys(g.members || {}))
   );
+  // Quem saiu ou foi removido não entra em grupo novo: fica fora de "sem grupo".
   const ungrouped = students
-    .filter((s) => !groupedUserIds.has(s.userId))
+    .filter((s) => !groupedUserIds.has(s.userId) && !s.enrollmentEnded)
     .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
   const hasGrade = (id) =>
