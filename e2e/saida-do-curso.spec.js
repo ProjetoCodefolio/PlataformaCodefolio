@@ -206,6 +206,19 @@ test.describe("professor", () => {
     ).toBeEnabled();
   });
 
+  test("disciplina encerrada congela a turma também para a dona", async ({ page }) => {
+    await writeDatabase(`courses/${OPEN_COURSE_ID}/type`, "disciplina");
+    await writeDatabase(`courses/${OPEN_COURSE_ID}/closedAt`, "2026-12-10T12:00:00.000Z");
+    await writeDatabase(`studentCourses/${DAVI}/${OPEN_COURSE_ID}/endReason`, "removed");
+
+    await loginAs(page, professora);
+    await abaAlunos(page);
+    await expect(
+      linha(page, "Carla Dias").getByRole("button", { name: "Remover da turma" })
+    ).toBeDisabled();
+    await expect(linha(page, "Davi Reis").getByRole("button", { name: "Readmitir" })).toBeDisabled();
+  });
+
   test("a dona desliga saídas da turma; o professor da turma sai, perde o papel e ela não é avisada", async ({ page }) => {
     // A dona não tem matrícula no próprio curso: antes, ele nem aparecia nas
     // preferências, e não havia onde desligar avisos de quem conduz.
