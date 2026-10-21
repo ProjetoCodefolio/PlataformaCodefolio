@@ -205,4 +205,31 @@ test.describe("professor", () => {
       linha(page, "Carla Dias").getByRole("button", { name: "Remover da turma" })
     ).toBeEnabled();
   });
+
+  test("a dona desliga saídas da turma; o professor da turma sai, perde o papel e ela não é avisada", async ({ page }) => {
+    // A dona não tem matrícula no próprio curso: antes, ele nem aparecia nas
+    // preferências, e não havia onde desligar avisos de quem conduz.
+    await loginAs(page, professora);
+    await page.goto("/cursos");
+    await page.getByRole("button", { name: "Notificações" }).click();
+    await page.getByText("Preferências de notificação").click();
+    const prefs = page.getByRole("dialog", { name: "Preferências de notificação" });
+    await expect(prefs.getByRole("combobox")).toContainText("Curso Aberto E2E");
+    await prefs.getByLabel("Saídas da turma (cursos que você conduz)").click();
+    await prefs.getByRole("button", { name: "Salvar" }).click();
+    await expect(prefs).toBeHidden();
+    expect(await readDatabase(`notificationPrefs/${professora.uid}/${OPEN_COURSE_ID}/studentLeft`)).toBe(false);
+
+    await loginAs(page, diego);
+    await page.goto("/cursos");
+    await page.getByRole("button", { name: "Mais opções de Curso Aberto E2E" }).click();
+    await page.getByRole("menuitem", { name: /Sair do curso/ }).click();
+    const dialogo = page.getByRole("dialog", { name: "Sair de Curso Aberto E2E?" });
+    await expect(dialogo).toContainText("Você deixa de ser professor desta turma.");
+    await dialogo.getByRole("button", { name: "Sair do curso" }).click();
+    await expect(page.getByText("Você saiu de Curso Aberto E2E.")).toBeVisible();
+
+    expect(await readDatabase(`users/${diego.uid}/coursesTeacher/${OPEN_COURSE_ID}`)).toBeNull();
+    expect(await readDatabase(`notifications/${professora.uid}`)).toBeNull();
+  });
 });
