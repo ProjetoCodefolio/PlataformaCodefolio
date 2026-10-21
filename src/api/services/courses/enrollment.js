@@ -1,5 +1,8 @@
+import { ref, get, push, update } from "firebase/database";
+import { database } from "$api/config/firebase";
 import { canManageCourse, canRunCourse } from "$api/utils/permissions";
-import { acceptsInApp } from "$api/services/notificationPrefs";
+import { acceptsInApp, fetchPrefs } from "$api/services/notificationPrefs";
+import { recipientName } from "../../../shared/notificationText.js";
 import { isCourseClosed, isDiscipline } from "./courseType";
 
 /**
@@ -15,8 +18,10 @@ import { isCourseClosed, isDiscipline } from "./courseType";
  * O `status` (in_progress/completed) não é tocado: ele continua sendo o retrato
  * do progresso, e é o que o encerramento da disciplina usa.
  *
- * Este módulo é PURO: decide quem pode o quê e monta as escritas. Quem lê o
- * banco e grava é o serviço.
+ * A primeira parte do módulo é PURA: decide quem pode o quê e monta as
+ * escritas. O fim do módulo é o serviço, que lê o banco, confere e grava tudo
+ * num único `update()` na raiz (os avisos aos colegas de grupo só passam nas
+ * regras se forem na mesma escrita em que o autor deixa o grupo).
  */
 
 export const END_REASONS = {
@@ -486,3 +491,233 @@ export const removalConfirmationLines = ({
   ),
   "Um aviso da remoção será enviado.",
 ];
+
+// ---------------------------------------------------------------------------
+// Serviço: lê, confere e grava.
+
+const valorEm = async (caminho) => (await get(ref(database, caminho))).val();
+
+const novaChaveDeAviso = (uid) => push(ref(database, `notifications/${uid}`)).key;
+
+/** Recusa com o motivo à mão, para a interface explicar o porquê. */
+const recusa = (reason) => {
+  const erro = new Error(BLOCK_REASON_MESSAGES[reason] || "Operação não permitida");
+  erro.reason = reason;
+  return erro;
+};
+
+const fetchPrefsByUid = async (uids, courseId) =>
+  Object.fromEntries(
+    await Promise.all(
+      [...new Set(uids.filter(Boolean))].map(async (uid) => [uid, await fetchPrefs(uid, courseId)])
+    )
+  );
+
+// O papel de professor da turma mora no usuário, não no curso: não há outro
+// jeito de achar quem conduz esta turma além de olhar os usuários.
+const fetchCourseTeacherIds = async (courseId) => {
+  const users = (await valorEm("users")) || {};
+  return Object.keys(users).filter((uid) => users[uid]?.coursesTeacher?.[courseId] === true);
+};
+
+/**
+ * O que a confirmação e o encerramento precisam saber sobre a matrícula de um
+ * integrante. A confirmação mostra isto antes; o encerramento relê na hora de
+ * gravar, para não decidir com dado velho.
+ *
+ * @param {string} courseId
+ * @param {string} userId - dono da matrícula
+ */
+export const loadEnrollmentContext = async (courseId, userId) => {
+  if (!courseId || !userId) throw new Error("IDs de usuário e curso são necessários");
+
+  const [course, matricula, user, groups, submissions, assignments] = await Promise.all([
+    valorEm(`courses/${courseId}`),
+    valorEm(`studentCourses/${userId}/${courseId}`),
+    valorEm(`users/${userId}`),
+    valorEm(`assignmentGroups/${courseId}`),
+    valorEm(`assignmentSubmissions/${courseId}`),
+    valorEm(`courseAssignments/${courseId}`),
+  ]);
+  if (!course) throw new Error("Curso não encontrado");
+
+  return {
+    course,
+    matricula,
+    studentName: recipientName(userId, user || {}),
+    isCourseTeacher: Boolean(user?.coursesTeacher?.[courseId]),
+    groupsLeft: groupsLeftBehind({ groups, submissions, userId }),
+    assignmentTitles: Object.fromEntries(
+      Object.entries(assignments || {}).map(([id, trabalho]) => [id, trabalho?.title || ""])
+    ),
+  };
+};
+
+const encerra = async ({ context, courseId, userId, endedBy, reason }) => {
+  const { course, groupsLeft, assignmentTitles, studentName, isCourseTeacher } = context;
+  const saida = reason === END_REASONS.LEFT;
+  const createdAt = new Date().toISOString();
+
+  const colegas = groupsLeft.flatMap((grupo) => grupo.colleagues);
+  const teacherIds = saida ? await fetchCourseTeacherIds(courseId) : [];
+  const prefsByUid = await fetchPrefsByUid(
+    saida ? [...colegas, course.userId, ...teacherIds] : colegas,
+    courseId
+  );
+
+  const notifications = [
+    ...groupLeftNotifications({
+      studentName,
+      reason,
+      courseId,
+      groupsLeft,
+      assignmentTitles,
+      prefsByUid,
+      createdAt,
+    }),
+    ...(saida
+      ? studentLeftNotifications({
+          studentName,
+          userId,
+          course,
+          courseId,
+          teacherIds,
+          prefsByUid,
+          createdAt,
+        })
+      : [
+          {
+            uid: userId,
+            record: enrollmentChangedNotification({
+              action: "removed",
+              course,
+              courseId,
+              createdAt,
+            }),
+          },
+        ]),
+  ];
+
+  const updates = enrollmentEndUpdates({
+    courseId,
+    userId,
+    endedBy,
+    reason,
+    endedAt: createdAt,
+    revokeTeacherRole: saida && isCourseTeacher,
+    groupsLeft,
+    notifications,
+    newKey: novaChaveDeAviso,
+  });
+  await update(ref(database), updates);
+
+  return { endedAt: createdAt, groupsLeft, notified: notifications.map((aviso) => aviso.uid) };
+};
+
+/**
+ * Saída do curso pelo próprio integrante. Professor da turma perde o papel na
+ * mesma escrita.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem sai (userId, role, coursesTeacher)
+ * @param {string} params.courseId
+ */
+export const leaveCourse = async ({ userDetails, courseId }) => {
+  const userId = userDetails?.userId;
+  const context = await loadEnrollmentContext(courseId, userId);
+  const pode = canLeaveCourse({ userDetails, course: context.course, matricula: context.matricula });
+  if (!pode.allowed) throw recusa(pode.reason);
+
+  return encerra({ context, courseId, userId, endedBy: userId, reason: END_REASONS.LEFT });
+};
+
+/**
+ * Remoção da turma por quem conduz o curso.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem remove
+ * @param {string} params.courseId
+ * @param {string} params.studentId - quem é removido
+ */
+export const removeStudentFromCourse = async ({ userDetails, courseId, studentId }) => {
+  const context = await loadEnrollmentContext(courseId, studentId);
+  const pode = canRemoveStudent({
+    userDetails,
+    course: context.course,
+    courseId,
+    student: {
+      userId: studentId,
+      matricula: context.matricula,
+      isCourseTeacher: context.isCourseTeacher,
+    },
+  });
+  if (!pode.allowed) throw recusa(pode.reason);
+
+  return encerra({
+    context,
+    courseId,
+    userId: studentId,
+    endedBy: userDetails.userId,
+    reason: END_REASONS.REMOVED,
+  });
+};
+
+/**
+ * Volta de quem tem matrícula encerrada, pela entrada do curso. As regras de
+ * acesso (PIN) já foram cumpridas pelo gate.
+ * @param {Object} params
+ * @param {string} params.userId
+ * @param {string} params.courseId
+ */
+export const reactivateEnrollment = async ({ userId, courseId }) => {
+  if (!courseId || !userId) throw new Error("IDs de usuário e curso são necessários");
+  const [course, matricula] = await Promise.all([
+    valorEm(`courses/${courseId}`),
+    valorEm(`studentCourses/${userId}/${courseId}`),
+  ]);
+  const pode = canReactivate({ course, matricula });
+  if (!pode.allowed) throw recusa(pode.reason);
+
+  await update(ref(database), reactivationUpdates({ courseId, userId }));
+};
+
+/**
+ * Readmissão de quem foi removido, por quem conduz o curso.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem readmite
+ * @param {string} params.courseId
+ * @param {string} params.studentId
+ */
+export const readmitStudent = async ({ userDetails, courseId, studentId }) => {
+  if (!courseId || !studentId) throw new Error("IDs de usuário e curso são necessários");
+  const [course, matricula] = await Promise.all([
+    valorEm(`courses/${courseId}`),
+    valorEm(`studentCourses/${studentId}/${courseId}`),
+  ]);
+  const pode = canReadmitStudent({
+    userDetails,
+    course,
+    courseId,
+    student: { userId: studentId, matricula },
+  });
+  if (!pode.allowed) throw recusa(pode.reason);
+
+  const createdAt = new Date().toISOString();
+  await update(
+    ref(database),
+    reactivationUpdates({
+      courseId,
+      userId: studentId,
+      notifications: [
+        {
+          uid: studentId,
+          record: enrollmentChangedNotification({
+            action: "readmitted",
+            course,
+            courseId,
+            createdAt,
+          }),
+        },
+      ],
+      newKey: novaChaveDeAviso,
+    })
+  );
+};
