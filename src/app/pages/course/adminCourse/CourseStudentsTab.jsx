@@ -31,7 +31,8 @@ import SortIcon from "@mui/icons-material/Sort";
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { toast } from "react-toastify";
 import MyConfirm from "$components/post/components/confirm/Confirm";
-import { fetchCourseStudentsEnriched, updateStudentCourseRole, removeStudentFromCourse } from "$api/services/courses/students";
+import { fetchCourseStudentsEnriched, updateStudentCourseRole } from "$api/services/courses/students";
+import { removeStudentFromCourse } from "$api/services/courses/enrollment";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { isDiscipline } from "$api/services/courses/courseType";
 import { useAuth } from "$context/AuthContext";
@@ -266,7 +267,7 @@ const CourseStudentsTab = () => {
         // Aqui você pode adicionar uma confirmação antes de remover
         try {
             // Usar a função da API para remover o estudante
-            await removeStudentFromCourse(userId, courseId);
+            await removeStudentFromCourse({ userDetails, courseId, studentId: userId });
 
             // Atualizar a lista de estudantes localmente
             setStudents(prevStudents =>

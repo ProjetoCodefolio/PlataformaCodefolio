@@ -193,88 +193,6 @@ export const enrollStudentInCourse = async (userId, courseId, courseData) => {
 };
 
 /**
- * Remove a matrícula de um estudante em um curso
- */
-export const unenrollStudentFromCourse = async (userId, courseId) => {
-  try {
-    if (!userId || !courseId) {
-      throw new Error("IDs de usuário e curso são necessários");
-    }
-
-    // Remove, em cascata e de forma atômica, todos os dados deste aluno NESTE
-    // curso. O Realtime Database não tem cascata nativa, então cada nó precisa
-    // ser limpo manualmente para não deixar registros órfãos.
-    const updates = {};
-
-    // Dados chaveados por userId/courseId
-    updates[`studentCourses/${userId}/${courseId}`] = null;
-    updates[`videoProgress/${userId}/${courseId}`] = null;
-    updates[`quizResults/${userId}/${courseId}`] = null;
-    // Caso o aluno também seja professor deste curso, remover a flag
-    updates[`users/${userId}/coursesTeacher/${courseId}`] = null;
-
-    // Resultados chaveados por courseId/quizId/userId — varrer por quizId
-    const [customSnap, liveSnap, gigiSnap, openEndedSnap] = await Promise.all([
-      get(ref(database, `customQuizResults/${courseId}`)),
-      get(ref(database, `liveQuizResults/${courseId}`)),
-      get(ref(database, `quizGigi/${courseId}`)),
-      get(ref(database, `openEndedAnswers/${courseId}`)),
-    ]);
-
-    const addUserUnderQuiz = (snapshot, node) => {
-      const data = snapshot.val();
-      if (!data) return;
-      Object.keys(data).forEach((quizId) => {
-        if (data[quizId] && data[quizId][userId] !== undefined) {
-          updates[`${node}/${courseId}/${quizId}/${userId}`] = null;
-        }
-      });
-    };
-    addUserUnderQuiz(customSnap, "customQuizResults");
-    addUserUnderQuiz(liveSnap, "liveQuizResults");
-
-    // O Quiz Gigi tem dois níveis a mais que os outros resultados:
-    // quizGigi/{courseId}/{quizId}/results/{questionId}/{correct|wrong}Answers/{userId}
-    const gigiData = gigiSnap.val();
-    if (gigiData) {
-      Object.entries(gigiData).forEach(([quizId, quiz]) => {
-        const results = quiz?.results;
-        if (!results) return;
-        Object.entries(results).forEach(([questionId, questao]) => {
-          ["correctAnswers", "wrongAnswers"].forEach((balde) => {
-            if (questao?.[balde] && questao[balde][userId] !== undefined) {
-              updates[
-                `quizGigi/${courseId}/${quizId}/results/${questionId}/${balde}/${userId}`
-              ] = null;
-            }
-          });
-        });
-      });
-    }
-
-    // openEndedAnswers tem um nível a mais: courseId/quizId/questionId/userId
-    const openEndedData = openEndedSnap.val();
-    if (openEndedData) {
-      Object.keys(openEndedData).forEach((quizId) => {
-        const questions = openEndedData[quizId];
-        if (!questions) return;
-        Object.keys(questions).forEach((questionId) => {
-          if (questions[questionId] && questions[questionId][userId] !== undefined) {
-            updates[`openEndedAnswers/${courseId}/${quizId}/${questionId}/${userId}`] = null;
-          }
-        });
-      });
-    }
-
-    await update(ref(database), updates);
-    return true;
-  } catch (error) {
-    console.error("Erro ao remover matrícula:", error);
-    throw error;
-  }
-};
-
-/**
  * Busca todos os cursos de um estudante
  */
 export const fetchStudentCourses = async (userId) => {
@@ -425,28 +343,6 @@ export const updateStudentCourseRole = async (userId, courseId, newRole) => {
     return true;
   } catch (error) {
     console.error("Erro ao atualizar função do estudante:", error);
-    throw error;
-  }
-};
-
-/**
- * Remove um estudante de um curso
- * @param {string} userId - ID do usuário
- * @param {string} courseId - ID do curso
- * @returns {Promise<boolean>} - Verdadeiro se bem-sucedido
- */
-export const removeStudentFromCourse = async (userId, courseId) => {
-  try {
-    if (!userId || !courseId) {
-      throw new Error("IDs de usuário e curso são necessários");
-    }
-    
-    // Remover matrícula do estudante
-    await unenrollStudentFromCourse(userId, courseId);
-    
-    return true;
-  } catch (error) {
-    console.error("Erro ao remover estudante do curso:", error);
     throw error;
   }
 };

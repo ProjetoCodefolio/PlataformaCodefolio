@@ -12,7 +12,7 @@
 //   quizGigi/{courseId}/{quizId}/...
 //
 // que é o que as regras descrevem e o que as cascatas de exclusão varrem
-// (deleteCourse, removeQuiz, removeStudentFromCourse). Este script move o que
+// (deleteCourse, removeQuiz). Este script move o que
 // ficou para trás e remove a sub-árvore antiga.
 //
 // Uso:

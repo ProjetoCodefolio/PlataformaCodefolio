@@ -17,8 +17,9 @@ import { database } from "../../config/firebase";
 //
 // O nível {courseId}/{quizId} é o que as regras do banco cobrem (só o dono do
 // curso ou um admin escrevem) e é o que as cascatas de exclusão varrem
-// (deleteCourse, removeQuiz, removeStudentFromCourse). Não mudar esse formato
-// sem atualizar database.rules.json e essas três cascatas juntas.
+// (deleteCourse, removeQuiz). Não mudar esse formato sem atualizar
+// database.rules.json e essas duas cascatas juntas. A saída do curso não
+// apaga resultado nenhum: o histórico fica (ver docs/adr/0001).
 
 /**
  * Inicializa os metadados do quiz na estrutura quizGigi
