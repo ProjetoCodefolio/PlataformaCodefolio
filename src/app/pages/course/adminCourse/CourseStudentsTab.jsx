@@ -30,13 +30,22 @@ import {
 import SortIcon from "@mui/icons-material/Sort";
 import FilterListIcon from '@mui/icons-material/FilterList';
 import { toast } from "react-toastify";
-import MyConfirm from "$components/post/components/confirm/Confirm";
 import { fetchCourseStudentsEnriched, updateStudentCourseRole } from "$api/services/courses/students";
-import { removeStudentFromCourse } from "$api/services/courses/enrollment";
+import {
+  BLOCK_REASONS,
+  BLOCK_REASON_MESSAGES,
+  canChangeCourseRole,
+  canReadmitStudent,
+  canRemoveStudent,
+  END_REASONS,
+  readmitStudent,
+  sortEndedLast,
+} from "$api/services/courses/enrollment";
 import { fetchCourseDetails } from "$api/services/courses/courses";
 import { isDiscipline } from "$api/services/courses/courseType";
 import { useAuth } from "$context/AuthContext";
-import { canManageStudents } from "$api/utils/permissions";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
+import RemoveStudentDialog from "$components/courses/RemoveStudentDialog";
 import SortableHeader from "$components/common/SortableHeader";
 import { sortRows, getNextSort } from "$utils/tableSort";
 import { GRADE_COLORS } from "$api/constants/gradeConstants";
@@ -50,6 +59,9 @@ const capitalizeWords = (name) => {
         .join(" ");
 };
 
+// Nome exibido nos diálogos de remoção (estável: o diálogo o usa num efeito).
+const studentDisplayName = (student) => (student ? capitalizeWords(student.name) : "");
+
 const CourseStudentsTab = () => {
     const [students, setStudents] = useState([]);
     const [courseDetails, setCourseDetails] = useState({})
@@ -61,12 +73,11 @@ const CourseStudentsTab = () => {
     const [roleFilter, setRoleFilter] = useState("all");
     const [activeFilters, setActiveFilters] = useState(0);
     const [updatingRole, setUpdatingRole] = useState(null);
-    const [showDeleteAlert, setShowDeleteAlert] = useState(false);
-    const [studentToDelete, setStudentToDelete] = useState(null);
-    const [isCurrentUserTeacher, setIsCurrentUserTeacher] = useState(false);
+    const [studentToRemove, setStudentToRemove] = useState(null);
+    const [readmitting, setReadmitting] = useState(null);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
-    const { currentUser, userDetails } = useAuth();
+    const { userDetails } = useAuth();
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -136,8 +147,8 @@ const CourseStudentsTab = () => {
             });
         }
 
-        // Aplicar ordenação
-        return sortRows(filteredStudents, sortField, sortOrder, studentSortAccessors);
+        // Aplicar ordenação. Quem saiu ou foi removido fica sempre no fim.
+        return sortEndedLast(sortRows(filteredStudents, sortField, sortOrder, studentSortAccessors));
     };
 
     // Acessores para colunas cujo valor de ordenação difere do campo bruto
@@ -236,70 +247,93 @@ const CourseStudentsTab = () => {
         }
     };
 
-    // Function to handle delete icon click
-    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
-    // eslint-disable-next-line no-unused-vars
-    const handleDeleteClick = (student) => {
-        setStudentToDelete(student);
-        setShowDeleteAlert(true);
+    // A linha da lista carrega a própria matrícula (endedAt/endReason), que é
+    // o que as decisões de remover, readmitir e trocar papel precisam.
+    const asEnrollee = (student) => ({
+        userId: student.userId,
+        matricula: student,
+        isCourseTeacher: student.role === "teacher",
+    });
+
+    const removeCheck = (student) =>
+        canRemoveStudent({ userDetails, course: courseDetails, courseId, student: asEnrollee(student) });
+    const readmitCheck = (student) =>
+        canReadmitStudent({ userDetails, course: courseDetails, courseId, student: asEnrollee(student) });
+    // Só dono e admin trocam papel (a regra de coursesTeacher já é assim); o
+    // professor da turma via o seletor habilitado e levava erro do banco.
+    const roleCheck = (student) =>
+        canChangeCourseRole({ userDetails, course: courseDetails, student: asEnrollee(student) });
+
+    const handleRemoved = async () => {
+        setStudentToRemove(null);
+        await loadCourseStudents();
     };
 
-    // Function to handle alert close
-    const handleAlertClose = () => {
-        setShowDeleteAlert(false);
-        setStudentToDelete(null);
-    };
-
-    // Function to confirm deletion
-    const handleConfirmDelete = () => {
-        if (studentToDelete) {
-            // TODO descomentar e testar linha abaixo
-            // handleRemoveStudent(studentToDelete.userId, studentToDelete.name);
-        }
-        setShowDeleteAlert(false);
-        setStudentToDelete(null);
-    };
-
-    // Função para remover estudante do curso
-    // Remoção de aluno desligada até ser testada (ver o TODO em handleConfirmDelete).
-    // eslint-disable-next-line no-unused-vars
-    const handleRemoveStudent = async (userId, studentName) => {
-        // Aqui você pode adicionar uma confirmação antes de remover
+    const handleReadmit = async (student) => {
+        setReadmitting(student.userId);
         try {
-            // Usar a função da API para remover o estudante
-            await removeStudentFromCourse({ userDetails, courseId, studentId: userId });
+            await readmitStudent({ userDetails, courseId, studentId: student.userId });
+            toast.success(`${capitalizeWords(student.name)} foi readmitido na turma.`);
+            await loadCourseStudents();
+        } catch (error) {
+            console.error("Erro ao readmitir:", error);
+            toast.error(error.message || "Não foi possível readmitir na turma.");
+        } finally {
+            setReadmitting(null);
+        }
+    };
 
-            // Atualizar a lista de estudantes localmente
-            setStudents(prevStudents =>
-                prevStudents.filter(student => student.userId !== userId)
+    // Ação da linha: remover quem está na turma ou readmitir quem foi removido.
+    // Quem saiu por conta própria, o dono e o próprio usuário não têm ação; o
+    // professor da turma e a disciplina encerrada mostram o botão desabilitado
+    // com o motivo.
+    const renderRowAction = (student, { fullWidth = false } = {}) => {
+        const botao = (label, onClick, disabled, extraSx = {}, ariaLabel) => (
+            <Button
+                size="small"
+                variant="outlined"
+                fullWidth={fullWidth}
+                disabled={disabled}
+                onClick={onClick}
+                aria-label={ariaLabel}
+                sx={{ textTransform: "none", whiteSpace: "nowrap", ...extraSx }}
+            >
+                {label}
+            </Button>
+        );
+        const comMotivo = (reason, elemento) => (
+            <Tooltip title={BLOCK_REASON_MESSAGES[reason] || ""}>
+                <span style={fullWidth ? { display: "block" } : undefined}>{elemento}</span>
+            </Tooltip>
+        );
+
+        if (student.enrollmentEnded) {
+            if (student.endReason !== END_REASONS.REMOVED) return null;
+            const pode = readmitCheck(student);
+            if (!pode.allowed && pode.reason !== BLOCK_REASONS.FROZEN) return null;
+            const elemento = botao(
+                readmitting === student.userId ? "Readmitindo..." : "Readmitir",
+                () => handleReadmit(student),
+                !pode.allowed || readmitting === student.userId,
+                { color: "#9041c1", borderColor: "#9041c1" }
             );
-
-            toast.success(`${capitalizeWords(studentName)} foi removido do curso.`);
-        } catch (error) {
-            console.error("Erro ao remover estudante:", error);
-            toast.error("Não foi possível remover o estudante do curso");
+            return pode.allowed ? elemento : comMotivo(pode.reason, elemento);
         }
+
+        const pode = removeCheck(student);
+        if (!pode.allowed && ![BLOCK_REASONS.TEACHER, BLOCK_REASONS.FROZEN].includes(pode.reason)) {
+            return null;
+        }
+        // Rótulo curto para caber na coluna; o nome acessível diz o que é.
+        const elemento = botao(
+            fullWidth ? "Remover da turma" : "Remover",
+            () => setStudentToRemove(student),
+            !pode.allowed,
+            { color: "#dc3545", borderColor: "#dc3545" },
+            "Remover da turma"
+        );
+        return pode.allowed ? elemento : comMotivo(pode.reason, elemento);
     };
-
-    const checkCurrentUserRole = async () => {
-        try {
-            if (!currentUser || !courseId || !courseDetails?.userId) return;
-
-            // Verificar se é admin ou owner (pode gerenciar)
-            const canManage = canManageStudents(userDetails, courseDetails.userId, courseId);
-            // Se não pode gerenciar, é apenas professor
-            setIsCurrentUserTeacher(!canManage);
-        } catch (error) {
-            console.error("Erro ao verificar papel do usuário:", error);
-            setIsCurrentUserTeacher(false);
-        }
-    };
-
-    useEffect(() => {
-        if (courseId && currentUser && courseDetails?.userId) {
-            checkCurrentUserRole();
-        }
-    }, [courseId, currentUser, courseDetails?.userId]);
 
     return (
         <Box sx={{ padding: { xs: 1, sm: 2 } }}>
@@ -471,6 +505,7 @@ const CourseStudentsTab = () => {
                                                 <SortableHeader label="Progresso" field="progress" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                                 <SortableHeader label="Status" field="status" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
                                                 <SortableHeader label="Role" field="role" sortField={sortField} sortOrder={sortOrder} onSort={handleSort} />
+                                                <TableCell sx={{ fontWeight: "bold" }}>Turma</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -499,6 +534,7 @@ const CourseStudentsTab = () => {
                                                             }}>
                                                                 {capitalizeWords(student.name)}
                                                             </Typography>
+                                                            <EnrollmentEndedChip student={student} />
                                                         </Stack>
                                                     </TableCell>
                                                     <TableCell>
@@ -555,8 +591,7 @@ const CourseStudentsTab = () => {
                                                             fullWidth
                                                             size="small"
                                                             disabled={updatingRole === student.userId ||
-                                                                courseDetails.userId === student.userId ||
-                                                                isCurrentUserTeacher}
+                                                                !roleCheck(student).allowed}
                                                         >
                                                             <Select
                                                                 value={courseDetails.userId === student.userId ? "admin" : student.role || "student"}
@@ -604,6 +639,7 @@ const CourseStudentsTab = () => {
                                                             </Box>
                                                         )}
                                                     </TableCell>
+                                                    <TableCell>{renderRowAction(student)}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -639,6 +675,7 @@ const CourseStudentsTab = () => {
                                                         }}>
                                                             {capitalizeWords(student.name)}
                                                         </Typography>
+                                                        <EnrollmentEndedChip student={student} sx={{ ml: 0, mb: 0.5 }} />
                                                         <Typography variant="body2" color="text.secondary" sx={{ 
                                                             fontSize: '0.75rem',
                                                             overflow: 'hidden',
@@ -710,8 +747,7 @@ const CourseStudentsTab = () => {
                                                         fullWidth
                                                         size="small"
                                                         disabled={updatingRole === student.userId ||
-                                                            courseDetails.userId === student.userId ||
-                                                            isCurrentUserTeacher}
+                                                            !roleCheck(student).allowed}
                                                     >
                                                         <Select
                                                             value={courseDetails.userId === student.userId ? "admin" : student.role || "student"}
@@ -751,6 +787,11 @@ const CourseStudentsTab = () => {
                                                         </Box>
                                                     )}
                                                 </Box>
+                                                {renderRowAction(student, { fullWidth: true }) && (
+                                                    <Box sx={{ mt: 1.5 }}>
+                                                        {renderRowAction(student, { fullWidth: true })}
+                                                    </Box>
+                                                )}
                                             </CardContent>
                                         </Card>
                                     ))}
@@ -800,12 +841,13 @@ const CourseStudentsTab = () => {
                     })()}
                 </Box>
             )}
-            <MyConfirm
-                open={showDeleteAlert}
-                onClose={handleAlertClose}
-                onConfirm={handleConfirmDelete}
-                title="Confirmar exclusão"
-                message={`Tem certeza que deseja remover ${studentToDelete?.name ? capitalizeWords(studentToDelete.name) : 'este aluno'} do curso? Isso apaga permanentemente a matrícula, o progresso dos vídeos e todos os resultados de quiz deste aluno neste curso. Esta ação não pode ser desfeita.`}
+            <RemoveStudentDialog
+                student={studentToRemove}
+                courseId={courseId}
+                userDetails={userDetails}
+                displayName={studentDisplayName}
+                onClose={() => setStudentToRemove(null)}
+                onRemoved={handleRemoved}
             />
         </Box>
     );
