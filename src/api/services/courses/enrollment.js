@@ -401,20 +401,76 @@ export const reactivationUpdates = ({ courseId, userId, notifications = [], newK
   return updates;
 };
 
+/** O que decide a entrada do curso (`decideCourseAccess`). */
+export const COURSE_ACCESS = {
+  /** Entra direto. */
+  GRANT: "grant",
+  /** Curso fechado, sem matrícula: pede o PIN. */
+  PIN: "pin",
+  /** Matrícula encerrada: pergunta se quer voltar (com PIN, se o curso é fechado). */
+  RETURN: "return",
+  /** Matrícula encerrada numa disciplina encerrada: não há volta. */
+  FROZEN: "frozen",
+};
+
+/**
+ * Decide a entrada do curso. Quem conduz a turma entra sempre; quem está na
+ * turma também; quem saiu ou foi removido precisa decidir voltar (a volta é um
+ * ato explícito, nunca efeito de abrir o curso); quem nunca entrou segue a
+ * regra do PIN.
+ *
+ * @param {Object} params
+ * @param {Object} params.userDetails
+ * @param {Object} params.course - registro do curso (userId, pinEnabled, type, closedAt)
+ * @param {string} params.courseId
+ * @param {Object} params.matricula - a do usuário, ou null
+ * @returns {{ decision: string, needsPin?: boolean, reason?: string, endedAt?: string }}
+ */
+export const decideCourseAccess = ({ userDetails, course, courseId, matricula }) => {
+  if (canRunCourse(userDetails, course?.userId, courseId)) {
+    return { decision: COURSE_ACCESS.GRANT };
+  }
+  const estado = getEnrollmentState(matricula);
+  if (estado.state === "active") return { decision: COURSE_ACCESS.GRANT };
+  if (estado.state === "ended") {
+    const { reason, endedAt } = estado;
+    if (isRosterFrozen(course)) return { decision: COURSE_ACCESS.FROZEN, reason, endedAt };
+    return {
+      decision: COURSE_ACCESS.RETURN,
+      needsPin: Boolean(course?.pinEnabled),
+      reason,
+      endedAt,
+    };
+  }
+  return { decision: course?.pinEnabled ? COURSE_ACCESS.PIN : COURSE_ACCESS.GRANT };
+};
+
+const endedFact = ({ reason, endedAt }, options) => {
+  const data = formatEndedDate(endedAt, options);
+  const quando = data ? ` em ${data}` : "";
+  return reason === END_REASONS.REMOVED
+    ? `Você foi removido desta turma${quando}.`
+    : `Você saiu desta turma${quando}.`;
+};
+
 /**
  * Pergunta do gate para quem tem matrícula encerrada e abre o curso.
  * @param {{ reason?: string, endedAt?: string }} state - de getEnrollmentState
  * @param {{ timeZone?: string }} [options]
  */
-export const returnPromptMessage = ({ reason, endedAt }, options) => {
-  const data = formatEndedDate(endedAt, options);
-  const quando = data ? ` em ${data}` : "";
-  const fato =
-    reason === END_REASONS.REMOVED
-      ? `Você foi removido desta turma${quando}.`
-      : `Você saiu desta turma${quando}.`;
-  return `${fato} Voltar para a turma? Seu progresso continua de onde parou.`;
-};
+export const returnPromptMessage = (state, options) =>
+  `${endedFact(state, options)} Voltar para a turma? Seu progresso continua de onde parou.`;
+
+/**
+ * Texto atrás do PIN, para quem tem matrícula encerrada num curso fechado: o
+ * PIN vale como a confirmação da volta.
+ */
+export const returnWithPinMessage = (state, options) =>
+  `${endedFact(state, options)} Para voltar, informe a chave de acesso do curso. Seu progresso continua de onde parou.`;
+
+/** Texto para quem tem matrícula encerrada numa disciplina encerrada. */
+export const frozenReturnMessage = (state, options) =>
+  `${endedFact(state, options)} A disciplina já foi encerrada, então não é possível voltar até ela ser reaberta.`;
 
 /**
  * Linhas da confirmação de saída: só as que valem para o caso.
@@ -635,6 +691,16 @@ export const removeStudentFromCourse = async ({ userDetails, courseId, studentId
     endedBy: userDetails.userId,
     reason: END_REASONS.REMOVED,
   });
+};
+
+/**
+ * A matrícula de um usuário num curso, ou null.
+ * @param {string} userId
+ * @param {string} courseId
+ */
+export const fetchEnrollment = async (userId, courseId) => {
+  if (!userId || !courseId) return null;
+  return valorEm(`studentCourses/${userId}/${courseId}`);
 };
 
 /**

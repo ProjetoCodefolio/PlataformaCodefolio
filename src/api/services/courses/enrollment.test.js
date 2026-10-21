@@ -22,6 +22,10 @@ const {
   enrollmentEndUpdates,
   reactivationUpdates,
   returnPromptMessage,
+  returnWithPinMessage,
+  frozenReturnMessage,
+  COURSE_ACCESS,
+  decideCourseAccess,
   leaveConfirmationLines,
   removalConfirmationLines,
 } = await import("./enrollment.js");
@@ -434,5 +438,67 @@ describe("textos", () => {
     });
     expect(linhas).toContain("Em curso aberto, quem foi removido pode voltar quando quiser.");
     expect(linhas.join(" ")).not.toMatch(/permanentemente|não pode ser desfeita/);
+  });
+});
+
+describe("decideCourseAccess", () => {
+  const decide = (userDetails, course, matricula) =>
+    decideCourseAccess({ userDetails, course, courseId: CURSO, matricula });
+  const fechado = curso({ pinEnabled: true });
+
+  it("quem conduz a turma entra sempre, mesmo em curso fechado e sem matrícula", () => {
+    [dono, admin, profTurma].forEach((quem) => {
+      expect(decide(quem, fechado, null).decision).toBe(COURSE_ACCESS.GRANT);
+    });
+  });
+
+  it("quem está na turma entra; quem nunca entrou segue a regra do PIN", () => {
+    expect(decide(aluna, fechado, ativa).decision).toBe(COURSE_ACCESS.GRANT);
+    expect(decide(aluna, fechado, null).decision).toBe(COURSE_ACCESS.PIN);
+    expect(decide(aluna, curso(), null).decision).toBe(COURSE_ACCESS.GRANT);
+    expect(decide(null, curso(), null).decision).toBe(COURSE_ACCESS.GRANT);
+  });
+
+  it("abrir o curso nunca reativa: quem saiu precisa decidir voltar", () => {
+    expect(decide(aluna, curso(), saiu)).toEqual({
+      decision: COURSE_ACCESS.RETURN,
+      needsPin: false,
+      reason: END_REASONS.LEFT,
+      endedAt: ENDED_AT,
+    });
+  });
+
+  it("no curso fechado, a volta passa pelo PIN, inclusive de quem foi removido", () => {
+    expect(decide(aluna, fechado, removida)).toMatchObject({
+      decision: COURSE_ACCESS.RETURN,
+      needsPin: true,
+      reason: END_REASONS.REMOVED,
+    });
+  });
+
+  it("disciplina encerrada não tem volta", () => {
+    expect(decide(aluna, disciplinaEncerrada(), saiu).decision).toBe(COURSE_ACCESS.FROZEN);
+  });
+
+  it("professor da turma que saiu já perdeu o papel e volta como qualquer um", () => {
+    const exProfessor = { userId: "prof", role: "student", coursesTeacher: {} };
+    expect(decide(exProfessor, fechado, saiu).decision).toBe(COURSE_ACCESS.RETURN);
+  });
+});
+
+describe("textos do gate", () => {
+  const TZ = "America/Sao_Paulo";
+  const estado = getEnrollmentState(saiu);
+
+  it("atrás do PIN, explica que a chave é a volta", () => {
+    expect(returnWithPinMessage(estado, { timeZone: TZ })).toBe(
+      "Você saiu desta turma em 12/10/2026. Para voltar, informe a chave de acesso do curso. Seu progresso continua de onde parou."
+    );
+  });
+
+  it("na disciplina encerrada, explica por que não há volta", () => {
+    expect(frozenReturnMessage(getEnrollmentState(removida), { timeZone: TZ })).toBe(
+      "Você foi removido desta turma em 12/10/2026. A disciplina já foi encerrada, então não é possível voltar até ela ser reaberta."
+    );
   });
 });
