@@ -2,6 +2,7 @@ import { ref, get } from "firebase/database";
 import { database } from "../../config/firebase";
 import { normalizeDiagnosticFlag } from "./quizWindow";
 import { ensureQuestionIds } from "./quizQuestions";
+import { enrollmentRowFlags, sortEndedLast } from "../../../shared/enrollmentStatus.js";
 
 /**
  * ==============================
@@ -269,12 +270,13 @@ export const fetchQuizStudentResults = async (courseId, quizId) => {
             attemptCount: quizResult.attemptCount || "#",
             lastAttemptDate: lastAttemptDate,
             detailedAnswers: quizResult.detailedAnswers || null,
+            ...enrollmentRowFlags(courses[courseId]),
           });
         }
       }
     }
 
-    return results;
+    return sortEndedLast(results);
   } catch (error) {
     console.error("Erro ao buscar resultados de estudantes:", error);
     return [];

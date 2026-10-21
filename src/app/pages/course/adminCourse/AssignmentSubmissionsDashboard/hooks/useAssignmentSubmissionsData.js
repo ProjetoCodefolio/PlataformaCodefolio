@@ -39,7 +39,7 @@ export function useAssignmentSubmissionsData({ courseId, assignmentId }) {
       });
       setSubmissionsByKey(subsMap);
 
-      const enrolled = await fetchCourseStudentsEnriched(courseId);
+      const enrolled = await fetchCourseStudentsEnriched(courseId, { includeEnded: true });
       setStudents((enrolled || []).filter((s) => s.role !== "teacher"));
 
       if (a?.mode === "group") {

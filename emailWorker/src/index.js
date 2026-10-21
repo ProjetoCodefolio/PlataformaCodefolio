@@ -76,6 +76,22 @@ const HEADLINES = {
   new_assessment: "Nova avaliação cadastrada",
   assessment_updated: "Avaliação atualizada",
   group_changes: "Mudança no seu grupo",
+  student_left: "Saída da turma",
+  enrollment_changed: "Sua matrícula na turma mudou",
+};
+
+// Rodapé padrão: diz por que a pessoa recebeu e que dá para desligar. Os
+// avisos sobre a própria matrícula não se desligam, e quem foi removido não
+// está mais "matriculado", então eles têm rodapé próprio.
+const footerFor = ({ type, courseTitle }) => {
+  const curso = courseTitle || "um curso";
+  if (type === "enrollment_changed") {
+    return `Você recebeu este e-mail porque sua matrícula em ${curso} no Codefólio mudou.`;
+  }
+  if (type === "student_left") {
+    return `Você recebeu este e-mail porque conduz ${curso} no Codefólio. Dá pra desligar avisos desse tipo nas preferências de notificação do curso, dentro do app.`;
+  }
+  return `Você recebeu este e-mail porque está matriculado(a) em ${curso} no Codefólio. Dá pra desligar avisos desse tipo nas preferências de notificação do curso, dentro do app.`;
 };
 
 // Ícone e rótulo de cada campo. O cliente só manda os valores (já formatados,
@@ -106,6 +122,8 @@ const FIELD_ORDER = {
   new_assessment: ["weight", "assessmentDescription"],
   assessment_updated: ["weight", "assessmentDescription"],
   group_changes: ["action", "assignmentTitle"],
+  student_left: ["action"],
+  enrollment_changed: ["action"],
 };
 
 // Teto do enunciado embutido. Gmail corta a mensagem inteira acima de ~102KB
@@ -276,7 +294,7 @@ function renderHtml(job) {
             <tr>
               <td style="padding:20px 32px; border-top:1px solid ${BRAND.divider};">
                 <p style="margin:0; color:${BRAND.inkSecondary}; font-size:12px; line-height:1.5;">
-                  Você recebeu este e-mail porque está matriculado(a) em ${escapeHtml(courseTitle || "um curso")} no Codefólio. Dá pra desligar avisos desse tipo nas preferências de notificação do curso, dentro do app.
+                  ${escapeHtml(footerFor({ type, courseTitle }))}
                 </p>
               </td>
             </tr>

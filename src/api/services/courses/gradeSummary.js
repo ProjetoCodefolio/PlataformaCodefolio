@@ -150,8 +150,10 @@ export const computeStudentGradeSummary = (gradesByAssessmentId, assessments) =>
  * @param {Array} studentsGrades - Lista de notas dos estudantes
  * @returns {Object} - Estatísticas calculadas
  */
-export const calculateGradeStatistics = (studentsGrades) => {
-  if (!studentsGrades || studentsGrades.length === 0) {
+export const calculateGradeStatistics = (allStudentsGrades) => {
+  // Números da turma: quem saiu ou foi removido não entra.
+  const studentsGrades = (allStudentsGrades || []).filter((s) => !s.enrollmentEnded);
+  if (studentsGrades.length === 0) {
     return {
       average: 0,
       highest: 0,

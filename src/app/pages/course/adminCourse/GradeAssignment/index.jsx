@@ -46,6 +46,8 @@ import { useGradeAssignmentData } from "./hooks/useGradeAssignmentData";
 import { useGradeEditing } from "./hooks/useGradeEditing";
 import { useKeyboardGradeNavigation } from "./hooks/useKeyboardGradeNavigation";
 import { useMissingGradesWarning } from "./hooks/useMissingGradesWarning";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
+import { sortEndedLast } from "$api/services/courses/enrollment";
 
 // Função para formatar nomes com capitalização adequada - igual ao CourseStudentsTab
 const capitalizeWords = (name) => {
@@ -139,7 +141,8 @@ export default function GradeAssignmentPage() {
   // renderização) porque a navegação por teclado e o salvamento usam o índice
   // posicional de filteredStudents — renderização e lógica precisam estar na
   // mesma ordem.
-  const filteredStudents = sortRows(
+  // Quem saiu ou foi removido fica no fim, em qualquer ordenação.
+  const filteredStudents = sortEndedLast(sortRows(
     students.filter((student) => {
       const studentId = student.userId || student.id;
 
@@ -159,7 +162,7 @@ export default function GradeAssignmentPage() {
     }),
     sortField,
     sortOrder
-  );
+  ));
 
   useMissingGradesWarning({ students, grades });
 
@@ -515,6 +518,7 @@ export default function GradeAssignmentPage() {
                                 </Avatar>
                                 <Typography variant="body1">
                                   {capitalizeWords(student.name)}
+                                  <EnrollmentEndedChip student={student} />
                                 </Typography>
                               </Stack>
                             </TableCell>
@@ -660,6 +664,7 @@ export default function GradeAssignmentPage() {
                             }}
                           >
                             {capitalizeWords(student.name)}
+                            <EnrollmentEndedChip student={student} />
                           </Typography>
                         </Stack>
 

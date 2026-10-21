@@ -1,5 +1,6 @@
 import PropTypes from "prop-types";
 import { Avatar, Box, Stack, Typography } from "@mui/material";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
 
 /**
  * Avatar + nome (e opcionalmente email) do estudante, no padrão repetido nas
@@ -25,6 +26,7 @@ const StudentIdentityCell = ({ student, avatarSize = 40, truncate = false, showE
       }
     >
       {student.name}
+      <EnrollmentEndedChip student={student} />
     </Typography>
   );
 
@@ -69,6 +71,7 @@ StudentIdentityCell.propTypes = {
     name: PropTypes.string.isRequired,
     email: PropTypes.string,
     photoURL: PropTypes.string,
+    enrollmentEnded: PropTypes.bool,
   }).isRequired,
   avatarSize: PropTypes.number,
   truncate: PropTypes.bool,

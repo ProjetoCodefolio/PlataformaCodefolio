@@ -3,6 +3,11 @@ import { ref, get, set, update } from 'firebase/database';
 import { isDiscipline, isCourseClosed } from './courseType';
 import { toStudentView } from './publication';
 import { recipientName } from '../../../shared/notificationText.js';
+import {
+  enrollmentRowFlags,
+  isActiveEnrollment,
+  sortEndedLast,
+} from '../../../shared/enrollmentStatus.js';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -193,89 +198,9 @@ export const enrollStudentInCourse = async (userId, courseId, courseData) => {
 };
 
 /**
- * Remove a matrícula de um estudante em um curso
- */
-export const unenrollStudentFromCourse = async (userId, courseId) => {
-  try {
-    if (!userId || !courseId) {
-      throw new Error("IDs de usuário e curso são necessários");
-    }
-
-    // Remove, em cascata e de forma atômica, todos os dados deste aluno NESTE
-    // curso. O Realtime Database não tem cascata nativa, então cada nó precisa
-    // ser limpo manualmente para não deixar registros órfãos.
-    const updates = {};
-
-    // Dados chaveados por userId/courseId
-    updates[`studentCourses/${userId}/${courseId}`] = null;
-    updates[`videoProgress/${userId}/${courseId}`] = null;
-    updates[`quizResults/${userId}/${courseId}`] = null;
-    // Caso o aluno também seja professor deste curso, remover a flag
-    updates[`users/${userId}/coursesTeacher/${courseId}`] = null;
-
-    // Resultados chaveados por courseId/quizId/userId — varrer por quizId
-    const [customSnap, liveSnap, gigiSnap, openEndedSnap] = await Promise.all([
-      get(ref(database, `customQuizResults/${courseId}`)),
-      get(ref(database, `liveQuizResults/${courseId}`)),
-      get(ref(database, `quizGigi/${courseId}`)),
-      get(ref(database, `openEndedAnswers/${courseId}`)),
-    ]);
-
-    const addUserUnderQuiz = (snapshot, node) => {
-      const data = snapshot.val();
-      if (!data) return;
-      Object.keys(data).forEach((quizId) => {
-        if (data[quizId] && data[quizId][userId] !== undefined) {
-          updates[`${node}/${courseId}/${quizId}/${userId}`] = null;
-        }
-      });
-    };
-    addUserUnderQuiz(customSnap, "customQuizResults");
-    addUserUnderQuiz(liveSnap, "liveQuizResults");
-
-    // O Quiz Gigi tem dois níveis a mais que os outros resultados:
-    // quizGigi/{courseId}/{quizId}/results/{questionId}/{correct|wrong}Answers/{userId}
-    const gigiData = gigiSnap.val();
-    if (gigiData) {
-      Object.entries(gigiData).forEach(([quizId, quiz]) => {
-        const results = quiz?.results;
-        if (!results) return;
-        Object.entries(results).forEach(([questionId, questao]) => {
-          ["correctAnswers", "wrongAnswers"].forEach((balde) => {
-            if (questao?.[balde] && questao[balde][userId] !== undefined) {
-              updates[
-                `quizGigi/${courseId}/${quizId}/results/${questionId}/${balde}/${userId}`
-              ] = null;
-            }
-          });
-        });
-      });
-    }
-
-    // openEndedAnswers tem um nível a mais: courseId/quizId/questionId/userId
-    const openEndedData = openEndedSnap.val();
-    if (openEndedData) {
-      Object.keys(openEndedData).forEach((quizId) => {
-        const questions = openEndedData[quizId];
-        if (!questions) return;
-        Object.keys(questions).forEach((questionId) => {
-          if (questions[questionId] && questions[questionId][userId] !== undefined) {
-            updates[`openEndedAnswers/${courseId}/${quizId}/${questionId}/${userId}`] = null;
-          }
-        });
-      });
-    }
-
-    await update(ref(database), updates);
-    return true;
-  } catch (error) {
-    console.error("Erro ao remover matrícula:", error);
-    throw error;
-  }
-};
-
-/**
- * Busca todos os cursos de um estudante
+ * Busca os cursos de que o estudante faz parte agora. Matrícula encerrada (saiu
+ * ou foi removido) fica de fora: o curso some de "Minhas avaliações" e das
+ * preferências de notificação.
  */
 export const fetchStudentCourses = async (userId) => {
   try {
@@ -283,10 +208,12 @@ export const fetchStudentCourses = async (userId) => {
     const snapshot = await get(studentCoursesRef);
     
     if (snapshot.exists()) {
-      const coursesData = Object.entries(snapshot.val()).map(([courseId, course]) => ({
-        courseId,
-        ...course,
-      }));
+      const coursesData = Object.entries(snapshot.val())
+        .filter(([, course]) => isActiveEnrollment(course))
+        .map(([courseId, course]) => ({
+          courseId,
+          ...course,
+        }));
       
       return coursesData;
     }
@@ -313,9 +240,11 @@ export const fetchCourseStudentCounts = async () => {
     const snapshot = await get(ref(database, "studentCourses"));
     if (!snapshot.exists()) return {};
 
+    // Conta só a turma de agora: quem saiu ou foi removido fica de fora.
     const counts = {};
     Object.values(snapshot.val()).forEach((matriculasDoAluno) => {
-      Object.keys(matriculasDoAluno || {}).forEach((courseId) => {
+      Object.entries(matriculasDoAluno || {}).forEach(([courseId, matricula]) => {
+        if (!isActiveEnrollment(matricula)) return;
         counts[courseId] = (counts[courseId] || 0) + 1;
       });
     });
@@ -334,10 +263,16 @@ export const fetchCourseStudentCounts = async () => {
  * era N+1: com M alunos no curso, M leituras individuais de rede só para pegar
  * nome/e-mail/foto de cada um.
  *
+ * Por padrão traz só quem está na turma (matrícula ativa): é o que serve aos
+ * avisos para a turma e a quem esquecer de escolher. As listas do professor
+ * pedem `includeEnded` e recebem também quem saiu ou foi removido, marcado
+ * (`enrollmentEnded`, `endReason`, `endedAt`) e no fim da lista.
+ *
  * @param {string} courseId - ID do curso
+ * @param {{ includeEnded?: boolean }} [options]
  * @returns {Promise<Array>} - Lista de estudantes com dados completos
  */
-export const fetchCourseStudentsEnriched = async (courseId) => {
+export const fetchCourseStudentsEnriched = async (courseId, { includeEnded = false } = {}) => {
   try {
     if (!courseId) {
       throw new Error("ID do curso é necessário");
@@ -358,6 +293,7 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
 
     Object.entries(studentsData).forEach(([userId, courses]) => {
       if (!courses[courseId]) return;
+      if (!includeEnded && !isActiveEnrollment(courses[courseId])) return;
 
       const userData = usersData[userId];
       if (!userData) return;
@@ -374,11 +310,12 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
         name: recipientName(userId, userData),
         ...courses[courseId],  // Dados específicos do curso
         ...userData,          // Dados do perfil do usuário (nome, email, etc)
+        ...enrollmentRowFlags(courses[courseId]),
         role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
       });
     });
 
-    return studentsList;
+    return sortEndedLast(studentsList);
   } catch (error) {
     console.error("Erro ao buscar estudantes do curso:", error);
     throw error;
@@ -425,28 +362,6 @@ export const updateStudentCourseRole = async (userId, courseId, newRole) => {
     return true;
   } catch (error) {
     console.error("Erro ao atualizar função do estudante:", error);
-    throw error;
-  }
-};
-
-/**
- * Remove um estudante de um curso
- * @param {string} userId - ID do usuário
- * @param {string} courseId - ID do curso
- * @returns {Promise<boolean>} - Verdadeiro se bem-sucedido
- */
-export const removeStudentFromCourse = async (userId, courseId) => {
-  try {
-    if (!userId || !courseId) {
-      throw new Error("IDs de usuário e curso são necessários");
-    }
-    
-    // Remover matrícula do estudante
-    await unenrollStudentFromCourse(userId, courseId);
-    
-    return true;
-  } catch (error) {
-    console.error("Erro ao remover estudante do curso:", error);
     throw error;
   }
 };

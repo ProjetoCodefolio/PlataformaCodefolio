@@ -12,6 +12,7 @@
 
 import { ref, get } from "firebase/database";
 import { database } from "../../config/firebase";
+import { isActiveEnrollment } from "../../../shared/enrollmentStatus.js";
 import { ensureQuestionIds } from "./quizQuestions";
 import { isGradedQuestion } from "./quizGrading";
 
@@ -116,8 +117,9 @@ export const fetchOpinionResults = async (courseId, quizId) => {
   const usuarios = usuariosSnap.val() || {};
 
   const submissions = [];
+  // Números da turma: quem saiu ou foi removido não entra na contagem.
   for (const [userId, cursos] of Object.entries(matriculas)) {
-    if (!cursos || !cursos[courseId]) continue;
+    if (!isActiveEnrollment(cursos?.[courseId])) continue;
 
     const resultado = (
       await get(ref(database, `quizResults/${userId}/${courseId}/${quizId}`))

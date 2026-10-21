@@ -4,6 +4,7 @@ import { recalcCourseProgressFromWatched } from './students';
 import { hashPin, encryptPin, decryptPin } from './pin';
 import { isAliasAvailable, isAliasFormatValid } from "./alias";
 import { isPublished } from "./publication";
+import { isActiveEnrollment } from "../../../shared/enrollmentStatus.js";
 
 /** PIN de 7 dígitos, o mesmo formato aceito pelo campo do formulário. */
 const gerarPinAleatorio = () =>
@@ -126,11 +127,15 @@ const loadUserCourses = async (userId, coursesArray) => {
 
     const enrichedCourses = coursesArray.map((course) => {
       const studentCourse = studentCourses[course.courseId] || {};
+      // Matrícula encerrada (saiu ou foi removido): o curso volta para
+      // "Disponíveis", com o progresso guardado à vista.
+      const ended = Boolean(studentCourses[course.courseId]) && !isActiveEnrollment(studentCourse);
       return {
         ...course,
         progress: studentCourse.progress !== undefined ? studentCourse.progress : 0,
-        accessed: studentCourse.progress !== undefined,
-        status: studentCourse.status || "available",
+        accessed: studentCourse.progress !== undefined && !ended,
+        status: ended ? "available" : studentCourse.status || "available",
+        enrollmentEnded: ended,
       };
     });
 

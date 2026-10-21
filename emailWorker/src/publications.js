@@ -32,6 +32,7 @@ import {
   isScheduledAt,
   normalizePublishAt,
 } from "../../src/shared/publicationDates.js";
+import { activeStudentIds } from "../../src/shared/enrollmentStatus.js";
 
 const SOURCE_NODES = {
   content: "courseContent",
@@ -51,7 +52,8 @@ const aceita = (prefs, type) => {
 
 /**
  * Destinatários de um curso, como `fetchCourseStudentsEnriched` filtrado por
- * `role !== "teacher"`: matriculados que não são professores daquela turma.
+ * `role !== "teacher"`: quem tem matrícula ATIVA e não é professor daquela
+ * turma. Quem saiu ou foi removido não recebe aviso.
  */
 const makeRecipientLoader = (db) => {
   let studentCourses = null;
@@ -61,7 +63,7 @@ const makeRecipientLoader = (db) => {
     if (cache.has(courseId)) return cache.get(courseId);
     studentCourses ??= (await db.get("studentCourses")) || {};
 
-    const uids = Object.keys(studentCourses).filter((uid) => studentCourses[uid]?.[courseId]);
+    const uids = activeStudentIds(studentCourses, courseId);
     const recipients = (
       await Promise.all(
         uids.map(async (uid) => {

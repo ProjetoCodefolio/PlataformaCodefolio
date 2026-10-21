@@ -7,6 +7,7 @@ import {
   increment,
 } from "firebase/database";
 import { database } from "../../config/firebase";
+import { isActiveEnrollment } from "../../../shared/enrollmentStatus.js";
 
 // Formato do nó do Quiz Gigi (quiz ao vivo conduzido pelo professor em aula):
 //
@@ -17,8 +18,9 @@ import { database } from "../../config/firebase";
 //
 // O nível {courseId}/{quizId} é o que as regras do banco cobrem (só o dono do
 // curso ou um admin escrevem) e é o que as cascatas de exclusão varrem
-// (deleteCourse, removeQuiz, removeStudentFromCourse). Não mudar esse formato
-// sem atualizar database.rules.json e essas três cascatas juntas.
+// (deleteCourse, removeQuiz). Não mudar esse formato sem atualizar
+// database.rules.json e essas duas cascatas juntas. A saída do curso não
+// apaga resultado nenhum: o histórico fica (ver docs/adr/0001).
 
 /**
  * Inicializa os metadados do quiz na estrutura quizGigi
@@ -102,8 +104,9 @@ export const fetchEnrolledStudents = async (courseId) => {
     const studentIds = [];
 
     // Para cada usuário, verificar se está matriculado no curso
+    // Só quem está na turma entra no sorteio: quem saiu ou foi removido não.
     Object.entries(enrolledData).forEach(([userId, courses]) => {
-      if (courses[courseId]) {
+      if (isActiveEnrollment(courses[courseId])) {
         const userRef = ref(database, `users/${userId}`);
         studentsPromises.push(get(userRef));
         studentIds.push(userId);

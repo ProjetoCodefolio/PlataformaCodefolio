@@ -299,3 +299,25 @@ describe("buildGradesImportPlan - célula vazia", () => {
     expect(plan.errors).toEqual([]);
   });
 });
+
+describe("quem está fora da turma no CSV de notas", () => {
+  const removida = {
+    ...makeStudent("u3", "Carla Dias", "carla@ex.com", { a1: { grade: 9 }, a2: { grade: 9 } }),
+    enrollmentEnded: true,
+    endReason: "removed",
+    endedAt: "2026-10-12T15:00:00.000Z",
+  };
+
+  it("vai marcado na coluna Status, sem coluna nova", () => {
+    const linhas = exportGradesToCSV([removida], assessments).trim().split("\n");
+    expect(linhas[0]).toBe(header);
+    expect(linhas[1]).toMatch(/^Carla Dias,carla@ex\.com,Aprovado \(Removido da turma em \d{2}\/\d{2}\/2026\),/);
+  });
+
+  it("o CSV continua reimportável sem mudanças", () => {
+    const roster = [...students, removida];
+    const plan = planFor(exportGradesToCSV(roster, assessments), roster);
+    expect(plan.errors).toEqual([]);
+    expect(plan.changes).toEqual([]);
+  });
+});

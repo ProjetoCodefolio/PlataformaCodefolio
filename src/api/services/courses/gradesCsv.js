@@ -1,5 +1,6 @@
 import { MAXIMUM_GRADE } from '$api/constants/gradeConstants';
 import { translateStatus } from './gradeSummary';
+import { enrollmentEndedLabel } from '../../../shared/enrollmentStatus.js';
 
 /**
  * Formato CSV das notas do curso, nas duas direções.
@@ -68,7 +69,11 @@ export const exportGradesToCSV = (studentsGrades, assessments) => {
     const cells = [
       student.name,
       student.email,
-      translateStatus(student.status),
+      // Quem está fora da turma vai marcado na própria coluna de status: uma
+      // coluna nova quebraria a importação, que valida o cabeçalho.
+      student.enrollmentEnded
+        ? `${translateStatus(student.status)} (${enrollmentEndedLabel(student)})`
+        : translateStatus(student.status),
       ...assessments.map((assessment) => {
         const grade = student.grades[assessment.id];
         return grade && grade.grade !== null ? grade.grade.toFixed(2) : "";

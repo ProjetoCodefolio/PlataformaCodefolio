@@ -61,7 +61,9 @@ export default function GroupPicker({
     try {
       const [gs, students] = await Promise.all([
         fetchGroups(courseId, assignment.id),
-        fetchCourseStudentsEnriched(courseId),
+        // Com quem saiu: ele continua nos grupos que já entregaram e precisa
+        // aparecer pelo nome, não pelo id.
+        fetchCourseStudentsEnriched(courseId, { includeEnded: true }),
       ]);
       setGroups(gs);
       const map = {};

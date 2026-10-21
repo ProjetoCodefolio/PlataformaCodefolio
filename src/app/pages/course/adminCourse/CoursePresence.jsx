@@ -28,6 +28,8 @@ import Topbar from "../../../components/topbar/Topbar";
 import SearchField from "../../../components/common/SearchField";
 import SortableHeader from "../../../components/common/SortableHeader";
 import { sortRows, getNextSort } from "../../../utils/tableSort";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
+import { sortEndedLast } from "$api/services/courses/enrollment";
 import {
   fetchCoursePresenceData,
   saveAttendanceSettings,
@@ -101,17 +103,20 @@ export default function CoursePresence() {
             s.email.toLowerCase().includes(term)
         )
       : presence;
-    return sortRows(list, sort.sortField, sort.sortOrder);
+    // Quem saiu ou foi removido fica sempre no fim, em qualquer ordenação.
+    return sortEndedLast(sortRows(list, sort.sortField, sort.sortOrder));
   }, [presence, searchTerm, sort]);
 
   const handleSort = (field) => setSort((prev) => getNextSort(prev, field));
 
+  // Números da turma: quem saiu ou foi removido aparece na tabela, mas não
+  // entra na contagem nem na média.
   const stats = useMemo(() => {
-    if (presence.length === 0) return { avg: 0, full: 0 };
-    const avg =
-      presence.reduce((sum, s) => sum + s.presencePercent, 0) / presence.length;
-    const full = presence.filter((s) => s.presencePercent >= 100).length;
-    return { avg: Math.round(avg * 100) / 100, full };
+    const turma = presence.filter((s) => !s.enrollmentEnded);
+    if (turma.length === 0) return { avg: 0, full: 0, enrolled: 0 };
+    const avg = turma.reduce((sum, s) => sum + s.presencePercent, 0) / turma.length;
+    const full = turma.filter((s) => s.presencePercent >= 100).length;
+    return { avg: Math.round(avg * 100) / 100, full, enrolled: turma.length };
   }, [presence]);
 
   const isDirty = Number(presencesPerVideo) !== savedPerVideo;
@@ -245,7 +250,7 @@ export default function CoursePresence() {
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <PeopleIcon sx={{ color: PURPLE }} />
                       <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                        {presence.length}
+                        {stats.enrolled}
                       </Typography>
                     </Box>
                     <Typography variant="caption" sx={{ color: "#333" }}>
@@ -323,6 +328,7 @@ export default function CoursePresence() {
                             {student.isTeacher && (
                               <Chip label="prof" size="small" sx={{ ml: 0.5, height: 16, fontSize: 10 }} />
                             )}
+                            <EnrollmentEndedChip student={student} />
                           </Typography>
                           <Typography variant="caption" sx={{ color: "#333" }}>
                             {student.email}

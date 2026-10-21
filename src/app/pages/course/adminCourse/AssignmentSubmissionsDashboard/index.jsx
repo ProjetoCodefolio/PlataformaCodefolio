@@ -47,6 +47,8 @@ import { useGradeAndFeedbackPersistence } from "./hooks/useGradeAndFeedbackPersi
 import { useSubmissionDeletion } from "./hooks/useSubmissionDeletion";
 import { useGroupManagement } from "./hooks/useGroupManagement";
 import { useSubmissionsFilters } from "./hooks/useSubmissionsFilters";
+import EnrollmentEndedChip from "$components/courses/EnrollmentEndedChip";
+import { sortEndedLast } from "$api/services/courses/enrollment";
 
 export default function AssignmentSubmissionsDashboard() {
   const location = useLocation();
@@ -123,8 +125,11 @@ export default function AssignmentSubmissionsDashboard() {
     );
   };
 
-  const gradedCount = students.filter((s) => gradesByStudent[s.userId] != null).length;
-  const visibleStudents = sortStudents(students, { gradesByStudent, submissionsByKey });
+  // Contagem da turma: quem saiu ou foi removido aparece na lista (as entregas
+  // dele são histórico), mas não entra no "x/y avaliados".
+  const turma = students.filter((s) => !s.enrollmentEnded);
+  const gradedCount = turma.filter((s) => gradesByStudent[s.userId] != null).length;
+  const visibleStudents = sortEndedLast(sortStudents(students, { gradesByStudent, submissionsByKey }));
 
   return (
     <>
@@ -154,7 +159,7 @@ export default function AssignmentSubmissionsDashboard() {
                 sx={{ bgcolor: assignment.linkedAssessmentId ? "#e6f4ea" : "#fdecea", color: assignment.linkedAssessmentId ? "#2e7d32" : "#c62828", fontWeight: 700 }}
               />
               {!isGroup && (
-                <Chip size="small" label={`${gradedCount}/${students.length} avaliados`} sx={{ bgcolor: "#eef7ff", color: "#1565c0", fontWeight: 700 }} />
+                <Chip size="small" label={`${gradedCount}/${turma.length} avaliados`} sx={{ bgcolor: "#eef7ff", color: "#1565c0", fontWeight: 700 }} />
               )}
             </Stack>
 
@@ -314,6 +319,7 @@ export default function AssignmentSubmissionsDashboard() {
                                   </Avatar>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                     {s.name || s.email}
+                                    <EnrollmentEndedChip student={s} />
                                   </Typography>
                                 </Box>
                               </TableCell>

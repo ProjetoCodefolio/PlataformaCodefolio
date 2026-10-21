@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { sortEndedLast } from "$api/services/courses/enrollment";
 
 const defaultMatchesSearch = (student, term) => student.name.toLowerCase().includes(term);
 
@@ -9,7 +10,8 @@ const defaultMatchesSearch = (student, term) => student.name.toLowerCase().inclu
  * sem esse hook precisar conhecer o domínio de cada tela; `sortFn` é quem
  * sabe ordenar pelos campos específicos de cada lista; `matchesSearch` troca
  * o que conta como "bater a busca" (por padrão, só o nome — algumas telas
- * também buscam por email).
+ * também buscam por email). Quem está fora da turma (`enrollmentEnded`) vai
+ * sempre para o fim, qualquer que seja a coluna.
  *
  * @param {Array} students
  * @param {Object} [options]
@@ -44,7 +46,8 @@ export function useStudentSearchSort(
       return search && matchesExtra;
     });
 
-    return sortFn ? sortFn(filtered, sortField, sortOrder) : filtered;
+    // Quem saiu ou foi removido fica sempre no fim, em qualquer ordenação.
+    return sortEndedLast(sortFn ? sortFn(filtered, sortField, sortOrder) : filtered);
   }, [students, searchTerm, sortField, sortOrder, extraFilter, sortFn, matchesSearch]);
 
   return {

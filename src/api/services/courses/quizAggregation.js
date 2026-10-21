@@ -5,6 +5,7 @@ import { fetchFlippedClassroomVideos } from "./submissions";
 import { gradedQuestions, isOpinionQuiz } from "./quizGrading";
 import { ensureQuestionIds } from "./quizQuestions";
 import { effectiveQuizPublishAt, isPublished, serverNow } from "./publication";
+import { enrollmentRowFlags, sortEndedLast } from "../../../shared/enrollmentStatus.js";
 
 /**
  * Busca todos os quizzes de um curso (vídeos e slides)
@@ -451,29 +452,33 @@ export const fetchAggregatedQuizGrades = async (courseId) => {
           completionRate: quizzes.length > 0 
             ? Math.round((attemptedQuizzes / quizzes.length) * 100) 
             : 0,
+          ...enrollmentRowFlags(studentCoursesData[userId][courseId]),
         };
       })
     );
 
-    // Calcular resumo geral
+    // Calcular resumo geral. Números da turma: quem saiu ou foi removido
+    // aparece na lista, mas não entra nas médias e contagens.
+    const allStudentsGrades = studentsGrades;
+    const classGrades = allStudentsGrades.filter((s) => !s.enrollmentEnded);
     const summary = {
-      totalStudents: studentsGrades.length,
+      totalStudents: classGrades.length,
       totalQuizzes: quizzes.length,
       totalEvaluativeQuizzes: quizzes.filter(
         (q) => !q.isDiagnostic && !isOpinionQuiz(q)
       ).length,
       totalDiagnosticQuizzes: quizzes.filter((q) => q.isDiagnostic).length,
       totalOpinionQuizzes: quizzes.filter((q) => isOpinionQuiz(q)).length,
-      averageClassGrade: studentsGrades.length > 0
-        ? Math.round((studentsGrades.reduce((sum, s) => sum + s.averageGrade, 0) / studentsGrades.length) * 100) / 100
+      averageClassGrade: classGrades.length > 0
+        ? Math.round((classGrades.reduce((sum, s) => sum + s.averageGrade, 0) / classGrades.length) * 100) / 100
         : 0,
-      studentsWithAllQuizzes: studentsGrades.filter(
+      studentsWithAllQuizzes: classGrades.filter(
         (s) => s.attemptedQuizzes === quizzes.length
       ).length,
     };
 
     return {
-      students: studentsGrades,
+      students: sortEndedLast(allStudentsGrades),
       quizzes,
       summary,
       videoNames,
