@@ -6,9 +6,12 @@ import { ref, get, set } from "firebase/database";
  *
  * Estrutura:
  *   notificationPrefs/{userId}/{courseId}
- *     { newAssignment, newQuiz, newContent, newQuestion, grade, groupChanges, inAppEnabled }
+ *     { newAssignment, newQuiz, newContent, newQuestion, grade, groupChanges, studentLeft, inAppEnabled }
  *
  * Por padrão tudo é `true` (o usuário recebe tudo) e pode desativar por tipo.
+ * O aviso de remoção ou readmissão na turma (`enrollment_changed`) não tem
+ * chave aqui de propósito: é sobre o vínculo da pessoa com o curso, e não se
+ * desliga.
  *
  * NÃO existe `deadline` (lembrete de prazo): sem backend/cron, nada dispara
  * numa data futura — só em reação a uma ação de alguém logado. Um registro
@@ -26,8 +29,11 @@ export const DEFAULT_PREFS = {
   // Só tem efeito para o dono do curso: avisa quando um aluno registra dúvida.
   newQuestion: true,
   grade: true,
-  // Professor moveu ou removeu o aluno de um grupo de trabalho.
+  // Mudança no grupo de trabalho: o professor moveu ou removeu o aluno, ou um
+  // colega saiu do curso e deixou o grupo.
   groupChanges: true,
+  // Só tem efeito para quem conduz o curso: avisa quando alguém sai da turma.
+  studentLeft: true,
   inAppEnabled: true,
 };
 
@@ -67,7 +73,7 @@ export const savePrefs = async (userId, courseId, prefs) => {
 /**
  * Verifica se um usuário aceita receber um tipo de notificação para o curso.
  * @param {Object} prefs - resultado de fetchPrefs
- * @param {string} type - 'newAssignment' | 'newQuiz' | 'newAssessment' | 'newContent' | 'newQuestion' | 'grade' | 'groupChanges'
+ * @param {string} type - 'newAssignment' | 'newQuiz' | 'newAssessment' | 'newContent' | 'newQuestion' | 'grade' | 'groupChanges' | 'studentLeft'
  */
 export const acceptsInApp = (prefs, type) => {
   if (!prefs) return true;

@@ -17,7 +17,11 @@ import {
 } from "@mui/material";
 import { toast } from "react-toastify";
 import { fetchStudentCourses } from "$api/services/courses/students";
-import { fetchCourseDetails } from "$api/services/courses/courses";
+import {
+  fetchCourseDetails,
+  fetchTeacherCourses,
+  fetchUserCreatedCourses,
+} from "$api/services/courses/courses";
 import { fetchPrefs, savePrefs, DEFAULT_PREFS } from "$api/services/notificationPrefs";
 
 const purpleSwitch = {
@@ -36,6 +40,7 @@ const TYPES = [
   { key: "newQuestion", label: "Novas dúvidas de alunos (cursos que você criou)" },
   { key: "grade", label: "Notas lançadas" },
   { key: "groupChanges", label: "Mudanças de grupo" },
+  { key: "studentLeft", label: "Saídas da turma (cursos que você conduz)" },
 ];
 
 /**
@@ -53,7 +58,25 @@ export default function NotificationPrefs({ open, onClose, userId }) {
     if (!open || !userId) return;
     (async () => {
       try {
-        const list = await fetchStudentCourses(userId);
+        // Cursos em que a pessoa está na turma e os que ela conduz (dona ou
+        // professora da turma): sem os segundos, quem conduz não tinha onde
+        // desligar "nova dúvida" nem "saídas da turma".
+        const [matriculas, criados, conduzidos] = await Promise.all([
+          fetchStudentCourses(userId),
+          fetchUserCreatedCourses(userId).catch(() => []),
+          fetchTeacherCourses(userId),
+        ]);
+        const porId = new Map();
+        [
+          ...(matriculas || []),
+          ...(criados || []).map((c) => ({ courseId: c.courseId, title: c.title })),
+          ...Object.keys(conduzidos || {}).map((courseId) => ({ courseId })),
+        ].forEach((c) => {
+          if (!porId.has(c.courseId) || (!porId.get(c.courseId).title && c.title)) {
+            porId.set(c.courseId, c);
+          }
+        });
+        const list = [...porId.values()];
         // Hidrata o nome do curso quando o registro de matrícula não o tiver
         // (evita exibir "Curso -Ab12..." em vez do título real).
         const withTitles = await Promise.all(
