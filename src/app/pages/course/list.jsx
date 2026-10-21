@@ -11,7 +11,12 @@ import {
   CardActions,
   Button,
   Grid, // Adicionando a importação que faltava
+  IconButton,
+  ListItemText,
+  Menu,
+  MenuItem,
 } from "@mui/material";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useNavigate } from "react-router-dom";
 import Topbar from "$components/topbar/Topbar";
 import { useAuth } from "$context/AuthContext";
@@ -19,6 +24,8 @@ import LockIcon from "@mui/icons-material/Lock";
 import { filterCoursesBySearchTerm } from "$api/services/courses/courses";
 import { fetchCategorizedCourses } from "$api/services/courses/list";
 import CourseDescription from "$components/courses/CourseDescription";
+import LeaveCourseDialog from "$components/courses/LeaveCourseDialog";
+import { BLOCK_REASON_MESSAGES, canLeaveCourse } from "$api/services/courses/enrollment";
 
 const MyCourses = () => {
   const [selectedTab, setSelectedTab] = useState(0); // Tab 0 = Em Andamento agora
@@ -29,8 +36,11 @@ const MyCourses = () => {
   const [filteredInProgressCourses, setFilteredInProgressCourses] = useState([]);
   const [filteredCompletedCourses, setFilteredCompletedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { userDetails } = useAuth();
+  const { userDetails, refreshUserDetails } = useAuth();
   const navigate = useNavigate();
+  // Menu "⋮" do card (um por vez) e o curso cuja saída está sendo confirmada.
+  const [menu, setMenu] = useState({ anchor: null, course: null });
+  const [leaving, setLeaving] = useState(null);
 
   // Efeito para carregar cursos ao iniciar
   useEffect(() => {
@@ -96,8 +106,23 @@ const MyCourses = () => {
     navigate(`/classes?courseId=${course.courseId}`);
   };
 
+  // Só as abas de quem está na turma oferecem a saída. A matrícula desses cards
+  // é ativa por construção (a encerrada cai em "Disponíveis").
+  const leaveCheck = (course) =>
+    canLeaveCourse({ userDetails, course, matricula: { status: course.status } });
+
+  const closeMenu = () => setMenu({ anchor: null, course: null });
+
+  // Depois da saída, relê o usuário: se ele era professor da turma, perdeu o
+  // papel, e o resto do app (menus, gate da sala) não pode seguir com o antigo.
+  // A lista recarrega sozinha quando `userDetails` muda.
+  const handleLeft = async () => {
+    setLeaving(null);
+    await refreshUserDetails?.();
+  };
+
   // Função para renderizar lista de cursos
-  const renderCourses = (courses, actionButtonLabel, onClickAction) => {
+  const renderCourses = (courses, actionButtonLabel, onClickAction, withLeave = false) => {
     if (!courses || courses.length === 0) {
       return (
         <Typography variant="body1" color="textSecondary">
@@ -118,6 +143,7 @@ const MyCourses = () => {
                 height: "100%",
                 display: "flex",
                 flexDirection: "column",
+                position: "relative",
                 transition: "transform 0.2s ease-in-out",
                 "&:hover": {
                   transform: "scale(1.02)",
@@ -125,7 +151,17 @@ const MyCourses = () => {
                 },
               }}
             >
-              <CardContent sx={{ flex: 1 }}>
+              {withLeave && userDetails?.userId && (
+                <IconButton
+                  size="small"
+                  aria-label={`Mais opções de ${course.title || "curso"}`}
+                  onClick={(e) => setMenu({ anchor: e.currentTarget, course })}
+                  sx={{ position: "absolute", top: 6, right: 6 }}
+                >
+                  <MoreVertIcon fontSize="small" />
+                </IconButton>
+              )}
+              <CardContent sx={{ flex: 1, ...(withLeave && userDetails?.userId ? { px: 5 } : {}) }}>
                 <Box
                   sx={{
                     display: "flex",
@@ -271,7 +307,8 @@ const MyCourses = () => {
                 {renderCourses(
                   filteredInProgressCourses,
                   "Continuar",
-                  handleContinueCourse
+                  handleContinueCourse,
+                  true
                 )}
               </Box>
             )}
@@ -291,13 +328,42 @@ const MyCourses = () => {
                 {renderCourses(
                   filteredCompletedCourses,
                   "Ver Curso",
-                  handleViewCourse
+                  handleViewCourse,
+                  true
                 )}
               </Box>
             )}
           </>
         )}
       </Paper>
+
+      <Menu anchorEl={menu.anchor} open={Boolean(menu.anchor)} onClose={closeMenu}>
+        {menu.course &&
+          (() => {
+            const pode = leaveCheck(menu.course);
+            return (
+              <MenuItem
+                disabled={!pode.allowed}
+                onClick={() => {
+                  setLeaving(menu.course);
+                  closeMenu();
+                }}
+              >
+                <ListItemText
+                  primary="Sair do curso"
+                  secondary={pode.allowed ? null : BLOCK_REASON_MESSAGES[pode.reason]}
+                />
+              </MenuItem>
+            );
+          })()}
+      </Menu>
+
+      <LeaveCourseDialog
+        course={leaving}
+        userDetails={userDetails}
+        onClose={() => setLeaving(null)}
+        onLeft={handleLeft}
+      />
     </Box>
   );
 };
