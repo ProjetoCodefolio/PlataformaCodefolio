@@ -140,6 +140,33 @@ const sendNotificationEmail = async (params) => {
 };
 
 /**
+ * E-mails dos avisos do encerramento da matrícula (colega de grupo, saída para
+ * quem conduz, remoção e readmissão). Os avisos no sino já foram gravados na
+ * mesma escrita do encerramento; aqui só sai o e-mail de cada um, com o mesmo
+ * texto. Destinatários poucos e pontuais, então não pesa na cota diária.
+ *
+ * @param {Array<{ uid: string, record: Object }>} notifications - os mesmos do sino
+ * @param {{ courseTitle?: string }} [options]
+ */
+export const emailEnrollmentNotifications = async (notifications, { courseTitle = "" } = {}) => {
+  await Promise.all(
+    (notifications || []).map(async ({ uid, record }) => {
+      const { email, name } = await fetchUserEmailAndName(uid);
+      await sendNotificationEmail({
+        to: email,
+        name,
+        type: record.type,
+        courseId: record.courseId,
+        courseTitle,
+        itemTitle: "",
+        link: record.link,
+        fields: { action: record.message },
+      });
+    })
+  );
+};
+
+/**
  * Campos de um item de avaliação (nome + peso na média do curso).
  */
 const assessmentEmailFields = (assessment) => ({

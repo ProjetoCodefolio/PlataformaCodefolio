@@ -2,6 +2,7 @@ import { ref, get, push, update } from "firebase/database";
 import { database } from "$api/config/firebase";
 import { canManageCourse, canRunCourse } from "$api/utils/permissions";
 import { acceptsInApp, fetchPrefs } from "$api/services/notificationPrefs";
+import { emailEnrollmentNotifications } from "$api/services/notifications";
 import { recipientName } from "../../../shared/notificationText.js";
 import { isCourseClosed, isDiscipline } from "./courseType";
 import {
@@ -643,6 +644,8 @@ const encerra = async ({ context, courseId, userId, endedBy, reason }) => {
     newKey: novaChaveDeAviso,
   });
   await update(ref(database), updates);
+  // E-mail é acessório: sai depois, sem segurar a tela nem desfazer a saída.
+  emailEnrollmentNotifications(notifications, { courseTitle: course.title });
 
   return { endedAt: createdAt, groupsLeft, notified: notifications.map((aviso) => aviso.uid) };
 };
@@ -744,23 +747,20 @@ export const readmitStudent = async ({ userDetails, courseId, studentId }) => {
   if (!pode.allowed) throw recusa(pode.reason);
 
   const createdAt = new Date().toISOString();
+  const notifications = [
+    {
+      uid: studentId,
+      record: enrollmentChangedNotification({
+        action: "readmitted",
+        course,
+        courseId,
+        createdAt,
+      }),
+    },
+  ];
   await update(
     ref(database),
-    reactivationUpdates({
-      courseId,
-      userId: studentId,
-      notifications: [
-        {
-          uid: studentId,
-          record: enrollmentChangedNotification({
-            action: "readmitted",
-            course,
-            courseId,
-            createdAt,
-          }),
-        },
-      ],
-      newKey: novaChaveDeAviso,
-    })
+    reactivationUpdates({ courseId, userId: studentId, notifications, newKey: novaChaveDeAviso })
   );
+  emailEnrollmentNotifications(notifications, { courseTitle: course?.title });
 };
