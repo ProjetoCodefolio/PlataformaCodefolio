@@ -1,6 +1,6 @@
 # Plano: saída do curso e remoção da turma
 
-Status: **não implementado**. Escrito em 20/10/2026 na branch `feat/saida-do-curso`, a partir de uma rodada de perguntas (`/grill-with-docs`) com o Matheus. Os termos estão no `CONTEXT.md` (seções Matrícula e Autoridade sobre o curso) e a decisão de fundo está em `docs/adr/0001-matricula-encerrada-em-vez-de-apagada.md`.
+Status: **implementado em 21/10/2026** na branch `feat/saida-do-curso` (etapas 0 a 9). Escrito em 20/10/2026 na branch `feat/saida-do-curso`, a partir de uma rodada de perguntas (`/grill-with-docs`) com o Matheus. Os termos estão no `CONTEXT.md` (seções Matrícula e Autoridade sobre o curso) e a decisão de fundo está em `docs/adr/0001-matricula-encerrada-em-vez-de-apagada.md`.
 
 ## Por que
 
@@ -34,8 +34,9 @@ Todos passam pelo mesmo predicado (`isActiveEnrollment`), nunca por "o registro 
 |---|---|---|
 | Listas do professor | `fetchCourseStudentsEnriched` (aba Alunos), `fetchAllCourseGrades`, `fetchAggregatedQuizGrades`, `fetchQuizStudentResults`, `attendanceData`, entregas (`useAssignmentSubmissionsData`, `useGradeAssignmentData`) e os CSV | Mostrar por último, com o selo "Saiu da turma" ou "Removido da turma" e a data |
 | Números da turma | médias e percentuais da turma, `fetchOpinionResults`, `fetchCourseStudentCounts` (admin) | Excluir |
-| Ações sobre a turma | `notifyNewAssignment`, `notifyNewQuiz`, `notifyAssessment`, `notifyNewContent`, avisos de publicação programada no Worker (`emailWorker/src/publications.js`), `closeDiscipline`/`reopenDiscipline`, sorteio do Quiz Gigi (`fetchEnrolledStudents`), escolha de colegas no `GroupPicker` | Excluir |
+| Ações sobre a turma | `notifyNewAssignment`, `notifyNewQuiz`, `notifyAssessment`, `notifyNewContent`, avisos de publicação programada no Worker (`emailWorker/src/publications.js`), `closeDiscipline`/`reopenDiscipline`, sorteio do Quiz Gigi (`fetchEnrolledStudents`), "Sem grupo" do painel de entregas | Excluir |
 | Acesso | `useCourseAccess` (via `checkStudentCourseEnrollment`) | Tratar como não matriculado e oferecer a volta (decisão 11) |
+| Nomes nos grupos | `GroupPicker` | Incluir: quem saiu continua nos grupos que já entregaram e precisa aparecer pelo nome |
 | Visão do aluno | `loadUserCourses` (`/cursos`), `useStudentCourses` (Minhas avaliações), `NotificationPrefs` | Em `/cursos`, cair em Disponíveis; nos outros dois, sair da lista |
 | Recálculos | `persistProgress`, `updateAllUsersCourseProgress`, `recalculateQuizResults`, `enrollStudentInCourse` | Atualizam o histórico, nunca reativam |
 
@@ -63,6 +64,19 @@ Cada etapa é um commit (ou poucos), em português, no padrão conventional comm
 7. **Tela do professor:** na aba Alunos, remoção religada com o diálogo novo, selo e ordenação dos encerrados por último, "Readmitir" para os removidos, seletor de papel desabilitado para o professor da turma (correção) e para matrículas encerradas, remoção desabilitada para professor da turma ("rebaixe para estudante antes").
 8. **Avisos:** os registros in-app já saem da etapa 1 (vão na escrita atômica); aqui entram os e-mails (`student_left`, `enrollment_changed` e a mensagem de saída em `group_changes`, com os modelos no Worker) e os três pontos de sempre (`notifications.js`, `DEFAULT_PREFS`, `TYPES` em `NotificationPrefs.jsx`; `enrollmentChanged` fica fora das preferências). `NotificationPrefs` passa a listar também os cursos que a pessoa conduz (dono ou professor da turma): hoje ela lista só matrículas, então o dono não tem onde desligar `newQuestion` nem, agora, `studentLeft`.
 9. **E2E** (`e2e/saida-do-curso.spec.js`): o aluno sai de um curso aberto, o curso aparece em Disponíveis, ele volta pelo diálogo e o progresso está lá; num curso fechado, a volta pede o PIN; o professor remove, o aluno aparece por último com o selo e é readmitido; na disciplina encerrada, sair e remover ficam desabilitados.
+
+## Registro da implementação
+
+- Etapa 1: a lógica pura e o serviço moram juntos em `src/api/services/courses/enrollment.js`, como em `courseType.js`. O estado da matrícula (`isActiveEnrollment`, `enrollmentRowFlags`, `sortEndedLast`, `enrollmentEndedLabel`) foi para `src/shared/enrollmentStatus.js`, porque o Worker também precisa dele; `enrollment.js` o reexporta, e a tela importa sempre por `$api`.
+- Os avisos no sino saem da etapa 1, na mesma escrita do encerramento: é a única forma de a regra do aviso ao colega de grupo enxergar o autor ainda como membro antes e já fora depois. A etapa 8 ficou com os e-mails (`emailEnrollmentNotifications`), a preferência `studentLeft` e os modelos `student_left` e `enrollment_changed` no Worker, com rodapé próprio (o de remoção não diz "dá pra desligar").
+- `fetchCourseStudentsEnriched` traz só a turma por padrão; as listas do professor pedem `{ includeEnded: true }`. Quem esquecer de escolher fica do lado seguro (não avisa quem saiu).
+- No CSV de notas, quem está fora da turma vai marcado na coluna Status ("Aprovado (Saiu da turma em 12/10/2026)"): uma coluna nova quebraria a importação, que valida o cabeçalho. O CSV de presença, que não é importado, ganhou a coluna "Situação na turma".
+- O gate decide por uma função pura, `decideCourseAccess`. Como o `PinAccessModal` chama `onClose` logo depois de `onSubmit`, o hook marca o acesso como liberado antes de esperar a reativação; sem isso, a volta pelo PIN jogava o aluno para `/cursos`.
+- Depois da saída, a lista de cursos chama `refreshUserDetails`: o professor da turma que sai perde o papel no banco, e o contexto de autenticação não pode seguir com o antigo (o gate o deixaria entrar direto).
+- Na aba Alunos, o botão diz só "Remover" para caber na coluna; o nome acessível é "Remover da turma". O `checkCurrentUserRole` saiu: o seletor de papel agora segue `canChangeCourseRole`, que é o que a regra do banco já fazia.
+- As preferências de notificação passaram a listar também os cursos que a pessoa conduz (criados por ela e `coursesTeacher`), além das matrículas ativas.
+- Testes: `enrollment.test.js` (42), `enrollment.rules.emulator.test.js` (14), `enrollment.emulator.test.js` (13), `enrollmentReaders.emulator.test.js` (7), `src/shared/enrollmentStatus.test.js` (6), casos novos em `courseType`, `gradeSummary`, `gradesCsv`, `attendance` e no teste do Worker, e `e2e/saida-do-curso.spec.js` (8). A suíte E2E passou a ter 32.
+- Para publicar: `firebase deploy --only database` (regras) e `wrangler deploy` no `emailWorker/` (destinatários dos avisos programados e modelos de e-mail novos), junto com o app.
 
 ## Fora do escopo
 
