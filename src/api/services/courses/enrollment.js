@@ -1,0 +1,488 @@
+import { canManageCourse, canRunCourse } from "$api/utils/permissions";
+import { acceptsInApp } from "$api/services/notificationPrefs";
+import { isCourseClosed, isDiscipline } from "./courseType";
+
+/**
+ * Matrícula: ativa ou encerrada.
+ *
+ * Sair do curso (o próprio integrante) e ser removido da turma (quem conduz o
+ * curso) são a mesma operação, o ENCERRAMENTO da matrícula. Nada é apagado:
+ * a matrícula ganha `endedAt`, `endedBy` e `endReason`, e o histórico no curso
+ * (progresso, resultados de quiz, dúvidas, entregas) fica onde está. Quem volta
+ * reativa a MESMA matrícula e continua de onde parou, inclusive com as
+ * tentativas de quiz já gastas. Ver docs/adr/0001.
+ *
+ * O `status` (in_progress/completed) não é tocado: ele continua sendo o retrato
+ * do progresso, e é o que o encerramento da disciplina usa.
+ *
+ * Este módulo é PURO: decide quem pode o quê e monta as escritas. Quem lê o
+ * banco e grava é o serviço.
+ */
+
+export const END_REASONS = {
+  LEFT: "left",
+  REMOVED: "removed",
+};
+
+/**
+ * A matrícula faz parte da turma agora? Todo leitor de `studentCourses` passa
+ * por aqui, nunca por "o registro existe".
+ * @param {Object} matricula - studentCourses/{uid}/{courseId}
+ * @returns {boolean}
+ */
+export const isActiveEnrollment = (matricula) =>
+  Boolean(matricula) && !matricula.endedAt;
+
+/**
+ * Estado da matrícula para o gate de acesso.
+ * @param {Object} matricula
+ * @returns {{ state: "none"|"active"|"ended", reason?: string, endedAt?: string }}
+ */
+export const getEnrollmentState = (matricula) => {
+  if (!matricula) return { state: "none" };
+  if (isActiveEnrollment(matricula)) return { state: "active" };
+  return {
+    state: "ended",
+    reason: matricula.endReason || END_REASONS.LEFT,
+    endedAt: matricula.endedAt,
+  };
+};
+
+/**
+ * Disciplina encerrada congela a turma: ninguém sai, é removido, readmitido
+ * ou reativado até ela ser reaberta. Sem isso, quem saísse perderia o registro
+ * de conclusão, e quem voltasse viraria "em andamento" numa disciplina fechada.
+ * @param {Object} course
+ * @returns {boolean}
+ */
+export const isRosterFrozen = (course) =>
+  isDiscipline(course) && isCourseClosed(course);
+
+/** Motivos de recusa, com o texto que a interface mostra. */
+export const BLOCK_REASONS = {
+  NOT_ACTIVE: "not-active",
+  NOT_ENDED: "not-ended",
+  OWNER: "owner",
+  SELF: "self",
+  TEACHER: "teacher",
+  LEFT_BY_CHOICE: "left-by-choice",
+  NO_AUTHORITY: "no-authority",
+  FROZEN: "frozen",
+};
+
+export const BLOCK_REASON_MESSAGES = {
+  [BLOCK_REASONS.NOT_ACTIVE]: "Não faz parte da turma",
+  [BLOCK_REASONS.NOT_ENDED]: "Ainda faz parte da turma",
+  [BLOCK_REASONS.OWNER]: "Dono do curso",
+  [BLOCK_REASONS.SELF]: "Para deixar a turma, use \"Sair do curso\"",
+  [BLOCK_REASONS.TEACHER]: "Rebaixe para estudante antes",
+  [BLOCK_REASONS.LEFT_BY_CHOICE]: "Saiu por conta própria; só volta por decisão própria",
+  [BLOCK_REASONS.NO_AUTHORITY]: "Sem permissão nesta turma",
+  [BLOCK_REASONS.FROZEN]: "Disciplina encerrada",
+};
+
+const allow = () => ({ allowed: true });
+const block = (reason) => ({ allowed: false, reason });
+
+/**
+ * O integrante pode sair do curso? O professor da turma pode (e perde o papel
+ * junto); o dono, não.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem quer sair
+ * @param {Object} params.course - registro do curso (userId, type, closedAt)
+ * @param {Object} params.matricula - a matrícula de quem quer sair
+ */
+export const canLeaveCourse = ({ userDetails, course, matricula }) => {
+  if (!isActiveEnrollment(matricula)) return block(BLOCK_REASONS.NOT_ACTIVE);
+  if (userDetails?.userId && userDetails.userId === course?.userId) {
+    return block(BLOCK_REASONS.OWNER);
+  }
+  if (isRosterFrozen(course)) return block(BLOCK_REASONS.FROZEN);
+  return allow();
+};
+
+/**
+ * Quem conduz o curso pode remover este aluno da turma? O professor da turma
+ * não é removível: dono ou admin precisa rebaixá-lo antes.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem remove
+ * @param {Object} params.course
+ * @param {string} params.courseId
+ * @param {Object} params.student - { userId, matricula, isCourseTeacher }
+ */
+export const canRemoveStudent = ({ userDetails, course, courseId, student }) => {
+  if (!canRunCourse(userDetails, course?.userId, courseId)) {
+    return block(BLOCK_REASONS.NO_AUTHORITY);
+  }
+  if (!isActiveEnrollment(student?.matricula)) return block(BLOCK_REASONS.NOT_ACTIVE);
+  if (student.userId === course?.userId) return block(BLOCK_REASONS.OWNER);
+  if (student.userId === userDetails?.userId) return block(BLOCK_REASONS.SELF);
+  if (student.isCourseTeacher) return block(BLOCK_REASONS.TEACHER);
+  if (isRosterFrozen(course)) return block(BLOCK_REASONS.FROZEN);
+  return allow();
+};
+
+/**
+ * Quem conduz o curso pode desfazer a remoção? Só de quem foi removido: quem
+ * saiu por conta própria só volta por decisão própria.
+ * @param {Object} params - mesmos de canRemoveStudent
+ */
+export const canReadmitStudent = ({ userDetails, course, courseId, student }) => {
+  if (!canRunCourse(userDetails, course?.userId, courseId)) {
+    return block(BLOCK_REASONS.NO_AUTHORITY);
+  }
+  const { state, reason } = getEnrollmentState(student?.matricula);
+  if (state !== "ended") return block(BLOCK_REASONS.NOT_ENDED);
+  if (reason !== END_REASONS.REMOVED) return block(BLOCK_REASONS.LEFT_BY_CHOICE);
+  if (isRosterFrozen(course)) return block(BLOCK_REASONS.FROZEN);
+  return allow();
+};
+
+/**
+ * Quem tem matrícula encerrada pode voltar pela entrada do curso? As regras de
+ * acesso (PIN) são do gate; aqui é só o estado da turma.
+ * @param {Object} params
+ * @param {Object} params.course
+ * @param {Object} params.matricula
+ */
+export const canReactivate = ({ course, matricula }) => {
+  if (getEnrollmentState(matricula).state !== "ended") {
+    return block(BLOCK_REASONS.NOT_ENDED);
+  }
+  if (isRosterFrozen(course)) return block(BLOCK_REASONS.FROZEN);
+  return allow();
+};
+
+/**
+ * Pode trocar o papel (aluno ↔ professor da turma) deste integrante? Só o dono
+ * e o admin, como na regra de `users/{uid}/coursesTeacher`: o professor da
+ * turma conduz alunos, mas não altera o papel de ninguém. E só de quem está na
+ * turma: não se promove quem está fora dela.
+ * @param {Object} params
+ * @param {Object} params.userDetails - quem troca
+ * @param {Object} params.course
+ * @param {Object} params.student - { userId, matricula }
+ */
+export const canChangeCourseRole = ({ userDetails, course, student }) => {
+  if (!canManageCourse(userDetails, course?.userId)) {
+    return block(BLOCK_REASONS.NO_AUTHORITY);
+  }
+  if (student?.userId === course?.userId) return block(BLOCK_REASONS.OWNER);
+  if (!isActiveEnrollment(student?.matricula)) return block(BLOCK_REASONS.NOT_ACTIVE);
+  return allow();
+};
+
+/**
+ * Grupos que o integrante deixa ao encerrar a matrícula: os de trabalhos cuja
+ * entrega do grupo ainda não existe. Grupo que já entregou é histórico, e o
+ * integrante continua nele.
+ *
+ * @param {Object} params
+ * @param {Object} params.groups - assignmentGroups/{courseId} { assignmentId: { groupId: { index, members } } }
+ * @param {Object} params.submissions - assignmentSubmissions/{courseId} { assignmentId: { submitterKey: ... } }
+ * @param {string} params.userId
+ * @returns {Array<{ assignmentId: string, groupId: string, index: number, colleagues: string[] }>}
+ */
+export const groupsLeftBehind = ({ groups, submissions, userId }) => {
+  const result = [];
+  Object.entries(groups || {}).forEach(([assignmentId, grupos]) => {
+    Object.entries(grupos || {}).forEach(([groupId, grupo]) => {
+      const members = grupo?.members || {};
+      if (!members[userId]) return;
+      if (submissions?.[assignmentId]?.[`group_${groupId}`]) return;
+      result.push({
+        assignmentId,
+        groupId,
+        index: Number.isFinite(grupo.index) ? grupo.index : 0,
+        colleagues: Object.keys(members).filter((uid) => uid !== userId && members[uid]),
+      });
+    });
+  });
+  return result.sort(
+    (a, b) => a.assignmentId.localeCompare(b.assignmentId) || a.index - b.index
+  );
+};
+
+/**
+ * O mesmo registro que `createNotification` grava, mais o `groupId`, que a
+ * regra de `notifications` confere no aviso de colega de grupo.
+ */
+export const notificationRecord = (fields, createdAt) => ({
+  type: fields.type || "info",
+  courseId: fields.courseId || "",
+  assignmentId: fields.assignmentId || "",
+  groupId: fields.groupId || "",
+  quizId: "",
+  title: fields.title || "",
+  message: fields.message || "",
+  link: fields.link || "",
+  read: false,
+  createdAt,
+});
+
+const groupLabel = (group, assignmentTitles) =>
+  `Grupo ${group.index + 1} de "${assignmentTitles?.[group.assignmentId] || "um trabalho"}"`;
+
+/**
+ * Avisos aos colegas dos grupos que o integrante deixou (`groupChanges`, que
+ * pode ser desligado). Vão na mesma escrita do encerramento: só ali a regra
+ * ainda vê quem saiu como membro do grupo.
+ *
+ * @param {Object} params
+ * @param {string} params.studentName
+ * @param {string} params.reason - END_REASONS
+ * @param {string} params.courseId
+ * @param {Array} params.groupsLeft - de groupsLeftBehind
+ * @param {Object} params.assignmentTitles - { assignmentId: título }
+ * @param {Object} params.prefsByUid - { uid: prefs }
+ * @param {string} params.createdAt
+ * @returns {Array<{ uid: string, record: Object }>}
+ */
+export const groupLeftNotifications = ({
+  studentName,
+  reason,
+  courseId,
+  groupsLeft,
+  assignmentTitles,
+  prefsByUid,
+  createdAt,
+}) => {
+  const verbo = reason === END_REASONS.REMOVED ? "foi removido da turma" : "saiu do curso";
+  return (groupsLeft || []).flatMap((group) =>
+    group.colleagues
+      .filter((uid) => acceptsInApp(prefsByUid?.[uid], "groupChanges"))
+      .map((uid) => ({
+        uid,
+        record: notificationRecord(
+          {
+            type: "group_changes",
+            courseId,
+            assignmentId: group.assignmentId,
+            groupId: group.groupId,
+            title: "Mudança no seu grupo",
+            message: `${studentName} ${verbo} e deixou o ${groupLabel(group, assignmentTitles)}.`,
+            link: "/minhas-avaliacoes",
+          },
+          createdAt
+        ),
+      }))
+  );
+};
+
+/**
+ * Avisos ao dono e aos professores da turma de que alguém saiu (`studentLeft`,
+ * que pode ser desligado). Quem sai não avisa a si mesmo, mesmo sendo
+ * professor da turma.
+ *
+ * @param {Object} params
+ * @param {string} params.studentName
+ * @param {string} params.userId - quem saiu
+ * @param {Object} params.course - registro do curso (userId, title)
+ * @param {string} params.courseId
+ * @param {string[]} params.teacherIds - professores da turma
+ * @param {Object} params.prefsByUid
+ * @param {string} params.createdAt
+ * @returns {Array<{ uid: string, record: Object }>}
+ */
+export const studentLeftNotifications = ({
+  studentName,
+  userId,
+  course,
+  courseId,
+  teacherIds,
+  prefsByUid,
+  createdAt,
+}) => {
+  const destinatarios = [...new Set([course?.userId, ...(teacherIds || [])])].filter(
+    (uid) => uid && uid !== userId && acceptsInApp(prefsByUid?.[uid], "studentLeft")
+  );
+  return destinatarios.map((uid) => ({
+    uid,
+    record: notificationRecord(
+      {
+        type: "student_left",
+        courseId,
+        title: "Saída da turma",
+        message: `${studentName} saiu de ${course?.title || "um curso"}.`,
+        link: `/adm-cursos?courseId=${courseId}&tab=3`,
+      },
+      createdAt
+    ),
+  }));
+};
+
+/**
+ * Aviso ao aluno removido ou readmitido (`enrollmentChanged`). Não passa pelas
+ * preferências: é sobre o vínculo dele com o curso.
+ *
+ * @param {Object} params
+ * @param {"removed"|"readmitted"} params.action
+ * @param {Object} params.course
+ * @param {string} params.courseId
+ * @param {string} params.createdAt
+ */
+export const enrollmentChangedNotification = ({ action, course, courseId, createdAt }) => {
+  const titulo = course?.title || "um curso";
+  const removed = action === "removed";
+  return notificationRecord(
+    {
+      type: "enrollment_changed",
+      courseId,
+      title: removed ? "Você foi removido da turma" : "Você foi readmitido na turma",
+      message: removed
+        ? `Você foi removido da turma de ${titulo}. Seu histórico foi preservado, e você pode voltar pelas regras de acesso do curso.`
+        : `Você foi readmitido na turma de ${titulo} e pode continuar de onde parou.`,
+      link: removed ? "/cursos" : `/classes?courseId=${courseId}`,
+    },
+    createdAt
+  );
+};
+
+const notificationUpdates = (updates, notifications, newKey) => {
+  (notifications || []).forEach(({ uid, record }) => {
+    updates[`notifications/${uid}/${newKey(uid)}`] = record;
+  });
+};
+
+/**
+ * Monta a escrita atômica do encerramento: a matrícula, o papel (quando quem
+ * sai é professor da turma), os grupos deixados e os avisos.
+ *
+ * @param {Object} params
+ * @param {string} params.courseId
+ * @param {string} params.userId - quem tem a matrícula encerrada
+ * @param {string} params.endedBy - quem encerrou
+ * @param {string} params.reason - END_REASONS
+ * @param {string} params.endedAt - ISO
+ * @param {boolean} [params.revokeTeacherRole]
+ * @param {Array} [params.groupsLeft] - de groupsLeftBehind
+ * @param {Array} [params.notifications] - [{ uid, record }]
+ * @param {(uid: string) => string} params.newKey - chave nova em notifications/{uid}
+ * @returns {Object} mapa de caminho → valor, pronto para `update(ref(database), ...)`
+ */
+export const enrollmentEndUpdates = ({
+  courseId,
+  userId,
+  endedBy,
+  reason,
+  endedAt,
+  revokeTeacherRole = false,
+  groupsLeft = [],
+  notifications = [],
+  newKey,
+}) => {
+  const base = `studentCourses/${userId}/${courseId}`;
+  const updates = {
+    [`${base}/endedAt`]: endedAt,
+    [`${base}/endedBy`]: endedBy,
+    [`${base}/endReason`]: reason,
+  };
+  if (revokeTeacherRole) {
+    updates[`users/${userId}/coursesTeacher/${courseId}`] = null;
+  }
+  groupsLeft.forEach(({ assignmentId, groupId }) => {
+    updates[`assignmentGroups/${courseId}/${assignmentId}/${groupId}/members/${userId}`] = null;
+  });
+  notificationUpdates(updates, notifications, newKey);
+  return updates;
+};
+
+/**
+ * Monta a escrita que torna a matrícula ativa de novo (volta pelo gate ou
+ * readmissão), com os avisos que a acompanham.
+ * @param {Object} params
+ * @param {string} params.courseId
+ * @param {string} params.userId
+ * @param {Array} [params.notifications] - [{ uid, record }]
+ * @param {(uid: string) => string} [params.newKey]
+ * @returns {Object} mapa de caminho → valor
+ */
+export const reactivationUpdates = ({ courseId, userId, notifications = [], newKey }) => {
+  const base = `studentCourses/${userId}/${courseId}`;
+  const updates = {
+    [`${base}/endedAt`]: null,
+    [`${base}/endedBy`]: null,
+    [`${base}/endReason`]: null,
+  };
+  notificationUpdates(updates, notifications, newKey);
+  return updates;
+};
+
+/**
+ * Data curta (dd/mm/aaaa) das mensagens de matrícula encerrada.
+ * @param {string} iso
+ * @param {{ timeZone?: string }} [options]
+ */
+export const formatEndedDate = (iso, { timeZone } = {}) => {
+  const data = new Date(iso);
+  if (!iso || Number.isNaN(data.getTime())) return "";
+  return data.toLocaleDateString("pt-BR", timeZone ? { timeZone } : {});
+};
+
+/**
+ * Pergunta do gate para quem tem matrícula encerrada e abre o curso.
+ * @param {{ reason?: string, endedAt?: string }} state - de getEnrollmentState
+ * @param {{ timeZone?: string }} [options]
+ */
+export const returnPromptMessage = ({ reason, endedAt }, options) => {
+  const data = formatEndedDate(endedAt, options);
+  const quando = data ? ` em ${data}` : "";
+  const fato =
+    reason === END_REASONS.REMOVED
+      ? `Você foi removido desta turma${quando}.`
+      : `Você saiu desta turma${quando}.`;
+  return `${fato} Voltar para a turma? Seu progresso continua de onde parou.`;
+};
+
+/**
+ * Linhas da confirmação de saída: só as que valem para o caso.
+ * @param {Object} params
+ * @param {Object} params.course - registro do curso (pinEnabled)
+ * @param {boolean} params.isCourseTeacher - quem sai é professor da turma
+ * @param {Array} params.groupsLeft - de groupsLeftBehind
+ * @param {Object} params.assignmentTitles
+ * @returns {string[]}
+ */
+export const leaveConfirmationLines = ({
+  course,
+  isCourseTeacher,
+  groupsLeft,
+  assignmentTitles,
+}) => [
+  "Você deixa a turma e passa a aparecer como \"saiu da turma\" para os professores.",
+  "Seu progresso e seus resultados ficam guardados. Se voltar, você continua de onde parou, inclusive com as tentativas de quiz já usadas.",
+  ...(course?.pinEnabled ? ["Para voltar, você vai precisar do PIN do curso."] : []),
+  ...(isCourseTeacher
+    ? ["Você deixa de ser professor desta turma. Se voltar, entra como aluno."]
+    : []),
+  ...(groupsLeft || []).map(
+    (group) => `Você sai do ${groupLabel(group, assignmentTitles)}, e seus colegas serão avisados.`
+  ),
+  "Os professores do curso serão avisados.",
+];
+
+/**
+ * Linhas da confirmação de remoção, do ponto de vista de quem conduz o curso.
+ * @param {Object} params
+ * @param {Object} params.course
+ * @param {string} params.studentName
+ * @param {Array} params.groupsLeft
+ * @param {Object} params.assignmentTitles
+ * @returns {string[]}
+ */
+export const removalConfirmationLines = ({
+  course,
+  studentName,
+  groupsLeft,
+  assignmentTitles,
+}) => [
+  `${studentName} deixa a turma e passa a aparecer no fim da lista, como "removido da turma".`,
+  "O progresso e os resultados ficam guardados, e a readmissão pode ser feita depois nesta mesma lista.",
+  course?.pinEnabled
+    ? "Para voltar por conta própria, vai precisar do PIN do curso."
+    : "Em curso aberto, quem foi removido pode voltar quando quiser.",
+  ...(groupsLeft || []).map(
+    (group) => `Sai do ${groupLabel(group, assignmentTitles)}, e os colegas serão avisados.`
+  ),
+  "Um aviso da remoção será enviado.",
+];
