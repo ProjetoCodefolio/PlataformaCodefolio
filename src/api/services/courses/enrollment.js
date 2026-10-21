@@ -4,6 +4,23 @@ import { canManageCourse, canRunCourse } from "$api/utils/permissions";
 import { acceptsInApp, fetchPrefs } from "$api/services/notificationPrefs";
 import { recipientName } from "../../../shared/notificationText.js";
 import { isCourseClosed, isDiscipline } from "./courseType";
+import {
+  END_REASONS,
+  formatEndedDate,
+  getEnrollmentState,
+  isActiveEnrollment,
+} from "../../../shared/enrollmentStatus.js";
+
+export {
+  END_REASONS,
+  activeStudentIds,
+  enrollmentEndedLabel,
+  enrollmentRowFlags,
+  formatEndedDate,
+  getEnrollmentState,
+  isActiveEnrollment,
+  sortEndedLast,
+} from "../../../shared/enrollmentStatus.js";
 
 /**
  * Matrícula: ativa ou encerrada.
@@ -23,35 +40,6 @@ import { isCourseClosed, isDiscipline } from "./courseType";
  * num único `update()` na raiz (os avisos aos colegas de grupo só passam nas
  * regras se forem na mesma escrita em que o autor deixa o grupo).
  */
-
-export const END_REASONS = {
-  LEFT: "left",
-  REMOVED: "removed",
-};
-
-/**
- * A matrícula faz parte da turma agora? Todo leitor de `studentCourses` passa
- * por aqui, nunca por "o registro existe".
- * @param {Object} matricula - studentCourses/{uid}/{courseId}
- * @returns {boolean}
- */
-export const isActiveEnrollment = (matricula) =>
-  Boolean(matricula) && !matricula.endedAt;
-
-/**
- * Estado da matrícula para o gate de acesso.
- * @param {Object} matricula
- * @returns {{ state: "none"|"active"|"ended", reason?: string, endedAt?: string }}
- */
-export const getEnrollmentState = (matricula) => {
-  if (!matricula) return { state: "none" };
-  if (isActiveEnrollment(matricula)) return { state: "active" };
-  return {
-    state: "ended",
-    reason: matricula.endReason || END_REASONS.LEFT,
-    endedAt: matricula.endedAt,
-  };
-};
 
 /**
  * Disciplina encerrada congela a turma: ninguém sai, é removido, readmitido
@@ -411,17 +399,6 @@ export const reactivationUpdates = ({ courseId, userId, notifications = [], newK
   };
   notificationUpdates(updates, notifications, newKey);
   return updates;
-};
-
-/**
- * Data curta (dd/mm/aaaa) das mensagens de matrícula encerrada.
- * @param {string} iso
- * @param {{ timeZone?: string }} [options]
- */
-export const formatEndedDate = (iso, { timeZone } = {}) => {
-  const data = new Date(iso);
-  if (!iso || Number.isNaN(data.getTime())) return "";
-  return data.toLocaleDateString("pt-BR", timeZone ? { timeZone } : {});
 };
 
 /**
