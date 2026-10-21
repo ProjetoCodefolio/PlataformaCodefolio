@@ -76,7 +76,7 @@ Cada etapa é um commit (ou poucos), em português, no padrão conventional comm
 - Na aba Alunos, o botão diz só "Remover" para caber na coluna; o nome acessível é "Remover da turma". O `checkCurrentUserRole` saiu: o seletor de papel agora segue `canChangeCourseRole`, que é o que a regra do banco já fazia.
 - As preferências de notificação passaram a listar também os cursos que a pessoa conduz (criados por ela e `coursesTeacher`), além das matrículas ativas.
 - Testes: `enrollment.test.js` (42), `enrollment.rules.emulator.test.js` (14), `enrollment.emulator.test.js` (13), `enrollmentReaders.emulator.test.js` (7), `src/shared/enrollmentStatus.test.js` (6), casos novos em `courseType`, `gradeSummary`, `gradesCsv`, `attendance` e no teste do Worker, e `e2e/saida-do-curso.spec.js` (8). A suíte E2E passou a ter 32.
-- Para publicar: `firebase deploy --only database` (regras) e `wrangler deploy` no `emailWorker/` (destinatários dos avisos programados e modelos de e-mail novos), junto com o app.
+- Para publicar: o CI/CD sobe o app e as regras no merge (`firebase deploy --only hosting,database`). O Worker não está no pipeline: falta `npm run deploy` em `emailWorker/` (destinatários dos avisos programados e modelos de e-mail novos).
 
 ## Fora do escopo
 
