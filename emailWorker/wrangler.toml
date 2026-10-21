@@ -1,6 +1,10 @@
 name = "codefolio-email-queue"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+# Conta da Cloudflare onde o Worker mora. O token de deploy enxerga mais de
+# uma conta e, sem terminal (o deploy do CI), o wrangler não escolhe sozinho.
+# Não é segredo: é só o identificador da conta.
+account_id = "c721f30cd254df4fdfd42d167c881acf"
 
 [[queues.producers]]
 queue = "email-notifications"
