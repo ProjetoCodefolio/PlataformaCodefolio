@@ -38,6 +38,7 @@ import {
 } from "$api/services/courses/quizWindow";
 import { formatTimeRemaining } from "$api/services/courses/assignments";
 import PinAccessModal from "$components/modals/PinAccessModal";
+import ReturnToCourseDialog from "$components/courses/ReturnToCourseDialog";
 import { updateCourseProgress } from "$api/services/courses/students";
 import AdvancedSettingsModal from "$components/courses/AdvancedSettingsModal";
 import AssignmentList from "$components/courses/assignments/AssignmentList";
@@ -328,7 +329,8 @@ const Classes = ({ alias = null, openQuestions = false }) => {
   };
 
   // Enquanto o acesso não é liberado, não renderiza a sala. Mostra um loader
-  // durante a verificação e, para curso fechado, o modal de PIN por cima.
+  // durante a verificação e, por cima, o modal de PIN (curso fechado) ou a
+  // pergunta de volta (quem saiu ou foi removido).
   if (!courseAccess.accessGranted) {
     return (
       <>
@@ -374,10 +376,26 @@ const Classes = ({ alias = null, openQuestions = false }) => {
                   Verificando acesso ao curso...
                 </Typography>
               </>
+            ) : courseAccess.returning ? (
+              <>
+                <Loader />
+                <Typography variant="body1">Voltando para a turma...</Typography>
+              </>
             ) : (
-              <Typography variant="body1">
-                Este curso requer uma chave de acesso.
-              </Typography>
+              <>
+                <Typography variant="body1" sx={{ maxWidth: 520 }}>
+                  {courseAccess.gateMessage || "Este curso requer uma chave de acesso."}
+                </Typography>
+                {courseAccess.returnBlocked && (
+                  <Button
+                    variant="contained"
+                    onClick={() => navigate("/cursos")}
+                    sx={{ bgcolor: "#9041c1", "&:hover": { bgcolor: "#7d37a7" } }}
+                  >
+                    Voltar para os cursos
+                  </Button>
+                )}
+              </>
             )}
           </Box>
         </Box>
@@ -387,6 +405,13 @@ const Classes = ({ alias = null, openQuestions = false }) => {
           onClose={courseAccess.handlePinModalClose}
           onSubmit={courseAccess.handlePinAccessGranted}
           selectedCourse={{ courseId }}
+        />
+        <ReturnToCourseDialog
+          open={courseAccess.showReturnDialog}
+          message={courseAccess.gateMessage}
+          busy={courseAccess.returning}
+          onConfirm={courseAccess.handleReturnConfirm}
+          onCancel={courseAccess.handleReturnCancel}
         />
       </>
     );
