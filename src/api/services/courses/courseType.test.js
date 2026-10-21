@@ -104,6 +104,17 @@ describe("closureUpdatesFor", () => {
     expect(Object.keys(semMatricula).filter((c) => c.startsWith("studentCourses"))).toEqual([]);
   });
 
+  it("não leva a concluído quem saiu ou foi removido antes do encerramento", () => {
+    const comQuemSaiu = matriculas({
+      ana: { status: "in_progress", endedAt: "2026-08-01T12:00:00.000Z", endReason: "left" },
+      bruno: { status: "in_progress" },
+    });
+    const encerramento = closureUpdatesFor(comQuemSaiu, CURSO);
+    expect(encerramento[`studentCourses/ana/${CURSO}/status`]).toBeUndefined();
+    expect(encerramento[`studentCourses/ana/${CURSO}/closedByTeacher`]).toBeUndefined();
+    expect(encerramento[`studentCourses/bruno/${CURSO}/status`]).toBe("completed");
+  });
+
   it("encerrar de novo não sobrescreve o retrato do primeiro encerramento", () => {
     const jaEncerrado = matriculas({
       ana: { status: "completed", closedByTeacher: true, statusBeforeClosure: "in_progress" },

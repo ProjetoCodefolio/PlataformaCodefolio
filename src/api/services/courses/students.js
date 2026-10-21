@@ -3,6 +3,11 @@ import { ref, get, set, update } from 'firebase/database';
 import { isDiscipline, isCourseClosed } from './courseType';
 import { toStudentView } from './publication';
 import { recipientName } from '../../../shared/notificationText.js';
+import {
+  enrollmentRowFlags,
+  isActiveEnrollment,
+  sortEndedLast,
+} from '../../../shared/enrollmentStatus.js';
 
 /**
  * Um item de conteúdo conta como CONCLUÍDO quando foi assistido (slides já
@@ -193,7 +198,9 @@ export const enrollStudentInCourse = async (userId, courseId, courseData) => {
 };
 
 /**
- * Busca todos os cursos de um estudante
+ * Busca os cursos de que o estudante faz parte agora. Matrícula encerrada (saiu
+ * ou foi removido) fica de fora: o curso some de "Minhas avaliações" e das
+ * preferências de notificação.
  */
 export const fetchStudentCourses = async (userId) => {
   try {
@@ -201,10 +208,12 @@ export const fetchStudentCourses = async (userId) => {
     const snapshot = await get(studentCoursesRef);
     
     if (snapshot.exists()) {
-      const coursesData = Object.entries(snapshot.val()).map(([courseId, course]) => ({
-        courseId,
-        ...course,
-      }));
+      const coursesData = Object.entries(snapshot.val())
+        .filter(([, course]) => isActiveEnrollment(course))
+        .map(([courseId, course]) => ({
+          courseId,
+          ...course,
+        }));
       
       return coursesData;
     }
@@ -231,9 +240,11 @@ export const fetchCourseStudentCounts = async () => {
     const snapshot = await get(ref(database, "studentCourses"));
     if (!snapshot.exists()) return {};
 
+    // Conta só a turma de agora: quem saiu ou foi removido fica de fora.
     const counts = {};
     Object.values(snapshot.val()).forEach((matriculasDoAluno) => {
-      Object.keys(matriculasDoAluno || {}).forEach((courseId) => {
+      Object.entries(matriculasDoAluno || {}).forEach(([courseId, matricula]) => {
+        if (!isActiveEnrollment(matricula)) return;
         counts[courseId] = (counts[courseId] || 0) + 1;
       });
     });
@@ -252,10 +263,16 @@ export const fetchCourseStudentCounts = async () => {
  * era N+1: com M alunos no curso, M leituras individuais de rede só para pegar
  * nome/e-mail/foto de cada um.
  *
+ * Por padrão traz só quem está na turma (matrícula ativa): é o que serve aos
+ * avisos para a turma e a quem esquecer de escolher. As listas do professor
+ * pedem `includeEnded` e recebem também quem saiu ou foi removido, marcado
+ * (`enrollmentEnded`, `endReason`, `endedAt`) e no fim da lista.
+ *
  * @param {string} courseId - ID do curso
+ * @param {{ includeEnded?: boolean }} [options]
  * @returns {Promise<Array>} - Lista de estudantes com dados completos
  */
-export const fetchCourseStudentsEnriched = async (courseId) => {
+export const fetchCourseStudentsEnriched = async (courseId, { includeEnded = false } = {}) => {
   try {
     if (!courseId) {
       throw new Error("ID do curso é necessário");
@@ -276,6 +293,7 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
 
     Object.entries(studentsData).forEach(([userId, courses]) => {
       if (!courses[courseId]) return;
+      if (!includeEnded && !isActiveEnrollment(courses[courseId])) return;
 
       const userData = usersData[userId];
       if (!userData) return;
@@ -292,11 +310,12 @@ export const fetchCourseStudentsEnriched = async (courseId) => {
         name: recipientName(userId, userData),
         ...courses[courseId],  // Dados específicos do curso
         ...userData,          // Dados do perfil do usuário (nome, email, etc)
+        ...enrollmentRowFlags(courses[courseId]),
         role: isTeacher ? "teacher" : "student", // Definir role com base em coursesTeacher
       });
     });
 
-    return studentsList;
+    return sortEndedLast(studentsList);
   } catch (error) {
     console.error("Erro ao buscar estudantes do curso:", error);
     throw error;

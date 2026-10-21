@@ -1,5 +1,6 @@
 import { ref, get, update } from "firebase/database";
 import { database } from "../../config/firebase";
+import { isActiveEnrollment } from "../../../shared/enrollmentStatus.js";
 
 /**
  * Curso ou disciplina.
@@ -80,6 +81,9 @@ export const closureUpdatesFor = (studentCourses, courseId, options = {}) => {
   Object.entries(studentCourses || {}).forEach(([userId, cursos]) => {
     const matricula = cursos?.[courseId];
     if (!matricula) return;
+    // Quem saiu ou foi removido antes do encerramento não fez a disciplina até
+    // o fim: não é levado a concluído.
+    if (!isActiveEnrollment(matricula)) return;
     // Já encerrado antes: não sobrescreve o `statusBeforeClosure` original,
     // senão reabrir devolveria "completed" a quem só era completed por causa
     // do encerramento.

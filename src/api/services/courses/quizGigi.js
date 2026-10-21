@@ -7,6 +7,7 @@ import {
   increment,
 } from "firebase/database";
 import { database } from "../../config/firebase";
+import { isActiveEnrollment } from "../../../shared/enrollmentStatus.js";
 
 // Formato do nó do Quiz Gigi (quiz ao vivo conduzido pelo professor em aula):
 //
@@ -103,8 +104,9 @@ export const fetchEnrolledStudents = async (courseId) => {
     const studentIds = [];
 
     // Para cada usuário, verificar se está matriculado no curso
+    // Só quem está na turma entra no sorteio: quem saiu ou foi removido não.
     Object.entries(enrolledData).forEach(([userId, courses]) => {
-      if (courses[courseId]) {
+      if (isActiveEnrollment(courses[courseId])) {
         const userRef = ref(database, `users/${userId}`);
         studentsPromises.push(get(userRef));
         studentIds.push(userId);

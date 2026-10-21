@@ -28,6 +28,7 @@ const CURSO = "curso_cron_publicacao";
 const ALUNA = "aluna_cron_publicacao";
 const ALUNO_SEM_AVISO = "aluno_mudo_cron_publicacao";
 const PROFESSORA = "prof_cron_publicacao";
+const EX_ALUNA = "ex_aluna_cron_publicacao";
 
 const emuladorNoAr = await (async () => {
   try {
@@ -67,11 +68,12 @@ const limpar = async () => {
     `notifications/${ALUNA}`,
     `notifications/${ALUNO_SEM_AVISO}`,
     `notifications/${PROFESSORA}`,
+    `notifications/${EX_ALUNA}`,
     `notificationPrefs/${ALUNO_SEM_AVISO}`,
   ]) {
     await db.remove(caminho);
   }
-  for (const uid of [ALUNA, ALUNO_SEM_AVISO, PROFESSORA]) {
+  for (const uid of [ALUNA, ALUNO_SEM_AVISO, PROFESSORA, EX_ALUNA]) {
     await db.remove(`studentCourses/${uid}`);
     await db.remove(`users/${uid}`);
   }
@@ -165,6 +167,26 @@ describe.runIf(emuladorNoAr)("cron de publicações programadas", () => {
       link: `/classes?courseId=${CURSO}&videoId=aula1`,
     });
     expect(emails[0].fields.minPercentage).toBe("70%");
+  });
+
+  it("quem saiu da turma não recebe sino nem e-mail", async () => {
+    await db.put(`users/${EX_ALUNA}`, { email: "ex@teste.com", displayName: "Ex" });
+    await db.put(`studentCourses/${EX_ALUNA}/${CURSO}`, {
+      progress: 30,
+      endedAt: PASSADO,
+      endReason: "left",
+    });
+    await db.put(`courseQuizzes/${CURSO}/aula1`, {
+      videoId: "aula1",
+      minPercentage: 70,
+      questions: [],
+    });
+    await db.put(`publicationQueue/${CURSO}__quiz__aula1`, entrada("quiz", "aula1"));
+
+    await processa();
+
+    expect(await notificacoesDe(EX_ALUNA)).toHaveLength(0);
+    expect(emails.map((e) => e.to)).toEqual(["aluna@teste.com"]);
   });
 
   it("item adiado é reagendado sem aviso; item excluído é descartado", async () => {
