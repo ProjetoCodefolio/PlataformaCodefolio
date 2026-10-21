@@ -130,6 +130,53 @@ jobs:
       - name: Deploy no Firebase (hosting + database rules)
         run: npx firebase deploy --only hosting,database --project plataformacodefolio
 
+  # Worker de e-mail (emailWorker/): fila do Brevo e cron das publicações
+  # programadas, na Cloudflare. Sobe a cada merge, como o app. Não dá para
+  # filtrar só por mudanças em emailWorker/, porque ele embute src/shared/;
+  # publicar o mesmo código só cria uma versão igual, sem efeito. Os segredos
+  # do Worker (BREVO_API_KEY, FIREBASE_SERVICE_ACCOUNT) moram na Cloudflare e o
+  # deploy não mexe neles; aqui só entra o token de API, com permissão de
+  # Workers Scripts, KV e Queues (o mesmo que o emailWorker/setup-wizard.sh pede).
+  deploy-worker:
+    needs: [test, e2e]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: emailWorker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      EMAIL_WORKER_URL: ${{ secrets.VITE_EMAIL_WORKER_URL }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: emailWorker/package-lock.json
+
+      - name: Conferir o token da Cloudflare
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Falta o secret CLOUDFLARE_API_TOKEN no repositório (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Deploy do Worker na Cloudflare
+        run: npx wrangler deploy
+
+      # Fumaça: o Worker no ar responde. Sem token, /quota-status devolve 401;
+      # qualquer outra coisa (404 de rota, 5xx, timeout) é deploy quebrado.
+      - name: Worker respondendo
+        if: env.EMAIL_WORKER_URL != ''
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "${EMAIL_WORKER_URL%/}/quota-status?courseId=ci")
+          echo "GET /quota-status sem token: HTTP $status"
+          [ "$status" = "401" ]
+
   # Smoke pós-deploy (etapa 6 do plano_testes_e2e.md): abre o site no ar como
   # visitante e confere que a página inicial e o catálogo funcionam, sem erro
   # de JavaScript. Só leitura, sem login e sem segredo nenhum.
